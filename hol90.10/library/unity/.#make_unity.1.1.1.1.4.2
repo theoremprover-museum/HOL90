@@ -1,0 +1,31 @@
+#!/bin/sh
+#
+# Usage: make_unity <hol90>
+#
+
+if test -z "$THEORY_TYPE"; then THEORY_TYPE=ascii; fi
+
+if test "$1" = "";
+then hol90="hol90";
+else hol90="$*";
+fi
+
+theories="state_logic unless ensures gen_induct leadsto comp_unity"
+
+mkdir theories/$THEORY_TYPE 2>/dev/null || true
+
+cd theories/src
+
+#for f in $theories;
+#do echo -n Building theory $f...;
+#  echo "Portable.use_and_exit print_HOL_ERR \"mk_$f.sml\";" | $hol90 || exit 1;
+#  echo ' done.';
+#done
+
+for f in $theories;
+do echo -n Building theory $f...;
+  $hol90 < mk_$f.sml;
+  echo ' done.';
+done
+
+echo 'hol90 UNITY theories built.'

@@ -1,0 +1,120 @@
+head	1.2;
+access;
+symbols
+	HOL97:1.1.1.1.4.1.0.2
+	bpHOL97:1.1.1.1.4.1
+	hol90_9_alpha:1.1.1.1.4.1
+	hol90_pre8_for_multiple_compilers:1.1.1.1.0.4
+	hol90_pre8_after_donalds_separate_compilation_changes:1.1.1.1
+	hol90_8_after_merging_Konrad_Elsa:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.2
+date	95.12.18.11.35.05;	author drs1004;	state dead;
+branches;
+next	1.1;
+
+1.1
+date	95.10.16.13.29.55;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.29.55;	author rjb;	state Exp;
+branches
+	1.1.1.1.4.1;
+next	;
+
+1.1.1.1.4.1
+date	96.06.25.15.41.58;	author rjb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.2
+log
+@Preterm and other changes, see 7.changes
+@
+text
+@signature PP_sig =
+sig
+  type ppstream
+  type ppconsumer
+  datatype break_style = CONSISTENT | INCONSISTENT
+
+  val mk_consumer : {consumer : string -> unit,
+                     linewidth : int,
+                     flush : unit -> unit} ->  ppconsumer
+  val defaultConsumer : unit -> {consumer : string -> unit,
+                                 linewidth : int, 
+                                 flush : unit -> unit}
+  val mk_ppstream : ppconsumer -> ppstream
+  val dest_ppstream : ppstream -> ppconsumer
+  val add_break : ppstream -> int * int -> unit
+  val add_newline : ppstream -> unit
+  val add_string : ppstream -> string -> unit
+  val begin_block : ppstream -> break_style -> int -> unit
+  val end_block : ppstream -> unit
+  val clear_ppstream : ppstream -> unit
+  val flush_ppstream : ppstream -> unit
+  val with_pp : ppconsumer -> (ppstream -> unit) -> unit
+  val install_pp : string list -> (ppstream -> 'a -> unit) -> unit
+  val pp_to_string : int -> (ppstream -> 'a -> unit) -> 'a -> string
+  val with_ppstream: ppstream
+                     -> {add_break:int * int -> unit, 
+                         add_newline:unit -> unit,
+                         add_string:string -> unit,
+                         begin_block:break_style -> int -> unit,
+                         clear_ppstream:unit -> unit, 
+                         end_block:unit -> unit,
+                         flush_ppstream:unit -> unit}
+  val pr_list :('a -> unit) -> (unit -> 'b) -> (unit -> 'c) -> 'a list -> unit
+end;
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@
+
+
+1.1.1.1.4.1
+log
+@The core of hol90.9.alpha now builds successfully with SML/NJ 109,
+SML/NJ 108.5 (using CM), SML/NJ 0.93, and Poly/ML 3.0.
+I have not yet tried rebuilding the theory files.
+@
+text
+@d23 1
+a23 1
+  val install_pp : string list -> string -> (ppstream -> 'a -> unit) -> unit
+@

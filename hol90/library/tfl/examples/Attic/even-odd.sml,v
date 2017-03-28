@@ -1,0 +1,111 @@
+head	1.1;
+access;
+symbols
+	HOL97:1.1.2.2.0.2
+	bpHOL97:1.1.2.2
+	hol90_9_alpha:1.1.2.2
+	TFL_1:1.1.2.1
+	hol90_pre8_for_multiple_compilers:1.1.0.2;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	96.06.29.15.08.09;	author rjb;	state dead;
+branches
+	1.1.2.1;
+next	;
+
+1.1.2.1
+date	96.06.29.15.08.09;	author rjb;	state Exp;
+branches;
+next	1.1.2.2;
+
+1.1.2.2
+date	96.08.05.15.40.31;	author rjb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@file even-odd.sml was initially added on branch hol90_pre8_for_multiple_compilers.
+@
+text
+@@
+
+
+1.1.2.1
+log
+@TFL version 1 for HOL: A well-founded recursive function definition package.
+@
+text
+@a0 51
+(*----------------------------------------------------------------------------
+ *
+ *            Mutual recursion : even and odd
+ *
+ * This isn't such an interesting example, since the induction theorems 
+ * obtained are just standard mathematical induction!
+ *---------------------------------------------------------------------------*)
+
+new_theory"even_odd";
+
+
+local open Hol_datatype
+in
+val tag_info = hol_datatype `tag = Even of num | Odd of num`;
+end;
+
+
+val tag_size_def = Q.new_definition("tag_size", `tag_size = tag_case I I`);
+
+val EO = Rfunction`measure tag_size`
+            `(EO(Even 0) = T)              /\
+             (EO(Even(SUC x)) = EO(Odd x)) /\
+             (EO(Odd 0) = F)               /\
+             (EO(Odd(SUC x)) = EO(Even x))`;
+
+val EOterminates = 
+prove_termination EO (RW_TAC[tag_size_def, theorem"combin" "I_THM",
+                             theorem"prim_rec" "LESS_SUC_REFL"]);
+
+val even_def = Hol_datatype.define Prefix `even n = EO(Even n)`;
+val odd_def  = Hol_datatype.define Prefix `odd n  = EO(Odd n)`;
+
+(*---------------------------------------------------------------------------
+ *  |- (even 0 = T) /\
+ *    (!x. even (SUC x) = odd x) /\
+ *     (odd 0 = F) /\
+ *     (!x. odd (SUC x) = even x) : thm
+ *---------------------------------------------------------------------------*)
+val even_odd_rules = 
+RW_RULE[EOterminates, GSYM even_def, GSYM odd_def] (#rules EO);
+
+val base = Q.SPEC`tag_case (P1:num->bool) Q1` 
+                (RW_RULE[EOterminates] (DISCH_ALL(#induction EO)));
+
+val even_th = GEN_ALL
+               (RW_RULE[](DISCH_ALL(Q.GEN`x` (Q.SPEC`Even x`(UNDISCH base)))));
+
+val odd_th = GEN_ALL
+              (RW_RULE[](DISCH_ALL(Q.GEN`x` (Q.SPEC`Odd x`(UNDISCH base)))));
+
+html_theory"-";
+@
+
+
+1.1.2.2
+log
+@Updated to TFL release 4.
+@
+text
+@d30 2
+a31 2
+val even_def = define Prefix `even n = EO(Even n)`;
+val odd_def  = define Prefix `odd n  = EO(Odd n)`;
+@

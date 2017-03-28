@@ -1,0 +1,33 @@
+\DOC COND_SUBS_CONV
+
+\TYPE {COND_SUBS_CONV : conv}
+
+\SYNOPSIS
+substitutes the free occurences of the condition of a conditional in the
+arms of the conditional.
+
+\LIBRARY cond
+
+\DESCRIBE
+substitutes the free occurences of the condition of a conditional in the
+arms of the conditional.
+
+{
+         |- x => f|g
+     =======================
+      |- x => f[x/T]|g[x/F]
+
+\EXAMPLE
+
+{
+- COND_SUBS_CONV
+  (--`A/\B => C \/ D \/ A /\ B \/ G | G \/ A/\ B \/ C /\ D`--);
+val it =
+  |- ((A /\ B) => (C \/ D \/ A /\ B \/ G) | (G \/ A /\ B \/ C /\ D)) =
+     ((A /\ B) => (C \/ D \/ T \/ G) | (G \/ F \/ C /\ D)) : thm
+}
+
+\SEEALSO
+COND_SUBS_RULE COND_SUBS_TAC
+
+\ENDDOC

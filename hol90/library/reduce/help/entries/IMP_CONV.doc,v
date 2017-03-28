@@ -1,0 +1,94 @@
+head	1.1;
+branch	1.1.1;
+access;
+symbols
+	HOL97:1.1.1.1.0.6
+	bpHOL97:1.1.1.1
+	hol90_9_alpha:1.1.1.1
+	hol90_pre8_for_multiple_compilers:1.1.1.1.0.4
+	hol90_pre8_after_donalds_separate_compilation_changes:1.1.1.1
+	hol90_8_after_merging_Konrad_Elsa:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	95.10.16.13.31.24;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.31.24;	author rjb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@\DOC IMP_CONV
+
+\TYPE {IMP_CONV : conv}
+
+\SYNOPSIS
+Simplifies certain implicational expressions.
+
+\LIBRARY reduce
+
+\DESCRIBE
+If {tm} corresponds to one of the forms given below, where {t} is an arbitrary
+term of type {bool}, then {IMP_CONV tm} returns the corresponding theorem. Note
+that in the last case the antecedent and consequent need only be
+alpha-equivalent rather than strictly identical.
+{
+   IMP_CONV "T ==> t" = |- T ==> t = t
+   IMP_CONV "t ==> T" = |- t ==> T = T
+   IMP_CONV "F ==> t" = |- F ==> t = T
+   IMP_CONV "t ==> F" = |- t ==> F = ~t
+   IMP_CONV "t ==> t" = |- t ==> t = T
+}
+
+\FAILURE
+{IMP_CONV tm} fails unless {tm} has one of the forms indicated above.
+
+\EXAMPLE
+{
+#IMP_CONV "T ==> F";;
+|- T ==> F = F
+
+#IMP_CONV "F ==> x";;
+|- F ==> x = T
+
+#IMP_CONV "(!z:(num)list. z = z) ==> (!x:(num)list. x = x)";;
+|- (!z. z = z) ==> (!x. x = x) = T
+}
+
+\ENDDOC
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

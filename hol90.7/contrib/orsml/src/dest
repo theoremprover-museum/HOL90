@@ -1,0 +1,48 @@
+(********************************************)
+(*      DESTRUCTION OF COMPLEX OBJECTS      *)
+(********************************************)
+
+signature destsig =
+  sig
+    structure Common : commonsig
+    exception Cannotdestroy
+    val co_to_base : Common.co -> Common.base 
+    val co_to_bool : Common.co -> bool
+    val co_to_int : Common.co -> int
+    val co_to_list : Common.co -> Common.co list
+    val co_to_pair : Common.co -> Common.co * Common.co
+    val co_to_string : Common.co -> string
+  end
+
+
+functor DESTRUCT (Common : commonsig) : destsig = 
+struct
+
+structure Common = Common
+local open Common in 
+
+   exception Cannotdestroy
+
+   (* basic destroy *)
+
+   fun co_to_list (Set x) = x |
+       co_to_list (Orset x) = x |
+       co_to_list (Prod(x,y)) = [x,y] |
+       co_to_list x = [x]
+
+   fun co_to_pair (Prod(x,y)) = (x,y) | co_to_pair _ = raise Cannotdestroy
+
+   fun co_to_int (Num i) = i | co_to_int _ = raise Cannotdestroy
+
+   fun co_to_bool (Bool b) = b | co_to_bool _ = raise Cannotdestroy
+
+   fun co_to_string (Str s) = s | co_to_string _ = raise Cannotdestroy
+
+   fun co_to_base   (Base b) = b | co_to_base _ = raise Cannotdestroy
+
+end
+
+end (* Functor DESTRUCT *)
+
+
+

@@ -1,0 +1,157 @@
+head	1.2;
+access;
+symbols
+	HOL97:1.1.1.1.0.6
+	bpHOL97:1.1.1.1
+	hol90_9_alpha:1.1.1.1
+	hol90_pre8_for_multiple_compilers:1.1.1.1.0.4
+	hol90_pre8_after_donalds_separate_compilation_changes:1.1.1.1
+	hol90_8_after_merging_Konrad_Elsa:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.2
+date	96.01.04.21.50.29;	author drs1004;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	95.10.16.13.30.24;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.30.24;	author rjb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.2
+log
+@see changes file
+@
+text
+@(* ===================================================================== *)
+(* FILE          : mk_combin.sml                                         *)
+(* DESCRIPTION   : Basic combinator definitions and some theorems about  *)
+(*                 them. Translated from hol88.                          *)
+(*                                                                       *)
+(* AUTHOR        : (c) Tom Melham, University of Cambridge               *)
+(* DATE          : 87.02.26                                              *)
+(* TRANSLATOR    : Konrad Slind, University of Calgary                   *)
+(* DATE          : September 15, 1991                                    *)
+(* ===================================================================== *)
+
+
+new_theory "combin";
+
+(* Definition of function composition.          *)
+
+hol_infix 800 "o";
+
+val o_DEF = new_definition("o_DEF", 
+			   --`(f:'b->'c) o (g:'a->'b) = \x:'a.f(g(x))`--);
+
+val K_DEF = new_definition("K_DEF",
+   --`K = \(x:'a) (y:'b). x`--);
+
+val S_DEF = new_definition("S_DEF", 
+   --`S = \(f:'a->'b->'c) (g:'a->'b) (x:'a). f x (g x)`--);
+
+val I_DEF = new_definition("I_DEF", --`I:'a->'a = S K (K: 'a -> 'a -> 'a)`--);
+
+close_theory ();
+
+
+(* Theorem about application of composed functions.      *)
+
+val o_THM = store_thm("o_THM",
+   --`! (f:'b->'c) (g:'a->'b) (x:'a). (f o g) x = f(g(x))`--,
+   REPEAT GEN_TAC 
+   THEN PURE_REWRITE_TAC [ o_DEF ] 
+   THEN CONV_TAC (DEPTH_CONV BETA_CONV) 
+   THEN REFL_TAC);
+
+(* This theorem states that function composition is associative.  
+*)
+val o_ASSOC = store_thm("o_ASSOC",
+   --`!(f:'c->'d) (g:'b->'c) (h:'a->'b). f o (g o h) = (f o g) o h`--,
+   REPEAT GEN_TAC 
+   THEN REWRITE_TAC [ o_DEF ] 
+   THEN CONV_TAC (REDEPTH_CONV BETA_CONV) 
+   THEN REFL_TAC);
+
+(* Theorem about application of K.          *)
+val K_THM = store_thm("K_THM",
+    --`!(x:'a) (y:'b). K x y = x`--,
+    REPEAT GEN_TAC
+    THEN PURE_REWRITE_TAC [ K_DEF ] 
+    THEN CONV_TAC (DEPTH_CONV BETA_CONV)
+    THEN REFL_TAC);
+
+(* Theorem about application of S.          *)
+val S_THM = store_thm("S_THM",
+   --`!(f:'a->'b->'c) (g:'a->'b) (x:'a). S f g x = (f x)(g x)`--,
+   REPEAT GEN_TAC 
+   THEN PURE_REWRITE_TAC [ S_DEF ]
+   THEN CONV_TAC (DEPTH_CONV BETA_CONV)
+   THEN REFL_TAC);
+
+(* Theorem about application of I.          *)
+val I_THM = store_thm("I_THM",
+   --`!x:'a. I x = x`--,
+   REPEAT GEN_TAC 
+   THEN PURE_REWRITE_TAC [ I_DEF, S_THM, K_THM ]
+   THEN CONV_TAC (DEPTH_CONV BETA_CONV)
+   THEN REFL_TAC);
+
+(* I is the identity for function composition.        *) 
+store_thm("I_o_ID",
+   --`!(f:'a->'b). ((I o f) = f) /\ ((f o I) = f)`--,
+   REPEAT STRIP_TAC 
+   THEN CONV_TAC (DEPTH_CONV FUN_EQ_CONV) 
+   THEN REWRITE_TAC [ o_DEF ] 
+   THEN CONV_TAC (REDEPTH_CONV BETA_CONV) 
+   THEN REWRITE_TAC [ I_THM ]);
+
+export_theory();
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d17 1
+a17 3
+val o_DEF = new_infix_definition("o_DEF", 
+   --`o (f:'b->'c) (g:'a->'b) = \x:'a.f(g(x))`--,
+   800);
+d19 3
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

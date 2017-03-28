@@ -1,0 +1,93 @@
+head	1.1;
+branch	1.1.1;
+access;
+symbols
+	HOL97:1.1.1.1.0.6
+	bpHOL97:1.1.1.1
+	hol90_9_alpha:1.1.1.1
+	hol90_pre8_for_multiple_compilers:1.1.1.1.0.4
+	hol90_pre8_after_donalds_separate_compilation_changes:1.1.1.1
+	hol90_8_after_merging_Konrad_Elsa:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	95.10.16.13.33.51;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.33.51;	author rjb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@\DOC DISJ_CASES_TAC
+
+\TYPE {DISJ_CASES_TAC : thm_tactic}
+
+\SYNOPSIS
+Produces a case split based on a disjunctive theorem.
+
+\KEYWORDS
+tactic, disjunction, cases.
+
+\DESCRIBE
+Given a theorem {th} of the form {A |- u \/ v}, {DISJ_CASES_TAC th}
+applied to a goal
+produces two subgoals, one with {u} as an assumption and one with {v}:
+{
+              A ?- t
+   ============================  DISJ_CASES_TAC (A |- u \/ v)
+    A u {{u}} ?- t   A u {{v}}?- t
+}
+\FAILURE
+Fails if the given theorem does not have a disjunctive conclusion.
+
+\EXAMPLE
+Given the simple fact about arithmetic {th}, {|- (m = 0) \/ (?n. m = SUC n)},
+the tactic {DISJ_CASES_TAC th} can be used to produce a case split:
+{
+   #DISJ_CASES_TAC th ([],"(P:num -> bool) m");;
+   ([(["m = 0"], "P m");
+     (["?n. m = SUC n"], "P m")], -) : subgoals
+}
+\USES
+Performing a case analysis according to a disjunctive theorem.
+
+\SEEALSO
+ASSUME_TAC, ASM_CASES_TAC, COND_CASES_TAC, DISJ_CASES_THEN, STRUCT_CASES_TAC.
+
+\ENDDOC
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

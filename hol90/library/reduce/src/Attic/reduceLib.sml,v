@@ -1,0 +1,62 @@
+head	1.1;
+access;
+symbols
+	HOL97:1.1.0.2;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	97.07.14.17.42.27;	author kxs;	state dead;
+branches
+	1.1.2.1;
+next	;
+
+1.1.2.1
+date	97.07.14.17.42.28;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@file reduceLib.sml was initially added on branch HOL97.
+@
+text
+@@
+
+
+1.1.2.1
+log
+@The reduce library now loads under CM. The entrypoint is now the structure
+reduceLib.
+@
+text
+@a0 22
+signature reduceLib_sig =
+sig
+  structure Dest      : Dest_sig
+  structure Boolconv  : Boolconv_sig
+  structure Arithconv : Arithconv_sig
+  structure Redconv   : Redconv_sig
+end;
+
+structure reduceLib :reduceLib_sig =
+struct
+  structure Dest      = Dest
+  structure Boolconv  = Boolconv_funct (structure Dest = Dest);
+
+  structure Arithconv = Arithconv_funct (structure Dest = Dest);
+
+  structure Redconv   = Redconv_funct(structure Boolconv  = Boolconv
+	                              structure Arithconv = Arithconv);
+
+  val _ = Lib.cons_path (!Globals.HOLdir^"library/reduce/help/entries/") 
+                        Globals.help_path;
+
+end;
+@

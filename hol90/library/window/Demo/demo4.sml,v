@@ -1,0 +1,98 @@
+head	1.1;
+branch	1.1.1;
+access;
+symbols
+	HOL97:1.1.1.1.0.6
+	bpHOL97:1.1.1.1
+	hol90_9_alpha:1.1.1.1
+	hol90_pre8_for_multiple_compilers:1.1.1.1.0.4
+	hol90_pre8_after_donalds_separate_compilation_changes:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	95.10.16.13.33.15;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.33.15;	author rjb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@(* Do Case analysis about a term.                                            *)
+local
+val CASES_THM = prove(
+   (--`!a b. (a \/ b) ==> (!p. p = ((a ==> p) /\ (b ==> p)))`--)
+   ,
+   (REPEAT GEN_TAC) THEN
+   (BOOL_CASES_TAC (--`a:bool`--)) THEN
+   (BOOL_CASES_TAC (--`b:bool`--)) THEN
+   (REWRITE_TAC [])
+   )
+in
+	fun CASES_CONV th tm = SPEC tm (MATCH_MP CASES_THM th)
+end;
+
+BEGIN_STACK "demo4"
+    (--`($<==)
+        (!a b c d.(~a ==> b) ==> ~(c ==> a) \/ ~a ==> (~a ==> b ==> d) ==>d)
+    `--)
+    []
+    [];
+
+DO (OPEN_WIN [RAND,BODY,RAND,BODY,RAND,BODY,RAND,BODY,RAND,RAND,RAND]);
+    DO (CONJECTURE (--`~a`--));
+    DO (OPEN_CONTEXT ((--`~a ==> b`--),[]));
+        DO (REWRITE_WIN [ASSUME (--`~a`--)]);
+    DO CLOSE_WIN;
+    DO (OPEN_CONTEXT ((--`~a ==> b ==> d`--),[]));
+        DO (REWRITE_WIN [ASSUME (--`~a`--), ASSUME (--`b:bool`--)]);
+    DO CLOSE_WIN;
+    DO (REWRITE_WIN [ASSUME (--`d:bool`--)]);
+    DO (ESTABLISH (--`~a`--));
+        DO (CONVERT_WIN (CASES_CONV (ASSUME (--`~(c ==> a) \/ ~a`--))));
+        DO (OPEN_WIN [RATOR, RAND, RAND]);
+            DO (REWRITE_WIN [ASSUME (--`~a`--)]);
+        DO CLOSE_WIN;
+        DO (REWRITE_WIN []);
+    DO CLOSE_WIN;
+DO CLOSE_WIN;
+DO (REWRITE_WIN []);
+
+WIN_THM();
+
+END_STACK "demo4";
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

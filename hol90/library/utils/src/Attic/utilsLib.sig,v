@@ -1,0 +1,98 @@
+head	1.1;
+access;
+symbols
+	HOL97:1.1.0.2;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	97.07.15.13.03.43;	author kxs;	state dead;
+branches
+	1.1.2.1;
+next	;
+
+1.1.2.1
+date	97.07.15.13.03.44;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@file utilsLib.sig was initially added on branch HOL97.
+@
+text
+@@
+
+
+1.1.2.1
+log
+@The "utils" library now loads under CM. The entrypoint is the structure
+utilsLib.
+@
+text
+@a0 58
+(* ===================================================================== *)
+(* FILE          : utilsLib.sig                                         *)
+(* DESCRIPTION   : Signature for a structure of general-purpose theorem  *)
+(*                 proving routines, used in the "group" library.        *)
+(*                 Translated and improved from the hol88 implementation.*)
+(*                                                                       *)
+(* AUTHOR        : Elsa Gunter, Bell Labs                                *)
+(* DATE          : January 5, 1992                                       *)
+(* ===================================================================== *)
+(* Copyright 1992 by AT&T Bell Laboratories *)
+(* Share and Enjoy *)
+
+
+
+signature utilsLib_sig =
+sig
+   type hol_type
+   type term
+   type thm
+   type tactic
+   type conv
+   type thm_tactic
+
+
+  val ADD_ASSUMS_THEN :{new_assumptions:term list, tactic:tactic} -> tactic
+  val ADD_STRIP_ASSUMS_THEN :{new_assumptions:term list, tactic:tactic} ->
+                             tactic
+  val ASM_CONJ1_TAC :tactic
+  val ASM_CONJ2_TAC :tactic
+  val ASSUME_LIST_TAC :thm list -> tactic
+  val AUTO_SPEC :{generalized_theorem:thm, specialization_term:term} -> thm
+  val AUTO_SPECL :{generalized_theorem:thm,
+                   specialization_list:term list} -> thm
+  val MATCH_MP_IMP_TAC :thm_tactic
+  val MATCH_TERM_SUBS_RULE :thm -> term -> thm -> thm
+  val MATCH_THM_TAC :{pattern_function:term -> term, thm_tactic:thm_tactic} ->
+                     thm_tactic
+  val MP_IMP_TAC :thm_tactic
+  val NEW_MATCH_ACCEPT_TAC :thm_tactic
+  val NEW_SUBST1_TAC :thm_tactic
+  val REDUCE_TAC :thm list -> tactic
+  val REV_SUPPOSE_TAC :term -> tactic
+  val STRONG_INST :{term_substitution:term Lib.subst, theorem:thm} -> thm
+  val STRONG_INST_TYPE :{theorem:thm,type_substitution:hol_type Lib.subst} -> thm
+  val STRONG_INST_TY_TERM :{term_substitution:term Lib.subst,
+                            theorem:thm,
+                            type_substitution:hol_type Lib.subst} -> 
+                           thm
+  val SUBST_MATCH_TAC :thm_tactic
+  val SUPPOSE_TAC :term -> tactic
+  val find_match :{pattern:term, term:term} -> term Lib.subst * hol_type Lib.subst
+  val is_contained_in :{subset:term list, superset: term list} -> bool
+  val mapshape :{functions:('a list -> 'b) list,
+                 partition:int list,
+                 unionlist:'a list} -> 'b list
+  val use_thm :{theorem:thm, thm_tactic:thm_tactic} -> tactic
+end
+          
+@

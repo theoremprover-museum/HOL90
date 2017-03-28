@@ -1,0 +1,1651 @@
+head	1.7;
+access;
+symbols
+	HOL97:1.4.0.4
+	bpHOL97:1.4
+	hol90_9_alpha:1.4
+	hol90_pre8_for_multiple_compilers:1.4.0.2
+	hol90_pre8_after_donalds_separate_compilation_changes:1.3
+	hol90_8_after_merging_Konrad_Elsa:1.3
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.7
+date	96.02.08.00.30.42;	author drs1004;	state Exp;
+branches;
+next	1.6;
+
+1.6
+date	96.01.04.13.45.03;	author drs1004;	state Exp;
+branches;
+next	1.5;
+
+1.5
+date	95.12.18.11.34.15;	author drs1004;	state Exp;
+branches;
+next	1.4;
+
+1.4
+date	95.11.15.13.24.15;	author rjb;	state Exp;
+branches
+	1.4.4.1;
+next	1.3;
+
+1.3
+date	95.10.18.16.36.53;	author drs1004;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	95.10.17.17.06.45;	author drs1004;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	95.10.16.13.29.51;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.29.51;	author rjb;	state Exp;
+branches
+	1.1.1.1.2.1;
+next	;
+
+1.1.1.1.2.1
+date	95.10.17.18.42.43;	author drs1004;	state Exp;
+branches;
+next	;
+
+1.4.4.1
+date	97.06.11.17.23.47;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.7
+log
+@New theory mechanism, by Donald Syme, and many other enhancements.
+@
+text
+@(*========================================================================
+ * Derived syntax for higher order logic
+ *======================================================================*)
+
+
+functor DSYNTAX (structure Match : Match_sig
+                 structure Term : Private_term_sig
+                 sharing Match.Term = Term) : Dsyntax_sig =
+struct
+structure Term = Term;
+open Term;
+open Lib;
+  infix 5 |->
+
+val ERR = Exception.ERR "Dsyntax";
+
+
+(*------------------------------------------------------------------------
+ * mk_const
+ *
+ * Tries to reuse constants already in symtab, i.e., it doesn't create
+ * a new one if it doesn't have to. It could be a little more serious,
+ * by caching polymorphic instances, for example.
+ *-----------------------------------------------------------------------*)
+
+fun get_const_from_symtab (r as {Name,Ty}) =
+   let val (const as Const{Ty=ty,...}) = Term.lookup_const Name
+   in if (Type.polymorphic ty)
+      then if (can (Match.match_type ty) Ty)
+           then Const r
+           else ERR("get_const_from_symtab",
+		    "not a type instance: "^quote Name)
+      else const
+   end
+   handle NOT_FOUND => 
+          ERR("mk_const","not in term signature: "^quote Name);
+
+fun mk_const (r as {Name, Ty = Type.Tyapp{Tyop="num",Args=[]}}) = 
+       if (Lexis.is_num_literal Name)
+       then Const r
+       else get_const_from_symtab r
+  | mk_const (r as {Name, Ty = Type.Tyapp{Tyop="string",Args=[]}}) = 
+       if (Lexis.is_string_literal Name)
+       then Const r
+       else get_const_from_symtab r
+  | mk_const r = get_const_from_symtab r;
+
+
+
+(*--------------------------------------------------------------------------
+ * Constructors/Destructors/Discriminators for
+ *    :'a -> 'b
+ *    :bool
+ *--------------------------------------------------------------------------*)
+
+infix -->;
+fun dom --> ran =
+    Type.Tyapp{Tyop = "fun", Args = [dom, ran]};
+
+fun mk_fun_ty {dom,ran} = dom --> ran;
+fun dest_fun_ty (Type.Tyapp{Tyop = "fun", Args = [dom, ran]}) = 
+    {dom=dom,ran=ran}
+  | dest_fun_ty _ = ERR("dest_fun_ty","not a function type");
+
+val is_fun_ty = can dest_fun_ty;
+
+val bool_ty = Type.Tyapp{Tyop="bool",Args=[]};
+val alpha_ty = Type.mk_vartype "'a";
+val beta_ty = Type.mk_vartype "'b";
+    
+
+
+
+(* ------------------------------------------------------------------------- 
+ * General syntax for unary operators (monomorphic constructor only).       
+ *
+ * ------------------------------------------------------------------------- *)
+
+fun mk_unop opr (l,r) = 
+    list_mk_comb(#const(const_decl opr),[l,r])
+    handle _ => ERR("mk_unop",opr)
+
+fun dest_unop opr =
+    let val err = ("dest_unop","term is not a "^opr)
+    in fn tm =>
+	let val {Rator=opr',Rand=x} = dest_comb tm
+	in
+	    if (opr = #Name(dest_const opr'))
+		then x
+	    else raise Fail ""
+	end
+        handle _ => ERR err
+    end;
+fun is_unop opr = can (dest_unop opr)
+
+(* ------------------------------------------------------------------------- 
+ * General syntax for binary operators (monomorphic constructor only).       
+ *
+ * Nb. strip_binop strips only on the right, binops strips both
+ * left and right (alal conjuncts and disjuncts).
+ * ------------------------------------------------------------------------- *)
+
+fun mk_binop opr (l,r) = 
+    list_mk_comb(#const(const_decl opr),[l,r])
+    handle _ => ERR("mk_binop",opr)
+fun list_mk_binop opr = end_itlist (curry (mk_binop opr));
+
+fun dest_binop opr =
+    let val err = ("dest_binop","term is not a "^opr)
+    in fn tm =>
+	let val {Rator,Rand=rhs} = dest_comb tm
+	    val {Rator=opr',Rand=lhs} = dest_comb Rator
+	in
+	    if (opr = #Name(dest_const opr'))
+		then (lhs,rhs)
+	    else raise Fail ""
+	end
+        handle _ => ERR err
+    end;
+
+fun strip_binop opr =
+    let val dest = dest_binop opr
+	fun strip tm = 
+	    let val (l,r) = dest tm
+		val (str,rm) = strip r
+	    in (l::str,rm)
+	    end
+  	    handle _ => ([],tm)
+    in strip
+    end;
+    
+fun binops opr =
+    let val dest = dest_binop opr
+	fun strip tm = 
+	    let val (l,r) = dest tm
+	    in (strip l)@@(strip r)
+	    end
+  	    handle _ => [tm]
+    in strip
+    end;
+fun is_binop opr = can (dest_binop opr)
+    
+
+(*--------------------------------------------------------------------------
+ * Constructors/Destructors/Discriminators for
+ *    x = y
+ *    P ==> Q
+ *    @@P
+
+ *    P /\ Q
+ *    P \/ Q
+ *    ~P
+ *    F
+ *    T
+ *
+ * Derived syntax from theory "min/bool".
+ * This is a bit of forward reference that ought to go, on the next pass of 
+ * implementation.
+ *--------------------------------------------------------------------------*)
+
+val b2b2b = bool_ty --> (bool_ty --> bool_ty)
+val implies = Term.Const{Name = "==>",Ty = b2b2b};
+val falsity = Term.Const{Name = "F", Ty = bool_ty};
+val truth = Term.Const{Name = "T", Ty = bool_ty};
+
+
+fun eq_ty ty = ty --> (ty --> bool_ty);
+
+fun mk_eq{lhs,rhs} = 
+   list_mk_comb(mk_const{Name="=",Ty=eq_ty(type_of lhs)},[lhs,rhs])
+   handle _ => ERR("mk_eq", "lhs and rhs have different types")
+
+fun mk_imp{ant,conseq} = 
+   list_mk_comb(implies,[ant,conseq])
+   handle _ => ERR("mk_imp","Non-boolean argument");
+
+fun select_ty ty = (ty --> bool_ty) --> ty;
+
+fun mk_select(s as {Bvar, Body}) = 
+   mk_comb{Rator = mk_const{Name="@@",Ty=select_ty (type_of Bvar)},
+           Rand = mk_abs s}
+   handle _ => ERR("mk_select", "");
+
+
+
+fun dest_eq(Comb{Rator = Comb{Rator = Const{Name = "=", ...}, Rand = tm1},
+                 Rand = tm2}) = {lhs = tm1, rhs = tm2}
+  | dest_eq _ = ERR("dest_eq","not an equality");
+val lhs = #lhs o dest_eq
+and rhs = #rhs o dest_eq
+
+fun dest_imp(Comb{Rator = Comb{Rator = Const{Name = "==>", ...}, Rand = tm1},
+                  Rand = tm2}) = {ant = tm1,conseq = tm2}
+  | dest_imp(Comb{Rator = Const{Name = "~", ...}, Rand}) = 
+        {ant = Rand, conseq = falsity}
+  | dest_imp _ = ERR("dest_imp","not an \"==>\"");
+
+fun dest_select(Comb{Rator = Const{Name = "@@",...}, 
+                     Rand as Abs _}) = dest_abs Rand
+  | dest_select _ = ERR("dest_select", "not a \"@@\"");
+
+
+val is_eq = can dest_eq
+val is_imp = can dest_imp
+val is_select = can dest_select;
+
+(*--------------------------------------------------------------------------
+ * Constructors/Destructors/Discriminators for
+ *    !x. P
+ *    ?x. P
+ *
+ * Derived syntax from theory "bool".
+ * This is a bit of forward reference that ought to go, on the next pass of 
+ * implementation.
+ *--------------------------------------------------------------------------*)
+
+fun quant_ty ty = (ty --> bool_ty) --> bool_ty;
+fun mk_quant s (a as {Bvar,...}) = 
+   mk_comb{Rator = mk_const{Name = s, Ty = quant_ty (type_of Bvar)},
+           Rand = mk_abs a}
+   handle _ => ERR("mk_quant", "not a "^s)
+
+val mk_forall = mk_quant "!"
+and mk_exists = mk_quant "?"
+
+
+fun dest_forall (Comb{Rator = Const{Name = "!",...}, 
+                      Rand as Abs _}) = dest_abs Rand
+  | dest_forall _ = ERR("dest_forall","not a forall");
+
+fun dest_exists (Comb{Rator = Const{Name = "?",...}, 
+                      Rand as Abs _}) = dest_abs Rand
+  | dest_exists _ = ERR("dest_exists","not an exists");
+
+val is_forall = can dest_forall
+and is_exists = can dest_exists;
+
+fun list_mk_exists (vlist,t) = 
+   itlist (fn v => fn b => mk_exists{Bvar = v, Body = b}) vlist t;
+fun list_mk_forall (vlist,t) = 
+   itlist (fn v => fn b => mk_forall{Bvar = v, Body = b}) vlist t;
+fun gen_all tm = 
+    list_mk_forall (Term.free_vars tm, tm);
+
+fun strip_forall fm =
+   if (is_forall fm)
+   then let val {Bvar,Body} = dest_forall fm
+            val (bvs,core) = strip_forall Body
+        in ((Bvar::bvs), core)
+        end
+   else ([],fm);
+
+
+fun strip_exists fm =
+   if (is_exists fm)
+   then let val {Bvar, Body} = dest_exists fm 
+            val (bvs,core) = strip_exists Body
+        in
+        ((Bvar::bvs), core)
+        end
+   else ([],fm);
+
+(*--------------------------------------------------------------------------
+ * Constructors/Destructors/Discriminators for
+ *    P /\ Q
+ *    P \/ Q
+ *    ~P
+ *
+ * Derived syntax from theory "bool".
+ * This is a bit of forward reference that ought to go, on the next pass of 
+ * implementation.
+ *--------------------------------------------------------------------------*)
+
+val conjunction = Term.Const{Name = "/\\",Ty = b2b2b};
+val disjunction = Term.Const{Name = "\\/",Ty = b2b2b};
+val negation = Term.Const{Name = "~", Ty = bool_ty --> bool_ty}
+
+fun mk_neg trm = mk_comb{Rator = negation, Rand = trm};
+fun dest_neg (Comb{Rator = Const{Name = "~",...}, Rand}) = Rand
+  | dest_neg _ = ERR("dest_neg","not a neg");
+
+
+fun mk_conj{conj1,conj2}= 
+    list_mk_comb(conjunction,[conj1,conj2])
+    handle _ => ERR("mk_conj","Non-boolean argument")
+
+fun mk_disj{disj1,disj2} = 
+    list_mk_comb(disjunction,[disj1,disj2])
+    handle _ => ERR("mk_disj","Non-boolean argument");
+
+fun dest_conj(Comb{Rator = Comb{Rator = Const{Name = "/\\",...}, Rand = t1}, 
+                   Rand = t2}) = {conj1 = t1, conj2 = t2}
+  | dest_conj _ = ERR("dest_conj","not a conj")
+
+fun dest_disj(Comb{Rator = Comb{Rator = Const{Name = "\\/",...}, Rand = t1},
+                                Rand = t2}) = {disj1 = t1, disj2 = t2}
+  | dest_disj _ = ERR("dest_disj","not a disj");
+
+
+val is_neg  = can dest_neg;
+val is_conj = can dest_conj
+and is_disj = can dest_disj;
+
+val list_mk_conj = end_itlist(fn c1 => fn tm => mk_conj{conj1=c1, conj2=tm})
+val list_mk_disj = end_itlist(fn d1 => fn tm => mk_disj{disj1=d1, disj2=tm})
+
+val strip_conj = binops "/\\";
+val strip_disj = binops "\\/";
+
+(*--------------------------------------------------------------------------
+ * Conditionals
+ *    P => x | y
+ *
+ * Derived syntax from theory "bool".
+ * This is a bit of forward reference that ought to go, on the next pass of 
+ * implementation.
+ *--------------------------------------------------------------------------*)
+
+fun cond_ty ty = bool_ty --> (ty  --> (ty --> ty));
+
+fun mk_cond {cond,larm,rarm} = 
+  list_mk_comb(mk_const{Name="COND",Ty=cond_ty(type_of larm)},[cond,larm,rarm])
+  handle _ => ERR("mk_cond", "");
+
+
+fun dest_cond (Comb{Rator=Comb{Rator=Comb{Rator=Const{Name="COND",...},
+                                          Rand=b},Rand=t1},Rand=t2}) = 
+        {cond = b, larm = t1, rarm = t2}
+  | dest_cond _ = ERR("dest_cond", "not a cond");
+
+
+val is_cond = can dest_cond;
+(*--------------------------------------------------------------------------
+ * Pairs
+ *
+ *--------------------------------------------------------------------------*)
+
+infix ###;
+fun ty1 ### ty2 = Type.Tyapp{Tyop="prod",Args = [ty1,ty2]};
+val mk_prod_ty = op ###;
+fun dest_prod_ty (Type.Tyapp{Tyop = "prod", Args = [l,r]}) = 
+    (l,r)
+  | dest_prod_ty _ = ERR("dest_prod_ty","not a product type");
+
+val is_prod_ty = can dest_prod_ty;
+    
+
+fun comma_ty (ty1,ty2) = ty1 --> (ty2 --> (ty1 ### ty2));
+
+fun mk_pair{fst, snd} = 
+   let val ty1 = type_of fst
+       and ty2 = type_of snd
+   in list_mk_comb(mk_const{Name = ",", Ty = comma_ty (ty1,ty2)},[fst,snd])
+   end
+
+fun dest_pair(Comb{Rator=Comb{Rator=Const{Name=",",...},Rand=t1},Rand=t2}) =
+     {fst = t1, snd = t2}
+  | dest_pair _ = ERR("dest_pair","not a pair");
+
+
+val is_pair = can dest_pair;
+
+(* -------------------------------------------------------------------
+ * Derived syntax for lists
+ *
+ * dest_let "LET f x" = ("f","x") 
+ * mk_let ("f","x") = "LET f x"   
+ *---------------------------------------------------------------------*)
+
+fun mk_let{func, arg} =
+   let val fty = type_of func
+       val c = mk_const{Name = "LET", Ty = fty --> fty}
+   in list_mk_comb(c,[func,arg])
+   end handle _ => ERR("mk_let","");
+
+fun dest_let(Comb{Rator=Comb{Rator=Const{Name="LET",...},Rand=f},Rand=x}) =
+               {func = f, arg = x}
+  | dest_let _ = ERR("dest_let","not a let term");
+
+
+(* -------------------------------------------------------------------
+ * Derived syntax for lists
+ *
+ *    CONS h t
+ *    [x1,...,xn]
+ *---------------------------------------------------------------------*)
+
+
+fun cons_ty hty tty = hty --> (tty --> tty)
+fun list_ty ty = Type.mk_type{Tyop="list",Args = [ty]};
+
+fun mk_cons{hd, tl} =
+   let val hty = type_of hd
+       and tty = type_of tl
+   in list_mk_comb(mk_const{Name="CONS",Ty=cons_ty hty tty},[hd,tl])
+   end
+   handle _ => ERR("mk_cons", "")
+
+
+fun dest_cons (Comb{Rator = Comb{Rator = Const{Name = "CONS",...},
+                                 Rand = h},
+                    Rand = t}) = {hd = h, tl = t}
+  | dest_cons _ = ERR("dest_cons","not a cons");
+
+val is_cons = can dest_cons;
+
+(* mk_list (["t1";...;"tn"],":ty") ----> "[t1;...;tn]:(ty)list" *)
+
+fun mk_list{els,ty} = 
+   itlist (fn h => fn t => mk_cons{hd = h, tl = t})
+          els (mk_const{Name="NIL",Ty=list_ty ty})
+   handle _ => ERR("mk_list","");
+
+(* dest_list "[t1;...;tn]:(ty)list" ----> (["t1";...;"tn"],":ty") *)
+fun dest_list tm =
+   if (is_cons tm)
+   then let val {hd,tl} = dest_cons tm 
+            val {els,ty} = dest_list tl
+        in {els = hd::els, ty = ty}
+        end
+   else let val {Name = "NIL", Ty = Type.Tyapp{Tyop = "list", Args = [ty]}} = 
+                dest_const tm
+        in {els = [], ty = ty}
+        end handle _ => ERR("dest_list","not a list term");
+
+val is_list = can dest_list;
+
+(* If list_mk_cons were to be implemented it should behave as follows:       *)
+(*                                                                           *)
+(* list_mk_cons (["h1";...;"hm"],"[t1;...;tn]") ----> "[h1;...;hm;t1;...;tn]"*)
+(*                                                                           *)
+(* though I don't think it would be used much [RJB 90.10.24].                *)
+
+
+
+val is_let = can dest_let;
+
+
+
+(* -------------------------------------------------------------------
+ * Construction and destruction functions that deal with SML lists
+ *
+ *---------------------------------------------------------------------*)
+
+(* list_mk_comb defined in term.sml *)
+fun list_mk_abs (vars,t) = itlist (fn v => fn b => mk_abs{Bvar = v, Body = b})
+                                  vars t;
+fun list_mk_imp(antel,conc) = itlist(fn a => fn tm => mk_imp{ant=a,conseq=tm})
+                              antel conc;
+
+val list_mk_pair = 
+    end_itlist(fn a => fn p => mk_pair{fst = a, snd = p});
+
+
+(*-----------------------------------------------------------------------
+ * strip_comb
+ *-----------------------------------------------------------------------*)
+
+local
+fun dest (Comb{Rator, Rand}) rands = dest Rator (Rand::rands)
+  | dest tm rands = (tm,rands)
+in
+fun strip_comb tm = dest tm []
+end;
+
+(*-----------------------------------------------------------------------
+ * strip_abs
+ *-----------------------------------------------------------------------*)
+
+
+
+fun strip_abs tm =
+   if (is_abs tm)
+   then let val {Bvar,Body} = dest_abs tm
+            val (bvs, core) = strip_abs Body
+        in (Bvar::bvs, core)
+        end
+  else ([],tm);
+
+val strip_imp = strip_binop "==>";
+    
+
+fun strip_pair tm = 
+   if (is_pair tm) 
+   then let val {fst,snd} = dest_pair tm
+            fun dtuple t =
+               if (is_pair t)
+               then let val{fst,snd} = dest_pair t
+                    in (fst :: dtuple snd)
+                    end
+               else [t]
+        in fst::dtuple snd
+        end
+   else [tm];
+
+
+
+(*===========================================================================*)
+(* Constructor, destructor and discriminator functions for paired            *)
+(* abstractions.                                                             *)
+(* [JRH 91.07.17]                                                            *)
+(*===========================================================================*)
+
+(*--------------------------------------*)
+(* mk_pabs - Makes a paired abstraction *)
+(*--------------------------------------*)
+
+local
+fun mk_uncurry(xt,yt,zt) =
+   mk_const{Name = "UNCURRY",
+            Ty = (xt --> (yt --> zt)) --> ((xt ### yt) --> zt)}
+
+fun mpa(varstruct,body) =
+   if (is_var varstruct)
+   then mk_abs{Bvar = varstruct, Body = body}
+   else let val {fst,snd} = dest_pair varstruct
+            val cab = mpa(fst,mpa(snd,body))
+        in mk_comb{Rator = mk_uncurry(type_of fst, type_of snd, type_of body),
+                   Rand = cab}
+        end
+in
+fun mk_pabs{varstruct,body} = 
+   mpa(assert is_pair varstruct,body)
+   handle _ => ERR("mk_pabs","")
+end;
+
+(*-------------------------------------------------------------*)
+(* dest_pabs - Destroys (possibly multiply) paired abstraction *)
+(*-------------------------------------------------------------*)
+
+local
+val ucheck = assert (fn x => #Name (dest_const x) = "UNCURRY");
+
+fun dpa tm =
+   let val {Bvar,Body} = dest_abs tm
+   in {varstruct = Bvar, body = Body}
+   end handle _ => let val {Rator,Rand} = dest_comb tm
+                       val _ = ucheck Rator
+                       val {varstruct = lv,body} = dpa Rand
+                       val {varstruct = rv,body} = dpa body
+                   in {varstruct = mk_pair{fst = lv, snd = rv},body = body}
+                   end
+in
+fun dest_pabs tm = 
+   let val (pr as {varstruct, ...}) = dpa tm
+   in if (is_pair varstruct)
+   then pr
+   else ERR("dest_pabs", "not a paired abstraction")
+   end
+end;
+
+val is_pabs = can dest_pabs;
+
+
+(* Miscellaneous *)
+
+(* Search a term for a sub-term satisfying the predicate p. *)
+fun find_term p =
+   let fun find_tm tm =
+      if (p tm)
+      then  tm 
+      else if (is_abs tm)
+           then find_tm (#Body(dest_abs tm))
+           else if (is_comb tm)
+                then find_tm (#Rator(dest_comb tm))
+                     handle _ => find_tm (#Rand(dest_comb tm))
+                else ERR("find_term","")
+   in find_tm
+   end;
+
+(***************************************************************************
+ * find_terms: (term -> bool) -> term -> term list
+ * 
+ *  Find all subterms in a term that satisfy a given predicate p.
+ *
+ * Added TFM 88.03.31							
+ ***************************************************************************)
+fun find_terms p tm =
+   let fun accum tl tm =
+      let val tl' = if (p tm) then (tm::tl) else tl 
+      in if (is_abs tm)
+         then accum tl' (#Body(dest_abs tm))
+         else if (is_comb tm)
+              then accum (accum tl' (#Rator(dest_comb tm))) 
+                        (#Rand(dest_comb tm))
+              else tl' 
+      end
+   in accum [] tm
+   end;
+
+
+
+(***************************************************************************
+ * Subst_occs 
+ * Put a new variable in tm2 at designated (and free) occurrences of redex.
+ * Rebuilds the entire term.
+ **************************************************************************)
+local
+fun splice ({redex,...}:{redex:term,residue:term}) v occs tm2 =
+    let fun graft (r as {occs = [], ...}) = r
+	  | graft {tm, occs, count} =
+	    if (redex = tm) then
+		if (hd occs = count+1) then
+		    {tm = v, occs = tl occs, count = count+1}
+		else {tm = tm, occs = occs, count = count+1}
+	    else if (is_comb tm) then
+		let val {Rator, Rand} = dest_comb tm
+		    val {tm = Rator', occs = occs', count = count'} =
+			graft {tm=Rator,occs=occs,count=count}
+		    val {tm = Rand', occs = occs'', count = count''} =
+			graft {tm=Rand,occs=occs',count=count'}
+		in {tm = mk_comb{Rator = Rator', Rand = Rand'},
+		    occs = occs'', count = count''}
+		end
+	    else if (is_abs tm) then
+		let val {Bvar,Body} = dest_abs tm
+		    val {tm, count, occs} =
+			graft{tm=Body,count=count,occs=occs}
+		in {tm = mk_abs{Bvar = Bvar, Body = tm},
+		    count = count, occs = occs}
+		end
+	    else {tm = tm, occs = occs, count = count}
+   in #tm(graft {tm = tm2, occs = occs, count = 0})
+   end
+
+fun rev_itlist3 f L1 L2 L3 base_value =
+   let fun rev_it3 (a::rst1) (b::rst2) (c::rst3) base = 
+               rev_it3 rst1 rst2 rst3 (f a b c base)
+         | rev_it3 [] [] [] base = base
+         | rev_it3 _ _ _ _ = ERR("rev_itlist3",
+                                      "not all lists have same size")
+   in rev_it3 L1 L2 L3 base_value
+   end
+
+val sort = sort (curry (op <=) : int -> int -> bool)
+in
+fun subst_occs occ_lists tm_subst tm =
+   let val occ_lists' = map sort occ_lists
+       val (new_vars,theta) = 
+               itlist (fn {redex,residue} => fn (V,T) =>
+                         let val v = genvar(type_of redex)
+                         in (v::V,  (v |-> residue)::T)
+                         end)
+                      tm_subst ([],[])
+       val template = rev_itlist3 splice tm_subst new_vars occ_lists' tm
+   in subst theta template
+   end
+end;
+
+
+
+end; (* DSYNTAX *)
+
+
+
+@
+
+
+1.6
+log
+@Fixed types, pretypes, fixities, parsing.
+@
+text
+@a7 1
+                 structure Lexis: Lexis_sig
+d27 1
+a27 1
+   let val (c as Const{Ty=ty,...}) = Term.lookup_const Name
+d32 2
+a33 2
+                              "not a type instance: "^quote Name)
+      else c
+@
+
+
+1.5
+log
+@Preterm and other changes, see 7.changes
+@
+text
+@d16 1
+a16 1
+val DSYNTAX_ERR = Exception.ERR "Dsyntax";
+d32 1
+a32 1
+           else DSYNTAX_ERR("get_const_from_symtab",
+d37 1
+a37 1
+          DSYNTAX_ERR("mk_const","not in term signature: "^quote Name);
+d64 1
+a64 1
+  | dest_fun_ty _ = DSYNTAX_ERR("dest_fun_ty","not a function type");
+d69 5
+d75 4
+d80 64
+d163 1
+a163 1
+val imp = Term.Const{Name = "==>",Ty = b2b2b};
+d172 1
+a172 1
+   handle _ => DSYNTAX_ERR("mk_eq", "lhs and rhs have different types")
+d175 2
+a176 2
+   list_mk_comb(imp,[ant,conseq])
+   handle _ => DSYNTAX_ERR("mk_imp","Non-boolean argument");
+d183 1
+a183 1
+   handle _ => DSYNTAX_ERR("mk_select", "");
+d189 1
+a189 1
+  | dest_eq _ = DSYNTAX_ERR("dest_eq","not an equality");
+d197 1
+a197 1
+  | dest_imp _ = DSYNTAX_ERR("dest_imp","not an \"==>\"");
+d201 1
+a201 1
+  | dest_select _ = DSYNTAX_ERR("dest_select", "not a \"@@\"");
+d222 1
+a222 1
+   handle _ => DSYNTAX_ERR("mk_quant", "not a "^s)
+d230 1
+a230 1
+  | dest_forall _ = DSYNTAX_ERR("dest_forall","not a forall");
+d234 1
+a234 1
+  | dest_exists _ = DSYNTAX_ERR("dest_exists","not an exists");
+d239 24
+d275 3
+a277 3
+val conj = Term.Const{Name = "/\\",Ty = b2b2b};
+val disj = Term.Const{Name = "\\/",Ty = b2b2b};
+val neg = Term.Const{Name = "~", Ty = bool_ty --> bool_ty}
+d279 1
+a279 1
+fun mk_neg trm = mk_comb{Rator = neg, Rand = trm};
+d281 1
+a281 1
+  | dest_neg _ = DSYNTAX_ERR("dest_neg","not a neg");
+d285 2
+a286 2
+    list_mk_comb(conj,[conj1,conj2])
+    handle _ => DSYNTAX_ERR("mk_conj","Non-boolean argument")
+d289 2
+a290 2
+    list_mk_comb(disj,[disj1,disj2])
+    handle _ => DSYNTAX_ERR("mk_disj","Non-boolean argument");
+d294 1
+a294 1
+  | dest_conj _ = DSYNTAX_ERR("dest_conj","not a conj")
+d298 1
+a298 1
+  | dest_disj _ = DSYNTAX_ERR("dest_disj","not a disj");
+d305 6
+d324 1
+a324 1
+  handle _ => DSYNTAX_ERR("mk_cond", "");
+d330 1
+a330 1
+  | dest_cond _ = DSYNTAX_ERR("dest_cond", "not a cond");
+d344 1
+a344 1
+  | dest_prod_ty _ = DSYNTAX_ERR("dest_prod_ty","not a product type");
+d359 1
+a359 1
+  | dest_pair _ = DSYNTAX_ERR("dest_pair","not a pair");
+d375 1
+a375 1
+   end handle _ => DSYNTAX_ERR("mk_let","");
+d379 1
+a379 1
+  | dest_let _ = DSYNTAX_ERR("dest_let","not a let term");
+d398 1
+a398 1
+   handle _ => DSYNTAX_ERR("mk_cons", "")
+d404 1
+a404 1
+  | dest_cons _ = DSYNTAX_ERR("dest_cons","not a cons");
+d413 1
+a413 1
+   handle _ => DSYNTAX_ERR("mk_list","");
+d425 1
+a425 1
+        end handle _ => DSYNTAX_ERR("dest_list","not a list term");
+a450 6
+fun list_mk_exists (vlist,t) = 
+   itlist (fn v => fn b => mk_exists{Bvar = v, Body = b}) vlist t;
+fun list_mk_forall (vlist,t) = 
+   itlist (fn v => fn b => mk_forall{Bvar = v, Body = b}) vlist t;
+fun gen_all tm = 
+    list_mk_forall (Term.free_vars tm, tm);
+a451 4
+val list_mk_conj =
+    end_itlist(fn c1 => fn tm => mk_conj{conj1=c1, conj2=tm})
+val list_mk_disj = 
+    end_itlist(fn d1 => fn tm => mk_disj{disj1=d1, disj2=tm})
+d456 4
+d467 6
+d481 2
+a482 42
+fun strip_imp fm =
+   if (is_imp fm)
+   then let val {ant,conseq} = dest_imp fm
+	    val (was,wb) = strip_imp conseq
+        in ((ant::was), wb)
+        end
+   else ([],fm);
+
+fun strip_forall fm =
+   if (is_forall fm)
+   then let val {Bvar,Body} = dest_forall fm
+            val (bvs,core) = strip_forall Body
+        in ((Bvar::bvs), core)
+        end
+   else ([],fm);
+
+
+fun strip_exists fm =
+   if (is_exists fm)
+   then let val {Bvar, Body} = dest_exists fm 
+            val (bvs,core) = strip_exists Body
+        in
+        ((Bvar::bvs), core)
+        end
+   else ([],fm);
+
+fun strip_conj w = 
+   if (is_conj w)
+   then let val {conj1,conj2} = dest_conj w
+        in
+        (strip_conj conj1)@@(strip_conj conj2)
+        end
+   else [w];
+
+
+fun strip_disj w =
+   if (is_disj w)
+   then let val {disj1,disj2} = dest_disj w 
+        in
+        (strip_disj disj1)@@(strip_disj disj2)
+        end
+   else [w];
+d525 1
+a525 1
+   handle _ => DSYNTAX_ERR("mk_pabs","")
+d549 1
+a549 1
+   else DSYNTAX_ERR("dest_pabs", "not a paired abstraction")
+d568 1
+a568 1
+                else DSYNTAX_ERR("find_term","")
+d631 1
+a631 1
+         | rev_it3 _ _ _ _ = DSYNTAX_ERR("rev_itlist3",
+a652 43
+(*--------------------------------------------------------------------------
+ * For restricted binders. Adding a pair "(B,R)" to this list, if "B" is the 
+ * name of a binder, and "R" is the name of a constant will enable parsing 
+ * of terms with the form 
+ *
+ *     B <varstruct list>::<restr>. M
+ *------------------------------------------------------------------------*)
+
+local
+val basic_binders = ["!","?","@@","\\"]
+val basic_restrictions = 
+  zip basic_binders
+  ["RES_FORALL","RES_EXISTS","RES_SELECT","RES_ABSTRACT"]
+val restricted_binders = ref basic_restrictions
+in
+fun binder_restrictions() = !restricted_binders
+fun associate_restriction(p as(binder_str,const_name)) = 
+   case (assoc1 binder_str (!restricted_binders))
+     of NONE =>
+         if (Term.is_binder binder_str)
+         then if (Term.is_st_term_const const_name)
+              then restricted_binders := p::(!restricted_binders)
+              else DSYNTAX_ERR("restrict_binder",
+                 quote const_name^" is not the name of a constant")
+         else DSYNTAX_ERR("restrict_binder",
+                   quote binder_str^" is not the name of a binder")
+
+      | (SOME _) => DSYNTAX_ERR("restrict_binder",
+            "Binder "^quote binder_str^" is already restricted")
+
+fun delete_restriction binder =
+   if (mem binder basic_binders)
+   then DSYNTAX_ERR("delete_restriction",
+            quote binder^" cannot have its restriction deleted")
+   else 
+   restricted_binders :=
+     set_diff (!restricted_binders)
+                  [(binder,assoc binder(!restricted_binders))]
+                  handle NOT_FOUND
+                  => DSYNTAX_ERR("delete_restriction",
+                             quote binder^" is not restricted")
+end;
+
+@
+
+
+1.4
+log
+@The HOL90 sources have been changed to allow for the use of different
+Standard ML compilers (possibly simultaneously).
+
+ * Many files in "src/0" changed to make them more portable across different
+   ML compilers. Various additions have been made to the Portable structure
+   and files changed to access identifiers in the Portable structure rather
+   than from the global environment. Worthy of special note are:
+
+   - The pointer equality used in "src/0/term.sml" has been made into a
+     function in the Portable structure.
+
+   - The ML-Lex and ML-Yacc files for the various parsers have been changed
+     to access the Portable structure. Both the source files and the SML
+     produced from them have been changed but I have not verified that the
+     source files would reproduce the new SML versions if ML-Lex and ML-Yacc
+     were to be rerun on them. The changes involve some hacks that exploit the
+     way ML-Lex and ML-Yacc work. See the sources for details.
+
+R.J.Boulton, 15th November 1995.
+@
+text
+@d1 7
+a7 4
+(* Derived syntax for higher order logic *)
+functor DSYNTAX ((* structure Lib : Lib_sig *)
+		 structure Match : Match_sig
+                 structure Term : Term_sig
+d13 2
+d16 1
+a16 2
+val |-> = Lib.|->
+infix 5 |->
+a17 4
+fun DSYNTAX_ERR{function : string, message : string} = 
+    Exception.HOL_ERR{origin_structure = "Dsyntax",
+		      origin_function = function,
+		      message = message};
+d19 3
+a21 2
+
+(*************************************************************************
+d25 2
+a26 1
+ *************************************************************************)
+d30 1
+a30 1
+      then if (Lib.can (Match.match_type ty) Ty)
+d32 2
+a33 2
+           else raise DSYNTAX_ERR{function = "get_const_from_symtab",
+                              message = "not a type instance: "^Lib.quote Name}
+d35 3
+a37 3
+   end handle NOT_FOUND 
+   => raise DSYNTAX_ERR{function = "mk_const",
+                        message = "not in term signature: "^Lib.quote Name};
+d39 1
+a39 1
+fun mk_const (r as {Name, Ty = Type.Tyc "num"}) = 
+d43 1
+a43 1
+  | mk_const (r as {Ty = Type.Tyc "string",Name}) = 
+d51 35
+a85 2
+(****************************************************************************
+ * A bit of forward reference that ought to go, on the next pass of 
+d87 1
+a87 4
+ ****************************************************************************)
+fun infix_ty ty1 ty2 = 
+    Type.Tyapp{Tyop = "fun", 
+               Args = [ty1, Type.Tyapp{Tyop = "fun", Args = [ty1, ty2]}]};
+d89 1
+a89 2
+val bool = Type.Tyc "bool";
+val b2b2b = infix_ty bool bool
+d91 2
+a92 4
+val conj = Term.Const{Name = "/\\",Ty = b2b2b};
+val disj = Term.Const{Name = "\\/",Ty = b2b2b};
+val F = Term.Const{Name = "F", Ty = bool};
+val neg = Term.Const{Name = "~", Ty = Type.Tyapp{Tyop="fun",Args=[bool,bool]}}
+d95 1
+a95 2
+fun select_ty ty = 
+   Type.Tyapp{Tyop="fun", Args=[Type.Tyapp{Tyop="fun",Args = [ty,bool]},ty]};
+a96 1
+(* Derived syntax from theory "min" *)
+d98 9
+a106 6
+   list_mk_comb(mk_const{Name="=",Ty=infix_ty(type_of lhs) bool},[lhs,rhs])
+   handle _ => raise DSYNTAX_ERR{function = "mk_eq", 
+                                 message = "lhs and rhs have different types"}
+fun mk_imp{ant,conseq} = list_mk_comb(imp,[ant,conseq])
+                         handle _ => raise DSYNTAX_ERR{function = "mk_imp",
+                                              message = "Non-boolean argument"}
+d110 1
+a110 1
+   handle _ => raise DSYNTAX_ERR{function="mk_select", message = ""};
+d116 1
+a116 2
+  | dest_eq _ = raise DSYNTAX_ERR{function = "dest_eq",
+                                  message = "not an \"=\""};
+d123 3
+a125 3
+        {ant = Rand, conseq = F}
+  | dest_imp _ = raise DSYNTAX_ERR{function = "dest_imp",
+                                   message = "not an \"==>\""};
+d128 1
+a128 2
+  | dest_select _ = raise DSYNTAX_ERR{function = "dest_select",
+                                      message = "not a \"@@\""};
+d131 3
+a133 1
+(* Derived syntax from theory "bool" *)
+d135 9
+a143 1
+(* Logic binders *)
+d145 1
+a145 4
+local
+fun quant_ty ty = Type.Tyapp{Tyop = "fun", 
+                              Args = [Type.Tyapp{Tyop = "fun", 
+                                                 Args = [ty,bool]},bool]};
+d149 2
+a150 2
+   handle _ => raise DSYNTAX_ERR{function = "mk_quant", message = "not a "^s}
+in
+d153 1
+a153 1
+end;
+d157 2
+a158 2
+  | dest_forall _ = raise DSYNTAX_ERR{function = "dest_forall",
+                                      message = "not a forall"};
+d161 5
+a165 2
+  | dest_exists _ = raise DSYNTAX_ERR{function = "dest_exists",
+                                      message = "not an exists"};
+d167 10
+d178 3
+a180 1
+(* Negation *)
+d184 1
+a184 1
+  | dest_neg _ = raise DSYNTAX_ERR{function = "dest_neg",message="not a neg"};
+a185 1
+(* /\  \/ *)
+d187 3
+a189 6
+fun mk_conj{conj1,conj2}= list_mk_comb(conj,[conj1,conj2])
+                          handle _ => raise DSYNTAX_ERR{function = "mk_conj",
+                                             message = "Non-boolean argument"}
+and mk_disj{disj1,disj2} = list_mk_comb(disj,[disj1,disj2])
+                           handle _ => raise DSYNTAX_ERR{function = "mk_disj",
+                                             message = "Non-boolean argument"};
+d191 4
+d197 1
+a197 2
+  | dest_conj _ = raise DSYNTAX_ERR{function = "dest_conj",
+                                    message = "not a conj"}
+d201 17
+a217 2
+  | dest_disj _ = raise DSYNTAX_ERR{function = "dest_disj",
+                                    message = "not a disj"};
+a218 9
+(* Conditional *)
+local
+fun cond_ty ty = 
+   Type.Tyapp{Tyop = "fun",
+              Args = [bool, 
+                      Type.Tyapp{Tyop = "fun", 
+                                 Args = [ty, Type.Tyapp{Tyop = "fun",
+                                                        Args = [ty,ty]}]}]}
+in
+d221 2
+a222 2
+  handle _ => raise DSYNTAX_ERR{function="mk_cond", message = ""}
+end;
+d227 15
+a241 2
+  | dest_cond _ = raise DSYNTAX_ERR{function = "dest_cond", 
+                                    message = "not a cond"};
+d243 2
+d246 1
+a246 1
+(* The theory of pairs *)
+a247 7
+local
+fun prod_ty ty1 ty2 = 
+   Type.Tyapp{Tyop = "fun", 
+         Args = [ty1, Type.Tyapp{Tyop = "fun", 
+                                 Args=[ty2, Type.Tyapp{Tyop="prod",
+                                                       Args = [ty1,ty2]}]}]}
+in
+d251 1
+a251 1
+   in list_mk_comb(mk_const{Name = ",", Ty = prod_ty ty1 ty2},[fst,snd])
+a252 1
+end;
+d256 2
+a257 1
+  | dest_pair _ = raise DSYNTAX_ERR{function="dest_pair",message="not a pair"};
+d259 1
+d261 6
+a266 7
+(* Let terms *)
+(* ===================================================================== *)
+(* Syntax functions for let-terms:                                       *)
+(*                                                                       *)
+(* dest_let "LET f x" = ("f","x")                                        *)
+(* mk_let ("f","x") = "LET f x"                                          *)
+(* ===================================================================== *)
+d270 1
+a270 2
+       val c = mk_const{Name = "LET", 
+                        Ty = Type.Tyapp{Tyop = "fun",Args = [fty,fty]}}
+d272 1
+a272 1
+   end handle _ => raise DSYNTAX_ERR{function = "mk_let",message = ""};
+d276 2
+a277 2
+  | dest_let _ = raise DSYNTAX_ERR{function = "dest_let",
+                                   message = "not a let term"};
+d279 6
+a285 3
+(* ===================================================================== *)
+(* Syntax functions for lists added [RJB 90.10.24].                      *)
+(* ===================================================================== *)
+d287 2
+a288 1
+(* mk_cons ("t","[t1;...;tn]") ----> "[t;t1;...;tn]" *)
+a289 5
+local
+fun cons_ty hty tty = 
+    Type.Tyapp{Tyop = "fun",
+               Args = [hty,Type.Tyapp{Tyop = "fun", Args = [tty,tty]}]}
+in
+d295 1
+a295 2
+   handle _ => raise DSYNTAX_ERR{function="mk_cons", message = ""}
+end;
+a296 1
+(* dest_cons "[t;t1;...;tn]" ----> ("t","[t1;...;tn]") *)
+d301 1
+a301 2
+  | dest_cons _ = raise DSYNTAX_ERR{function = "dest_cons",
+                                    message = "not a cons"};
+d303 1
+a303 1
+val is_cons = Lib.can dest_cons;
+d308 3
+a310 3
+   Lib.itlist (fn h => fn t => mk_cons{hd = h, tl = t})
+          els (mk_const{Name="NIL",Ty=Type.mk_type{Tyop="list",Args = [ty]}})
+   handle _ => raise DSYNTAX_ERR{function = "mk_list",message = ""};
+d322 1
+a322 2
+        end handle _ => raise DSYNTAX_ERR{function = "dest_list",
+                                          message = "not a list term"};
+d324 1
+a324 1
+val is_list = Lib.can dest_list;
+d334 1
+a334 11
+val is_eq = Lib.can dest_eq
+val is_imp = Lib.can dest_imp
+val is_select = Lib.can dest_select;
+val is_forall = Lib.can dest_forall
+and is_exists = Lib.can dest_exists;
+val is_neg  = Lib.can dest_neg;
+val is_conj = Lib.can dest_conj
+and is_disj = Lib.can dest_disj;
+val is_cond = Lib.can dest_cond;
+val is_pair = Lib.can dest_pair;
+val is_let = Lib.can dest_let;
+d338 4
+a341 1
+(* Construction and destruction functions that deal with SML lists *)
+d344 1
+a344 1
+fun list_mk_abs (vars,t) = Lib.itlist (fn v => fn b => mk_abs{Bvar = v, Body = b})
+d346 1
+a346 2
+fun list_mk_imp(antel,conc) =
+    Lib.itlist(fn a => fn tm => mk_imp{ant=a,conseq=tm})
+d349 1
+a349 1
+   Lib.itlist (fn v => fn b => mk_exists{Bvar = v, Body = b}) vlist t;
+d351 3
+a353 2
+   Lib.itlist (fn v => fn b => mk_forall{Bvar = v, Body = b}) vlist t;
+fun gen_all tm = list_mk_forall (Term.free_vars tm, tm);
+d356 1
+a356 1
+    Lib.end_itlist(fn c1 => fn tm => mk_conj{conj1=c1, conj2=tm})
+d358 1
+a358 1
+    Lib.end_itlist(fn d1 => fn tm => mk_disj{disj1=d1, disj2=tm})
+d360 1
+a360 1
+    Lib.end_itlist(fn a => fn p => mk_pair{fst = a, snd = p});
+a377 8
+(* Strips leading lambdas off a term, not bothering to adjust indices *)
+fun de_abs (Abs{Bvar,Body}) =
+        let val (bvs, core) = de_abs Body
+        in (Bvar::bvs, core)
+        end
+  | de_abs tm = ([],tm);
+ 
+
+d449 2
+a450 8
+            Ty = Type.Tyapp{Tyop = "fun",
+                       Args = [Type.Tyapp{Tyop = "fun",
+                                     Args = [xt, Type.Tyapp{Tyop = "fun",
+                                                       Args = [yt,zt]}]},
+                               Type.Tyapp{Tyop = "fun",
+                                          Args=[Type.mk_type{Tyop = "prod",
+                                                        Args=[xt,yt]},
+                                                zt]}]}}
+d461 2
+a462 2
+   mpa(Lib.assert is_pair varstruct,body)
+   handle _ => raise DSYNTAX_ERR{function ="mk_pabs",message = ""}
+d470 2
+a471 1
+val ucheck = Lib.assert (Lib.curry (op =) "UNCURRY" o #Name o dest_const)
+d486 1
+a486 2
+   else raise DSYNTAX_ERR{function = "dest_pabs", 
+                          message = "not a paired abstraction"}
+d490 1
+a490 1
+val is_pabs = Lib.can dest_pabs;
+d505 1
+a505 1
+                else raise DSYNTAX_ERR{function = "find_term",message = ""}
+d538 23
+a560 23
+   let fun graft (r as {occs = [], ...}) = r
+         | graft {tm, occs, count} =
+          if (redex = tm)
+          then if (Portable.List.hd occs = count+1)
+               then {tm = v, occs = Portable.List.tl occs, count = count+1}
+               else {tm = tm, occs = occs, count = count+1}
+          else if (is_comb tm)
+               then let val {Rator, Rand} = dest_comb tm
+                        val {tm = Rator', occs = occs', count = count'} =
+                                        graft {tm=Rator,occs=occs,count=count}
+                        val {tm = Rand', occs = occs'', count = count''} =
+                                        graft {tm=Rand,occs=occs',count=count'}
+                    in {tm = mk_comb{Rator = Rator', Rand = Rand'},
+                        occs = occs'', count = count''}
+                    end
+               else if (is_abs tm)
+                    then let val {Bvar,Body} = dest_abs tm
+                             val {tm, count, occs} =
+                                        graft{tm=Body,count=count,occs=occs}
+                         in {tm = mk_abs{Bvar = Bvar, Body = tm},
+                             count = count, occs = occs}
+                         end
+                    else {tm = tm, occs = occs, count = count}
+d568 2
+a569 2
+         | rev_it3 _ _ _ _ = raise DSYNTAX_ERR{function = "rev_itlist3",
+                                      message = "not all lists have same size"}
+d573 1
+a573 1
+val sort = Lib.sort (Lib.curry (op <=) : int -> int -> bool)
+d578 1
+a578 1
+               Lib.itlist (fn {redex,residue} => fn (V,T) =>
+d590 1
+a590 1
+(* *************************************************************************
+d596 2
+a597 1
+ ***************************************************************************)
+d601 1
+a601 1
+  Lib.zip basic_binders
+d607 1
+a607 1
+   case (Lib.assoc1 binder_str (!restricted_binders))
+d612 4
+a615 4
+              else raise DSYNTAX_ERR{function = "restrict_binder",
+                 message=Lib.quote const_name^" is not the name of a constant"}
+         else raise DSYNTAX_ERR{function = "restrict_binder",
+                   message=Lib.quote binder_str^" is not the name of a binder"}
+d617 2
+a618 2
+      | (SOME _) => raise DSYNTAX_ERR{function = "restrict_binder",
+            message = "Binder "^Lib.quote binder_str^" is already restricted"}
+d621 3
+a623 3
+   if (Lib.mem binder basic_binders)
+   then raise DSYNTAX_ERR{function = "delete_restriction",
+            message = Lib.quote binder^" cannot have its restriction deleted"}
+d626 5
+a630 5
+     Lib.set_diff (!restricted_binders)
+                  [(binder,Lib.assoc binder(!restricted_binders))]
+                  handle Lib.NOT_FOUND
+                  => raise DSYNTAX_ERR{function = "delete_restriction",
+                             message = Lib.quote binder^" is not restricted"}
+d634 3
+@
+
+
+1.4.4.1
+log
+@Removed files are parse files and portability files that have
+effectively been moved elsewhere.
+
+Modified files are up to date for ML 109.26.
+@
+text
+@d2 2
+a3 1
+functor DSYNTAX (structure Match : Match_sig
+d20 1
+a20 1
+(*---------------------------------------------------------------------------
+d24 1
+a24 1
+ *---------------------------------------------------------------------------*)
+d49 1
+a49 1
+(*---------------------------------------------------------------------------
+d52 1
+a52 1
+ *---------------------------------------------------------------------------*)
+@
+
+
+1.3
+log
+@Check in after merging in Konrad's changes made after
+the release of hol90.7.  This involved creating a side branch
+in which to check in Konrad's changes, then merging in that
+side branch into the main development (which contains changes
+made by Elsa Gunter).
+
+Some other small modification have been made to the source code,
+as I begun to try to make this version into a working version:
+	- hol90 will now be compiled in an environment were no
+structures can be considered opn.  This means many structures
+now need "open Lib" and other such commands at their head.
+This has not yet been completed, but has been begun.
+	- "rotl" and "rotr" have been added to Lib, something
+which I just did impulsively.   Documentation files
+have also been added in help/90.
+@
+text
+@d505 2
+a506 2
+          then if (hd occs = count+1)
+               then {tm = v, occs = tl occs, count = count+1}
+@
+
+
+1.2
+log
+@Keeping you up to date:
+
+I'm about to do a checkin of elsa's modifications to the hol90.7
+sources to create her hol90.pre8.  To recap what I've done:
+	- I checked out hol90 (in /usr/groups/hol/drs1004/hol90)
+		cvs co hol90
+	  (Well, to be honest, I only checked out those
+	  parts of hol90 I knew I'd be changing, e.g. not the
+	  Manual, and only parts of the library.  Checking out the
+	  entire source takes a while, mainly due to the enormous number
+	  of help files.  The limiting factor is files/second, which
+         runs at around 5 when CVS is working on nfs over a network, not
+         KB/second, which you might at first think it would be).
+
+	- By doing a recursive diff between Elsa's source and the
+	hol90.7 source I found all the changes Elsa had made to
+	source files.  I copied relevant files from Elsa's source
+	into my checked out version.  The only new files were
+		- the sml_system files in src/0
+		- some make scripts in src/.
+	Changed files were in:
+		src/{0,1,2,3}
+		library/arith/src/thm_convs.sml
+		library/list/src/list_conv1.sml
+		library/num/src/num_lib.sml
+		library/prog_logic/src/halts_logic.sml
+		library/prog_logic/src/translation.sml
+		library/prog_logic/theories/src/mk_halts.sml
+		library/real/theories/src/Make
+		library/real/theories/src/equiv.sml
+		library/real/theories/src/seq.sml
+		library/reduce/src/arithconv.sml
+		library/string/src/string_conv.sml
+		library/unity/theories/src/aux_definitions.sml
+		library/word/theories/src/*
+
+	- I will now commit these changes, with this email as the log message.
+		cvs commit
+
+	- Tomorrow I will get this version compiling
+	with NJSML 108 (I will probably add
+	the files to enable the NJSML compilation manager to make
+	this easier), then check those changes in.  I think it's
+	good to get things in a working state.
+@
+text
+@d23 1
+a23 3
+ * by caching polymorphic instances, but that would require some serious
+ * profiling and other implementation work that I don't have time to get 
+ * into now.
+d63 1
+a63 2
+val neg = Term.Const{Name = "~", 
+                     Ty = Type.Tyapp{Tyop="fun",Args=[bool,bool]}}
+d67 1
+a67 2
+   Type.Tyapp{Tyop = "fun", Args = [Type.Tyapp{Tyop = "fun", 
+                                               Args = [ty,bool]},ty]};
+a290 1
+
+d473 2
+a474 1
+(* find_terms: (term -> bool) -> term -> term list
+d479 1
+a479 1
+ *******************************************************************)
+d495 2
+a496 1
+(* Subst_occs 
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d2 2
+a3 1
+functor DSYNTAX (structure Match : Match_sig
+d11 3
+d15 3
+a17 3
+        HOL_ERR{origin_structure = "Dsyntax",
+		origin_function = function,
+		message = message};
+d30 1
+a30 1
+      then if (can (Match.match_type ty) Ty)
+d249 1
+a249 1
+val is_cons = can dest_cons;
+d254 1
+a254 1
+   itlist (fn h => fn t => mk_cons{hd = h, tl = t})
+d271 1
+a271 1
+val is_list = can dest_list;
+d281 11
+a291 11
+val is_eq = can dest_eq
+val is_imp = can dest_imp
+val is_select = can dest_select;
+val is_forall = can dest_forall
+and is_exists = can dest_exists;
+val is_neg  = can dest_neg;
+val is_conj = can dest_conj
+and is_disj = can dest_disj;
+val is_cond = can dest_cond;
+val is_pair = can dest_pair;
+val is_let = can dest_let;
+d299 1
+a299 1
+fun list_mk_abs (vars,t) = itlist (fn v => fn b => mk_abs{Bvar = v, Body = b})
+d301 2
+a302 1
+fun list_mk_imp(antel,conc) = itlist(fn a => fn tm => mk_imp{ant=a,conseq=tm})
+d305 1
+a305 1
+   itlist (fn v => fn b => mk_exists{Bvar = v, Body = b}) vlist t;
+d307 1
+a307 1
+   itlist (fn v => fn b => mk_forall{Bvar = v, Body = b}) vlist t;
+d310 6
+a315 3
+val list_mk_conj = end_itlist(fn c1 => fn tm => mk_conj{conj1=c1, conj2=tm})
+val list_mk_disj = end_itlist(fn d1 => fn tm => mk_disj{disj1=d1, disj2=tm})
+val list_mk_pair = end_itlist(fn a => fn p => mk_pair{fst = a, snd = p});
+d430 1
+a430 1
+   mpa(assert is_pair varstruct,body)
+d439 1
+a439 1
+val ucheck = assert (curry (op =) "UNCURRY" o #Name o dest_const)
+d459 1
+a459 1
+val is_pabs = can dest_pabs;
+d540 1
+a540 1
+val sort = Lib.sort (curry (op <=) : int -> int -> bool)
+d545 1
+a545 1
+               itlist (fn {redex,residue} => fn (V,T) =>
+d567 2
+a568 1
+  zip basic_binders ["RES_FORALL","RES_EXISTS","RES_SELECT","RES_ABSTRACT"]
+d573 1
+a573 1
+   case (assoc1 binder_str (!restricted_binders))
+d587 1
+a587 1
+   if (mem binder basic_binders)
+d593 1
+a593 1
+                  [(binder,assoc binder(!restricted_binders))]
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@
+
+
+1.1.1.1.2.1
+log
+@Konrad's bug fixes up to start of serious
+hol90.8 devel;opment.  Checked into branch revision for
+later merging with trunk (elsa's work).  See
+doc/7.chages for a full description of what's been done.
+@
+text
+@d19 3
+a21 1
+ * by caching polymorphic instances, for example.
+d61 2
+a62 1
+val neg = Term.Const{Name = "~", Ty = Type.Tyapp{Tyop="fun",Args=[bool,bool]}}
+d66 2
+a67 1
+   Type.Tyapp{Tyop="fun", Args=[Type.Tyapp{Tyop="fun",Args = [ty,bool]},ty]};
+d290 2
+d470 1
+a470 2
+(***************************************************************************
+ * find_terms: (term -> bool) -> term -> term list
+d475 1
+a475 1
+ ***************************************************************************)
+d491 1
+a491 2
+(***************************************************************************
+ * Subst_occs 
+@

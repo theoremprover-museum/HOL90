@@ -1,0 +1,132 @@
+head	1.2;
+access;
+symbols
+	HOL97:1.1.1.1.0.6
+	bpHOL97:1.1.1.1
+	hol90_9_alpha:1.1.1.1
+	hol90_pre8_for_multiple_compilers:1.1.1.1.0.4
+	last_edition:1.1.1.1
+	hol90_pre8_after_donalds_separate_compilation_changes:1.1.1.1
+	hol90_8_after_merging_Konrad_Elsa:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.2
+date	96.02.08.00.26.12;	author drs1004;	state dead;
+branches;
+next	1.1;
+
+1.1
+date	95.10.16.13.30.14;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.30.14;	author rjb;	state Exp;
+branches
+	1.1.1.1.6.1;
+next	;
+
+1.1.1.1.6.1
+date	97.06.11.17.26.22;	author kxs;	state dead;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.2
+log
+@New theory mechanism, by Donald Syme
+@
+text
+@datatype lexresult = 
+      lparen   | rparen
+    | lbracket | rbracket
+    | comma
+    | eq
+    | thid
+    | axioms
+    | definitions
+    | theorems
+    | quote of string
+    | id of string
+    | num of string
+    | EOF ;
+
+val error = fn x => output(std_out,x^"\n");
+val eof = fn () => EOF;
+val quote_list = ref ([]:string list);
+%%
+%structure test_lex
+
+%s QWOTE;
+ws = [\ \t \010 \012];
+num = ([0-9]+);
+symb = ([#\?\+\*\/\\\=\<\>&%@@!:\,\;_\|-]+);
+id = ({symb}?([A-Za-z_']|[0-9])+);
+%%
+<INITIAL>\n => (lex());
+<INITIAL>{ws}+ => (lex());
+<INITIAL>"[" => (lbracket);
+<INITIAL>"]" => (rbracket);
+<INITIAL>"(" => (lparen);
+<INITIAL>")" => (rparen);
+<INITIAL>"=" => (eq);
+<INITIAL>"," => (comma);
+<INITIAL>"thid" => (thid);
+<INITIAL>"axioms" => (axioms);
+<INITIAL>"definitions" => (definitions);
+<INITIAL>"theorems" => (theorems);
+<INITIAL>{num} => (num(yytext));
+<INITIAL>{id} => (id(yytext));
+<INITIAL>"`" => (YYBEGIN QWOTE; quote_list := []; lex());
+<INITIAL>. => (error"INITIAL.catchall"; lex());
+
+<QWOTE>"`" => (YYBEGIN INITIAL;
+               quote(implode (rev (!quote_list))));
+<QWOTE>\n => (quote_list := yytext::(!quote_list); lex());
+<QWOTE>. => (quote_list := yytext::(!quote_list); lex());
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@
+
+
+1.1.1.1.6.1
+log
+@Removed files are parse files and portability files that have
+effectively been moved elsewhere.
+
+Modified files are up to date for ML 109.26.
+@
+text
+@@

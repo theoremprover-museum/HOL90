@@ -1,0 +1,397 @@
+head	1.6;
+access;
+symbols
+	hol90_pre8_for_multiple_compilers:1.1.0.2
+	hol90_pre8_after_donalds_separate_compilation_changes:1.1;
+locks; strict;
+comment	@# @;
+
+
+1.6
+date	96.02.08.00.31.43;	author drs1004;	state dead;
+branches;
+next	1.5;
+
+1.5
+date	96.01.04.21.49.41;	author drs1004;	state Exp;
+branches;
+next	1.4;
+
+1.4
+date	96.01.04.15.58.31;	author drs1004;	state Exp;
+branches;
+next	1.3;
+
+1.3
+date	96.01.04.13.45.38;	author drs1004;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	95.12.18.11.35.00;	author drs1004;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	95.10.31.13.56.23;	author drs1004;	state Exp;
+branches
+	1.1.2.1;
+next	;
+
+1.1.2.1
+date	96.06.25.15.41.38;	author rjb;	state dead;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.6
+log
+@New theory mechanism, by Donald Syme, and many other enhancements.
+@
+text
+@(* ===================================================================== *)
+(* FILE          : sml_system.sml                                        *)
+(* DESCRIPTION   : Structure for SML System dependent functions.         *)
+(*                                                                       *)
+(* AUTHOR        : Elsa L. Gunter, AT&T Bell Laboratories                *)
+(* DATE          : 7 October, 1993                                       *)
+(* ===================================================================== *)
+
+(* Copyright 1993 by AT&T Bell Laboratories *)
+
+(* Share and Enjoy *)
+
+structure Portable : Portable_sig =
+struct
+
+(* Set system variables relavent to the interactive mode of hol90 *)
+
+val _ = (Compiler.Control.Print.printLength := 1000;
+         Compiler.Control.Print.printDepth := 350;
+         Compiler.Control.Print.stringDepth := 250;
+         Compiler.Control.Print.signatures := 2;
+         Compiler.Control.quotation := true);
+
+
+(*--------------------------------------------------------------------
+ *
+ *-------------------------------------------------------------------*)
+
+structure General = General
+
+(*--------------------------------------------------------------------
+ *
+ *-------------------------------------------------------------------*)
+
+structure List = List
+
+(*--------------------------------------------------------------------
+ *
+ *-------------------------------------------------------------------*)
+
+structure Vector = Vector
+
+(*--------------------------------------------------------------------
+ *
+ *-------------------------------------------------------------------*)
+
+structure Array = Array
+
+(*--------------------------------------------------------------------
+ *
+ *-------------------------------------------------------------------*)
+
+structure Ref =
+    struct
+	fun inc cell = cell := !cell + 1
+	fun dec cell = cell := !cell - 1
+    end
+
+(*--------------------------------------------------------------------
+ *
+ *-------------------------------------------------------------------*)
+
+structure Char = Char
+
+(*--------------------------------------------------------------------
+ *
+ *-------------------------------------------------------------------*)
+
+structure String =
+    struct
+	exception Ord = General.Subscript
+	open String
+	fun ordof (string,place) = Char.ord(String.sub(string,place))
+    end
+
+
+(*--------------------------------------------------------------------
+ *
+ *-------------------------------------------------------------------*)
+
+structure PrettyPrint =
+struct
+val install_pp = Compiler.PPTable.install_pp;
+
+open Compiler.PrettyPrint
+
+fun with_ppstream ppstrm = 
+   {add_string=add_string ppstrm, 
+    add_break=add_break ppstrm, 
+    begin_block=begin_block ppstrm, 
+    end_block=fn () => end_block ppstrm, 
+    add_newline=fn () => add_newline ppstrm, 
+    clear_ppstream=fn () => clear_ppstream ppstrm, 
+    flush_ppstream=fn () => flush_ppstream ppstrm}
+
+fun defaultConsumer () =
+      {consumer = Compiler.Control.Print.say,
+       linewidth = !Compiler.Control.Print.linewidth,
+       flush = Compiler.Control.Print.flush}
+
+fun pr_list pfun dfun bfun =
+   let fun pr [] = ()
+         | pr [i] = pfun i
+         | pr (i::rst) = ( pfun i; dfun() ; bfun() ; pr rst )
+   in  pr 
+   end;
+
+end
+
+(*--------------------------------------------------------------------
+ *
+ *-------------------------------------------------------------------*)
+
+structure Time =
+    struct
+	open Time
+	val timestamp : unit -> time = now
+	val time_to_string : time -> String.string = toString
+	fun dest_time t =
+	    let val sec = toSeconds t
+		val usec = toMicroseconds (t - fromSeconds sec)
+	    in
+		{sec = sec, usec = usec}
+	    end
+	fun mk_time {sec,usec} = fromSeconds sec + fromMicroseconds usec
+	fun time_eq (t1:time) t2 = (t1 = t2)
+	fun time_lt (t1:time) t2 = Time.<(t1,t2)
+    end
+
+(*--------------------------------------------------------------------
+ *
+ *-------------------------------------------------------------------*)
+
+structure Timer = Timer;
+
+
+(*--------------------------------------------------------------------
+ * String conversions.
+ *-------------------------------------------------------------------*)
+
+val int_to_string = Integer.toString
+val real_to_string = Real.toString
+
+(*--------------------------------------------------------------------
+ * Misc. - IO/Interaction with OS
+ *-------------------------------------------------------------------*)
+
+val say = Compiler.Control.Print.say
+val linewidth = Compiler.Control.Print.linewidth
+
+val getEnv = OS.Process.getEnv
+val cd = OS.FileSys.chDir
+val pwd = OS.FileSys.getDir
+fun listDir dir_name =
+    let val dirstream = OS.FileSys.openDir dir_name
+	fun read_all {dirstream, dir_listing} =
+	    let val entry = OS.FileSys.readDir dirstream
+	    in
+		if entry = "" then List.rev dir_listing
+		else read_all {dirstream = dirstream,
+			       dir_listing = entry :: dir_listing}
+	    end
+	val listing = read_all {dirstream = dirstream, dir_listing = []}
+	val _ = OS.FileSys.closeDir dirstream
+    in listing
+    end;
+fun system s = OS.Process.system s
+fun ls() = system "ls"
+val getArgs = SMLofNJ.getArgs
+
+fun file_exists_for_reading s =
+    OS.FileSys.access(s,[OS.FileSys.A_READ])
+
+fun exit() = OS.Process.exit OS.Process.success
+
+(*--------------------------------------------------------------------
+ * Misc. - interactions which manipulate the ML environment
+ *-------------------------------------------------------------------*)
+
+val execute = IO.execute
+
+val interp = ref false
+val use = Compiler.Interact.use_file
+val use_stream = Compiler.Interact.use_stream
+
+fun compile file =
+   let val old_interp = !interp
+   in interp := false;
+      use handle e => (interp := old_interp; raise e);
+      interp := old_interp
+   end
+ 
+fun interpret file =
+   let val old_interp = !interp
+   in interp := true;
+      use file handle e => (interp := old_interp; raise e);
+      interp := old_interp
+   end
+ 
+
+fun use_string s = use_stream (open_string s)
+                   handle e => Exception.Raise e;
+
+
+(*--------------------------------------------------------------------
+ * Some paramaters.
+ *-------------------------------------------------------------------*)
+
+val sml_version = ["njsml"]@@(map int_to_string (#version_id Compiler.version));
+val sml_banner = Compiler.banner 
+val arch = Compiler.architecture;
+
+(*--------------------------------------------------------------------
+ * Exporting the executable.
+ *-------------------------------------------------------------------*)
+
+fun export x = (exportML x; ())
+    
+(*---------------------------------------------------------------------
+ * Misc file I/O
+ *--------------------------------------------------------------------*)
+
+val flush_out = IO.flush_out
+val input_line = IO.input_line
+val open_string = IO.open_string
+
+(*---------------------------------------------------------------------
+ * Pointer/Lisp-EQ Equality (god forbid).
+ *--------------------------------------------------------------------*)
+
+fun pointer_eq (x,y) =
+    ((System.Unsafe.cast x : int) = (System.Unsafe.cast y : int))
+
+
+end (* structure Portable *)
+
+
+
+
+
+
+
+
+@
+
+
+1.5
+log
+@*** empty log message ***
+@
+text
+@@
+
+
+1.4
+log
+@io transformers moved here
+@
+text
+@d141 2
+a142 2
+val int_to_string = Makestring.int
+val real_to_string = Makestring.real
+@
+
+
+1.3
+log
+@Fixed types, pretypes, fixities, parsing.
+@
+text
+@a226 3
+fun set_print_depth n = Compiler.Control.Print.printDepth := n;
+fun print_depth () = (!Compiler.Control.Print.printDepth);
+    
+@
+
+
+1.2
+log
+@Preterm and other changes, see 7.changes
+@
+text
+@d227 3
+@
+
+
+1.1
+log
+@First phase of hol90.8 development.  hol90 now compiles using NJSML-CM
+108.5, with separate compilation of libraries.  System dependencies
+have been isolated in the makefiles and "portable.sml".
+
+This involved a large number of enhancments to the source files,
+most of which are documented in the 7.changes file (or will be shortly).
+See also the correpsonding email corrspondence between RJB, KLS, TFM,
+JRH and DRS that happened during this development.
+@
+text
+@d101 7
+d182 1
+d186 17
+a202 1
+val interp = ref false
+d209 1
+a209 1
+val version = Compiler.version
+d217 13
+a229 21
+fun export _ = raise Fail "export - not implemented";
+
+(*
+val sml = List.last (getArgs ())
+
+fun export {dir,file} = 
+    let val exec_file = IO.open_out str
+        val _ = case Portable.system ("/bin/mkdir "^dir)
+                  of 0 => ()
+                   | _ => raise Fail ("can't make directory."^dir)
+	val _ = IO.output (exec_file,
+			   String.concat
+			   ["#!/bin/sh \n\n",
+			    sml, " @@SMLload=", dir, "/.heap/",file,".",arch,"\n"])
+	val _ = IO.close_out exec_file;
+	val _ = system ("chmod a+x " ^ file)
+	val _ = Compiler.exportML (str^".heap")
+    in
+       ()
+    end
+*)
+d231 2
+@
+
+
+1.1.2.1
+log
+@The core of hol90.9.alpha now builds successfully with SML/NJ 109,
+SML/NJ 108.5 (using CM), SML/NJ 0.93, and Poly/ML 3.0.
+I have not yet tried rebuilding the theory files.
+@
+text
+@@

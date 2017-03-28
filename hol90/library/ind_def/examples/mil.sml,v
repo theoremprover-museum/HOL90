@@ -1,0 +1,443 @@
+head	1.2;
+access;
+symbols
+	HOL97:1.2.0.4
+	bpHOL97:1.2
+	hol90_9_alpha:1.2
+	hol90_pre8_for_multiple_compilers:1.2.0.2
+	hol90_pre8_after_donalds_separate_compilation_changes:1.2
+	hol90_8_after_merging_Konrad_Elsa:1.2
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.2
+date	95.10.18.15.54.29;	author drs1004;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	95.10.16.13.30.47;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.30.47;	author rjb;	state Exp;
+branches
+	1.1.1.1.2.1;
+next	;
+
+1.1.1.1.2.1
+date	95.10.18.10.05.35;	author drs1004;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.2
+log
+@        Konrad's bug fixes and further development to hol90.7 after it's release.
+        Merging from side branch into main trunk.
+        See doc/7.changes for details.
+@
+text
+@(* =====================================================================*)
+(* FILE		: mil.sml						*)
+(* DESCRIPTION   : Defines a proof system for minimal intuitionistic 	*)
+(*                 logic, and proves the Curry-Howard isomorphism for	*)
+(*                 this and typed combinatory logic.			*)
+(*									*)
+(* AUTHOR	: Tom Melham and Juanito Camilleri			*)
+(* DATE		: 90.12.03						*)
+(* =====================================================================*)
+
+(* --------------------------------------------------------------------- *)
+(* Open a new theory and load the inductive definitions library.	 *)
+(* --------------------------------------------------------------------- *)
+
+load_library{lib = Sys_lib.ind_def_lib, theory = "mil"};
+open Inductive_def;
+
+(* --------------------------------------------------------------------- *)
+(* Load the theory of combinatory logic.				 *)
+(* --------------------------------------------------------------------- *)
+
+new_parent "cl";
+
+(* ===================================================================== *)
+(* Combinatory logic types and type judgements.				 *)
+(* ===================================================================== *)
+
+val ty_axiom = define_type{name="ty",
+                 type_spec = `ty = G of 'a 
+                                 | -> of ty => ty`,
+                 fixities = [Prefix, Infix 400]};
+
+
+(* Help for writing prettier rules. *)
+
+val TERM = Parse.term_parser
+val TYPE = Parse.type_parser;
+val TY_ANTIQ = Term.ty_antiq o TYPE;
+
+val relation = TY_ANTIQ`:'a -> 'a -> bool`;
+
+infix 5 -------------------------------------------------------------------;
+fun (x ------------------------------------------------------------------- y)
+    = (x,y);
+
+val new_inductive_definition = fn {name, fixity,patt,rules} =>
+  new_inductive_definition
+    {name = name, fixity = fixity, 
+     patt = (TERM ## map TERM) patt,
+     rules = map (fn((H,S),C) => {hypotheses=H,side_conditions=S,conclusion=C})
+                 (map ((map TERM ## map TERM) ## TERM) rules)};
+
+
+(* ===================================================================== *)
+(* Standard syntactic theory, derived by the recursive types package.	 *)
+(* ===================================================================== *)
+
+(* --------------------------------------------------------------------- *)
+(* Structural induction theorem for types.				 *)
+(* --------------------------------------------------------------------- *)
+
+val ty_induct = save_thm ("ty_induct",prove_induction_thm ty_axiom);
+
+(* --------------------------------------------------------------------- *)
+(* Exhaustive case analysis theorem for types.				 *)
+(* --------------------------------------------------------------------- *)
+
+val ty_cases = save_thm ("ty_cases", prove_cases_thm ty_induct);
+
+(* --------------------------------------------------------------------- *)
+(* Prove that the arrow and ground type constructors are one-to-one.	 *)
+(* --------------------------------------------------------------------- *)
+
+val Gfun11 = save_thm("Gfun11", prove_constructors_one_one ty_axiom);
+
+(* --------------------------------------------------------------------- *)
+(* Prove that the constructors yield syntactically distinct values. One	 *)
+(* typically needs all symmetric forms of the inequalities.		 *)
+(* --------------------------------------------------------------------- *)
+
+val ty_distinct =
+    let val ths = CONJUNCTS (prove_constructors_distinct ty_axiom) 
+        val rths = map (GEN_ALL o NOT_EQ_SYM o SPEC_ALL) ths 
+    in save_thm("ty_distinct", LIST_CONJ (ths @@ rths))
+    end;
+
+(* ===================================================================== *)
+(* Definition of well-typed terms of combinatory logic.			 *)
+(* ===================================================================== *)
+
+val {desc=TYrules,induction_thm=TYind} =
+let val TY = TERM`IN : cl->'a ty->bool`
+in
+new_inductive_definition{name="CL_TYPE_DEF", fixity = Infix 400,
+   patt=(`^TY c t`, []),
+   rules=[
+
+
+      ([],                                                            [])
+      -------------------------------------------------------------------
+                          `^TY k  (A -> (B -> A))`                      ,
+
+
+
+      ([],                                                            [])
+      -------------------------------------------------------------------
+              `^TY s ((A -> (B -> C)) -> ((A -> B) -> (A -> C)))`       ,
+
+
+
+      ([     `^TY U (t1 -> t2)`,                 `^TY V t1`         ],[])
+      -------------------------------------------------------------------
+                               `^TY (U # V) t2`                        ]}
+end;
+
+(* ======================================================================== *)
+(* Mimimal intuitionistic logic.  We now reinterpret -> as implication,     *)
+(* types P:('a)ty as terms of the logic (i.e. propositions), and define a   *)
+(* provability predicate `THM` on these terms. The definition is done       *)
+(* inductively by the proof rules for the logic.			    *)
+(* ======================================================================== *)
+
+val {desc=THMrules,induction_thm=THMind} =
+let val THM = TERM`THM:'a ty->bool`
+in
+new_inductive_definition{name="THM_DEF", fixity=Prefix,
+   patt= (`^THM p`, []),
+   rules=[
+
+
+      ([],                                                            [])
+      -------------------------------------------------------------------
+                          `^THM  (A -> (B -> A))`                       ,
+
+
+      ([],                                                            [])
+      -------------------------------------------------------------------
+               `^THM  ((A -> (B -> C)) -> ((A -> B) -> (A -> C)))`      ,
+
+
+
+      ([       `^THM  (P -> Q)`,                `^THM P`            ],[])
+      -------------------------------------------------------------------
+                                  `^THM  Q`                            ]}
+end;
+
+
+
+
+(* ===================================================================== *)
+(* Derivation of the Curry-Howard isomorphism.				 *)
+(* ===================================================================== *)
+
+(* --------------------------------------------------------------------- *)
+(* The left-to-right direction is proved by rule induction for the	 *)
+(* inductively defined relation THM, followed by use of the typing rules *)
+(* (i.e. the tactics for them) to prove the conclusion. The proof is	 *)
+(* completely straightforward.						 *)
+(* (kls) existential witness P' not used, since hol90 does not do the    *)
+(* (unnecessary) renaming that hol88 does.                               *)
+(* --------------------------------------------------------------------- *)
+
+val ISO_THM1 = prove(--`!P:('a)ty. THM P ==> ?M:cl. M IN P`--,
+   RULE_INDUCT_THEN THMind STRIP_ASSUME_TAC STRIP_ASSUME_TAC THEN
+   REPEAT GEN_TAC THENL
+   map EXISTS_TAC [(--`k:cl`--),(--`s:cl`--),(--`M # M'`--)] THEN
+   MAP_FIRST RULE_TAC TYrules THEN
+(*   EXISTS_TAC (--`P': 'a ty`--) THEN *)
+   EXISTS_TAC (--`P: 'a ty`--) THEN
+   CONJ_TAC THEN FIRST_ASSUM ACCEPT_TAC);
+
+(* --------------------------------------------------------------------- *)
+(* The proof for the other direction proceeds by induction over the 	 *)
+(* typing relation.  Again, simple.					 *)
+(* --------------------------------------------------------------------- *)
+
+val ISO_THM2 =
+    TAC_PROOF
+    (([], (--`!P:'a ty. !M:cl. M IN P ==> THM P`--)),
+     RULE_INDUCT_THEN TYind STRIP_ASSUME_TAC STRIP_ASSUME_TAC THEN
+     REPEAT GEN_TAC THEN
+     MAP_FIRST RULE_TAC THMrules THEN
+     EXISTS_TAC (--`t1:'a ty`--) THEN
+     CONJ_TAC THEN FIRST_ASSUM ACCEPT_TAC);
+
+(* --------------------------------------------------------------------- *)
+(* The final result.							 *)
+(* --------------------------------------------------------------------- *)
+
+val CURRY_HOWARD = store_thm
+    ("CURRY_HOWARD",
+    (--`!P:'a ty. THM P = ?M:cl. M IN P`--),
+    REPEAT (STRIP_TAC ORELSE EQ_TAC) THEN
+    IMP_RES_TAC (CONJ ISO_THM1 ISO_THM2) THEN
+    EXISTS_TAC (--`M:cl`--) THEN FIRST_ASSUM ACCEPT_TAC);
+
+
+(* --------------------------------------------------------------------- *)
+(* End of example.							 *)
+(* --------------------------------------------------------------------- *)
+
+html_theory"-";
+export_theory();
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d2 1
+a2 1
+(* FILE		: CL.ml							*)
+d15 1
+a15 3
+new_theory "mil";
+
+load_library{lib = Sys_lib.ind_def_lib, theory = "-"};
+d29 10
+a38 3
+                           type_spec = `ty = G of 'a 
+                                     | -> of ty => ty`,
+                           fixities = [Prefix, Infix 400]};
+d40 1
+d42 12
+d92 1
+a92 1
+let val TY = (--`IN : cl->'a ty->bool`--) 
+d95 1
+a95 1
+   patt=((--`^TY c t`--), []),
+d98 4
+a101 4
+    {hypotheses=[],
+     side_conditions=[],
+     (* -------------------------------------------------------- *)
+     conclusion=     (--`^TY k  (A -> (B -> A))`--)               },
+a103 4
+    {hypotheses=[],
+     side_conditions=[],
+     (* --------------------------------------------------------------- *)
+     conclusion=(--`^TY s ((A -> (B -> C)) -> ((A -> B) -> (A -> C)))`--)},
+d105 3
+d110 4
+a113 4
+     {hypotheses=[(--`^TY U (t1 -> t2)`--),     (--`^TY V t1`--)	 ],
+      side_conditions=[],
+     (*----------------------------------------------------------------- *)
+      conclusion=                 (--`^TY (U # V) t2`--)	  	 }]}
+d119 1
+a119 1
+(* provability predicate (--`THM`--) on these terms. The definition is done *)
+d124 1
+a124 1
+let val THM = (--`THM:'a ty->bool`--) 
+d127 1
+a127 1
+   patt= ((--`^THM p`--), []),
+d129 16
+a144 16
+    {hypotheses=[],
+     side_conditions=[],
+     (* ------------------------------------------------------ *)
+     conclusion=    (--`^THM  (A -> (B -> A))`--)               },
+
+
+    {hypotheses=[],
+     side_conditions=[],
+     (*----------------------------------------------------------------  *)
+     conclusion=(--`^THM  ((A -> (B -> C)) -> ((A -> B) -> (A -> C)))`--) },
+
+
+    {hypotheses=[(--`^THM  (P -> Q)`--),     (--`^THM P`--)	         ],
+     side_conditions=[],
+     (*----------------------------------------------------------------- *)
+     conclusion=                  (--`^THM  Q`--)			  }]}
+d202 1
+a202 1
+close_theory();
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@
+
+
+1.1.1.1.2.1
+log
+@Konrad's bug fixes and further development to hol90.7 after it's release.
+Checked n on a side branch for later merging with the main trunk
+(Els'a revisions).  See doc/7.changes for details.
+@
+text
+@d2 1
+a2 1
+(* FILE		: mil.sml						*)
+d15 3
+a17 1
+load_library{lib = Sys_lib.ind_def_lib, theory = "mil"};
+d31 3
+a33 10
+                 type_spec = `ty = G of 'a 
+                                 | -> of ty => ty`,
+                 fixities = [Prefix, Infix 400]};
+
+
+(* Help for writing prettier rules. *)
+
+val TERM = Parse.term_parser
+val TYPE = Parse.type_parser;
+val TY_ANTIQ = Term.ty_antiq o TYPE;
+a34 1
+val relation = TY_ANTIQ`:'a -> 'a -> bool`;
+a35 12
+infix 5 -------------------------------------------------------------------;
+fun (x ------------------------------------------------------------------- y)
+    = (x,y);
+
+val new_inductive_definition = fn {name, fixity,patt,rules} =>
+  new_inductive_definition
+    {name = name, fixity = fixity, 
+     patt = (TERM ## map TERM) patt,
+     rules = map (fn((H,S),C) => {hypotheses=H,side_conditions=S,conclusion=C})
+                 (map ((map TERM ## map TERM) ## TERM) rules)};
+
+
+d74 1
+a74 1
+let val TY = TERM`IN : cl->'a ty->bool`
+d77 1
+a77 1
+   patt=(`^TY c t`, []),
+d80 4
+a83 4
+
+      ([],                                                            [])
+      -------------------------------------------------------------------
+                          `^TY k  (A -> (B -> A))`                      ,
+d86 4
+a90 3
+      ([],                                                            [])
+      -------------------------------------------------------------------
+              `^TY s ((A -> (B -> C)) -> ((A -> B) -> (A -> C)))`       ,
+d93 4
+a96 4
+
+      ([     `^TY U (t1 -> t2)`,                 `^TY V t1`         ],[])
+      -------------------------------------------------------------------
+                               `^TY (U # V) t2`                        ]}
+d102 1
+a102 1
+(* provability predicate `THM` on these terms. The definition is done       *)
+d107 1
+a107 1
+let val THM = TERM`THM:'a ty->bool`
+d110 1
+a110 1
+   patt= (`^THM p`, []),
+d112 16
+a127 16
+
+
+      ([],                                                            [])
+      -------------------------------------------------------------------
+                          `^THM  (A -> (B -> A))`                       ,
+
+
+      ([],                                                            [])
+      -------------------------------------------------------------------
+               `^THM  ((A -> (B -> C)) -> ((A -> B) -> (A -> C)))`      ,
+
+
+
+      ([       `^THM  (P -> Q)`,                `^THM P`            ],[])
+      -------------------------------------------------------------------
+                                  `^THM  Q`                            ]}
+d185 1
+a185 1
+html_theory"-";
+@

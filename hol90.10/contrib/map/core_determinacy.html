@@ -1,0 +1,1375 @@
+<TITLE>Theory: core_determinacy</TITLE>
+<H1>Theory: core_determinacy</H1>
+<H1>Parents</H1>
+    <UL>
+    <LI><A HREF = "holML_Plain_Core.html"><STRONG>holML_Plain_Core</STRONG></A>
+    <LI><A HREF = "finite_functions.html"><STRONG>finite_functions</STRONG></A>
+    <LI><A HREF = "partial_functions.html"><STRONG>partial_functions</STRONG></A>
+    <LI><A HREF = "lift.html"><STRONG>lift</STRONG></A>
+    <LI><A HREF = "HOL.html"><STRONG>HOL</STRONG></A>
+    </UL>
+
+
+<HR>
+<H1>Type constants</H1>
+    <UL>
+    
+    </UL>
+
+
+<HR>
+<H1>Term constants</H1>
+    <UL>
+    <LI><STRONG>eval_exbind_match</STRONG><EM>:exbind -> state -> env ->
+                                               state -> exconenv_pack ->
+                                               bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>eval_atpat_match</STRONG><EM>:atpat -> state -> env -> val ->
+                                              state -> varenv_fail ->
+                                              bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>eval_patrow_match</STRONG><EM>:patrow -> state -> env ->
+                                               record -> state ->
+                                               varenv_fail -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>eval_pat_match</STRONG><EM>:pat -> state -> env -> val ->
+                                            state -> varenv_fail -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>eval_atexp_match</STRONG><EM>:atexp -> state -> env ->
+                                              state -> val_pack -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>eval_exprow_match</STRONG><EM>:exprow -> state -> env ->
+                                               state -> record_pack ->
+                                               bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>eval_exp_match</STRONG><EM>:exp -> state -> env -> state ->
+                                            val_pack -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>eval_match_match</STRONG><EM>:match -> state -> env -> val ->
+                                              state -> val_pack_fail ->
+                                              bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>eval_mrule_match</STRONG><EM>:mrule -> state -> env -> val ->
+                                              state -> val_pack_fail ->
+                                              bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>eval_dec_match</STRONG><EM>:dec -> state -> env -> state ->
+                                            env_pack -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>eval_valbind_match</STRONG><EM>:valbind -> state -> env ->
+                                                state -> varenv_pack ->
+                                                bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    </UL>
+
+
+<HR>
+<H1>Axioms</H1>
+<DL>
+
+</DL>
+
+
+<HR>
+<H1>Definitions</H1>
+<DL>
+<DT><STRONG>eval_exbind_match_DEF</STRONG>
+<DD>
+<PRE>
+|- !exb sta env sta' exc.
+     eval_exbind_match exb sta env sta' exc =
+     (?excon en.
+       (exb = EXBIND1 excon NONE) /\
+       (exc = EXCONENVeep (insert_into_exconenv empty_exconenv excon en)) /\
+       (en = new_exname (STATE_arg2 sta)) /\
+       (sta' = add_exname en sta)) \/
+     (?excon eb en EE.
+       (exb = EXBIND1 excon (SOME eb)) /\
+       (exc =
+        EXCONENVeep
+          (add_exconenv (insert_into_exconenv empty_exconenv excon en) EE)) /\
+       (?s'.
+         (en = new_exname (STATE_arg2 sta)) /\
+         (s' = add_exname en sta) /\
+         eval_exbind eb s' env sta' (EXCONENVeep EE))) \/
+     (?excon eb p.
+       (exb = EXBIND1 excon (SOME eb)) /\
+       (exc = PACKeep p) /\
+       (?en s'.
+         (en = new_exname (STATE_arg2 sta)) /\
+         (s' = add_exname en sta) /\
+         eval_exbind eb s' env sta' (PACKeep p))) \/
+     (?excon longexcon en.
+       (exb = EXBIND2 excon longexcon NONE) /\
+       (sta = sta') /\
+       (exc = EXCONENVeep (insert_into_exconenv empty_exconenv excon en)) /\
+       (lookuplongexcon_env env longexcon = lift en)) \/
+     (?excon longexcon eb en EE.
+       (exb = EXBIND2 excon longexcon (SOME eb)) /\
+       (exc =
+        EXCONENVeep
+          (add_exconenv (insert_into_exconenv empty_exconenv excon en) EE)) /\
+       (lookuplongexcon_env env longexcon = lift en) /\
+       eval_exbind eb sta env sta' (EXCONENVeep EE)) \/
+     (?excon longexcon eb p.
+       (exb = EXBIND2 excon longexcon (SOME eb)) /\
+       (exc = PACKeep p) /\
+       (?en.
+         (lookuplongexcon_env env longexcon = lift en) /\
+         eval_exbind eb sta env sta' (PACKeep p)))
+</PRE>
+
+<DT><STRONG>eval_atpat_match_DEF</STRONG>
+<DD>
+<PRE>
+|- !atp sta env val sta' var'.
+     eval_atpat_match atp sta env val sta' var' =
+     (atp = WILDCARDatpat) /\
+     (sta = sta') /\
+     (var' = VARENVvef empty_varenv) \/
+     (?scon.
+       (atp = SCONatpat scon) /\
+       (sta = sta') /\
+       (var' = VARENVvef empty_varenv) /\
+       (val = SVALval (value_of scon))) \/
+     (?scon.
+       (atp = SCONatpat scon) /\
+       (sta = sta') /\
+       (var' = FAILvef) /\
+       ~(val = SVALval (value_of scon))) \/
+     (?var.
+       (atp = VARatpat var) /\
+       (sta = sta') /\
+       (var' = VARENVvef (insert_into_varenv empty_varenv var val))) \/
+     (?longcon.
+       (atp = CONatpat longcon) /\
+       (sta = sta') /\
+       (var' = VARENVvef empty_varenv) /\
+       (val = CONval (long_base longcon))) \/
+     (?longcon.
+       (atp = CONatpat longcon) /\
+       (sta = sta') /\
+       (var' = FAILvef) /\
+       ~(val = CONval (long_base longcon))) \/
+     (?longexcon en.
+       (atp = EXCONatpat longexcon) /\
+       (sta = sta') /\
+       (val = EXVALval (NAMEexval en)) /\
+       (var' = VARENVvef empty_varenv) /\
+       (lookuplongexcon_env env longexcon = lift en)) \/
+     (?longexcon en.
+       (atp = EXCONatpat longexcon) /\
+       (sta = sta') /\
+       (val = EXVALval (NAMEexval en)) /\
+       (var' = FAILvef) /\
+       (?en'.
+         (lookuplongexcon_env env longexcon = lift en') /\ ~(en = en'))) \/
+     (atp = RECORDatpat NONE) /\
+     (sta = sta') /\
+     (var' = VARENVvef empty_varenv) /\
+     (val = RECORDval empty_record) \/
+     (?VE patrow.
+       (atp = RECORDatpat (SOME patrow)) /\
+       (var' = VARENVvef (add_varenv empty_varenv VE)) /\
+       (?r.
+         (val = RECORDval (add_record empty_record r)) /\
+         eval_patrow patrow sta env r sta' (VARENVvef VE))) \/
+     (?patrow.
+       (atp = RECORDatpat (SOME patrow)) /\
+       (var' = FAILvef) /\
+       (?r.
+         (val = RECORDval (add_record empty_record r)) /\
+         eval_patrow patrow sta env r sta' FAILvef)) \/
+     (?pat. (atp = PARatpat pat) /\ eval_pat pat sta env val sta' var')
+</PRE>
+
+<DT><STRONG>eval_patrow_match_DEF</STRONG>
+<DD>
+<PRE>
+|- !pat' sta env rec sta' var.
+     eval_patrow_match pat' sta env rec sta' var =
+     (pat' = DOTDOTDOT) /\ (sta = sta') /\ (var = VARENVvef empty_varenv) \/
+     (?lab pat.
+       (pat' = PATROW lab pat NONE) /\
+       (var = FAILvef) /\
+       eval_pat pat sta env (lower (lookup_label rec lab)) sta' FAILvef) \/
+     (?lab pat patrow.
+       (pat' = PATROW lab pat (SOME patrow)) /\
+       (var = FAILvef) /\
+       eval_pat pat sta env (lower (lookup_label rec lab)) sta' FAILvef) \/
+     (?lab pat VE.
+       (pat' = PATROW lab pat NONE) /\
+       (var = VARENVvef VE) /\
+       eval_pat pat sta env (lower (lookup_label rec lab)) sta'
+         (VARENVvef VE)) \/
+     (?lab pat patrow VE VE'.
+       (pat' = PATROW lab pat (SOME patrow)) /\
+       (var = VARENVvef (add_varenv VE VE')) /\
+       (?s'.
+         eval_pat pat sta env (lower (lookup_label rec lab)) s'
+           (VARENVvef VE) /\
+         eval_patrow patrow s' env rec sta' (VARENVvef VE'))) \/
+     (?lab pat patrow.
+       (pat' = PATROW lab pat (SOME patrow)) /\
+       (var = FAILvef) /\
+       (?s' VE.
+         eval_pat pat sta env (lower (lookup_label rec lab)) s'
+           (VARENVvef VE) /\
+         eval_patrow patrow s' env rec sta' FAILvef))
+</PRE>
+
+<DT><STRONG>eval_pat_match_DEF</STRONG>
+<DD>
+<PRE>
+|- !pat' sta env val sta' var'.
+     eval_pat_match pat' sta env val sta' var' =
+     (?atpat.
+       (pat' = ATPATpat atpat) /\ eval_atpat atpat sta env val sta' var') \/
+     (?longcon atpat.
+       (pat' = CONpat longcon atpat) /\
+       (?con v'.
+         (long_base longcon = con) /\
+         ~(con = CON "ref") /\
+         (val = APPCONval con v') /\
+         eval_atpat atpat sta env v' sta' var')) \/
+     (?longcon atpat.
+       (pat' = CONpat longcon atpat) /\
+       (sta = sta') /\
+       (var' = FAILvef) /\
+       (?con.
+         (long_base longcon = con) /\
+         ~(con = CON "ref") /\
+         (!v'. ~(val = APPCONval con v')))) \/
+     (?longexcon atpat.
+       (pat' = EXCONpat longexcon atpat) /\
+       (?v' en.
+         (lookuplongexcon_env env longexcon = lift en) /\
+         (val = EXVALval (NAMEVALexval en v')) /\
+         eval_atpat atpat sta env v' sta' var')) \/
+     (?longexcon atpat.
+       (pat' = EXCONpat longexcon atpat) /\
+       (sta = sta') /\
+       (var' = FAILvef) /\
+       (?en.
+         (lookuplongexcon_env env longexcon = lift en) /\
+         (!v'. ~(val = EXVALval (NAMEVALexval en v'))))) \/
+     (?a atpat.
+       (pat' = CONpat (BASE (CON "ref")) atpat) /\
+       (sta = sta') /\
+       (val = ADDRval a) /\
+       (?v.
+         (lookupaddr_state sta' a = lift v) /\
+         eval_atpat atpat sta' env v sta' var')) \/
+     (?var pat VE.
+       (pat' = LAYEREDpat var pat) /\
+       (var' =
+        VARENVvef
+          (add_varenv (insert_into_varenv empty_varenv var val) VE)) /\
+       eval_pat pat sta env val sta' (VARENVvef VE)) \/
+     (?var pat.
+       (pat' = LAYEREDpat var pat) /\
+       (var' = FAILvef) /\
+       eval_pat pat sta env val sta' FAILvef)
+</PRE>
+
+<DT><STRONG>eval_atexp_match_DEF</STRONG>
+<DD>
+<PRE>
+|- !ate sta env sta' val.
+     eval_atexp_match ate sta env sta' val =
+     (?scon.
+       (ate = SCONatexp scon) /\
+       (sta = sta') /\
+       (val = VALvp (SVALval (value_of scon)))) \/
+     (?longvar v.
+       (ate = VARatexp longvar) /\
+       (sta = sta') /\
+       (val = VALvp v) /\
+       (lookuplongvar_env env longvar = lift v)) \/
+     (?longcon con.
+       (ate = CONatexp longcon) /\
+       (sta = sta') /\
+       (val = VALvp (CONval con)) /\
+       (long_base longcon = con)) \/
+     (?en longexcon.
+       (ate = EXCONatexp longexcon) /\
+       (sta = sta') /\
+       (val = VALvp (EXVALval (NAMEexval en))) /\
+       (lookuplongexcon_env env longexcon = lift en)) \/
+     (ate = RECORDatexp NONE) /\
+     (sta = sta') /\
+     (val = VALvp (RECORDval empty_record)) \/
+     (?exprow r.
+       (ate = RECORDatexp (SOME exprow)) /\
+       (val = VALvp (RECORDval (add_record empty_record r))) /\
+       eval_exprow exprow sta env sta' (RECORDrp r)) \/
+     (?exprow p.
+       (ate = RECORDatexp (SOME exprow)) /\
+       (val = PACKvp p) /\
+       eval_exprow exprow sta env sta' (PACKrp p)) \/
+     (?dec exp v.
+       (ate = LETatexp dec exp) /\
+       (val = VALvp v) /\
+       (?s' E'.
+         eval_dec dec sta env s' (ENVep E') /\
+         eval_exp exp s' (add_env env E') sta' (VALvp v))) \/
+     (?dec exp p.
+       (ate = LETatexp dec exp) /\
+       (val = PACKvp p) /\
+       eval_dec dec sta env sta' (PACKep p)) \/
+     (?dec exp p.
+       (ate = LETatexp dec exp) /\
+       (val = PACKvp p) /\
+       (?s' E'.
+         eval_dec dec sta env s' (ENVep E') /\
+         eval_exp exp s' (add_env env E') sta' (PACKvp p))) \/
+     (?exp. (ate = PARatexp exp) /\ eval_exp exp sta env sta' val)
+</PRE>
+
+<DT><STRONG>eval_exprow_match_DEF</STRONG>
+<DD>
+<PRE>
+|- !exp' sta env sta' rec.
+     eval_exprow_match exp' sta env sta' rec =
+     (?lab exp v.
+       (exp' = EXPROW lab exp NONE) /\
+       (rec = RECORDrp (insert_into_record empty_record lab v)) /\
+       eval_exp exp sta env sta' (VALvp v)) \/
+     (?lab exp exprow_op p.
+       (exp' = EXPROW lab exp exprow_op) /\
+       (rec = PACKrp p) /\
+       eval_exp exp sta env sta' (PACKvp p)) \/
+     (?lab exp exprow v r.
+       (exp' = EXPROW lab exp (SOME exprow)) /\
+       (rec =
+        RECORDrp (add_record (insert_into_record empty_record lab v) r)) /\
+       (?s'.
+         eval_exp exp sta env s' (VALvp v) /\
+         eval_exprow exprow s' env sta' (RECORDrp r))) \/
+     (?lab exp exprow p.
+       (exp' = EXPROW lab exp (SOME exprow)) /\
+       (rec = PACKrp p) /\
+       (?s' v.
+         eval_exp exp sta env s' (VALvp v) /\
+         eval_exprow exprow s' env sta' (PACKrp p)))
+</PRE>
+
+<DT><STRONG>eval_exp_match_DEF</STRONG>
+<DD>
+<PRE>
+|- !exp' sta env sta' val.
+     eval_exp_match exp' sta env sta' val =
+     (?atexp. (exp' = ATEXPexp atexp) /\ eval_atexp atexp sta env sta' val) \/
+     (?exp atexp c v.
+       (exp' = APPexp exp atexp) /\
+       (val = VALvp (APPCONval c v)) /\
+       (?s'.
+         eval_exp exp sta env s' (VALvp (CONval c)) /\
+         ~(c = CON "ref") /\
+         eval_atexp atexp s' env sta' (VALvp v))) \/
+     (?exp atexp p.
+       (exp' = APPexp exp atexp) /\
+       (val = PACKvp p) /\
+       eval_exp exp sta env sta' (PACKvp p)) \/
+     (?exp atexp p.
+       (exp' = APPexp exp atexp) /\
+       (val = PACKvp p) /\
+       (?s' c.
+         eval_exp exp sta env s' (VALvp (CONval c)) /\
+         ~(c = CON "ref") /\
+         eval_atexp atexp s' env sta' (PACKvp p))) \/
+     (?exp atexp en v.
+       (exp' = APPexp exp atexp) /\
+       (val = VALvp (EXVALval (NAMEVALexval en v))) /\
+       (?s'.
+         eval_exp exp sta env s' (VALvp (EXVALval (NAMEexval en))) /\
+         eval_atexp atexp s' env sta' (VALvp v))) \/
+     (?exp atexp p.
+       (exp' = APPexp exp atexp) /\
+       (val = PACKvp p) /\
+       (?s' en.
+         eval_exp exp sta env s' (VALvp (EXVALval (NAMEexval en))) /\
+         eval_atexp atexp s' env sta' (PACKvp p))) \/
+     (?s'' exp atexp a v.
+       (exp' = APPexp exp atexp) /\
+       (sta' = insert_into_state_mem s'' a v) /\
+       (val = VALvp (ADDRval a)) /\
+       (?s'.
+         eval_exp exp sta env s' (VALvp (CONval (CON "ref"))) /\
+         eval_atexp atexp s' env s'' (VALvp v) /\
+         (a = new_addr s''))) \/
+     (?exp atexp p.
+       (exp' = APPexp exp atexp) /\
+       (val = PACKvp p) /\
+       (?s'.
+         eval_exp exp sta env s' (VALvp (CONval (CON "ref"))) /\
+         eval_atexp atexp s' env sta' (PACKvp p))) \/
+     (?s'' exp atexp a v.
+       (exp' = APPexp exp atexp) /\
+       (sta' = insert_into_state_mem s'' a v) /\
+       (val = VALvp (RECORDval empty_record)) /\
+       (?s'.
+         eval_exp exp sta env s' (VALvp ASSGval) /\
+         eval_atexp atexp s' env s''
+           (VALvp
+             (RECORDval
+               (insert_into_record
+                  (insert_into_record empty_record (LABEL "1") (ADDRval a))
+                  (LABEL "2")
+                 v))))) \/
+     (?exp atexp p.
+       (exp' = APPexp exp atexp) /\
+       (val = PACKvp p) /\
+       (?s'.
+         eval_exp exp sta env s' (VALvp ASSGval) /\
+         eval_atexp atexp s' env sta' (PACKvp p))) \/
+     (?exp atexp.
+       (exp' = APPexp exp atexp) /\
+       (?s' b v.
+         eval_exp exp sta env s' (VALvp (BASval b)) /\
+         eval_atexp atexp s' env sta' (VALvp v) /\
+         (apply b v = val))) \/
+     (?exp atexp p.
+       (exp' = APPexp exp atexp) /\
+       (val = PACKvp p) /\
+       (?s' b.
+         eval_exp exp sta env s' (VALvp (BASval b)) /\
+         eval_atexp atexp s' env sta' (PACKvp p))) \/
+     (?exp atexp v'.
+       (exp' = APPexp exp atexp) /\
+       (val = VALvp v') /\
+       (?s2 s3 match E' VE v.
+         eval_exp exp sta env s2 (VALvp (CLOSUREval (CLOSURE match E' VE))) /\
+         eval_atexp atexp s2 env s3 (VALvp v) /\
+         eval_match match s3
+           (add_env E' (ENV empty_strenv (rec_varenv VE) empty_exconenv))
+           v
+           sta'
+           (VALvpf v'))) \/
+     (?exp atexp p.
+       (exp' = APPexp exp atexp) /\
+       (val = PACKvp p) /\
+       (?s2 match E' VE.
+         eval_exp exp sta env s2 (VALvp (CLOSUREval (CLOSURE match E' VE))) /\
+         eval_atexp atexp s2 env sta' (PACKvp p))) \/
+     (?exp atexp p.
+       (exp' = APPexp exp atexp) /\
+       (val = PACKvp p) /\
+       (?s2 s3 match E' VE v.
+         eval_exp exp sta env s2 (VALvp (CLOSUREval (CLOSURE match E' VE))) /\
+         eval_atexp atexp s2 env s3 (VALvp v) /\
+         eval_match match s3
+           (add_env E' (ENV empty_strenv (rec_varenv VE) empty_exconenv))
+           v
+           sta'
+           (PACKvpf p))) \/
+     (?exp atexp.
+       (exp' = APPexp exp atexp) /\
+       (val = PACKvp (PACK (NAMEexval (EXNAME 7)))) /\
+       (?s2 s3 match E' VE v.
+         eval_exp exp sta env s2 (VALvp (CLOSUREval (CLOSURE match E' VE))) /\
+         eval_atexp atexp s2 env s3 (VALvp v) /\
+         eval_match match s3
+           (add_env E' (ENV empty_strenv (rec_varenv VE) empty_exconenv))
+           v
+           sta'
+           FAILvpf)) \/
+     (?exp match v.
+       (exp' = HANDLEexp exp match) /\
+       (val = VALvp v) /\
+       eval_exp exp sta env sta' (VALvp v)) \/
+     (?exp match v.
+       (exp' = HANDLEexp exp match) /\
+       (val = VALvp v) /\
+       (?s' e.
+         eval_exp exp sta env s' (PACKvp (PACK e)) /\
+         eval_match match s' env (EXVALval e) sta' (VALvpf v))) \/
+     (?exp match p.
+       (exp' = HANDLEexp exp match) /\
+       (val = PACKvp p) /\
+       (?s' e.
+         eval_exp exp sta env s' (PACKvp (PACK e)) /\
+         eval_match match s' env (EXVALval e) sta' (PACKvpf p))) \/
+     (?exp match e.
+       (exp' = HANDLEexp exp match) /\
+       (val = PACKvp (PACK e)) /\
+       (?s'.
+         eval_exp exp sta env s' (PACKvp (PACK e)) /\
+         eval_match match s' env (EXVALval e) sta' FAILvpf)) \/
+     (?exp e.
+       (exp' = RAISEexp exp) /\
+       (val = PACKvp (PACK e)) /\
+       eval_exp exp sta env sta' (VALvp (EXVALval e))) \/
+     (?exp p.
+       (exp' = RAISEexp exp) /\
+       (val = PACKvp p) /\
+       eval_exp exp sta env sta' (PACKvp p)) \/
+     (?match.
+       (exp' = FNexp match) /\
+       (sta = sta') /\
+       (val = VALvp (CLOSUREval (CLOSURE match env empty_varenv))))
+</PRE>
+
+<DT><STRONG>eval_match_match_DEF</STRONG>
+<DD>
+<PRE>
+|- !mat sta env val sta' val'.
+     eval_match_match mat sta env val sta' val' =
+     (?mrule match_op v'.
+       (mat = MATCH mrule match_op) /\
+       (val' = VALvpf v') /\
+       eval_mrule mrule sta env val sta' (VALvpf v')) \/
+     (?mrule match_op p.
+       (mat = MATCH mrule match_op) /\
+       (val' = PACKvpf p) /\
+       eval_mrule mrule sta env val sta' (PACKvpf p)) \/
+     (?mrule.
+       (mat = MATCH mrule NONE) /\
+       (val' = FAILvpf) /\
+       eval_mrule mrule sta env val sta' FAILvpf) \/
+     (?mrule match.
+       (mat = MATCH mrule (SOME match)) /\
+       (?s'.
+         eval_mrule mrule sta env val s' FAILvpf /\
+         eval_match match s' env val sta' val'))
+</PRE>
+
+<DT><STRONG>eval_mrule_match_DEF</STRONG>
+<DD>
+<PRE>
+|- !mru sta env val sta' val'.
+     eval_mrule_match mru sta env val sta' val' =
+     (?pat exp v'.
+       (mru = MRULE pat exp) /\
+       (val' = VALvpf v') /\
+       (?s' VE.
+         eval_pat pat sta env val s' (VARENVvef VE) /\
+         eval_exp exp s' (add_env env (ENV empty_strenv VE empty_exconenv))
+           sta'
+           (VALvp v'))) \/
+     (?pat exp p.
+       (mru = MRULE pat exp) /\
+       (val' = PACKvpf p) /\
+       (?s' VE.
+         eval_pat pat sta env val s' (VARENVvef VE) /\
+         eval_exp exp s' (add_env env (ENV empty_strenv VE empty_exconenv))
+           sta'
+           (PACKvp p))) \/
+     (?pat exp.
+       (mru = MRULE pat exp) /\
+       (val' = FAILvpf) /\
+       eval_pat pat sta env val sta' FAILvef)
+</PRE>
+
+<DT><STRONG>eval_dec_match_DEF</STRONG>
+<DD>
+<PRE>
+|- !dec sta env sta' env'.
+     eval_dec_match dec sta env sta' env' =
+     (?valbind VE.
+       (dec = VALdec valbind) /\
+       (env' = ENVep (ENV empty_strenv VE empty_exconenv)) /\
+       eval_valbind valbind sta env sta' (VARENVvep VE)) \/
+     (?valbind p.
+       (dec = VALdec valbind) /\
+       (env' = PACKep p) /\
+       eval_valbind valbind sta env sta' (PACKvep p)) \/
+     (?exbind EE.
+       (dec = EXCEPTdec exbind) /\
+       (env' = ENVep (ENV empty_strenv empty_varenv EE)) /\
+       eval_exbind exbind sta env sta' (EXCONENVeep EE)) \/
+     (?exbind p.
+       (dec = EXCEPTdec exbind) /\
+       (env' = PACKep p) /\
+       eval_exbind exbind sta env sta' (PACKeep p)) \/
+     (?dec1 dec2 E2.
+       (dec = LOCALdec dec1 dec2) /\
+       (env' = ENVep E2) /\
+       (?E1 s'.
+         eval_dec dec1 sta env s' (ENVep E1) /\
+         eval_dec dec2 s' (add_env env E1) sta' (ENVep E2))) \/
+     (?dec1 dec2 p.
+       (dec = LOCALdec dec1 dec2) /\
+       (env' = PACKep p) /\
+       eval_dec dec1 sta env sta' (PACKep p)) \/
+     (?dec1 dec2 p.
+       (dec = LOCALdec dec1 dec2) /\
+       (env' = PACKep p) /\
+       (?E1 s'.
+         eval_dec dec1 sta env s' (ENVep E1) /\
+         eval_dec dec2 s' (add_env env E1) sta' (PACKep p))) \/
+     (?longstrid_1_n E_1_n.
+       (dec = OPENdec longstrid_1_n) /\
+       (sta = sta') /\
+       (env' = ENVep (add_nonemptylist_env E_1_n)) /\
+       (nonempty_MAP (lookuplongstrid_env env) longstrid_1_n =
+        nonempty_MAP lift E_1_n)) \/
+     (dec = EMPTYdec) /\
+     (sta = sta') /\
+     (env' = ENVep (ENV empty_strenv empty_varenv empty_exconenv)) \/
+     (?dec1 dec2 E1 E2.
+       (dec = SEQdec dec1 dec2) /\
+       (env' = ENVep (add_env E1 E2)) /\
+       (?s'.
+         eval_dec dec1 sta env s' (ENVep E1) /\
+         eval_dec dec2 s' (add_env env E1) sta' (ENVep E2))) \/
+     (?dec1 dec2 p.
+       (dec = SEQdec dec1 dec2) /\
+       (env' = PACKep p) /\
+       eval_dec dec1 sta env sta' (PACKep p)) \/
+     (?dec1 dec2 p.
+       (dec = SEQdec dec1 dec2) /\
+       (env' = PACKep p) /\
+       (?E1 s'.
+         eval_dec dec1 sta env s' (ENVep E1) /\
+         eval_dec dec2 s' (add_env env E1) sta' (PACKep p)))
+</PRE>
+
+<DT><STRONG>eval_valbind_match_DEF</STRONG>
+<DD>
+<PRE>
+|- !val sta env sta' var.
+     eval_valbind_match val sta env sta' var =
+     (?pat exp VE.
+       (val = PLAINvalbind pat exp NONE) /\
+       (var = VARENVvep VE) /\
+       (?v s'.
+         eval_exp exp sta env s' (VALvp v) /\
+         eval_pat pat s' env v sta' (VARENVvef VE))) \/
+     (?pat exp p.
+       (val = PLAINvalbind pat exp NONE) /\
+       (var = PACKvep p) /\
+       eval_exp exp sta env sta' (PACKvp p)) \/
+     (?pat exp valbind VE VE'.
+       (val = PLAINvalbind pat exp (SOME valbind)) /\
+       (var = VARENVvep (add_varenv VE VE')) /\
+       (?v s2 s3.
+         eval_exp exp sta env s2 (VALvp v) /\
+         eval_pat pat s2 env v s3 (VARENVvef VE) /\
+         eval_valbind valbind s3 env sta' (VARENVvep VE'))) \/
+     (?pat exp valbind p.
+       (val = PLAINvalbind pat exp (SOME valbind)) /\
+       (var = PACKvep p) /\
+       eval_exp exp sta env sta' (PACKvp p)) \/
+     (?pat exp valbind p.
+       (val = PLAINvalbind pat exp (SOME valbind)) /\
+       (var = PACKvep p) /\
+       (?v VE s2 s3.
+         eval_exp exp sta env s2 (VALvp v) /\
+         eval_pat pat s2 env v s3 (VARENVvef VE) /\
+         eval_valbind valbind s3 env sta' (PACKvep p))) \/
+     (?pat exp.
+       (val = PLAINvalbind pat exp NONE) /\
+       (var = PACKvep (PACK (NAMEexval (EXNAME 8)))) /\
+       (?v s'.
+         eval_exp exp sta env s' (VALvp v) /\
+         eval_pat pat s' env v sta' FAILvef)) \/
+     (?pat exp valbind.
+       (val = PLAINvalbind pat exp (SOME valbind)) /\
+       (var = PACKvep (PACK (NAMEexval (EXNAME 8)))) /\
+       (?v s'.
+         eval_exp exp sta env s' (VALvp v) /\
+         eval_pat pat s' env v sta' FAILvef)) \/
+     (?valbind VE.
+       (val = RECvalbind valbind) /\
+       (var = VARENVvep (rec_varenv VE)) /\
+       eval_valbind valbind sta env sta' (VARENVvep VE)) \/
+     (?valbind p.
+       (val = RECvalbind valbind) /\
+       (var = PACKvep p) /\
+       eval_valbind valbind sta env sta' (PACKvep p))
+</PRE>
+
+</DL>
+
+
+<HR>
+<H1>Theorems</H1>
+<DL>
+<DT><STRONG>eval_exbind_match_thm</STRONG>
+<DD>
+<PRE>
+|- !eb s1 e s2 eep.
+     eval_exbind eb s1 e s2 eep ==>
+     (?excon en.
+       (eb = EXBIND1 excon NONE) /\
+       (eep = EXCONENVeep (insert_into_exconenv empty_exconenv excon en)) /\
+       (en = new_exname (STATE_arg2 s1)) /\
+       (s2 = add_exname en s1)) \/
+     (?excon eb' en EE.
+       (eb = EXBIND1 excon (SOME eb')) /\
+       (eep =
+        EXCONENVeep
+          (add_exconenv (insert_into_exconenv empty_exconenv excon en) EE)) /\
+       (?s'.
+         (en = new_exname (STATE_arg2 s1)) /\
+         (s' = add_exname en s1) /\
+         eval_exbind eb' s' e s2 (EXCONENVeep EE))) \/
+     (?excon eb' p.
+       (eb = EXBIND1 excon (SOME eb')) /\
+       (eep = PACKeep p) /\
+       (?en s'.
+         (en = new_exname (STATE_arg2 s1)) /\
+         (s' = add_exname en s1) /\
+         eval_exbind eb' s' e s2 (PACKeep p))) \/
+     (?excon longexcon en.
+       (eb = EXBIND2 excon longexcon NONE) /\
+       (s1 = s2) /\
+       (eep = EXCONENVeep (insert_into_exconenv empty_exconenv excon en)) /\
+       (lookuplongexcon_env e longexcon = lift en)) \/
+     (?excon longexcon eb' en EE.
+       (eb = EXBIND2 excon longexcon (SOME eb')) /\
+       (eep =
+        EXCONENVeep
+          (add_exconenv (insert_into_exconenv empty_exconenv excon en) EE)) /\
+       (lookuplongexcon_env e longexcon = lift en) /\
+       eval_exbind eb' s1 e s2 (EXCONENVeep EE)) \/
+     (?excon longexcon eb' p.
+       (eb = EXBIND2 excon longexcon (SOME eb')) /\
+       (eep = PACKeep p) /\
+       (?en.
+         (lookuplongexcon_env e longexcon = lift en) /\
+         eval_exbind eb' s1 e s2 (PACKeep p)))
+</PRE>
+
+<DT><STRONG>eval_exbind_det</STRONG>
+<DD>
+<PRE>
+|- !eb s1 E s2 EEp s2' EEp'.
+     eval_exbind eb s1 E s2 EEp /\ eval_exbind eb s1 E s2' EEp' ==>
+     (s2 = s2') /\ (EEp = EEp')
+</PRE>
+
+<DT><STRONG>eval_atpat_match_thm</STRONG>
+<DD>
+<PRE>
+|- !ap s1 e v s2 vef.
+     eval_atpat ap s1 e v s2 vef ==>
+     (ap = WILDCARDatpat) /\ (s1 = s2) /\ (vef = VARENVvef empty_varenv) \/
+     (?scon.
+       (ap = SCONatpat scon) /\
+       (s1 = s2) /\
+       (vef = VARENVvef empty_varenv) /\
+       (v = SVALval (value_of scon))) \/
+     (?scon.
+       (ap = SCONatpat scon) /\
+       (s1 = s2) /\
+       (vef = FAILvef) /\
+       ~(v = SVALval (value_of scon))) \/
+     (?var.
+       (ap = VARatpat var) /\
+       (s1 = s2) /\
+       (vef = VARENVvef (insert_into_varenv empty_varenv var v))) \/
+     (?longcon.
+       (ap = CONatpat longcon) /\
+       (s1 = s2) /\
+       (vef = VARENVvef empty_varenv) /\
+       (v = CONval (long_base longcon))) \/
+     (?longcon.
+       (ap = CONatpat longcon) /\
+       (s1 = s2) /\
+       (vef = FAILvef) /\
+       ~(v = CONval (long_base longcon))) \/
+     (?longexcon en.
+       (ap = EXCONatpat longexcon) /\
+       (s1 = s2) /\
+       (v = EXVALval (NAMEexval en)) /\
+       (vef = VARENVvef empty_varenv) /\
+       (lookuplongexcon_env e longexcon = lift en)) \/
+     (?longexcon en.
+       (ap = EXCONatpat longexcon) /\
+       (s1 = s2) /\
+       (v = EXVALval (NAMEexval en)) /\
+       (vef = FAILvef) /\
+       (?en'. (lookuplongexcon_env e longexcon = lift en') /\ ~(en = en'))) \/
+     (ap = RECORDatpat NONE) /\
+     (s1 = s2) /\
+     (vef = VARENVvef empty_varenv) /\
+     (v = RECORDval empty_record) \/
+     (?VE patrow.
+       (ap = RECORDatpat (SOME patrow)) /\
+       (vef = VARENVvef (add_varenv empty_varenv VE)) /\
+       (?r.
+         (v = RECORDval (add_record empty_record r)) /\
+         eval_patrow patrow s1 e r s2 (VARENVvef VE))) \/
+     (?patrow.
+       (ap = RECORDatpat (SOME patrow)) /\
+       (vef = FAILvef) /\
+       (?r.
+         (v = RECORDval (add_record empty_record r)) /\
+         eval_patrow patrow s1 e r s2 FAILvef)) \/
+     (?pat. (ap = PARatpat pat) /\ eval_pat pat s1 e v s2 vef)
+</PRE>
+
+<DT><STRONG>eval_pat_match_thm</STRONG>
+<DD>
+<PRE>
+|- !p s1 e v s2 vef.
+     eval_pat p s1 e v s2 vef ==>
+     (?atpat. (p = ATPATpat atpat) /\ eval_atpat atpat s1 e v s2 vef) \/
+     (?longcon atpat.
+       (p = CONpat longcon atpat) /\
+       (?con v'.
+         (long_base longcon = con) /\
+         ~(con = CON "ref") /\
+         (v = APPCONval con v') /\
+         eval_atpat atpat s1 e v' s2 vef)) \/
+     (?longcon atpat.
+       (p = CONpat longcon atpat) /\
+       (s1 = s2) /\
+       (vef = FAILvef) /\
+       (?con.
+         (long_base longcon = con) /\
+         ~(con = CON "ref") /\
+         (!v'. ~(v = APPCONval con v')))) \/
+     (?longexcon atpat.
+       (p = EXCONpat longexcon atpat) /\
+       (?v' en.
+         (lookuplongexcon_env e longexcon = lift en) /\
+         (v = EXVALval (NAMEVALexval en v')) /\
+         eval_atpat atpat s1 e v' s2 vef)) \/
+     (?longexcon atpat.
+       (p = EXCONpat longexcon atpat) /\
+       (s1 = s2) /\
+       (vef = FAILvef) /\
+       (?en.
+         (lookuplongexcon_env e longexcon = lift en) /\
+         (!v'. ~(v = EXVALval (NAMEVALexval en v'))))) \/
+     (?a atpat.
+       (p = CONpat (BASE (CON "ref")) atpat) /\
+       (s1 = s2) /\
+       (v = ADDRval a) /\
+       (?v.
+         (lookupaddr_state s2 a = lift v) /\
+         eval_atpat atpat s2 e v s2 vef)) \/
+     (?var pat VE.
+       (p = LAYEREDpat var pat) /\
+       (vef =
+        VARENVvef (add_varenv (insert_into_varenv empty_varenv var v) VE)) /\
+       eval_pat pat s1 e v s2 (VARENVvef VE)) \/
+     (?var pat.
+       (p = LAYEREDpat var pat) /\
+       (vef = FAILvef) /\
+       eval_pat pat s1 e v s2 FAILvef)
+</PRE>
+
+<DT><STRONG>eval_patrow_match_thm</STRONG>
+<DD>
+<PRE>
+|- !pr s1 e r s2 vef.
+     eval_patrow pr s1 e r s2 vef ==>
+     (pr = DOTDOTDOT) /\ (s1 = s2) /\ (vef = VARENVvef empty_varenv) \/
+     (?lab pat.
+       (pr = PATROW lab pat NONE) /\
+       (vef = FAILvef) /\
+       eval_pat pat s1 e (lower (lookup_label r lab)) s2 FAILvef) \/
+     (?lab pat patrow.
+       (pr = PATROW lab pat (SOME patrow)) /\
+       (vef = FAILvef) /\
+       eval_pat pat s1 e (lower (lookup_label r lab)) s2 FAILvef) \/
+     (?lab pat VE.
+       (pr = PATROW lab pat NONE) /\
+       (vef = VARENVvef VE) /\
+       eval_pat pat s1 e (lower (lookup_label r lab)) s2 (VARENVvef VE)) \/
+     (?lab pat patrow VE VE'.
+       (pr = PATROW lab pat (SOME patrow)) /\
+       (vef = VARENVvef (add_varenv VE VE')) /\
+       (?s'.
+         eval_pat pat s1 e (lower (lookup_label r lab)) s' (VARENVvef VE) /\
+         eval_patrow patrow s' e r s2 (VARENVvef VE'))) \/
+     (?lab pat patrow.
+       (pr = PATROW lab pat (SOME patrow)) /\
+       (vef = FAILvef) /\
+       (?s' VE.
+         eval_pat pat s1 e (lower (lookup_label r lab)) s' (VARENVvef VE) /\
+         eval_patrow patrow s' e r s2 FAILvef))
+</PRE>
+
+<DT><STRONG>eval_atpat_det</STRONG>
+<DD>
+<PRE>
+|- !ap s1 E v s2 vef s2' vef'.
+     eval_atpat ap s1 E v s2 vef /\ eval_atpat ap s1 E v s2' vef' ==>
+     (s2 = s2') /\ (vef = vef')
+</PRE>
+
+<DT><STRONG>eval_pat_det</STRONG>
+<DD>
+<PRE>
+|- !p s1 E v s2 vef s2' vef'.
+     eval_pat p s1 E v s2 vef /\ eval_pat p s1 E v s2' vef' ==>
+     (s2 = s2') /\ (vef = vef')
+</PRE>
+
+<DT><STRONG>eval_patrow_det</STRONG>
+<DD>
+<PRE>
+|- !pr s1 E r s2 vef s2' vef'.
+     eval_patrow pr s1 E r s2 vef /\ eval_patrow pr s1 E r s2' vef' ==>
+     (s2 = s2') /\ (vef = vef')
+</PRE>
+
+<DT><STRONG>eval_atexp_match_thm</STRONG>
+<DD>
+<PRE>
+|- !ae s1 e s2 vp.
+     eval_atexp ae s1 e s2 vp ==>
+     (?scon.
+       (ae = SCONatexp scon) /\
+       (s1 = s2) /\
+       (vp = VALvp (SVALval (value_of scon)))) \/
+     (?longvar v.
+       (ae = VARatexp longvar) /\
+       (s1 = s2) /\
+       (vp = VALvp v) /\
+       (lookuplongvar_env e longvar = lift v)) \/
+     (?longcon con.
+       (ae = CONatexp longcon) /\
+       (s1 = s2) /\
+       (vp = VALvp (CONval con)) /\
+       (long_base longcon = con)) \/
+     (?en longexcon.
+       (ae = EXCONatexp longexcon) /\
+       (s1 = s2) /\
+       (vp = VALvp (EXVALval (NAMEexval en))) /\
+       (lookuplongexcon_env e longexcon = lift en)) \/
+     (ae = RECORDatexp NONE) /\
+     (s1 = s2) /\
+     (vp = VALvp (RECORDval empty_record)) \/
+     (?exprow r.
+       (ae = RECORDatexp (SOME exprow)) /\
+       (vp = VALvp (RECORDval (add_record empty_record r))) /\
+       eval_exprow exprow s1 e s2 (RECORDrp r)) \/
+     (?exprow p.
+       (ae = RECORDatexp (SOME exprow)) /\
+       (vp = PACKvp p) /\
+       eval_exprow exprow s1 e s2 (PACKrp p)) \/
+     (?dec exp v.
+       (ae = LETatexp dec exp) /\
+       (vp = VALvp v) /\
+       (?s' E'.
+         eval_dec dec s1 e s' (ENVep E') /\
+         eval_exp exp s' (add_env e E') s2 (VALvp v))) \/
+     (?dec exp p.
+       (ae = LETatexp dec exp) /\
+       (vp = PACKvp p) /\
+       eval_dec dec s1 e s2 (PACKep p)) \/
+     (?dec exp p.
+       (ae = LETatexp dec exp) /\
+       (vp = PACKvp p) /\
+       (?s' E'.
+         eval_dec dec s1 e s' (ENVep E') /\
+         eval_exp exp s' (add_env e E') s2 (PACKvp p))) \/
+     (?exp. (ae = PARatexp exp) /\ eval_exp exp s1 e s2 vp)
+</PRE>
+
+<DT><STRONG>eval_exprow_match_thm</STRONG>
+<DD>
+<PRE>
+|- !er s1 e s2 rp.
+     eval_exprow er s1 e s2 rp ==>
+     (?lab exp v.
+       (er = EXPROW lab exp NONE) /\
+       (rp = RECORDrp (insert_into_record empty_record lab v)) /\
+       eval_exp exp s1 e s2 (VALvp v)) \/
+     (?lab exp exprow_op p.
+       (er = EXPROW lab exp exprow_op) /\
+       (rp = PACKrp p) /\
+       eval_exp exp s1 e s2 (PACKvp p)) \/
+     (?lab exp exprow v r.
+       (er = EXPROW lab exp (SOME exprow)) /\
+       (rp =
+        RECORDrp (add_record (insert_into_record empty_record lab v) r)) /\
+       (?s'.
+         eval_exp exp s1 e s' (VALvp v) /\
+         eval_exprow exprow s' e s2 (RECORDrp r))) \/
+     (?lab exp exprow p.
+       (er = EXPROW lab exp (SOME exprow)) /\
+       (rp = PACKrp p) /\
+       (?s' v.
+         eval_exp exp s1 e s' (VALvp v) /\
+         eval_exprow exprow s' e s2 (PACKrp p)))
+</PRE>
+
+<DT><STRONG>eval_exp_match_thm</STRONG>
+<DD>
+<PRE>
+|- !ex s1 e s2 vp.
+     eval_exp ex s1 e s2 vp ==>
+     (?atexp. (ex = ATEXPexp atexp) /\ eval_atexp atexp s1 e s2 vp) \/
+     (?exp atexp c v.
+       (ex = APPexp exp atexp) /\
+       (vp = VALvp (APPCONval c v)) /\
+       (?s'.
+         eval_exp exp s1 e s' (VALvp (CONval c)) /\
+         ~(c = CON "ref") /\
+         eval_atexp atexp s' e s2 (VALvp v))) \/
+     (?exp atexp p.
+       (ex = APPexp exp atexp) /\
+       (vp = PACKvp p) /\
+       eval_exp exp s1 e s2 (PACKvp p)) \/
+     (?exp atexp p.
+       (ex = APPexp exp atexp) /\
+       (vp = PACKvp p) /\
+       (?s' c.
+         eval_exp exp s1 e s' (VALvp (CONval c)) /\
+         ~(c = CON "ref") /\
+         eval_atexp atexp s' e s2 (PACKvp p))) \/
+     (?exp atexp en v.
+       (ex = APPexp exp atexp) /\
+       (vp = VALvp (EXVALval (NAMEVALexval en v))) /\
+       (?s'.
+         eval_exp exp s1 e s' (VALvp (EXVALval (NAMEexval en))) /\
+         eval_atexp atexp s' e s2 (VALvp v))) \/
+     (?exp atexp p.
+       (ex = APPexp exp atexp) /\
+       (vp = PACKvp p) /\
+       (?s' en.
+         eval_exp exp s1 e s' (VALvp (EXVALval (NAMEexval en))) /\
+         eval_atexp atexp s' e s2 (PACKvp p))) \/
+     (?s'' exp atexp a v.
+       (ex = APPexp exp atexp) /\
+       (s2 = insert_into_state_mem s'' a v) /\
+       (vp = VALvp (ADDRval a)) /\
+       (?s'.
+         eval_exp exp s1 e s' (VALvp (CONval (CON "ref"))) /\
+         eval_atexp atexp s' e s'' (VALvp v) /\
+         (a = new_addr s''))) \/
+     (?exp atexp p.
+       (ex = APPexp exp atexp) /\
+       (vp = PACKvp p) /\
+       (?s'.
+         eval_exp exp s1 e s' (VALvp (CONval (CON "ref"))) /\
+         eval_atexp atexp s' e s2 (PACKvp p))) \/
+     (?s'' exp atexp a v.
+       (ex = APPexp exp atexp) /\
+       (s2 = insert_into_state_mem s'' a v) /\
+       (vp = VALvp (RECORDval empty_record)) /\
+       (?s'.
+         eval_exp exp s1 e s' (VALvp ASSGval) /\
+         eval_atexp atexp s' e s''
+           (VALvp
+             (RECORDval
+               (insert_into_record
+                  (insert_into_record empty_record (LABEL "1") (ADDRval a))
+                  (LABEL "2")
+                 v))))) \/
+     (?exp atexp p.
+       (ex = APPexp exp atexp) /\
+       (vp = PACKvp p) /\
+       (?s'.
+         eval_exp exp s1 e s' (VALvp ASSGval) /\
+         eval_atexp atexp s' e s2 (PACKvp p))) \/
+     (?exp atexp.
+       (ex = APPexp exp atexp) /\
+       (?s' b v.
+         eval_exp exp s1 e s' (VALvp (BASval b)) /\
+         eval_atexp atexp s' e s2 (VALvp v) /\
+         (apply b v = vp))) \/
+     (?exp atexp p.
+       (ex = APPexp exp atexp) /\
+       (vp = PACKvp p) /\
+       (?s' b.
+         eval_exp exp s1 e s' (VALvp (BASval b)) /\
+         eval_atexp atexp s' e s2 (PACKvp p))) \/
+     (?exp atexp v'.
+       (ex = APPexp exp atexp) /\
+       (vp = VALvp v') /\
+       (?s2' s3 match E' VE v.
+         eval_exp exp s1 e s2' (VALvp (CLOSUREval (CLOSURE match E' VE))) /\
+         eval_atexp atexp s2' e s3 (VALvp v) /\
+         eval_match match s3
+           (add_env E' (ENV empty_strenv (rec_varenv VE) empty_exconenv))
+           v
+           s2
+           (VALvpf v'))) \/
+     (?exp atexp p.
+       (ex = APPexp exp atexp) /\
+       (vp = PACKvp p) /\
+       (?s2' match E' VE.
+         eval_exp exp s1 e s2' (VALvp (CLOSUREval (CLOSURE match E' VE))) /\
+         eval_atexp atexp s2' e s2 (PACKvp p))) \/
+     (?exp atexp p.
+       (ex = APPexp exp atexp) /\
+       (vp = PACKvp p) /\
+       (?s2' s3 match E' VE v.
+         eval_exp exp s1 e s2' (VALvp (CLOSUREval (CLOSURE match E' VE))) /\
+         eval_atexp atexp s2' e s3 (VALvp v) /\
+         eval_match match s3
+           (add_env E' (ENV empty_strenv (rec_varenv VE) empty_exconenv))
+           v
+           s2
+           (PACKvpf p))) \/
+     (?exp atexp.
+       (ex = APPexp exp atexp) /\
+       (vp = PACKvp (PACK (NAMEexval (EXNAME 7)))) /\
+       (?s2' s3 match E' VE v.
+         eval_exp exp s1 e s2' (VALvp (CLOSUREval (CLOSURE match E' VE))) /\
+         eval_atexp atexp s2' e s3 (VALvp v) /\
+         eval_match match s3
+           (add_env E' (ENV empty_strenv (rec_varenv VE) empty_exconenv))
+           v
+           s2
+           FAILvpf)) \/
+     (?exp match v.
+       (ex = HANDLEexp exp match) /\
+       (vp = VALvp v) /\
+       eval_exp exp s1 e s2 (VALvp v)) \/
+     (?exp match v.
+       (ex = HANDLEexp exp match) /\
+       (vp = VALvp v) /\
+       (?s' e'.
+         eval_exp exp s1 e s' (PACKvp (PACK e')) /\
+         eval_match match s' e (EXVALval e') s2 (VALvpf v))) \/
+     (?exp match p.
+       (ex = HANDLEexp exp match) /\
+       (vp = PACKvp p) /\
+       (?s' e'.
+         eval_exp exp s1 e s' (PACKvp (PACK e')) /\
+         eval_match match s' e (EXVALval e') s2 (PACKvpf p))) \/
+     (?exp match e'.
+       (ex = HANDLEexp exp match) /\
+       (vp = PACKvp (PACK e')) /\
+       (?s'.
+         eval_exp exp s1 e s' (PACKvp (PACK e')) /\
+         eval_match match s' e (EXVALval e') s2 FAILvpf)) \/
+     (?exp e'.
+       (ex = RAISEexp exp) /\
+       (vp = PACKvp (PACK e')) /\
+       eval_exp exp s1 e s2 (VALvp (EXVALval e'))) \/
+     (?exp p.
+       (ex = RAISEexp exp) /\
+       (vp = PACKvp p) /\
+       eval_exp exp s1 e s2 (PACKvp p)) \/
+     (?match.
+       (ex = FNexp match) /\
+       (s1 = s2) /\
+       (vp = VALvp (CLOSUREval (CLOSURE match e empty_varenv))))
+</PRE>
+
+<DT><STRONG>eval_match_match_thm</STRONG>
+<DD>
+<PRE>
+|- !m s1 v e s2 vpf.
+     eval_match m s1 v e s2 vpf ==>
+     (?mrule match_op v'.
+       (m = MATCH mrule match_op) /\
+       (vpf = VALvpf v') /\
+       eval_mrule mrule s1 v e s2 (VALvpf v')) \/
+     (?mrule match_op p.
+       (m = MATCH mrule match_op) /\
+       (vpf = PACKvpf p) /\
+       eval_mrule mrule s1 v e s2 (PACKvpf p)) \/
+     (?mrule.
+       (m = MATCH mrule NONE) /\
+       (vpf = FAILvpf) /\
+       eval_mrule mrule s1 v e s2 FAILvpf) \/
+     (?mrule match.
+       (m = MATCH mrule (SOME match)) /\
+       (?s'.
+         eval_mrule mrule s1 v e s' FAILvpf /\
+         eval_match match s' v e s2 vpf))
+</PRE>
+
+<DT><STRONG>eval_mrule_match_thm</STRONG>
+<DD>
+<PRE>
+|- !mr s1 v e s2 vpf.
+     eval_mrule mr s1 v e s2 vpf ==>
+     (?pat exp v'.
+       (mr = MRULE pat exp) /\
+       (vpf = VALvpf v') /\
+       (?s' VE.
+         eval_pat pat s1 v e s' (VARENVvef VE) /\
+         eval_exp exp s' (add_env v (ENV empty_strenv VE empty_exconenv)) s2
+           (VALvp v'))) \/
+     (?pat exp p.
+       (mr = MRULE pat exp) /\
+       (vpf = PACKvpf p) /\
+       (?s' VE.
+         eval_pat pat s1 v e s' (VARENVvef VE) /\
+         eval_exp exp s' (add_env v (ENV empty_strenv VE empty_exconenv)) s2
+           (PACKvp p))) \/
+     (?pat exp.
+       (mr = MRULE pat exp) /\
+       (vpf = FAILvpf) /\
+       eval_pat pat s1 v e s2 FAILvef)
+</PRE>
+
+<DT><STRONG>eval_dec_match_thm</STRONG>
+<DD>
+<PRE>
+|- !d s1 e s2 ep.
+     eval_dec d s1 e s2 ep ==>
+     (?valbind VE.
+       (d = VALdec valbind) /\
+       (ep = ENVep (ENV empty_strenv VE empty_exconenv)) /\
+       eval_valbind valbind s1 e s2 (VARENVvep VE)) \/
+     (?valbind p.
+       (d = VALdec valbind) /\
+       (ep = PACKep p) /\
+       eval_valbind valbind s1 e s2 (PACKvep p)) \/
+     (?exbind EE.
+       (d = EXCEPTdec exbind) /\
+       (ep = ENVep (ENV empty_strenv empty_varenv EE)) /\
+       eval_exbind exbind s1 e s2 (EXCONENVeep EE)) \/
+     (?exbind p.
+       (d = EXCEPTdec exbind) /\
+       (ep = PACKep p) /\
+       eval_exbind exbind s1 e s2 (PACKeep p)) \/
+     (?dec1 dec2 E2.
+       (d = LOCALdec dec1 dec2) /\
+       (ep = ENVep E2) /\
+       (?E1 s'.
+         eval_dec dec1 s1 e s' (ENVep E1) /\
+         eval_dec dec2 s' (add_env e E1) s2 (ENVep E2))) \/
+     (?dec1 dec2 p.
+       (d = LOCALdec dec1 dec2) /\
+       (ep = PACKep p) /\
+       eval_dec dec1 s1 e s2 (PACKep p)) \/
+     (?dec1 dec2 p.
+       (d = LOCALdec dec1 dec2) /\
+       (ep = PACKep p) /\
+       (?E1 s'.
+         eval_dec dec1 s1 e s' (ENVep E1) /\
+         eval_dec dec2 s' (add_env e E1) s2 (PACKep p))) \/
+     (?longstrid_1_n E_1_n.
+       (d = OPENdec longstrid_1_n) /\
+       (s1 = s2) /\
+       (ep = ENVep (add_nonemptylist_env E_1_n)) /\
+       (nonempty_MAP (lookuplongstrid_env e) longstrid_1_n =
+        nonempty_MAP lift E_1_n)) \/
+     (d = EMPTYdec) /\
+     (s1 = s2) /\
+     (ep = ENVep (ENV empty_strenv empty_varenv empty_exconenv)) \/
+     (?dec1 dec2 E1 E2.
+       (d = SEQdec dec1 dec2) /\
+       (ep = ENVep (add_env E1 E2)) /\
+       (?s'.
+         eval_dec dec1 s1 e s' (ENVep E1) /\
+         eval_dec dec2 s' (add_env e E1) s2 (ENVep E2))) \/
+     (?dec1 dec2 p.
+       (d = SEQdec dec1 dec2) /\
+       (ep = PACKep p) /\
+       eval_dec dec1 s1 e s2 (PACKep p)) \/
+     (?dec1 dec2 p.
+       (d = SEQdec dec1 dec2) /\
+       (ep = PACKep p) /\
+       (?E1 s'.
+         eval_dec dec1 s1 e s' (ENVep E1) /\
+         eval_dec dec2 s' (add_env e E1) s2 (PACKep p)))
+</PRE>
+
+<DT><STRONG>eval_valbind_match_thm</STRONG>
+<DD>
+<PRE>
+|- !vb s1 e s2 vep.
+     eval_valbind vb s1 e s2 vep ==>
+     (?pat exp VE.
+       (vb = PLAINvalbind pat exp NONE) /\
+       (vep = VARENVvep VE) /\
+       (?v s'.
+         eval_exp exp s1 e s' (VALvp v) /\
+         eval_pat pat s' e v s2 (VARENVvef VE))) \/
+     (?pat exp p.
+       (vb = PLAINvalbind pat exp NONE) /\
+       (vep = PACKvep p) /\
+       eval_exp exp s1 e s2 (PACKvp p)) \/
+     (?pat exp valbind VE VE'.
+       (vb = PLAINvalbind pat exp (SOME valbind)) /\
+       (vep = VARENVvep (add_varenv VE VE')) /\
+       (?v s2' s3.
+         eval_exp exp s1 e s2' (VALvp v) /\
+         eval_pat pat s2' e v s3 (VARENVvef VE) /\
+         eval_valbind valbind s3 e s2 (VARENVvep VE'))) \/
+     (?pat exp valbind p.
+       (vb = PLAINvalbind pat exp (SOME valbind)) /\
+       (vep = PACKvep p) /\
+       eval_exp exp s1 e s2 (PACKvp p)) \/
+     (?pat exp valbind p.
+       (vb = PLAINvalbind pat exp (SOME valbind)) /\
+       (vep = PACKvep p) /\
+       (?v VE s2' s3.
+         eval_exp exp s1 e s2' (VALvp v) /\
+         eval_pat pat s2' e v s3 (VARENVvef VE) /\
+         eval_valbind valbind s3 e s2 (PACKvep p))) \/
+     (?pat exp.
+       (vb = PLAINvalbind pat exp NONE) /\
+       (vep = PACKvep (PACK (NAMEexval (EXNAME 8)))) /\
+       (?v s'.
+         eval_exp exp s1 e s' (VALvp v) /\ eval_pat pat s' e v s2 FAILvef)) \/
+     (?pat exp valbind.
+       (vb = PLAINvalbind pat exp (SOME valbind)) /\
+       (vep = PACKvep (PACK (NAMEexval (EXNAME 8)))) /\
+       (?v s'.
+         eval_exp exp s1 e s' (VALvp v) /\ eval_pat pat s' e v s2 FAILvef)) \/
+     (?valbind VE.
+       (vb = RECvalbind valbind) /\
+       (vep = VARENVvep (rec_varenv VE)) /\
+       eval_valbind valbind s1 e s2 (VARENVvep VE)) \/
+     (?valbind p.
+       (vb = RECvalbind valbind) /\
+       (vep = PACKvep p) /\
+       eval_valbind valbind s1 e s2 (PACKvep p))
+</PRE>
+
+<DT><STRONG>eval_atexp_det</STRONG>
+<DD>
+<PRE>
+|- !ae s1 e s2 vp s2' vp'.
+     eval_atexp ae s1 e s2 vp /\ eval_atexp ae s1 e s2' vp' ==>
+     (s2 = s2') /\ (vp = vp')
+</PRE>
+
+<DT><STRONG>eval_exprow_det</STRONG>
+<DD>
+<PRE>
+|- !er s1 e s2 rp s2' rp'.
+     eval_exprow er s1 e s2 rp /\ eval_exprow er s1 e s2' rp' ==>
+     (s2 = s2') /\ (rp = rp')
+</PRE>
+
+<DT><STRONG>eval_exp_det</STRONG>
+<DD>
+<PRE>
+|- !ex s1 e s2 vp s2' vp'.
+     eval_exp ex s1 e s2 vp /\ eval_exp ex s1 e s2' vp' ==>
+     (s2 = s2') /\ (vp = vp')
+</PRE>
+
+<DT><STRONG>eval_match_det</STRONG>
+<DD>
+<PRE>
+|- !m s1 v e s2 vpf s2' vpf'.
+     eval_match m s1 v e s2 vpf /\ eval_match m s1 v e s2' vpf' ==>
+     (s2 = s2') /\ (vpf = vpf')
+</PRE>
+
+<DT><STRONG>eval_mrule_det</STRONG>
+<DD>
+<PRE>
+|- !mr s1 v e s2 vpf s2' vpf'.
+     eval_mrule mr s1 v e s2 vpf /\ eval_mrule mr s1 v e s2' vpf' ==>
+     (s2 = s2') /\ (vpf = vpf')
+</PRE>
+
+<DT><STRONG>eval_dec_det</STRONG>
+<DD>
+<PRE>
+|- !d s1 e s2 ep s2' ep'.
+     eval_dec d s1 e s2 ep /\ eval_dec d s1 e s2' ep' ==>
+     (s2 = s2') /\ (ep = ep')
+</PRE>
+
+<DT><STRONG>eval_valbind_det</STRONG>
+<DD>
+<PRE>
+|- !vb s1 e s2 vep s2' vep'.
+     eval_valbind vb s1 e s2 vep /\ eval_valbind vb s1 e s2' vep' ==>
+     (s2 = s2') /\ (vep = vep')
+</PRE>
+
+</DL>
+
+
+<HR>

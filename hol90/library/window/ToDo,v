@@ -1,0 +1,119 @@
+head	1.1;
+branch	1.1.1;
+access;
+symbols
+	HOL97:1.1.1.1.0.6
+	bpHOL97:1.1.1.1
+	hol90_9_alpha:1.1.1.1
+	hol90_pre8_for_multiple_compilers:1.1.1.1.0.4
+	hol90_pre8_after_donalds_separate_compilation_changes:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	95.10.16.13.32.45;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.32.45;	author rjb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@Work the RCS Version number into the Manual.
+
+Make UNDO take a number: the number of steps to undo.
+Make REDO take a number: the number of steps to redo.
+
+Add a user level command to set the history size of the current stack.
+Add a user level comand to set the default history size.
+
+Add a SET_CURRENT_STACK command that takes a stack and makes it the
+current stack.  This can then be used in conjunction with 
+CURRENT_STACK to save and restore the proof state.
+
+Move the definition of "boundin" so it can be hidden.
+
+Move the definition of prove_hyp so it can be hidden.
+
+Make END_STACK_TAC Take no parameter, or rather, make it take the sort of
+parameter that is usually handed to a tactic and hand it on that way we 
+wont have to call it with ().
+
+Change the printing of the stack so that it prints "Window: depth" before
+the stack.
+
+The window rules for conditionals should be such that when opening
+a subwindow on A in if(A,B,C) we can assume that ~(B=C).
+
+Redo the core of the system so that the functions match_transform_win,
+convert_win, rule_win, thm_rule_win, foc_rule_win, tactic_win
+are cut out of the core and the uppercase versions are implemented directly
+in terms of transform_win.
+
+Give it to Laurent to port the Centaur front end.
+
+Most window inference rules can be captured by theorems of the form
+(|- (A ==> (f r f')) ==> (F f) R (F f'))
+Write a function that takes theorems of that form a returns an inference
+rule.
+Use it to replace much of the window close rule code. 
+You should even be able to wrap up the quantifier window rules in a therem
+if the generalised over the bound variable on the top line.
+
+Make it so that adding realtions gives them an identifier so they can
+be deleted later.   Maybe tie window rules into this relation too so they
+can be deleted with the relation.
+
+Make it so individual signal handlers have and id so they can be dropped one
+at a time.
+
+Speed up weaken by making weak_table store the theorem too.
+
+Make it so you can tell the system that certain relations are oposits i.e.
+be able to add the formula "!x y. x ==> y = y <== x".   Then let transform
+window be able swap the sence of a theorem to match the sence of the 
+window.
+OR
+Make it so that instead of there being two relations i.e. ==> and <==, there
+is just one + a concept of sence of either + or -.
+
+Redo win.sml with a new ADT (a b stack) (window close stack)
+
+Use the module feature of SML to reduce the number of global bindings made.
+
+Rename "add_weak" to "add_stronger", read the intro section of the manual and
+you will realise that it makes more sence.
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

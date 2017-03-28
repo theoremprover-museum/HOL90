@@ -1,0 +1,156 @@
+<TITLE>Theory: word_num</TITLE>
+<H1>Theory: word_num</H1>
+<H1>Parents</H1>
+    <UL>
+    <LI><A HREF = "word_base.html"><STRONG>word_base</STRONG></A>
+    </UL>
+
+
+<HR>
+<H1>Type constants</H1>
+    <UL>
+    
+    </UL>
+
+
+<HR>
+<H1>Term constants</H1>
+    <UL>
+    <LI><STRONG>LVAL</STRONG><EM>:('a -> num) -> num -> 'a list -> num</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>NVAL</STRONG><EM>:('a -> num) -> num -> 'a word -> num</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>NLIST</STRONG><EM>:num -> (num -> 'a) -> num -> num ->
+                                   'a list</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>NWORD</STRONG><EM>:num -> (num -> 'a) -> num -> num ->
+                                   'a word</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    </UL>
+
+
+<HR>
+<H1>Axioms</H1>
+<DL>
+
+</DL>
+
+
+<HR>
+<H1>Definitions</H1>
+<DL>
+<DT><STRONG>LVAL_DEF</STRONG>
+<DD>
+<PRE>
+|- !f b l. LVAL f b l = FOLDL (\e x. b * e + f x) 0 l
+</PRE>
+
+<DT><STRONG>NVAL_DEF</STRONG>
+<DD>
+<PRE>
+|- !f b l. NVAL f b (WORD l) = LVAL f b l
+</PRE>
+
+<DT><STRONG>NLIST_DEF</STRONG>
+<DD>
+<PRE>
+|- (!frep b m. NLIST 0 frep b m = []) /\
+   (!n frep b m.
+     NLIST (SUC n) frep b m =
+     SNOC (frep (m MOD b)) (NLIST n frep b (m DIV b)))
+</PRE>
+
+<DT><STRONG>NWORD_DEF</STRONG>
+<DD>
+<PRE>
+|- !n frep b m. NWORD n frep b m = WORD (NLIST n frep b m)
+</PRE>
+
+</DL>
+
+
+<HR>
+<H1>Theorems</H1>
+<DL>
+<DT><STRONG>LVAL</STRONG>
+<DD>
+<PRE>
+|- (!f b. LVAL f b [] = 0) /\
+   (!l f b x. LVAL f b (CONS x l) = f x * b EXP LENGTH l + LVAL f b l)
+</PRE>
+
+<DT><STRONG>LVAL_SNOC</STRONG>
+<DD>
+<PRE>
+|- !l h f b. LVAL f b (SNOC h l) = LVAL f b l * b + f h
+</PRE>
+
+<DT><STRONG>LVAL_MAX</STRONG>
+<DD>
+<PRE>
+|- !l f b. (!x. f x < b) ==> LVAL f b l < b EXP LENGTH l
+</PRE>
+
+<DT><STRONG>NVAL_MAX</STRONG>
+<DD>
+<PRE>
+|- !f b. (!x. f x < b) ==> (!n. !w ::(PWORDLEN n). NVAL f b w < b EXP n)
+</PRE>
+
+<DT><STRONG>NVAL0</STRONG>
+<DD>
+<PRE>
+|- !f b. NVAL f b (WORD []) = 0
+</PRE>
+
+<DT><STRONG>NVAL1</STRONG>
+<DD>
+<PRE>
+|- !f b x. NVAL f b (WORD [x]) = f x
+</PRE>
+
+<DT><STRONG>NVAL_WORDLEN_0</STRONG>
+<DD>
+<PRE>
+|- !w ::(PWORDLEN 0). !fv r. NVAL fv r w = 0
+</PRE>
+
+<DT><STRONG>NVAL_WCAT1</STRONG>
+<DD>
+<PRE>
+|- !w f b x. NVAL f b (WCAT (w,WORD [x])) = NVAL f b w * b + f x
+</PRE>
+
+<DT><STRONG>NVAL_WCAT2</STRONG>
+<DD>
+<PRE>
+|- !n.
+     !w ::(PWORDLEN n).
+       !f b x. NVAL f b (WCAT (WORD [x],w)) = f x * b EXP n + NVAL f b w
+</PRE>
+
+<DT><STRONG>NVAL_WCAT</STRONG>
+<DD>
+<PRE>
+|- !n m.
+     !w1 ::(PWORDLEN n).
+       !w2 ::(PWORDLEN m).
+         !f b. NVAL f b (WCAT (w1,w2)) = NVAL f b w1 * b EXP m + NVAL f b w2
+</PRE>
+
+<DT><STRONG>NWORD_LENGTH</STRONG>
+<DD>
+<PRE>
+|- !n f b m. WORDLEN (NWORD n f b m) = n
+</PRE>
+
+<DT><STRONG>NWORD_PWORDLEN</STRONG>
+<DD>
+<PRE>
+|- !n f b m. PWORDLEN n (NWORD n f b m)
+</PRE>
+
+</DL>
+
+
+<HR>

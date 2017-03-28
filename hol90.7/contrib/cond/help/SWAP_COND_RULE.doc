@@ -1,0 +1,31 @@
+\DOC SWAP_COND_RULE
+
+\TYPE {SWAP_COND_RULE : thm -> thm}
+
+\SYNOPSIS
+swaps a conditionals in conditionals.
+
+\LIBRARY cond
+
+\DESCRIBE
+swaps a conditionals in conditionals.
+
+{
+ |- A => (B => x|y)|z
+=========================
+ |- A/\B => x|(A => y|z)
+}
+
+\EXAMPLE
+
+{
+val it = |- ~((A => (B => (C => 5 | 6) | 7) | 8) = 0) : thm
+- SWAP_COND_RULE it;
+val it = |- ~((((A /\ B) /\ C) => 5 | ((A /\ B) => 6 | (A => 7 | 8))) = 0)
+  : thm
+}
+
+\SEEALSO
+SWAP_COND_CONV SWAP_COND_TAC
+
+\ENDDOC

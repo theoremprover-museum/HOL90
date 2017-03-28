@@ -1,0 +1,362 @@
+head	1.1;
+access;
+symbols
+	HOL97:1.1.2.2.0.2
+	bpHOL97:1.1.2.2
+	hol90_9_alpha:1.1.2.2
+	TFL_1:1.1.2.1
+	hol90_pre8_for_multiple_compilers:1.1.0.2;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	96.06.29.15.08.31;	author rjb;	state dead;
+branches
+	1.1.2.1;
+next	;
+
+1.1.2.1
+date	96.06.29.15.08.32;	author rjb;	state Exp;
+branches;
+next	1.1.2.2;
+
+1.1.2.2
+date	96.08.05.15.40.59;	author rjb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@file sorting.sml was initially added on branch hol90_pre8_for_multiple_compilers.
+@
+text
+@@
+
+
+1.1.2.1
+log
+@TFL version 1 for HOL: A well-founded recursive function definition package.
+@
+text
+@a0 259
+(* THE SPECIFICATION OF SORTING *)
+
+cons_path "../" theory_path;
+new_theory"sorting";
+new_parent"kls_list";
+
+
+val transitive_def = definition"TC" "transitive_def";
+
+(*---------------------------------------------------------------------------
+ * The idea of sortedness requires a total order, the notion of a 
+ * "permutation" relation for lists, and a "chain" predicate that 
+ * holds when the order relation holds between all adjacent elements of 
+ * the list.
+ *---------------------------------------------------------------------------*)
+
+val order = ty_antiq(==`:'a -> 'a -> bool`==);
+
+val total_order_def = Q.new_definition("total_order",
+`total_order (R:^order) = 
+   (!x. R x x) /\                          (* Reflexive *)
+   (!x y z. R x y /\ R y z ==> R x z) /\   (* Transitive *)
+   (!x y. R x y /\ R y x ==> (x = y)) /\   (* Antisymmetric *)
+   (!x y. R x y \/ R y x)`);               (* Total *)
+
+
+(*----------------------------------------------------------------------------
+ * Higher order logic gives a nice definition of permutation.  This may
+ * also be used as a definition of equality for finite multisets, if they 
+ * were implemented by lists.
+ *---------------------------------------------------------------------------*)
+val permutation_def = 
+Q.new_definition
+ ("permutation_def",
+   `permutation L1 L2 =
+       !x:'a. LENGTH(filter ($= x) L1) = LENGTH(filter ($= x) L2)`);
+
+val _ = Implicit.add_rws [permutation_def];
+
+
+(*----------------------------------------------------------------------------
+ *         Define the "finiteRchain" function via pattern matching. 
+ *---------------------------------------------------------------------------*)
+
+val finiteRchain_def = Rfunction `inv_image ^list_pred SND`
+ `(finiteRchain (R:^order, []) = T) /\
+  (finiteRchain (R,       [x]) = T) /\   
+  (finiteRchain (R, CONS x (CONS y rst)) = 
+      R x y /\ finiteRchain(R, CONS y rst))`;
+
+
+(*----------------------------------------------------------------------------
+ *    The specification that a sorting function must (at least) meet. 
+ *---------------------------------------------------------------------------*)
+
+val performs_sorting_def = 
+ Q.new_definition
+("performs_sorting",
+  `performs_sorting f = 
+     !R:^order.
+        total_order R 
+         ==> 
+         !L. permutation L (f(R,L)) /\ finiteRchain(R, f(R,L))`);
+
+
+close_theory();
+
+
+(*---------------------------------------------------------------------------
+ *                   THEOREMS ABOUT PERMUTATIONS 
+ *---------------------------------------------------------------------------*)
+map add_theory_to_sml["list", "kls_list"];
+val LIST_INDUCT_TAC = INDUCT_THEN (theorem "list" "list_INDUCT") ASSUME_TAC;
+
+
+val permutation_refl = 
+Q.store_thm
+("permutation_refl",
+    `!L:'a list. permutation L L`,
+    RW_TAC[]);
+
+
+val permutation_transitive =  
+Q.store_thm
+("permutation_transitive",
+  `transitive (permutation:'a list -> 'a list -> bool)`,
+ RW_TAC[transitive_def]);
+
+
+val permutation_sym = 
+Q.store_thm
+("permutation_sym",
+  `!l1 (l2:'a list). permutation l1 l2 = permutation l2 l1`,
+RW_TAC[] THEN REPEAT GEN_TAC THEN EQ_TAC THEN RW_TAC[]);
+
+
+val cons_permutation = 
+Q.store_thm
+("cons_permutation",
+`!(x:'a) L M N. permutation L (APPEND M N) 
+                ==> permutation (CONS x L) (APPEND M (CONS x N))`,
+REPEAT GEN_TAC 
+ THEN RW_TAC[filter_def] 
+ THEN DISCH_TAC THEN GEN_TAC 
+ THEN COND_CASES_TAC 
+ THEN ASM_RW_TAC[LENGTH,filter_append_distrib,length_append_distrib,filter_def]
+ THEN CONV_TAC ARITH_CONV);
+
+
+val permutation_cong = 
+Q.store_thm
+("permutation_cong",
+`!(L1:'a list) L2 L3 L4. 
+     permutation L1 L3 /\ 
+     permutation L2 L4
+     ==> permutation (APPEND L1 L2) (APPEND L3 L4)`,
+REPEAT GEN_TAC
+ THEN RW_TAC[filter_append_distrib,length_append_distrib]);
+
+
+val append_permutation_sym = 
+Q.store_thm
+("append_permutation_sym",
+`!(A:'a list) B C. 
+      permutation (APPEND A B) C ==> permutation (APPEND B A) C`,
+RW_TAC[permutation_def] 
+ THEN REPEAT GEN_TAC 
+ THEN DISCH_THEN (fn th => RW_TAC[GSYM th]) 
+ THEN RW_TAC[filter_append_distrib,length_append_distrib] 
+ THEN CONV_TAC ARITH_CONV);
+
+
+val permutation_split = 
+Q.store_thm
+("permutation_split",
+`!(L:'a list). permutation L (APPEND (filter P L) (filter (~ o P) L))`,
+RW_TAC[filter_append_distrib] 
+ THEN ONCE_RW_TAC[filters_commute] 
+ THEN RW_TAC[GSYM length_append_filter]);
+
+
+(*---------------------------------------------------------------------------
+ * Unused lemmas about permutations
+ *
+ * val papp1 = Q.prove`!(h:'a) A B C. 
+ *                      permutation (APPEND (h::A) (APPEND B C)) 
+ *                                  (APPEND A (APPEND (h::B) C))`
+ * (RW_TAC[APPEND] THEN REPEAT GEN_TAC 
+ *   THEN MATCH_MP_TAC cons_permutation 
+ *   THEN RW_TAC[permutation_refl]);
+ * 
+ * 
+ * val papp2 = Q.prove
+ * `!(h:'a) A B C. permutation (APPEND (h::A) (APPEND B C)) 
+ *                             (APPEND A (APPEND B (h::C)))`
+ * (RW_TAC[APPEND] THEN REPEAT GEN_TAC 
+ *   THEN RW_TAC[APPEND_ASSOC]
+ *   THEN MATCH_MP_TAC cons_permutation
+ *   THEN RW_TAC[permutation_refl]);
+ * 
+ * 
+ * val papp3 = Q.prove
+ * `!(h:'a) A B C L. permutation (APPEND (h::A) (APPEND B C)) L 
+ *                    =
+ *                    permutation (APPEND A (APPEND (h::B) C)) L`
+ * (REPEAT GEN_TAC THEN EQ_TAC THEN DISCH_TAC THEN 
+ *   MATCH_MP_TAC (ONCE_RW_RULE[transitive_def] permutation_transitive) THEN
+ *   POP_ASSUM (fn th => EXISTS_TAC(rand(rator(concl th))) THEN RW_TAC[th])
+ *   THENL[ONCE_RW_TAC[permutation_sym],ALL_TAC] THEN MATCH_ACCEPT_TAC papp1);
+ * 
+ * 
+ * val papp4 = Q.prove
+ * `!(h:'a) A B C L. permutation (APPEND (h::A) (APPEND B C)) L 
+ *                    =
+ *                    permutation (APPEND A (APPEND B (h::C))) L`
+ * (REPEAT GEN_TAC THEN EQ_TAC THEN DISCH_TAC THEN 
+ *  MATCH_MP_TAC (ONCE_RW_RULE[transitive_def] permutation_transitive) THEN
+ *   POP_ASSUM (fn th => EXISTS_TAC(rand(rator(concl th))) THEN RW_TAC[th])
+ *   THENL[ONCE_RW_TAC[permutation_sym],ALL_TAC] THEN MATCH_ACCEPT_TAC papp2);
+ *
+ *---------------------------------------------------------------------------*)
+
+
+
+
+(*----------------------------------------------------------------------------
+ *                    THEOREMS ABOUT "FINITE R-CHAINS"
+ *---------------------------------------------------------------------------*)
+val finiteRchain_eqns = save_thm("finiteRchain_eqns", 
+                                 #rules finiteRchain_def);
+
+val finiteRchain_induction = save_thm("finiteRchain_induction", 
+                                      #induction finiteRchain_def);
+
+(*----------------------------------------------------------------------------
+ *    When consing onto a finiteRchain yields a finiteRchain 
+ *---------------------------------------------------------------------------*)
+val finiteRchain_eq = Q.store_thm("finiteRchain_eq",
+`!R:^order. 
+  transitive R
+   ==> 
+  !L (x:'a). 
+     finiteRchain(R, CONS x L) =finiteRchain(R,L) /\ (!y. mem y L ==> R x y)`,
+GEN_TAC THEN DISCH_TAC THEN LIST_INDUCT_TAC 
+ THEN ASM_RW_TAC[finiteRchain_eqns,mem_def] 
+ THEN REPEAT GEN_TAC 
+ THEN EQ_TAC 
+ THEN REPEAT STRIP_TAC
+ THEN ASM_CRW_TAC[]
+ THEN RULE_ASSUM_TAC(PURE_RW_RULE[transitive_def]) 
+ THEN RES_TAC);
+
+
+(*----------------------------------------------------------------------------
+ *    Now try it using recursion induction -- the proof seems harder!
+ *---------------------------------------------------------------------------*)
+val finiteRchain_eq = Q.prove
+`!(R:^order) L. 
+ transitive R ==> 
+ !x:'a. finiteRchain(R, CONS x L) = finiteRchain(R,L) /\ !y. mem y L ==> R x y`
+(REC_INDUCT_TAC finiteRchain_induction THEN REPEAT CONJ_TAC THEN 
+REPEAT GEN_TAC THEN TRY (REPEAT DISCH_TAC) THENL
+[ RW_TAC[finiteRchain_eqns,mem_def],
+  GEN_TAC THEN RW_TAC[finiteRchain_eqns,mem_def] THEN EQ_TAC 
+   THENL[RW_TAC[], DISCH_THEN MATCH_MP_TAC THEN RW_TAC[]], 
+   PURE_ONCE_RW_TAC[Q.INST[`x`|->`x':'a`, `y`|->`x:'a`,
+                           `rst`|->`CONS(y:'a) rst`] (#rules finiteRchain_def)]
+   THEN GEN_TAC THEN EQ_TAC THEN ASM_RW_TAC[] THEN STRIP_TAC 
+   THENL 
+   [ONCE_RW_TAC[mem_def] THEN GEN_TAC THEN STRIP_TAC 
+    THENL [ASM_RW_TAC[],
+           Q.UNDISCH_TAC`transitive (R:^order)` 
+           THEN ONCE_RW_TAC[transitive_def] THEN DISCH_THEN MATCH_MP_TAC 
+           THEN Q.EXISTS_TAC`x` THEN ASM_RW_TAC[]],
+    ASM_CRW_TAC[mem_def]]]);
+
+
+(*----------------------------------------------------------------------------
+ *       When appending finiteRchains gives a finiteRchain. 
+ *---------------------------------------------------------------------------*)
+
+val finiteRchain_append = Q.store_thm("finiteRchain_append",
+`!(R:^order) L1 L2. 
+   transitive R /\
+   finiteRchain(R,L1) /\ 
+   finiteRchain (R, L2) /\ 
+   (!x y. mem x L1 /\ mem y L2 ==> R x y)
+   ==> finiteRchain(R, APPEND L1 L2)`,
+REPEAT GEN_TAC THEN DISCH_THEN (fn th => 
+ let val (h::t) = CONJUNCTS th
+ in ASSUME_TAC h THEN MP_TAC (LIST_CONJ t) THEN 
+    Q.ID_SPEC_TAC`L2` THEN Q.ID_SPEC_TAC`L1` end) 
+THEN LIST_INDUCT_TAC THEN GEN_TAC 
+THEN ASM_RW_TAC[finiteRchain_eqns,APPEND,finiteRchain_eq,mem_def,mem_of_append]
+THEN REPEAT STRIP_TAC 
+THEN ASM_CRW_TAC[]);
+
+export_theory();
+html_theory"-";
+@
+
+
+1.1.2.2
+log
+@Updated to TFL release 4.
+@
+text
+@d1 1
+a1 3
+(*---------------------------------------------------------------------------
+ *                SPECIFICATION OF SORTING
+ *---------------------------------------------------------------------------*)
+d11 4
+a14 6
+ * The idea of sortedness is actually a little difficult to nail down. It
+ * requires a "permutation" relation for lists, and a "chain" predicate that 
+ * holds just when the order relation holds between all adjacent elements of 
+ * the list. But what are the requirements on the "order relation"? At a 
+ * minimum, it must be transitive, but it doesn't seem to have to be anything
+ * else.
+d19 3
+a21 2
+val tt_relation_def = Q.new_definition("tt_relation_def",
+`tt_relation (R:^order) = 
+d23 1
+d29 2
+a30 2
+ * also be used as a definition of equality for finite multisets, were they
+ * implemented by lists.
+d35 2
+a36 2
+  `permutation L1 L2 =
+      !x:'a. LENGTH(filter ($= x) L1) = LENGTH(filter ($= x) L2)`);
+d45 5
+a49 6
+val finiteRchain_def = 
+Rfunction `inv_image ^list_pred SND`
+  `(finiteRchain (R:^order, []) = T) /\
+   (finiteRchain (R,       [x]) = T) /\   
+   (finiteRchain (R, CONS x (CONS y rst)) = R x y /\ 
+                                            finiteRchain(R, CONS y rst))`;
+d61 1
+a61 1
+        tt_relation R 
+d203 1
+a203 1
+     finiteRchain(R, CONS x L) = finiteRchain(R,L) /\ (!y. mem y L ==> R x y)`,
+d227 1
+a227 1
+                           `rst`|->`CONS (y:'a)rst`] (#rules finiteRchain_def)]
+d244 2
+a245 2
+   transitive R         /\
+   finiteRchain(R,L1)   /\ 
+@

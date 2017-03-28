@@ -1,0 +1,64 @@
+head	1.2;
+access;
+symbols
+	last_edition:1.1;
+locks; strict;
+comment	@# @;
+
+
+1.2
+date	96.02.08.00.23.36;	author drs1004;	state dead;
+branches;
+next	1.1;
+
+1.1
+date	96.02.08.00.19.27;	author drs1004;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.2
+log
+@New theory mechanism, by Donald Syme
+@
+text
+@
+
+ML_LEX=/usr/groups/hol/drs1004/mldist.108.19/bin/ml-lex
+ML_YACC=/usr/groups/hol/drs1004/mldist.108.19/bin/ml-yacc
+
+all: \
+	thms.yak.sig thms.yak.sml thms.lex.sml \
+	holsig.yak.sig holsig.yak.sml holsig.lex.sml
+
+
+holsig.yak.sig holsig.yak.sml: holsig.yak
+	$(ML_YACC) holsig.yak
+
+holsig.lex.sml: holsig.lex holsig.yak.sig
+	$(ML_LEX) holsig.lex
+
+thms.yak.sig thms.yak.sml: thms.yak
+	$(ML_YACC) thms.yak
+
+thms.lex.sml: thms.lex thms.yak.sig
+	$(ML_LEX) thms.lex
+
+
+
+
+
+
+@
+
+
+1.1
+log
+@updates for latest ML Lex and Yacc
+@
+text
+@@

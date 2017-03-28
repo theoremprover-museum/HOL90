@@ -1,0 +1,241 @@
+head	1.2;
+access;
+symbols;
+locks; strict;
+comment	@# @;
+
+
+1.2
+date	96.01.04.14.15.05;	author drs1004;	state dead;
+branches;
+next	1.1;
+
+1.1
+date	95.12.18.11.39.35;	author drs1004;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.2
+log
+@Added simplifier components, added drule files, added MK_ABS_CONV, better error messages
+@
+text
+@(* ---------------------------------------------------------------------
+ * pred_set_ss : Simpset for HOL library "pred_set"
+ *
+ * EXAMPLES 
+ *
+ * val ss = hol_ss |> merge_ss ac_pred_set_ss |> merge_ss arith_ss;
+   SIMP_CONV ss (--`{1;2;3} = {3;2;1}`--);
+   SIMP_CONV ss (--`{1;2;3} UNION {1;3;2}= {3;2;1}`--);
+   SIMP_CONV ss (--`{1;2;3} PSUBSET {1;3;2;4}`--); (* doesn't work *)
+   SIMP_CONV ss (--`{1;2;3} SUBSET {1;3;2;4}`--);
+   SIMP_CONV ss (--`{1;2;3} INTER {1;2;4} = {1;2}`--);
+   SIMP_CONV ss (--`FINITE ({1;2;3} INTER UNIV)`--);
+   SIMP_CONV ss (--`2 IN ({1;2;3} INTER UNIV)`--);
+   SIMP_CONV ss (--`5 IN ({1;2;3} INTER UNIV)`--);
+   SIMP_CONV ss (--`({1;2;3} INTER UNIV) DELETE 4`--);
+   SIMP_CONV ss (--`({1;2;3} INTER UNIV) DELETE 3`--);
+   SIMP_CONV ss (--`({1;2;3} UNION UNIV) DELETE 3`--);
+   SIMP_CONV ss (--`{1;2;3;2;4;5;6;x;y} = {3;2;1;6;5;x;4;y}`--);
+   SIMP_CONV ss (--`CARD {1;2}`--);
+   SIMP_CONV ss (--`CARD {1;2;2}`--);
+   SIMP_CONV ss (--`CARD {1;2;2;x}`--);
+   SIMP_CONV ss (--`CARD {y:num;x}`--);
+   SIMP_CONV ss (--`CARD {1;2;3;2;4;5;6;x;y}`--);
+
+ * --------------------------------------------------------------------*)
+
+signature Pred_set_ss_sig =
+sig
+	structure Simplifier : Simplifier_sig;
+        (* fragments of predsets + parentage *)
+	val pred_set_ss : Simplifier.simpset
+	val ac_pred_set_ss : Simplifier.simpset
+
+        (* fragments of simpsets *)
+	val PRED_SET_ss : Simplifier.simpset
+	val AC_PRED_SET_ss : Simplifier.simpset
+end
+
+structure Pred_set_ss : Pred_set_ss_sig =
+struct
+  structure Simplifier = Simplifier;
+  open Hol_ss;
+  open Simplifier;
+  open Psyntax;
+  open Gspec;
+
+(* ---------------------------------------------------------------------
+ * The Simpset
+ * --------------------------------------------------------------------*)
+
+val PRED_SET_ss =
+   pure_ss
+   |> addrewrs (map (theorem "pred_set") [
+     	"BIJ_EMPTY",
+       	"CARD_DELETE",
+       	"CARD_DIFF",
+        "CARD_EMPTY",
+	"CARD_INSERT",
+	"CARD_INTER_LESS_EQ",
+	"CARD_PSUBSET",
+	"CARD_SING",
+	"CARD_UNION",
+	"CHOICE_INSERT_REST",
+	"CHOICE_NOT_IN_REST",
+	"CHOICE_SING",
+	"COMPONENT",
+	"DELETE_DELETE",
+	"DELETE_EQ_SING",
+	"DELETE_INSERT",
+	"DELETE_INTER",
+	"DELETE_NON_ELEMENT",
+	"DIFF_DIFF",
+	"DIFF_EMPTY",
+	"DIFF_EQ_EMPTY",
+	"DIFF_INSERT",
+	"DIFF_UNIV",
+	"DISJOINT_EMPTY",
+	"DISJOINT_INSERT",
+ 	"DISJOINT_SING_EMPTY",
+	"DISJOINT_UNION",
+	"EMPTY_DELETE",
+	"EMPTY_DIFF",
+	"EMPTY_NOT_UNIV",
+	"EMPTY_SUBSET",
+	"EMPTY_UNION",
+	"EQUAL_SING",
+	"EQ_UNIV",
+	"FINITE_DELETE",
+	"FINITE_DIFF",
+	"FINITE_EMPTY",
+	"FINITE_INSERT",
+	"INFINITE_UNIV",
+	"FINITE_SING",
+	"FINITE_UNION",
+	"IMAGE_COMPOSE",
+	"IMAGE_DELETE",
+	"IMAGE_EMPTY",
+	"IMAGE_EQ_EMPTY",
+	"IMAGE_FINITE",
+	"IMAGE_ID",
+	"IMAGE_IN",
+	"IMAGE_INSERT",
+	"IMAGE_INTER",
+	"IMAGE_SUBSET",
+	"IMAGE_UNION",
+	"INFINITE_DIFF_FINITE",
+	"INFINITE_SUBSET",
+	"INFINITE_UNIV",
+	"INJ_COMPOSE",
+	"INJ_EMPTY",
+	"INJ_ID",
+	"INSERT_DELETE",
+	"INSERT_DIFF",
+	"INSERT_INSERT",
+	"INSERT_INTER",
+	"INSERT_SUBSET",
+	"INSERT_UNION_EQ",
+	"INSERT_UNIV",
+	"INTER_EMPTY",
+	"INTER_ASSOC",
+	"INTER_FINITE",
+	"INTER_IDEMPOT",
+	"INTER_OVER_UNION",
+	"INTER_SUBSET",
+	"INTER_UNIV",
+	"IN_DELETE",
+	"IN_DIFF",
+	"IN_DISJOINT",
+	"IN_IMAGE",
+	"IN_INSERT",
+	"IN_SING",
+	"IN_UNION",
+	"IN_UNIV",
+	"NOT_EMPTY_INSERT",
+	"NOT_EMPTY_SING",
+	"NOT_INSERT_EMPTY",
+	"NOT_IN_EMPTY",
+	"NOT_PSUBSET_EMPTY",
+	"NOT_SING_EMPTY",
+	"NOT_UNIV_PSUBSET",
+	"PSUBSET_IRREFL",
+	"PSUBSET_UNIV",
+	"REST_PSUBSET",
+	"REST_SING",
+	"REST_SUBSET",
+	"SING",
+	"SING_DELETE",
+	"SING_FINITE",
+	"SUBSET_DELETE",
+	"SUBSET_EMPTY",
+	"SUBSET_INSERT",
+	"SUBSET_UNION",
+	"SUBSET_UNIV",
+	"SURJ_COMPOSE",
+	"SURJ_EMPTY",
+	"SURJ_ID",
+	"UNION_ASSOC",
+	"UNION_EMPTY",
+	"UNION_IDEMPOT",
+	"UNION_OVER_INTER",
+	"UNION_UNIV",
+	"UNIV_SUBSET"
+   ])
+   addconvs [
+         mk_convdata{name="SET_SPEC_CONV (set specification)",
+                     key=SOME([],--`t IN (GSPEC (P:'a -> ('b # bool)))`--),
+                     trace=2,
+                     conv=K SET_SPEC_CONV}
+   ];
+
+
+val pred_set_ss = hol_ss |> merge_ss PRED_SET_ss
+
+(* trivial to prove *)
+
+val UNION_LCOMM = mk_thm([],(--`(s:'a -> bool) UNION (t UNION u) = t UNION (s UNION u)`--));
+val INTER_LCOMM = mk_thm([],(--`(s:'a -> bool) INTER (t INTER u) = t INTER (s INTER u)`--));
+
+val AC_PRED_SET_ss =
+   pure_ss
+   addrewrs (map (theorem "pred_set") [
+     	"DELETE_COMM",
+	"DISJOINT_DELETE_SYM",
+	"DISJOINT_SYM",
+	"INSERT_COMM",
+	"SUBSET_REFL",
+	"UNION_COMM"
+   ])
+   |> addrewrs [INTER_LCOMM,UNION_LCOMM];
+
+
+val ac_pred_set_ss = pred_set_ss |> merge_ss AC_PRED_SET_ss
+
+end;
+
+
+
+open Pred_set_ss;
+
+
+
+
+
+
+
+@
+
+
+1.1
+log
+@Preterm and other changes, see 7.changes
+@
+text
+@@

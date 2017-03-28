@@ -1,0 +1,496 @@
+head	1.4;
+access;
+symbols
+	HOL97:1.2.0.4
+	bpHOL97:1.2
+	hol90_9_alpha:1.2
+	hol90_pre8_for_multiple_compilers:1.2.0.2
+	hol90_pre8_after_donalds_separate_compilation_changes:1.2
+	hol90_8_after_merging_Konrad_Elsa:1.2
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.4
+date	96.01.04.13.45.01;	author drs1004;	state Exp;
+branches;
+next	1.3;
+
+1.3
+date	95.12.18.11.34.13;	author drs1004;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	95.10.17.17.06.44;	author drs1004;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	95.10.16.13.29.50;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.29.50;	author rjb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.4
+log
+@Fixed types, pretypes, fixities, parsing.
+@
+text
+@signature Dsyntax_sig =
+sig
+structure Term : Public_term_sig
+type term sharing type term = Term.term;
+type typ sharing type typ = Term.Type.typ;
+
+
+(* ------------------------------------------------------------------------- 
+ * Primitive routines
+ * ------------------------------------------------------------------------- *)
+
+val mk_const:{Name : string, Ty : Term.Type.hol_type} -> term
+
+(* ------------------------------------------------------------------------- 
+ * Basic Type Construction/Destruction/Discriminator routines 
+ * ------------------------------------------------------------------------- *)
+
+val bool_ty : typ;
+val alpha_ty : typ;
+val beta_ty : typ;
+val --> : typ * typ -> typ;  (* infix synonym for mk_fun_ty *)
+val mk_fun_ty : {dom : typ, ran : typ} -> typ;
+val dest_fun_ty : typ -> {dom: typ, ran: typ};
+val is_fun_ty : typ -> bool;
+val mk_prod_ty : typ * typ -> typ;
+val dest_prod_ty : typ -> typ * typ;
+val is_prod_ty : typ -> bool;
+val ### : typ * typ -> typ;  (* infix synonym for mk_prod_ty *)
+
+(* ------------------------------------------------------------------------- 
+ * General syntax for unary operators (nb. monomorphic constructor only).
+ * ------------------------------------------------------------------------- *)
+
+val mk_unop : string -> term * term -> term
+val is_unop : string -> term -> bool
+val dest_unop : string -> term -> term 
+
+(* ------------------------------------------------------------------------- 
+ * General syntax for binary operators (nb. monomorphic constructor only).
+
+ *
+ * Nb. strip_binop strips only on the right, binops strips both
+ * left and right (alal conjuncts and disjuncts).
+ * ------------------------------------------------------------------------- *)
+
+val mk_binop : string -> term * term -> term
+val is_binop : string -> term -> bool
+val dest_binop : string -> term -> term * term
+val strip_binop : string -> term -> term list * term
+val binops : string -> term -> term list
+
+(* ------------------------------------------------------------------------- 
+ * =
+ * ------------------------------------------------------------------------- *)
+
+val mk_eq  :{lhs : term, rhs : term} -> term
+val dest_eq : term -> {lhs : term, rhs : term}
+val is_eq : term -> bool
+val lhs : term -> term
+val rhs : term -> term
+
+(* ------------------------------------------------------------------------- 
+ * Combinations
+ * ------------------------------------------------------------------------- *)
+
+val strip_comb : term -> (term * term list)
+
+(* ------------------------------------------------------------------------- 
+ * Abstractions
+ * ------------------------------------------------------------------------- *)
+
+val list_mk_abs : (term list * term) -> term
+val strip_abs : term -> (term list * term)
+
+(* ------------------------------------------------------------------------- 
+ * ==>, T, F
+ * ------------------------------------------------------------------------- *)
+
+val mk_imp :{ant : term, conseq :  term} -> term
+val dest_imp : term -> {ant : term, conseq : term}
+val is_imp : term -> bool
+val list_mk_imp : (term list * term) -> term
+val strip_imp : term -> (term list * term)
+
+val truth : term
+val falsity : term
+val implies : term
+
+(* ------------------------------------------------------------------------- 
+ * negation
+ * ------------------------------------------------------------------------- *)
+
+val mk_neg  :term -> term
+val is_neg  : term -> bool
+val dest_neg  : term -> term
+val negation : term     
+
+(* ------------------------------------------------------------------------- 
+ * /\,\/
+ * ------------------------------------------------------------------------- *)
+
+val mk_conj :{conj1 : term, conj2 : term} -> term
+val mk_disj :{disj1 : term, disj2 : term} -> term
+val dest_conj : term -> {conj1 : term, conj2 : term}
+val dest_disj : term -> {disj1 : term, disj2 : term}
+val conjunction : term
+val disjunction : term
+val is_conj : term -> bool
+val is_disj : term -> bool
+val list_mk_conj : term list -> term
+val list_mk_disj : term list -> term
+val strip_conj : term -> term list
+val strip_disj : term -> term list
+
+(* ------------------------------------------------------------------------- 
+ * !, ?, @@, paired abstraction
+ * ------------------------------------------------------------------------- *)
+
+val mk_select :{Bvar : term, Body : term} -> term
+val mk_forall :{Bvar : term, Body : term} -> term
+val mk_exists :{Bvar : term, Body : term} -> term
+val dest_select : term -> {Bvar : term, Body : term}
+val dest_forall : term -> {Bvar : term, Body : term}
+val dest_exists : term -> {Bvar : term, Body : term}
+val is_select : term -> bool 
+val is_forall : term -> bool 
+val is_exists : term -> bool 
+val list_mk_forall : (term list * term) -> term
+val gen_all : term -> term
+val list_mk_exists : (term list * term) -> term
+val strip_forall : term -> (term list * term)
+val strip_exists : term -> (term list * term)
+
+(* ------------------------------------------------------------------------- 
+ * LET, COND, "," 
+ * ------------------------------------------------------------------------- *)
+
+val mk_cond :{cond: term, larm : term, rarm : term} -> term
+val mk_pair :{fst : term, snd : term} -> term
+val mk_let  :{func : term, arg : term} -> term
+val dest_cond : term -> {cond:term, larm:term, rarm:term}
+val dest_pair : term -> {fst : term, snd : term}
+val dest_let: term -> {func : term, arg : term}
+val is_cond : term -> bool
+val is_pair : term -> bool
+val is_let : term -> bool
+val list_mk_pair : term list -> term
+val strip_pair : term -> term list
+
+(* ------------------------------------------------------------------------- 
+ * Paired abstraction
+ * ------------------------------------------------------------------------- *)
+
+val is_pabs : term -> bool
+val mk_pabs :{varstruct : term, body : term} -> term
+val dest_pabs : term -> {varstruct : term, body : term}
+
+(* ------------------------------------------------------------------------- 
+ * lists
+ * ------------------------------------------------------------------------- *)
+
+val is_cons : term -> bool
+val is_list : term -> bool
+val mk_cons :{hd : term, tl : term} -> term
+val mk_list :{els : term list, ty :Term.Type.hol_type} -> term
+val dest_cons : term -> {hd : term, tl : term}
+val dest_list : term -> {els : term list, ty :Term.Type.hol_type}
+
+
+(* ------------------------------------------------------------------------- 
+ * Misc.
+ * ------------------------------------------------------------------------- *)
+
+val find_term : (term -> bool) -> term -> term
+val find_terms : (term -> bool) -> term -> term list
+val subst_occs : int list list -> term Lib.subst -> term -> term
+
+end;
+@
+
+
+1.3
+log
+@Preterm and other changes, see 7.changes
+@
+text
+@a6 1
+(* Primitive Type Construction/Destruction/Discriminator routines *)
+d8 14
+d28 39
+d68 3
+a70 3
+val --> : typ * typ -> typ;  (* infix synonym for mk_fun_ty *)
+val ### : typ * typ -> typ;  (* infix synonym for mk_prod_ty *)
+val bool_ty : typ;
+d72 2
+a73 1
+(* Primitive Type Destruction routines *)
+d75 3
+a78 3
+(* Construction routines *)
+val mk_const:{Name : string, Ty : Term.Type.hol_type} -> term
+val mk_eq  :{lhs : term, rhs : term} -> term
+d80 13
+a92 3
+val mk_select :{Bvar : term, Body : term} -> term
+val mk_forall :{Bvar : term, Body : term} -> term
+val mk_exists :{Bvar : term, Body : term} -> term
+d94 8
+d104 10
+a113 6
+val mk_cond :{cond: term, larm : term, rarm : term} -> term
+val mk_pair :{fst : term, snd : term} -> term
+val mk_let  :{func : term, arg : term} -> term
+val mk_cons :{hd : term, tl : term} -> term
+val mk_list :{els : term list, ty :Term.Type.hol_type} -> term
+val mk_pabs :{varstruct : term, body : term} -> term
+d115 3
+a117 2
+val truth : term
+val falsity : term
+d119 3
+a121 5
+(* Destruction routines *)
+val dest_eq : term -> {lhs : term, rhs : term}
+val lhs : term -> term
+val rhs : term -> term
+val dest_imp : term -> {ant : term, conseq : term}
+d125 16
+a140 3
+val dest_neg  : term -> term
+val dest_conj : term -> {conj1 : term, conj2 : term}
+val dest_disj : term -> {disj1 : term, disj2 : term}
+a143 13
+val dest_cons : term -> {hd : term, tl : term}
+val dest_list : term -> {els : term list, ty :Term.Type.hol_type}
+val dest_pabs : term -> {varstruct : term, body : term}
+
+(* Query routines *)
+val is_eq : term -> bool
+val is_imp : term -> bool
+val is_select : term -> bool 
+val is_forall : term -> bool 
+val is_exists : term -> bool 
+val is_neg  : term -> bool
+val is_conj : term -> bool
+val is_disj : term -> bool
+d147 15
+d164 4
+a167 1
+val is_pabs : term -> bool
+a168 10
+(* Construction of a term from a list of terms *)
+val list_mk_abs : (term list * term) -> term
+(* val list_mk_comb: (term * term list) -> term *)
+val list_mk_imp : (term list * term) -> term
+val list_mk_forall : (term list * term) -> term
+val gen_all : term -> term
+val list_mk_exists : (term list * term) -> term
+val list_mk_conj : term list -> term
+val list_mk_disj : term list -> term
+val list_mk_pair : term list -> term
+d170 3
+a172 9
+(* Destructing a term to a list of terms *)
+val strip_comb : term -> (term * term list)
+val strip_abs : term -> (term list * term)
+val strip_imp : term -> (term list * term)
+val strip_forall : term -> (term list * term)
+val strip_exists : term -> (term list * term)
+val strip_conj : term -> term list
+val strip_disj : term -> term list
+val strip_pair : term -> term list
+a173 1
+(* Miscellaneous *)
+d177 1
+a177 3
+val binder_restrictions :unit -> (string * string) list
+val associate_restriction :(string*string) -> unit
+val delete_restriction :string -> unit
+@
+
+
+1.2
+log
+@Keeping you up to date:
+
+I'm about to do a checkin of elsa's modifications to the hol90.7
+sources to create her hol90.pre8.  To recap what I've done:
+	- I checked out hol90 (in /usr/groups/hol/drs1004/hol90)
+		cvs co hol90
+	  (Well, to be honest, I only checked out those
+	  parts of hol90 I knew I'd be changing, e.g. not the
+	  Manual, and only parts of the library.  Checking out the
+	  entire source takes a while, mainly due to the enormous number
+	  of help files.  The limiting factor is files/second, which
+         runs at around 5 when CVS is working on nfs over a network, not
+         KB/second, which you might at first think it would be).
+
+	- By doing a recursive diff between Elsa's source and the
+	hol90.7 source I found all the changes Elsa had made to
+	source files.  I copied relevant files from Elsa's source
+	into my checked out version.  The only new files were
+		- the sml_system files in src/0
+		- some make scripts in src/.
+	Changed files were in:
+		src/{0,1,2,3}
+		library/arith/src/thm_convs.sml
+		library/list/src/list_conv1.sml
+		library/num/src/num_lib.sml
+		library/prog_logic/src/halts_logic.sml
+		library/prog_logic/src/translation.sml
+		library/prog_logic/theories/src/mk_halts.sml
+		library/real/theories/src/Make
+		library/real/theories/src/equiv.sml
+		library/real/theories/src/seq.sml
+		library/reduce/src/arithconv.sml
+		library/string/src/string_conv.sml
+		library/unity/theories/src/aux_definitions.sml
+		library/word/theories/src/*
+
+	- I will now commit these changes, with this email as the log message.
+		cvs commit
+
+	- Tomorrow I will get this version compiling
+	with NJSML 108 (I will probably add
+	the files to enable the NJSML compilation manager to make
+	this easier), then check those changes in.  I think it's
+	good to get things in a working state.
+@
+text
+@d4 2
+d7 16
+d24 15
+a38 15
+val mk_const:{Name : string, Ty : Term.Type.hol_type} -> Term.term
+val mk_eq  :{lhs : Term.term, rhs : Term.term} -> Term.term
+val mk_imp :{ant : Term.term, conseq :  Term.term} -> Term.term
+val mk_select :{Bvar : Term.term, Body : Term.term} -> Term.term
+val mk_forall :{Bvar : Term.term, Body : Term.term} -> Term.term
+val mk_exists :{Bvar : Term.term, Body : Term.term} -> Term.term
+val mk_neg  :Term.term -> Term.term
+val mk_conj :{conj1 : Term.term, conj2 : Term.term} -> Term.term
+val mk_disj :{disj1 : Term.term, disj2 : Term.term} -> Term.term
+val mk_cond :{cond: Term.term, larm : Term.term, rarm : Term.term} -> Term.term
+val mk_pair :{fst : Term.term, snd : Term.term} -> Term.term
+val mk_let  :{func : Term.term, arg : Term.term} -> Term.term
+val mk_cons :{hd : Term.term, tl : Term.term} -> Term.term
+val mk_list :{els : Term.term list, ty :Term.Type.hol_type} -> Term.term
+val mk_pabs :{varstruct : Term.term, body : Term.term} -> Term.term
+d40 3
+d44 16
+a59 16
+val dest_eq : Term.term -> {lhs : Term.term, rhs : Term.term}
+val lhs : Term.term -> Term.term
+val rhs : Term.term -> Term.term
+val dest_imp : Term.term -> {ant : Term.term, conseq : Term.term}
+val dest_select : Term.term -> {Bvar : Term.term, Body : Term.term}
+val dest_forall : Term.term -> {Bvar : Term.term, Body : Term.term}
+val dest_exists : Term.term -> {Bvar : Term.term, Body : Term.term}
+val dest_neg  : Term.term -> Term.term
+val dest_conj : Term.term -> {conj1 : Term.term, conj2 : Term.term}
+val dest_disj : Term.term -> {disj1 : Term.term, disj2 : Term.term}
+val dest_cond : Term.term -> {cond:Term.term, larm:Term.term, rarm:Term.term}
+val dest_pair : Term.term -> {fst : Term.term, snd : Term.term}
+val dest_let: Term.term -> {func : Term.term, arg : Term.term}
+val dest_cons : Term.term -> {hd : Term.term, tl : Term.term}
+val dest_list : Term.term -> {els : Term.term list, ty :Term.Type.hol_type}
+val dest_pabs : Term.term -> {varstruct : Term.term, body : Term.term}
+d62 14
+a75 14
+val is_eq : Term.term -> bool
+val is_imp : Term.term -> bool
+val is_select : Term.term -> bool 
+val is_forall : Term.term -> bool 
+val is_exists : Term.term -> bool 
+val is_neg  : Term.term -> bool
+val is_conj : Term.term -> bool
+val is_disj : Term.term -> bool
+val is_cond : Term.term -> bool
+val is_pair : Term.term -> bool
+val is_let : Term.term -> bool
+val is_cons : Term.term -> bool
+val is_list : Term.term -> bool
+val is_pabs : Term.term -> bool
+d78 9
+a86 9
+val list_mk_abs : (Term.term list * Term.term) -> Term.term
+(* val list_mk_comb: (Term.term * Term.term list) -> Term.term *)
+val list_mk_imp : (Term.term list * Term.term) -> Term.term
+val list_mk_forall : (Term.term list * Term.term) -> Term.term
+val gen_all : Term.term -> Term.term
+val list_mk_exists : (Term.term list * Term.term) -> Term.term
+val list_mk_conj : Term.term list -> Term.term
+val list_mk_disj : Term.term list -> Term.term
+val list_mk_pair : Term.term list -> Term.term
+d89 8
+a96 13
+val strip_comb : Term.term -> (Term.term * Term.term list)
+val strip_abs : Term.term -> (Term.term list * Term.term)
+val strip_imp : Term.term -> (Term.term list * Term.term)
+val strip_forall : Term.term -> (Term.term list * Term.term)
+val strip_exists : Term.term -> (Term.term list * Term.term)
+val strip_conj : Term.term -> Term.term list
+val strip_disj : Term.term -> Term.term list
+val strip_pair : Term.term -> Term.term list
+
+val infix_ty :Term.Type.hol_type -> Term.Type.hol_type -> Term.Type.hol_type
+val bool : Term.Type.hol_type
+
+val de_abs : Term.term -> (Term.term list * Term.term)
+d99 3
+a101 3
+val find_term : (Term.term -> bool) -> Term.term -> Term.term
+val find_terms : (Term.term -> bool) -> Term.term -> Term.term list
+val subst_occs : int list list -> Term.term Lib.subst -> Term.term -> Term.term
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d85 1
+a85 1
+val subst_occs : int list list -> Term.term subst -> Term.term -> Term.term
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

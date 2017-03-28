@@ -1,0 +1,764 @@
+head	1.6;
+access;
+symbols
+	HOL97:1.4.0.4
+	bpHOL97:1.4
+	hol90_9_alpha:1.4
+	hol90_pre8_for_multiple_compilers:1.4.0.2
+	last_edition:1.5
+	hol90_pre8_after_donalds_separate_compilation_changes:1.3
+	hol90_8_after_merging_Konrad_Elsa:1.2
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.6
+date	96.02.08.00.23.40;	author drs1004;	state dead;
+branches;
+next	1.5;
+
+1.5
+date	95.12.18.11.22.21;	author drs1004;	state Exp;
+branches;
+next	1.4;
+
+1.4
+date	95.11.15.13.30.47;	author rjb;	state Exp;
+branches
+	1.4.4.1;
+next	1.3;
+
+1.3
+date	95.10.31.15.06.16;	author drs1004;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	95.10.18.16.37.40;	author drs1004;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	95.10.16.13.30.13;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.30.13;	author rjb;	state Exp;
+branches;
+next	;
+
+1.4.4.1
+date	97.06.11.17.26.01;	author kxs;	state Exp;
+branches;
+next	1.4.4.2;
+
+1.4.4.2
+date	97.06.24.14.54.16;	author kxs;	state Exp;
+branches;
+next	1.4.4.3;
+
+1.4.4.3
+date	97.07.10.18.38.52;	author kxs;	state Exp;
+branches;
+next	1.4.4.4;
+
+1.4.4.4
+date	97.10.05.21.09.22;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.6
+log
+@New theory mechanism, by Donald Syme
+@
+text
+@(* ===================================================================== *)
+(* FILE          : add_to_sml.sml                                        *)
+(* DESCRIPTION   : Routines that allow theory-level bindings to become   *)
+(*                 SML bindings. Intended to serve as a replacement for  *)
+(*                 auto-loading.                                         *)
+(*                                                                       *)
+(* AUTHOR        : Konrad Slind, University of Calgary                   *)
+(* DATE          : September 15, 1991                                    *)
+(* ===================================================================== *)
+
+
+structure Add_to_sml : Add_to_sml_sig =
+struct
+structure Lexis = Lexis;
+
+open Theory
+open Lib;
+type thm = Theory.Thm.thm
+
+val ERR = Exception.ERR "Add_to_sml";
+val WRAP_ERR = Exception.WRAP_ERR "Add_to_sml";
+    
+val L = ref ([]:(string*thm) list);
+fun parser [QUOTE "",ANTIQUOTE th, QUOTE ""] = th
+  | parser _ = ERR("parser","bad format");
+
+
+fun install() =
+   if (Portable.List.null (!L))
+   then ()
+   else let val (n,_) = Portable.List.hd (!L)
+        in 
+          if (Lexis.ok_sml_identifier n)
+           then ( Portable.use_string
+                  ("val "^n^" = Add_to_sml.parser`^(snd(Portable.List.hd(!Add_to_sml.L)))`");
+                  ())
+           else say ("\n"^quote n^" can not be a variable in SML, so\
+                         \ skipping its binding.\n")
+           ;
+           L := Portable.List.tl (!L)
+           ;
+           install ()
+        end;
+
+fun add_to_sml alist = 
+   ( L := alist;
+     install()
+   )
+   handle e => (L := []; WRAP_ERR("add_to_sml",e));
+  
+val add_axioms_to_sml      = add_to_sml o axioms
+and add_definitions_to_sml = add_to_sml o definitions
+and add_theorems_to_sml    = add_to_sml o theorems;
+
+fun add_theory str =
+   ( add_axioms_to_sml str;
+     add_definitions_to_sml str;
+     add_theorems_to_sml str
+   );
+
+
+type autoload_info = {Theory : string,
+                      Axioms : string list,
+                      Definitions : string list,
+                      Theorems : string list}
+
+val autoloads = ref ([]: autoload_info list);
+    
+
+(*----------------------------------------------------------------------
+ * What on earth are the good of these?? All this information will
+ * be determined directly from the theory file!   DRS Dec. 1995
+ * 
+ * ([{Theory = "pair",
+ *   Axioms = [],
+ *   Definitions = ["UNCURRY_DEF", "CURRY_DEF"],
+ *   Theorems = ["PAIR", "FST", "SND", "PAIR_EQ"]
+ * },
+ * 
+ * 
+ * {Theory = "one",
+ *  Axioms = [],
+ *  Definitions = [],
+ *  Theorems = ["one_axiom", "one", "one_Axiom"]
+ * },
+ * 
+ * 
+ * {Theory = "combin",
+ *  Axioms = [],
+ *  Definitions = ["o_DEF", "K_DEF", "S_DEF", "I_DEF"],
+ *  Theorems = ["o_THM", "o_ASSOC", "K_THM", "S_THM", "I_THM", "I_o_ID"]
+ * },
+ * 
+ * 
+ * {Theory = "sum",
+ *  Axioms = [],
+ *  Definitions = ["ISL", "ISR", "OUTL", "OUTR"],
+ *  Theorems = ["sum_Axiom", "sum_axiom", "ISL_OR_ISR", "INL", "INR"]
+ * },
+ * 
+ * 
+ * {Theory = "num",
+ *  Axioms = [],
+ *  Definitions = [],
+ *  Theorems = ["NOT_SUC", "INV_SUC", "INDUCTION"]
+ * },
+ * 
+ * 
+ * {Theory = "prim_rec",
+ *  Axioms = [],
+ *  Definitions = [],
+ *  Theorems = ["INV_SUC_EQ", "LESS_REFL", "SUC_LESS",
+ *              "NOT_LESS_0", "LESS_MONO", "LESS_SUC_REFL",
+ *              "LESS_SUC",   "LESS_THM",  "LESS_SUC_IMP",
+ *              "LESS_0",     "EQ_LESS",   "SUC_ID",
+ *              "NOT_LESS_EQ","LESS_NOT_EQ","LESS_SUC_SUC",
+ *              "PRE",        "num_Axiom"]
+ * },
+ * 
+ * 
+ * {Theory = "arithmetic",
+ *  Axioms = [],
+ *  Definitions = ["GREATER_DEF", "LESS_OR_EQ", "GREATER_OR_EQ", "DIVISION", 
+ *                 "ADD", "MULT", "SUB", "EXP", "FACT", "EVEN", "ODD"],
+ *  Theorems = ["ADD_SUC", "ADD_CLAUSES", "ADD_SYM", 
+ *              "num_CASES", "LESS_MONO_EQ", "SUC_SUB1", "PRE_SUB1",
+ *              "LESS_ADD", "SUB_0", "LESS_TRANS", "ADD1", "ADD_0",
+ *              "LESS_ANTISYM", "LESS_LESS_SUC", "FUN_EQ_LEMMA",
+ *              "LESS_SUC_EQ_COR", "LESS_OR", "OR_LESS", "LESS_EQ",
+ *              "LESS_NOT_SUC", "LESS_0_CASES",
+ *              "LESS_CASES_IMP", "LESS_CASES", "ADD_INV_0", "LESS_EQ_ADD",
+ *              "LESS_EQ_SUC_REFL", "LESS_ADD_NONZERO", "LESS_EQ_ANTISYM",
+ *              "NOT_LESS", "SUB_EQ_0", "ADD_ASSOC", "MULT_0", "MULT_CLAUSES",
+ *              "MULT_SYM", "RIGHT_ADD_DISTRIB", "LEFT_ADD_DISTRIB", "MULT_ASSOC",
+ *              "SUB_ADD", "PRE_SUB", "ADD_EQ_0", "ADD_INV_0_EQ", "PRE_SUC_EQ",
+ *              "INV_PRE_EQ", "LESS_SUC_NOT", "ADD_EQ_SUB", "LESS_MONO_ADD",
+ *              "LESS_MONO_ADD_EQ", "EQ_MONO_ADD_EQ", "LESS_EQ_MONO_ADD_EQ",
+ *              "LESS_EQ_TRANS", "LESS_EQ_LESS_EQ_MONO", "LESS_EQ_REFL",
+ *              "LESS_IMP_LESS_OR_EQ", "LESS_MONO_MULT", "RIGHT_SUB_DISTRIB",
+ *              "LESS_ADD_1", "ZERO_LESS_EQ", "LESS_EQ_MONO", "LESS_OR_EQ_ADD",
+ *              "SUC_NOT", "EXP_ADD", "NOT_ODD_EQ_EVEN", "MULT_SUC_EQ",
+ *              "MULT_EXP_MONO", "WOP", "DA", "MOD_ONE", "DIV_LESS_EQ",
+ *              "DIV_UNIQUE", "MOD_UNIQUE","DIV_MULT", "LESS_MOD", "MOD_EQ_0",
+ *              "ZERO_MOD", "MOD_MULT", "MOD_TIMES", "MOD_PLUS", "MOD_MOD",
+ *              "SUB_MONO_EQ", "SUB_PLUS", "INV_PRE_LESS", "INV_PRE_LESS_EQ",
+ *              "SUB_LESS_EQ", "LESS_EQUAL_ANTISYM", "SUB_EQ_EQ_0",
+ *              "SUB_LESS_0", "SUB_LESS_OR", "LESS_ADD_SUC", "LESS_SUB_ADD_LESS",
+ *              "TIMES2", "LESS_MULT_MONO", "MULT_MONO_EQ", "ADD_SUB",
+ *              "LESS_EQ_ADD_SUB", "SUB_EQUAL_0", "LESS_EQ_SUB_LESS",
+ *              "NOT_SUC_LESS_EQ", "SUB_SUB", "LESS_IMP_LESS_ADD",
+ *              "LESS_EQ_IMP_LESS_SUC", "SUB_LESS_EQ_ADD", "SUB_CANCEL",
+ *              "CANCEL_SUB", "NOT_EXP_0", "ZERO_LESS_EXP", "ODD_OR_EVEN",
+ *              "LESS_EXP_SUC_MONO", "ADD_MONO_LESS_EQ","EQ_LESS_EQ","EVEN_ADD",
+ *              "EVEN_AND_ODD","EVEN_DOUBLE", "EVEN_EXISTS","EVEN_MULT",
+ *              "EVEN_ODD","EVEN_ODD_EXISTS","EVEN_OR_ODD",
+ *              "FACT_LESS","GREATER_EQ","LEFT_SUB_DISTRIB","LESS_EQUAL_ADD",
+ *              "LESS_EQ_0","LESS_EQ_CASES","LESS_EQ_EXISTS","LESS_EQ_LESS_TRANS",
+ *              "LESS_LESS_CASES","LESS_LESS_EQ_TRANS","LESS_MONO_ADD_INV",
+ *              "LESS_MONO_REV","LESS_MULT2","LESS_SUC_EQ","MULT_EQ_0",
+ *              "MULT_LEFT_1","MULT_LESS_EQ_SUC","MULT_RIGHT_1","MULT_SUC",
+ *              "NOT_GREATER","NOT_GREATER_EQ","NOT_LEQ","NOT_LESS_EQUAL",
+ *              "NOT_NUM_EQ","NOT_SUC_ADD_LESS_EQ","NOT_SUC_LESS_EQ_0","ODD_ADD",
+ *              "ODD_DOUBLE","ODD_EVEN","ODD_EXISTS","ODD_MULT","SUB_LEFT_ADD",
+ *              "SUB_LEFT_EQ","SUB_LEFT_GREATER","SUB_LEFT_GREATER_EQ",
+ *              "SUB_LEFT_LESS", "SUB_LEFT_LESS_EQ","SUB_LEFT_SUB","SUB_LEFT_SUC",
+ *              "SUB_RIGHT_ADD","SUB_RIGHT_EQ","SUB_RIGHT_GREATER",
+ *              "SUB_RIGHT_GREATER_EQ","SUB_RIGHT_LESS","SUB_RIGHT_LESS_EQ",
+ *              "SUB_RIGHT_SUB","SUC_ADD_SYM","SUC_ONE_ADD","ZERO_DIV"]
+ * },
+ * 
+ * 
+ * {Theory = "list",
+ *  Axioms = [],
+ *  Definitions = ["NULL_DEF", "HD", "TL", "SUM", "APPEND",
+ *                 "FLAT", "LENGTH", "MAP", "MAP2", "EL", "EVERY_DEF"],
+ *  Theorems = ["list_Axiom", "NULL", "list_INDUCT", "list_CASES",
+ *              "CONS_11", "NOT_NIL_CONS", "NOT_CONS_NIL", "LIST_NOT_EQ",
+ *              "NOT_EQ_LIST", "EQ_LIST", "CONS", "APPEND_ASSOC", 
+ *              "LENGTH_APPEND", "MAP_APPEND", "LENGTH_MAP", "EVERY_EL",
+ *              "EVERY_CONJ", "LENGTH_NIL", "LENGTH_CONS"]
+ * },
+ * 
+ * 
+ * {Theory = "rec_type",
+ *  Axioms = [],
+ *  Definitions = [],
+ *  Theorems = ["TY_DEF_THM", "exists_TRP"]
+ * }]:autoload_info list);
+ * 
+ *--------------------------------------------------------------------------*)
+
+
+fun find_th s [] = NONE
+  | find_th s ((ainfo as {Theory, ...}:autoload_info)::rst) = 
+      if (s = Theory)
+      then SOME ainfo
+      else find_th s rst
+
+fun set_autoloads r = autoloads := r::(!autoloads);
+
+fun get_autoloads thy = find_th thy (!autoloads)
+
+fun add_theory_to_sml str =
+  case (find_th str (!autoloads))
+    of NONE => add_theory str
+     | (SOME {Axioms, Definitions, Theorems, ...}) =>
+        ( add_to_sml((gather (fn (s,_) => mem s Axioms) (axioms str)) @@
+                     (gather (fn (s,_) => mem s Definitions)
+		                 (definitions str))@@
+                     (gather (fn (s,_) => mem s Theorems)
+		                 (theorems str)))
+        );
+
+
+local
+fun mk_entry thy kind name =
+      Portable.String.concat ["val ",name," = Theory.",kind," \"",thy,
+	       "\" \"",name,"\"\n"]
+
+fun mk_axiom_entries thy name_list =
+    Portable.String.concat (map (mk_entry thy "axiom") name_list)
+
+fun mk_definition_entries thy name_list =
+    Portable.String.concat (map (mk_entry thy "definition") name_list)
+
+fun mk_theorem_entries thy name_list =
+    Portable.String.concat (map (mk_entry thy "theorem") name_list)
+
+fun mk_theory_structure thy str =
+    let
+	val (Axioms, Definitions, Theorems) = 
+	    (case (find_th thy (!autoloads))
+	       of NONE => (map fst (axioms thy),
+			   map fst (definitions thy),
+			   map fst (theorems thy))
+		| SOME {Axioms, Definitions, Theorems, ...} =>
+		 (Axioms, Definitions, Theorems))
+    in
+	Portable.String.concat ["structure ",str," =\nstruct\n",
+		 (mk_axiom_entries thy Axioms),
+		 (mk_definition_entries thy Definitions),
+		 (mk_theorem_entries thy Theorems),"end\n"]
+    end
+in
+fun add_theory_structure_to_sml {structure_name,theory_name} =
+    let val command = mk_theory_structure theory_name structure_name
+	(*val _ = print command*)
+    in 
+    Portable.use_string command
+    end
+end
+
+end; (* Add_to_sml *)
+@
+
+
+1.5
+log
+@Preterm and other changes, see 7.changes
+@
+text
+@@
+
+
+1.4
+log
+@The HOL90 sources have been changed to allow for the use of different
+Standard ML compilers (possibly simultaneously).
+
+ * Many files in "src/0" changed to make them more portable across different
+   ML compilers. Various additions have been made to the Portable structure
+   and files changed to access identifiers in the Portable structure rather
+   than from the global environment. Worthy of special note are:
+
+   - The pointer equality used in "src/0/term.sml" has been made into a
+     function in the Portable structure.
+
+   - The ML-Lex and ML-Yacc files for the various parsers have been changed
+     to access the Portable structure. Both the source files and the SML
+     produced from them have been changed but I have not verified that the
+     source files would reproduce the new SML versions if ML-Lex and ML-Yacc
+     were to be rerun on them. The changes involve some hacks that exploit the
+     way ML-Lex and ML-Yacc work. See the sources for details.
+
+R.J.Boulton, 15th November 1995.
+@
+text
+@d12 1
+a12 3
+functor ADD_TO_SML ((* structure Lib : Lib_sig *)
+		    structure Theory :Theory_sig
+                    structure Lexis :Lexis_sig): Add_to_sml_sig =
+d17 1
+d20 3
+a22 5
+fun ADD_TO_SML_ERR{function,message} =
+    Exception.HOL_ERR{origin_structure = "Add_to_sml",
+		      origin_function = function,
+		      message = message}
+
+d25 1
+a25 2
+  | parser _ = raise ADD_TO_SML_ERR{function = "parser",
+				    message = "bad format"};
+d34 1
+a34 1
+           then ( Lib.eval_string
+d37 1
+a37 1
+           else Lib.say ("\n"^Lib.quote n^" can not be a variable in SML, so\
+d49 1
+a49 2
+   handle _ => (L := [];
+                raise ADD_TO_SML_ERR{function = "add_to_sml",message = ""});
+d67 124
+a190 116
+val autoloads = ref
+([{Theory = "pair",
+  Axioms = [],
+  Definitions = ["UNCURRY_DEF", "CURRY_DEF"],
+  Theorems = ["PAIR", "FST", "SND", "PAIR_EQ"]
+},
+
+
+{Theory = "one",
+ Axioms = [],
+ Definitions = [],
+ Theorems = ["one_axiom", "one", "one_Axiom"]
+},
+
+
+{Theory = "combin",
+ Axioms = [],
+ Definitions = ["o_DEF", "K_DEF", "S_DEF", "I_DEF"],
+ Theorems = ["o_THM", "o_ASSOC", "K_THM", "S_THM", "I_THM", "I_o_ID"]
+},
+
+
+{Theory = "sum",
+ Axioms = [],
+ Definitions = ["ISL", "ISR", "OUTL", "OUTR"],
+ Theorems = ["sum_Axiom", "sum_axiom", "ISL_OR_ISR", "INL", "INR"]
+},
+
+
+{Theory = "num",
+ Axioms = [],
+ Definitions = [],
+ Theorems = ["NOT_SUC", "INV_SUC", "INDUCTION"]
+},
+
+
+{Theory = "prim_rec",
+ Axioms = [],
+ Definitions = [],
+ Theorems = ["INV_SUC_EQ", "LESS_REFL", "SUC_LESS",
+             "NOT_LESS_0", "LESS_MONO", "LESS_SUC_REFL",
+             "LESS_SUC",   "LESS_THM",  "LESS_SUC_IMP",
+             "LESS_0",     "EQ_LESS",   "SUC_ID",
+             "NOT_LESS_EQ","LESS_NOT_EQ","LESS_SUC_SUC",
+             "PRE",        "num_Axiom"]
+},
+
+
+{Theory = "arithmetic",
+ Axioms = [],
+ Definitions = ["GREATER_DEF", "LESS_OR_EQ", "GREATER_OR_EQ", "DIVISION", 
+                "ADD", "MULT", "SUB", "EXP", "FACT", "EVEN", "ODD"],
+ Theorems = ["ADD_SUC", "ADD_CLAUSES", "ADD_SYM", 
+             "num_CASES", "LESS_MONO_EQ", "SUC_SUB1", "PRE_SUB1",
+             "LESS_ADD", "SUB_0", "LESS_TRANS", "ADD1", "ADD_0",
+             "LESS_ANTISYM", "LESS_LESS_SUC", "FUN_EQ_LEMMA",
+             "LESS_SUC_EQ_COR", "LESS_OR", "OR_LESS", "LESS_EQ",
+             "LESS_NOT_SUC", "LESS_0_CASES",
+             "LESS_CASES_IMP", "LESS_CASES", "ADD_INV_0", "LESS_EQ_ADD",
+             "LESS_EQ_SUC_REFL", "LESS_ADD_NONZERO", "LESS_EQ_ANTISYM",
+             "NOT_LESS", "SUB_EQ_0", "ADD_ASSOC", "MULT_0", "MULT_CLAUSES",
+             "MULT_SYM", "RIGHT_ADD_DISTRIB", "LEFT_ADD_DISTRIB", "MULT_ASSOC",
+             "SUB_ADD", "PRE_SUB", "ADD_EQ_0", "ADD_INV_0_EQ", "PRE_SUC_EQ",
+             "INV_PRE_EQ", "LESS_SUC_NOT", "ADD_EQ_SUB", "LESS_MONO_ADD",
+             "LESS_MONO_ADD_EQ", "EQ_MONO_ADD_EQ", "LESS_EQ_MONO_ADD_EQ",
+             "LESS_EQ_TRANS", "LESS_EQ_LESS_EQ_MONO", "LESS_EQ_REFL",
+             "LESS_IMP_LESS_OR_EQ", "LESS_MONO_MULT", "RIGHT_SUB_DISTRIB",
+             "LESS_ADD_1", "ZERO_LESS_EQ", "LESS_EQ_MONO", "LESS_OR_EQ_ADD",
+             "SUC_NOT", "EXP_ADD", "NOT_ODD_EQ_EVEN", "MULT_SUC_EQ",
+             "MULT_EXP_MONO", "WOP", "DA", "MOD_ONE", "DIV_LESS_EQ",
+             "DIV_UNIQUE", "MOD_UNIQUE","DIV_MULT", "LESS_MOD", "MOD_EQ_0",
+             "ZERO_MOD", "MOD_MULT", "MOD_TIMES", "MOD_PLUS", "MOD_MOD",
+             "SUB_MONO_EQ", "SUB_PLUS", "INV_PRE_LESS", "INV_PRE_LESS_EQ",
+             "SUB_LESS_EQ", "LESS_EQUAL_ANTISYM", "SUB_EQ_EQ_0",
+             "SUB_LESS_0", "SUB_LESS_OR", "LESS_ADD_SUC", "LESS_SUB_ADD_LESS",
+             "TIMES2", "LESS_MULT_MONO", "MULT_MONO_EQ", "ADD_SUB",
+             "LESS_EQ_ADD_SUB", "SUB_EQUAL_0", "LESS_EQ_SUB_LESS",
+             "NOT_SUC_LESS_EQ", "SUB_SUB", "LESS_IMP_LESS_ADD",
+             "LESS_EQ_IMP_LESS_SUC", "SUB_LESS_EQ_ADD", "SUB_CANCEL",
+             "CANCEL_SUB", "NOT_EXP_0", "ZERO_LESS_EXP", "ODD_OR_EVEN",
+             "LESS_EXP_SUC_MONO", "ADD_MONO_LESS_EQ","EQ_LESS_EQ","EVEN_ADD",
+             "EVEN_AND_ODD","EVEN_DOUBLE", "EVEN_EXISTS","EVEN_MULT",
+             "EVEN_ODD","EVEN_ODD_EXISTS","EVEN_OR_ODD",
+             "FACT_LESS","GREATER_EQ","LEFT_SUB_DISTRIB","LESS_EQUAL_ADD",
+             "LESS_EQ_0","LESS_EQ_CASES","LESS_EQ_EXISTS","LESS_EQ_LESS_TRANS",
+             "LESS_LESS_CASES","LESS_LESS_EQ_TRANS","LESS_MONO_ADD_INV",
+             "LESS_MONO_REV","LESS_MULT2","LESS_SUC_EQ","MULT_EQ_0",
+             "MULT_LEFT_1","MULT_LESS_EQ_SUC","MULT_RIGHT_1","MULT_SUC",
+             "NOT_GREATER","NOT_GREATER_EQ","NOT_LEQ","NOT_LESS_EQUAL",
+             "NOT_NUM_EQ","NOT_SUC_ADD_LESS_EQ","NOT_SUC_LESS_EQ_0","ODD_ADD",
+             "ODD_DOUBLE","ODD_EVEN","ODD_EXISTS","ODD_MULT","SUB_LEFT_ADD",
+             "SUB_LEFT_EQ","SUB_LEFT_GREATER","SUB_LEFT_GREATER_EQ",
+             "SUB_LEFT_LESS", "SUB_LEFT_LESS_EQ","SUB_LEFT_SUB","SUB_LEFT_SUC",
+             "SUB_RIGHT_ADD","SUB_RIGHT_EQ","SUB_RIGHT_GREATER",
+             "SUB_RIGHT_GREATER_EQ","SUB_RIGHT_LESS","SUB_RIGHT_LESS_EQ",
+             "SUB_RIGHT_SUB","SUC_ADD_SYM","SUC_ONE_ADD","ZERO_DIV"]
+},
+
+
+{Theory = "list",
+ Axioms = [],
+ Definitions = ["NULL_DEF", "HD", "TL", "SUM", "APPEND",
+                "FLAT", "LENGTH", "MAP", "MAP2", "EL", "EVERY_DEF"],
+ Theorems = ["list_Axiom", "NULL", "list_INDUCT", "list_CASES",
+             "CONS_11", "NOT_NIL_CONS", "NOT_CONS_NIL", "LIST_NOT_EQ",
+             "NOT_EQ_LIST", "EQ_LIST", "CONS", "APPEND_ASSOC", 
+             "LENGTH_APPEND", "MAP_APPEND", "LENGTH_MAP", "EVERY_EL",
+             "EVERY_CONJ", "LENGTH_NIL", "LENGTH_CONS"]
+},
+
+
+{Theory = "rec_type",
+ Axioms = [],
+ Definitions = [],
+ Theorems = ["TY_DEF_THM", "exists_TRP"]
+}]:autoload_info list);
+d207 2
+a208 2
+        ( add_to_sml((Lib.gather (fn (s,_) => Lib.mem s Axioms) (axioms str)) @@
+                     (Lib.gather (fn (s,_) => Lib.mem s Definitions)
+d210 2
+a211 3
+                     (Lib.gather (fn (s,_) => Lib.mem s Theorems)
+		                 (theorems str)));
+          Theory.delete_theory_from_cache str
+d217 1
+a217 1
+      Portable.String.concat ["val ",name," = Base_logic.Theory.",kind," \"",thy,
+d233 3
+a235 3
+	       of NONE => (map Lib.fst (Theory.axioms thy),
+			   map Lib.fst (Theory.definitions thy),
+			   map Lib.fst (Theory.theorems thy))
+d249 1
+a249 1
+    Lib.eval_string command
+@
+
+
+1.4.4.1
+log
+@Removed files are parse files and portability files that have
+effectively been moved elsewhere.
+
+Modified files are up to date for ML 109.26.
+@
+text
+@d38 1
+a38 1
+           then ( Lib.use_string
+d247 1
+a247 1
+    Lib.use_string command
+@
+
+
+1.4.4.2
+log
+@*** empty log message ***
+@
+text
+@d214 3
+a216 2
+fun mk_entry thy kind name = Portable.String.concat 
+     ["val ",name," = Theory.", kind, " \"", thy, "\" \"", name, "\"\n"]
+@
+
+
+1.4.4.3
+log
+@Closing up HOL so it is CM-friendly.
+@
+text
+@d12 3
+a14 1
+structure Add_to_sml : Add_to_sml_sig =
+d16 1
+d18 2
+a19 1
+open CoreHol.Theory;
+d26 1
+a26 1
+val L = ref ([]:(string*CoreHol.Thm.thm) list);
+a31 16
+(*fun install() =
+ if (Portable.List.null (!L)) then ()
+ else let val (n,_) = Portable.List.hd (!L)
+      in if (Lexis.ok_sml_identifier n)
+          then ( Lib.use_string
+                  ("val "^n^" = Add_to_sml.parser`^(Lib.snd(Portable.List.hd(!Add_to_sml.L)))`");
+                  ())
+           else Lib.say ("\n"^Lib.quote n^" can not be a variable in SML, so\
+                         \ skipping its binding.\n")
+           ;
+           L := Portable.List.tl (!L)
+           ;
+           install ()
+        end;
+*)
+
+d33 7
+a39 6
+ if (Portable.List.null (!L)) then ()
+ else let val (n,_) = Portable.List.hd (!L)
+      in if (Lexis.ok_sml_identifier n)
+          then ( Lib.use_string (Portable.String.concat
+                 ["val ", n, " = Add_to_sml.parser`",
+                  "^(Lib.snd(Portable.List.hd(!Add_to_sml.L)))`"]);
+d50 3
+a52 1
+   ( L := alist; install() )
+d209 1
+a209 1
+          delete_theory_from_cache str
+d214 2
+a215 3
+fun mk_entry thy kind name =
+      Portable.String.concat ["val ",name," = CoreHol.Theory.",kind," \"",thy,
+	       "\" \"",name,"\"\n"]
+d230 3
+a232 3
+	       of NONE => (map Lib.fst (axioms thy),
+			   map Lib.fst (definitions thy),
+			   map Lib.fst (theorems thy))
+@
+
+
+1.4.4.4
+log
+@The structure Time has changed in the underling ML Library, and Portable.Time
+has changed in response, so this change reflects that change.
+
+The change to add_to_sml is so that frags are known to the system.
+@
+text
+@a21 2
+datatype frag = datatype Portable.frag;
+
+@
+
+
+1.3
+log
+@First phase of hol90.8 development.  hol90 now compiles using NJSML-CM
+108.5, with separate compilation of libraries.  System dependencies
+have been isolated in the makefiles and "portable.sml".
+
+This involved a large number of enhancments to the source files,
+most of which are documented in the 7.changes file (or will be shortly).
+See also the correpsonding email corrspondence between RJB, KLS, TFM,
+JRH and DRS that happened during this development.
+@
+text
+@d33 1
+a33 1
+   if (null (!L))
+d35 1
+a35 1
+   else let val (n,_) = hd (!L)
+d39 1
+a39 1
+                  ("val "^n^" = Add_to_sml.parser`^(snd(hd(!Add_to_sml.L)))`");
+d44 1
+a44 1
+           L := tl (!L)
+@
+
+
+1.2
+log
+@Check in after merging in Konrad's changes made after
+the release of hol90.7.  This involved creating a side branch
+in which to check in Konrad's changes, then merging in that
+side branch into the main development (which contains changes
+made by Elsa Gunter).
+
+Some other small modification have been made to the source code,
+as I begun to try to make this version into a working version:
+	- hol90 will now be compiled in an environment were no
+structures can be considered opn.  This means many structures
+now need "open Lib" and other such commands at their head.
+This has not yet been completed, but has been begun.
+	- "rotl" and "rotr" have been added to Lib, something
+which I just did impulsively.   Documentation files
+have also been added in help/90.
+@
+text
+@d215 1
+a215 1
+      Sml_system.String.concat ["val ",name," = Base_logic.Theory.",kind," \"",thy,
+d219 1
+a219 1
+    Sml_system.String.concat (map (mk_entry thy "axiom") name_list)
+d222 1
+a222 1
+    Sml_system.String.concat (map (mk_entry thy "definition") name_list)
+d225 1
+a225 1
+    Sml_system.String.concat (map (mk_entry thy "theorem") name_list)
+d237 1
+a237 1
+	Sml_system.String.concat ["structure ",str," =\nstruct\n",
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d12 2
+a13 1
+functor ADD_TO_SML (structure Theory :Theory_sig
+d21 4
+a24 3
+fun ADD_TO_SML_ERR{function,message} = HOL_ERR{origin_structure = "Add_to_sml",
+					       origin_function = function,
+					       message = message}
+d122 1
+a122 1
+ Definitions = ["GREATER", "LESS_OR_EQ", "GREATER_OR_EQ", "DIVISION", 
+d198 2
+d204 5
+a208 3
+        ( add_to_sml((gather (fn (s,_) => mem s Axioms) (axioms str)) @@
+                     (gather (fn (s,_) => mem s Definitions)(definitions str))@@
+                     (gather (fn (s,_) => mem s Theorems) (theorems str)));
+d215 1
+a215 1
+      implode ["val ",name," = Base_logic.Theory.",kind," \"",thy,
+d219 1
+a219 1
+    implode (map (mk_entry thy "axiom") name_list)
+d222 1
+a222 1
+    implode (map (mk_entry thy "definition") name_list)
+d225 1
+a225 1
+    implode (map (mk_entry thy "theorem") name_list)
+d231 3
+a233 3
+	       of NONE => (map fst (Theory.axioms thy),
+			   map fst (Theory.definitions thy),
+			   map fst (Theory.theorems thy))
+d237 1
+a237 1
+	implode ["structure ",str," =\nstruct\n",
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

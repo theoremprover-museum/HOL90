@@ -1,0 +1,157 @@
+head	1.1;
+access;
+symbols
+	HOL97:1.1.2.5.0.2
+	bpHOL97:1.1.2.5
+	hol90_9_alpha:1.1.2.5
+	TFL_1:1.1.2.1
+	hol90_pre8_for_multiple_compilers:1.1.0.2;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	96.06.29.15.07.16;	author rjb;	state dead;
+branches
+	1.1.2.1;
+next	;
+
+1.1.2.1
+date	96.06.29.15.07.17;	author rjb;	state Exp;
+branches;
+next	1.1.2.2;
+
+1.1.2.2
+date	96.08.23.10.30.02;	author rjb;	state Exp;
+branches;
+next	1.1.2.3;
+
+1.1.2.3
+date	96.09.02.21.36.10;	author drs1004;	state Exp;
+branches;
+next	1.1.2.4;
+
+1.1.2.4
+date	96.09.03.09.33.50;	author rjb;	state Exp;
+branches;
+next	1.1.2.5;
+
+1.1.2.5
+date	96.09.03.15.55.21;	author rjb;	state Exp;
+branches
+	1.1.2.5.2.1;
+next	;
+
+1.1.2.5.2.1
+date	97.06.11.18.43.15;	author kxs;	state Exp;
+branches;
+next	1.1.2.5.2.2;
+
+1.1.2.5.2.2
+date	97.07.11.19.18.51;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@file make_tfl was initially added on branch hol90_pre8_for_multiple_compilers.
+@
+text
+@@
+
+
+1.1.2.1
+log
+@TFL version 1 for HOL: A well-founded recursive function definition package.
+@
+text
+@a0 3
+#!/bin/sh
+
+(cd theories/src; $@@ < mk_tc.sml; $@@ < mk_wf.sml; $@@ < mk_kls_list.sml)
+@
+
+
+1.1.2.2
+log
+@Now exits on failure.
+@
+text
+@d3 1
+a3 4
+cd theories/src
+echo 'use_and_exit print_HOL_ERR "mk_tc.sml";' | $* &&
+echo 'use_and_exit print_HOL_ERR "mk_wf.sml";' | $* &&
+echo 'use_and_exit print_HOL_ERR "mk_kls_list.sml";' | $*
+@
+
+
+1.1.2.3
+log
+@theories/ascii wasn't being made
+@
+text
+@a2 1
+mkdir theories/ascii || true
+@
+
+
+1.1.2.4
+log
+@Redirected error messages from mkdir to /dev/null.
+@
+text
+@d3 1
+a3 1
+mkdir theories/ascii 2>/dev/null || true
+@
+
+
+1.1.2.5
+log
+@Modified make_tfl to use the THEORY_TYPE parameter.
+@
+text
+@d3 1
+a3 3
+if test -z "$THEORY_TYPE"; then THEORY_TYPE=ascii; fi
+
+mkdir theories/$THEORY_TYPE 2>/dev/null || true
+@
+
+
+1.1.2.5.2.1
+log
+@Changes to accomodate move to SML/NJ 109.26.
+@
+text
+@d7 3
+a9 8
+#echo 'Portable.use_and_exit print_HOL_ERR "mk_tc.sml";' | $* 
+#echo 'Portable.use_and_exit print_HOL_ERR "mk_wf.sml";' | $* 
+#echo 'Portable.use_and_exit print_HOL_ERR "mk_kls_list.sml";' | $*
+
+$* < mk_tc.sml
+$* < mk_wf.sml
+$* < mk_kls_list.sml
+
+@
+
+
+1.1.2.5.2.2
+log
+@Changes for CM.
+@
+text
+@d7 4
+d13 1
+a13 3
+
+#echo 'Portable.use_and_exit print_HOL_ERR "mk_tc.sml";' | $* 
+#echo 'Portable.use_and_exit print_HOL_ERR "mk_wf.sml";' | $* 
+@

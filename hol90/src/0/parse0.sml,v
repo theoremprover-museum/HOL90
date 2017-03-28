@@ -1,0 +1,198 @@
+head	1.1;
+access;
+symbols;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	96.02.08.00.31.36;	author drs1004;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@New theory mechanism, by Donald Syme, and many other enhancements.
+@
+text
+@(* ===================================================================== *)
+(* FILE          : parse0.sml                                            *)
+(* DESCRIPTION   : Implements primitive parsing of HOL terms and types.  *)
+(*                                                                       *)
+(* AUTHOR        : Konrad Slind, University of Calgary                   *)
+(* DATE          : August 26, 1991                                       *)
+(* ===================================================================== *)
+
+
+functor PARSE0 (structure P : ARG_PARSER
+               structure Preterm : Preterm_sig
+               structure Parse_support : Parse_support_sig
+               sharing
+                 P.Parse_support = Parse_support
+               sharing
+                  Parse_support.Preterm = Preterm
+               sharing 
+                 type P.result = Parse_support.parse
+               sharing 
+                 type P.arg = unit
+                sharing 
+                 type P.pos = int) : Parse0_sig =
+
+struct
+structure Parse_support = Parse_support
+structure Preterm = Preterm
+structure Term = Parse_support.Preterm.Term;
+open Lib;
+open Preterm;
+    
+type term = Term.term
+type typ = Term.Type.typ;
+type quotation = Term.term frag list;
+    
+    
+val ERR = Exception.ERR "Parse";
+val WRAP_ERR = Exception.WRAP_ERR "Parse";
+    
+local
+fun T [] ol ml = (ol, rev ml) |
+    T ((ANTIQUOTE  x)::rst) ol ml = T rst (ol^"^") (x::ml) |
+    T ((QUOTE s)::rst) ol ml = T rst (ol^s) ml
+in
+fun format (q:'a frag list) = T q "" []
+end;
+
+val current = ref "";
+    
+fun min (n:int,m) = (if n < m then n else m);
+    
+fun error (s,front,back) = 
+    let val cut = Portable.String.substring(!current,max(0,front-3),min(30,Portable.String.size (!current)-front)) handle _ => "??"
+    in (output(std_out,("HOL parser error: "^"near "^Lib.quote cut^"\n"));
+        ERR("first pass of parsing",s))
+    end;
+    
+		     
+
+(*------------------------------------------------------------------------
+ * Performs the first pass, parsing into either preterms, pretypes or
+ * type specs.
+ *-----------------------------------------------------------------------*)
+
+fun p (ol_frag_list:Term.term frag list) =
+   let val _ = reset_type_num()
+       val (s,antiq_list) = format ol_frag_list
+       val _ = (current := s)
+       val strm = Portable.open_string s
+       val lexer = P.makeLexer(fn _ => Portable.input_line strm) 
+                              (ref antiq_list : Term.term list ref)
+       val (res,_) = P.parse(0,lexer,error,())
+   in res
+   end;
+
+
+(* string to preterm (also types, via ty_antiq) *)
+fun ps s =
+   let val _ = reset_type_num()
+       val _ = (current := s)
+       val strm = Portable.open_string s
+       val lexer = P.makeLexer(fn _ => Portable.input_line strm) 
+                              (ref [] : Term.term list ref)
+       val (res,_) = P.parse(0,lexer,error,())
+   in res
+   end;
+
+
+(*------------------------------------------------------------------------
+ * Parsing of preterms and pretypes
+ *-----------------------------------------------------------------------*)
+
+fun preterm_parser frag_list =
+  (Globals.in_type_spec := NONE;
+   case (p frag_list)
+     of (Parse_support.PTM ptm) => ptm
+      | _ => ERR("preterm_parser", "Not a preterm."));
+
+fun string_to_preterm s =
+  (Globals.in_type_spec := NONE;
+   case (ps s)
+     of (Parse_support.PTM ptm) => ptm
+      | _ => ERR("string_to_preterm","Not a preterm."));
+
+
+(*------------------------------------------------------------------------
+ * Parsing of types
+ *-----------------------------------------------------------------------*)
+
+
+fun pretype_parser frag_list =
+  (Globals.in_type_spec := NONE;
+   case (p frag_list)
+     of (Parse_support.PTY ty) => ty
+      | _ => ERR("type_parser","Not a type."));
+
+fun string_to_pretype s =
+  (Globals.in_type_spec := NONE;
+   case (ps s)
+     of (Parse_support.PTY ty) => ty
+      | _ => ERR("string_to_pretype","Not a type."));
+
+(*------------------------------------------------------------------------
+ * Parsing of type specifications
+ *-----------------------------------------------------------------------*)
+
+
+fun colon s = ":"^s;
+
+fun type_spec_parser (QUOTE s :: rst) =
+    (Globals.in_type_spec := SOME "";
+     case ((p (QUOTE(colon s)::rst)) handle e => Exception.Raise e)
+	 of (Parse_support.TY_SPEC sp) => sp
+       | _ => ERR("type_spec_parser","Not a type specification."))
+  | type_spec_parser _ = ERR("type_spec_parser", "Badly formed quotation.");
+
+
+fun string_to_type_spec s =
+  (Globals.in_type_spec := SOME "";
+   case (ps (colon s))
+     of (Parse_support.TY_SPEC sp) => sp
+      | _ => ERR("string_to_type_spec", "Not a type specification."));
+
+(*------------------------------------------------------------------------
+ * Making term and type parsers
+ *-----------------------------------------------------------------------*)
+
+fun pretype_fun f = 
+    let fun q (Comb x) = Comb (app2_qfun (q,q) x)
+	  | q (Abs x) = Abs (app2_qfun (q,q) x)
+	  | q (Const name) = raise UNCHANGED
+	  | q (Var name) = raise UNCHANGED 
+	  | q (Constrained x) = Constrained (app2_qfun (q,f) x)
+	  | q (x as Antiq _) = raise UNCHANGED
+    in qfun_to_fun q
+    end;
+
+fun mk_term_parser funs fl = 
+    let val ptm = preterm_parser fl
+	val ptm' = foldl (fn (f,ptm) => f ptm) ptm funs
+    in Preterm.typecheck ptm'
+    end
+    handle e => WRAP_ERR("term_parser",e);
+
+fun mk_type_parser funs fl = 
+    let val pty = pretype_parser fl
+	val pty' = foldl (fn (f,pty) => f pty) pty funs
+    in Preterm.pretype_to_type pty'
+    end
+    handle e => WRAP_ERR("term_parser",e);
+
+
+
+end; (* PARSE *)
+
+
+@

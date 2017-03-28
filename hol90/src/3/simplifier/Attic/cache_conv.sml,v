@@ -1,0 +1,129 @@
+head	1.2;
+access;
+symbols;
+locks; strict;
+comment	@# @;
+
+
+1.2
+date	96.02.08.00.48.48;	author drs1004;	state dead;
+branches;
+next	1.1;
+
+1.1
+date	96.01.04.14.14.14;	author drs1004;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.2
+log
+@New theory mechanism, code reorganisation and other enhancements by Don Syme.
+@
+text
+@
+
+signature Cache_conv_sig = 
+sig
+
+ (*------------------------------------------------------------------
+  * CACHE_CCONV
+  *
+  * Cache a context conversion such as ARITH_CCONV.
+  *
+  * Two arguments are needed.  The
+  * first should determine if a given theorem is relevant to
+  * the decision procedure.  The second should be a conversion
+  * which will decide "t", i.e. convert t to |- t = x for some
+  * value x.
+  *
+  * Returns a new conversion, and a reference to a table used 
+  * as a cache.  The table is returned to enable users to clear
+  * it and analyse its contents.
+  *-----------------------------------------------------------------*)
+
+   type term sharing type term = Term.term
+   type thm sharing type thm = Thm.thm
+   type conv sharing type conv = Abbrev.conv
+
+   type cache
+   val CACHE_CCONV : 
+         ((term -> bool) * (thm list -> conv))
+             -> (thm list -> conv) * cache
+                
+   val clear_cache : cache -> unit;
+
+end;
+
+structure Cache_conv : Cache_conv_sig =
+struct
+
+open Core;
+open Trace;
+
+   val ERR = Exception.ERR "Cache_conv";
+
+    structure Tables = HashTable(
+     struct
+       type hash_key = term
+       val hashVal = hash_term
+       val sameKey = (op =) : (term * term) -> bool
+     end
+    );
+
+infix <<;  (* A subsetof B *)
+fun x << y = all ((C mem) y) x;
+
+
+exception FIRST
+fun first p =
+    let fun f [] = raise FIRST
+          | f (h::t) = if p h then h else f t
+    in f
+    end
+open Termord;
+
+type table = (term list * thm option) list Tables.hash_table 
+type cache = table ref;
+
+exception FIND;
+fun CACHE_CCONV (filt,conv) =
+  let val cache = (ref (Tables.mkTable (100,FIND)): cache);
+      fun cache_proc thms tm =
+         let val _ = if (filt tm) then () 
+                     else ERR("CACHE_CCONV","not applicable")
+             val curr = flatten (map hyp thms)
+             fun ok (prev,SOME thm) = prev << curr
+               | ok (prev,NONE) = curr << prev
+             val prevs = the (Tables.peek (!cache) tm) handle _ => []
+         in (case (snd (first ok prevs))
+             of SOME x => trace_production(1,tm,"cache hit!",x) | 
+                 NONE => ERR("CACHE_CCONV","cache hit was failure"))
+            handle FIRST => 
+            let val thm = conv thms tm
+                   handle e => (Tables.insert (!cache) (tm,(curr,NONE)::prevs);
+                             raise e)
+                 val _ = Tables.insert (!cache) (tm,(curr,SOME thm)::prevs)
+            in thm
+            end
+
+         end;
+  in (cache_proc, cache)
+  end;
+
+fun clear_cache cache = (cache := (Tables.mkTable (100,FIND):table));
+
+end;
+@
+
+
+1.1
+log
+@Added simplifier components, added drule files, added MK_ABS_CONV, better error messages
+@
+text
+@@

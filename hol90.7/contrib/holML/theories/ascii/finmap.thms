@@ -1,0 +1,373 @@
+thid = (finmap, 784895509, 884259)
+axioms = []
+definitions =
+[((ne_length_DEF),
+  [],
+  `((/\ ((! :('a -> bool) -> bool) (\(x :'a).
+   (((= :num -> num -> bool) ((ne_length :'a nonemptylist -> num)
+   ((ONE :'a -> 'a nonemptylist) $0))) 0))))
+   ((! :('a nonemptylist -> bool) -> bool) (\(n :'a nonemptylist).
+   ((! :('a -> bool) -> bool) (\(x :'a). (((= :num -> num -> bool)
+   ((ne_length :'a nonemptylist -> num)
+   (((MORE :'a -> 'a nonemptylist -> 'a nonemptylist) $0) $1))) ((+
+   ((ne_length :'a nonemptylist -> num) $1)) 1)))))))`),
+ ((next_dom_DEF),
+  [],
+  `((! :(('a -> 'a -> bool) -> bool) -> bool)
+   (\(less :'a -> 'a -> bool).
+   ((! :(('a # 'b) list finmap -> bool) -> bool)
+   (\(f :('a # 'b) list finmap). (((= :'a -> 'a -> bool)
+   (((next_dom :('a -> 'a -> bool) -> ('a # 'b) list finmap -> 'a) $1)
+   $0)) ((@ :('a -> bool) -> 'a) (\(a :'a). ((/\ (~
+   (((in_dom :('a # 'b) list finmap -> 'a -> bool) $1) $0)))
+   ((! :('a -> bool) -> bool) (\(a' :'a). ((==> (($3 $0) $1))
+   (((in_dom :('a # 'b) list finmap -> 'a -> bool) $2)
+   $0))))))))))))`),
+ ((in_dom_DEF),
+  [],
+  `((! :(('a # 'b) list finmap -> bool) -> bool)
+   (\(f :('a # 'b) list finmap). ((! :('a -> bool) -> bool) (\(x :'a).
+   (((= :bool -> bool -> bool)
+   (((in_dom :('a # 'b) list finmap -> 'a -> bool) $1) $0))
+   (((list_member :'a -> 'a list -> bool) $0)
+   ((dom_list :('a # 'b) list finmap -> 'a list) $1)))))))`),
+ ((bij_inv_DEF),
+  [],
+  `((! :(('a -> 'b) -> bool) -> bool) (\(f1 :'a -> 'b).
+   ((! :(('b -> 'a) -> bool) -> bool) (\(f2 :'b -> 'a).
+   (((= :bool -> bool -> bool)
+   (((bij_inv :('a -> 'b) -> ('b -> 'a) -> bool) $1) $0)) ((/\
+   ((ONE_ONE :('a -> 'b) -> bool) $1)) ((/\
+   ((ONTO :('a -> 'b) -> bool) $1)) ((/\ ((! :('a -> bool) -> bool)
+   (\(a :'a). (((= :'a -> 'a -> bool) ($1 ($2 $0))) $0))))
+   ((! :('b -> bool) -> bool) (\(b :'b). (((= :'b -> 'b -> bool) ($2
+   ($1 $0))) $0)))))))))))`),
+ ((restrict_finmap_DEF),
+  [],
+  `((! :(('a # 'b) list -> bool) -> bool) (\(f :('a # 'b) list).
+   ((! :('a set -> bool) -> bool) (\(set :'a set).
+   (((= :('a # 'b) list finmap -> ('a # 'b) list finmap -> bool)
+   (((restrict_finmap :('a # 'b) list finmap -> 'a set ->
+                       ('a # 'b) list finmap)
+   ((FINMAP :('a # 'b) list -> ('a # 'b) list finmap) $1)) $0))
+   ((FINMAP :('a # 'b) list -> ('a # 'b) list finmap)
+   (((FILTER :('a # 'b -> bool) -> ('a # 'b) list -> ('a # 'b) list)
+   (\(x :'a # 'b). (((IN :'a -> 'a set -> bool) ((FST :'a # 'b -> 'a)
+   $0)) $1))) $1)))))))`),
+ ((finmap_range_DEF),
+  [],
+  `((! :(('a # 'b) list -> bool) -> bool) (\(l :('a # 'b) list).
+   (((= :'b set -> 'b set -> bool)
+   ((finmap_range :('a # 'b) list finmap -> 'b set)
+   ((FINMAP :('a # 'b) list -> ('a # 'b) list finmap) $0)))
+   ((((FOLDR :('a # 'b -> 'b set -> 'b set) -> ('a # 'b) list ->
+              'b set -> 'b set) (\(x :'a # 'b). (\(s :'b set).
+   (((INSERT :'b -> 'b set -> 'b set) ((SND :'a # 'b -> 'b) $1))
+   $0)))) $0) (EMPTY :'b set)))))`),
+ ((finmap_dom_DEF),
+  [],
+  `((! :(('a # 'b) list -> bool) -> bool) (\(l :('a # 'b) list).
+   (((= :'a set -> 'a set -> bool)
+   ((finmap_dom :('a # 'b) list finmap -> 'a set)
+   ((FINMAP :('a # 'b) list -> ('a # 'b) list finmap) $0)))
+   ((((FOLDR :('a # 'b -> 'a set -> 'a set) -> ('a # 'b) list ->
+              'a set -> 'a set) (\(x :'a # 'b). (\(s :'a set).
+   (((INSERT :'a -> 'a set -> 'a set) ((FST :'a # 'b -> 'a) $1))
+   $0)))) $0) (EMPTY :'a set)))))`),
+ ((dom_list_DEF),
+  [],
+  `((! :(('a # 'b) list -> bool) -> bool) (\(l :('a # 'b) list).
+   (((= :'a list -> 'a list -> bool)
+   ((dom_list :('a # 'b) list finmap -> 'a list)
+   ((FINMAP :('a # 'b) list -> ('a # 'b) list finmap) $0)))
+   ((dom_list_helper :('a # 'b) list -> 'a list) $0))))`),
+ ((dom_list_helper_DEF),
+  [],
+  `((/\ (((= :'a list -> 'a list -> bool)
+   ((dom_list_helper :('a # 'b) list -> 'a list)
+   (NIL :('a # 'b) list))) (NIL :'a list)))
+   ((! :(('a # 'b) list -> bool) -> bool) (\(t :('a # 'b) list).
+   ((! :('a # 'b -> bool) -> bool) (\(h :'a # 'b).
+   (((= :'a list -> 'a list -> bool)
+   ((dom_list_helper :('a # 'b) list -> 'a list)
+   (((CONS :'a # 'b -> ('a # 'b) list -> ('a # 'b) list) $0) $1)))
+   (((CONS :'a -> 'a list -> 'a list) ((FST :'a # 'b -> 'a) $0))
+   ((dom_list_helper :('a # 'b) list -> 'a list) $1))))))))`),
+ ((list_member_DEF),
+  [],
+  `((/\ ((! :('a -> bool) -> bool) (\(item :'a).
+   (((= :bool -> bool -> bool) (((list_member :'a -> 'a list -> bool)
+   $0) (NIL :'a list))) F)))) ((! :('a -> bool) -> bool) (\(item :'a).
+   ((! :('a list -> bool) -> bool) (\(t :'a list).
+   ((! :('a -> bool) -> bool) (\(h :'a). (((= :bool -> bool -> bool)
+   (((list_member :'a -> 'a list -> bool) $2)
+   (((CONS :'a -> 'a list -> 'a list) $0) $1)))
+   ((((COND :bool -> bool -> bool -> bool) (((= :'a -> 'a -> bool) $0)
+   $2)) T) (((list_member :'a -> 'a list -> bool) $2) $1))))))))))`),
+ ((list_max_DEF),
+  [],
+  `((/\ (((= :num -> num -> bool) (list_max (NIL :num list))) 0))
+   ((! :(num list -> bool) -> bool) (\(l :num list).
+   ((! :(num -> bool) -> bool) (\(n :num). (((= :num -> num -> bool)
+   (list_max (((CONS :num -> num list -> num list) $0) $1)))
+   ((((COND :bool -> num -> num -> num) ((< (list_max $1)) $0)) $0)
+   (list_max $1))))))))`),
+ ((finmap_modify_DEF),
+  [],
+  `((! :(('a -> 'a -> bool) -> bool) -> bool)
+   (\(less :'a -> 'a -> bool).
+   ((! :(('a # 'b) list finmap -> bool) -> bool)
+   (\(f :('a # 'b) list finmap).
+   ((! :(('a # 'b) list finmap -> bool) -> bool)
+   (\(g :('a # 'b) list finmap).
+   (((= :('a # 'b) list finmap -> ('a # 'b) list finmap -> bool)
+   ((((finmap_modify :('a -> 'a -> bool) -> ('a # 'b) list finmap ->
+                      ('a # 'b) list finmap -> ('a # 'b) list finmap)
+   $2) $1) $0))
+   ((((COND :bool -> ('a # 'b) list finmap -> ('a # 'b) list finmap ->
+             ('a # 'b) list finmap)
+   (((= :('a # 'b) list finmap -> ('a # 'b) list finmap -> bool) $1)
+   (empty_finmap :('a # 'b) list finmap))) $0)
+   ((FINMAP :('a # 'b) list -> ('a # 'b) list finmap)
+   ((((list_modify :('a -> 'a -> bool) -> ('a # 'b) list ->
+                    ('a # 'b) list -> ('a # 'b) list) $2)
+   ((FINMAP_arg :('a # 'b) list finmap -> ('a # 'b) list) $1))
+   ((FINMAP_arg :('a # 'b) list finmap -> ('a # 'b) list)
+   $0)))))))))))`),
+ ((list_modify_DEF),
+  [],
+  `((/\ ((! :(('a -> 'a -> bool) -> bool) -> bool)
+   (\(less :'a -> 'a -> bool). ((! :(('a # 'b) list -> bool) -> bool)
+   (\(f :('a # 'b) list).
+   (((= :('a # 'b) list -> ('a # 'b) list -> bool)
+   ((((list_modify :('a -> 'a -> bool) -> ('a # 'b) list ->
+                    ('a # 'b) list -> ('a # 'b) list) $1) $0)
+   (NIL :('a # 'b) list))) $0))))))
+   ((! :(('a -> 'a -> bool) -> bool) -> bool)
+   (\(less :'a -> 'a -> bool). ((! :(('a # 'b) list -> bool) -> bool)
+   (\(f :('a # 'b) list). ((! :(('a # 'b) list -> bool) -> bool)
+   (\(t :('a # 'b) list). ((! :('a # 'b -> bool) -> bool)
+   (\(h :'a # 'b). (((= :('a # 'b) list -> ('a # 'b) list -> bool)
+   ((((list_modify :('a -> 'a -> bool) -> ('a # 'b) list ->
+                    ('a # 'b) list -> ('a # 'b) list) $3) $2)
+   (((CONS :'a # 'b -> ('a # 'b) list -> ('a # 'b) list) $0) $1)))
+   ((((list_modify :('a -> 'a -> bool) -> ('a # 'b) list ->
+                    ('a # 'b) list -> ('a # 'b) list) $3)
+   (((((list_insert :('a -> 'a -> bool) -> 'a -> 'b ->
+                     ('a # 'b) list -> ('a # 'b) list) $3)
+   ((FST :'a # 'b -> 'a) $0)) ((SND :'a # 'b -> 'b) $0)) $2))
+   $1)))))))))))`),
+ ((finmap_insert_DEF),
+  [],
+  `((! :(('a -> 'a -> bool) -> bool) -> bool)
+   (\(less :'a -> 'a -> bool). ((! :('a -> bool) -> bool) (\(key :'a).
+   ((! :('b -> bool) -> bool) (\(item :'b).
+   ((! :(('a # 'b) list -> bool) -> bool) (\(l :('a # 'b) list).
+   (((= :('a # 'b) list finmap -> ('a # 'b) list finmap -> bool)
+   (((((finmap_insert :('a -> 'a -> bool) -> 'a -> 'b ->
+                       ('a # 'b) list finmap -> ('a # 'b) list finmap)
+   $3) $2) $1) ((FINMAP :('a # 'b) list -> ('a # 'b) list finmap)
+   $0))) ((FINMAP :('a # 'b) list -> ('a # 'b) list finmap)
+   (((((list_insert :('a -> 'a -> bool) -> 'a -> 'b ->
+                     ('a # 'b) list -> ('a # 'b) list) $3) $2) $1)
+   $0)))))))))))`),
+ ((list_insert_DEF),
+  [],
+  `((/\ ((! :(('a -> 'a -> bool) -> bool) -> bool)
+   (\(less :'a -> 'a -> bool). ((! :('a -> bool) -> bool) (\(key :'a).
+   ((! :('b -> bool) -> bool) (\(item :'b).
+   (((= :('a # 'b) list -> ('a # 'b) list -> bool)
+   (((((list_insert :('a -> 'a -> bool) -> 'a -> 'b ->
+                     ('a # 'b) list -> ('a # 'b) list) $2) $1) $0)
+   (NIL :('a # 'b) list)))
+   (((CONS :'a # 'b -> ('a # 'b) list -> ('a # 'b) list)
+   (((, :'a -> 'b -> 'a # 'b) $1) $0)) (NIL :('a # 'b) list))))))))))
+   ((! :(('a -> 'a -> bool) -> bool) -> bool)
+   (\(less :'a -> 'a -> bool). ((! :('a -> bool) -> bool) (\(key :'a).
+   ((! :('b -> bool) -> bool) (\(item :'b).
+   ((! :(('a # 'b) list -> bool) -> bool) (\(t :('a # 'b) list).
+   ((! :('a # 'b -> bool) -> bool) (\(h :'a # 'b).
+   (((= :('a # 'b) list -> ('a # 'b) list -> bool)
+   (((((list_insert :('a -> 'a -> bool) -> 'a -> 'b ->
+                     ('a # 'b) list -> ('a # 'b) list) $4) $3) $2)
+   (((CONS :'a # 'b -> ('a # 'b) list -> ('a # 'b) list) $0) $1)))
+   ((((COND :bool -> ('a # 'b) list -> ('a # 'b) list ->
+             ('a # 'b) list) (($4 ((FST :'a # 'b -> 'a) $0)) $3))
+   (((CONS :'a # 'b -> ('a # 'b) list -> ('a # 'b) list) $0)
+   (((((list_insert :('a -> 'a -> bool) -> 'a -> 'b ->
+                     ('a # 'b) list -> ('a # 'b) list) $4) $3) $2)
+   $1)))
+   ((((COND :bool -> ('a # 'b) list -> ('a # 'b) list ->
+             ('a # 'b) list) (((= :'a -> 'a -> bool) $3)
+   ((FST :'a # 'b -> 'a) $0)))
+   (((CONS :'a # 'b -> ('a # 'b) list -> ('a # 'b) list)
+   (((, :'a -> 'b -> 'a # 'b) $3) $2)) $1))
+   (((CONS :'a # 'b -> ('a # 'b) list -> ('a # 'b) list)
+   (((, :'a -> 'b -> 'a # 'b) $3) $2))
+   (((CONS :'a # 'b -> ('a # 'b) list -> ('a # 'b) list) $0)
+   $1))))))))))))))))`),
+ ((finmap_lookup_DEF),
+  [],
+  `((! :('a -> bool) -> bool) (\(key :'a).
+   ((! :(('a # 'b) list -> bool) -> bool) (\(l :('a # 'b) list).
+   (((= :'b lift -> 'b lift -> bool)
+   (((finmap_lookup :'a -> ('a # 'b) list finmap -> 'b lift) $1)
+   ((FINMAP :('a # 'b) list -> ('a # 'b) list finmap) $0)))
+   (((list_lookup :'a -> ('a # 'b) list -> 'b lift) $1) $0))))))`),
+ ((list_lookup_DEF),
+  [],
+  `((/\ ((! :('a -> bool) -> bool) (\(key :'a).
+   (((= :'b lift -> 'b lift -> bool)
+   (((list_lookup :'a -> ('a # 'b) list -> 'b lift) $0)
+   (NIL :('a # 'b) list))) (undefined :'b lift)))))
+   ((! :('a -> bool) -> bool) (\(key :'a).
+   ((! :(('a # 'b) list -> bool) -> bool) (\(t :('a # 'b) list).
+   ((! :('a # 'b -> bool) -> bool) (\(h :'a # 'b).
+   (((= :'b lift -> 'b lift -> bool)
+   (((list_lookup :'a -> ('a # 'b) list -> 'b lift) $2)
+   (((CONS :'a # 'b -> ('a # 'b) list -> ('a # 'b) list) $0) $1)))
+   ((((COND :bool -> 'b lift -> 'b lift -> 'b lift)
+   (((= :'a -> 'a -> bool) $2) ((FST :'a # 'b -> 'a) $0)))
+   ((lift :'b -> 'b lift) ((SND :'a # 'b -> 'b) $0)))
+   (((list_lookup :'a -> ('a # 'b) list -> 'b lift) $2)
+   $1))))))))))`),
+ ((empty_finmap_DEF),
+  [],
+  `(((= :('a # 'b) list finmap -> ('a # 'b) list finmap -> bool)
+   (empty_finmap :('a # 'b) list finmap))
+   ((FINMAP :('a # 'b) list -> ('a # 'b) list finmap)
+   (NIL :('a # 'b) list)))`),
+ ((FINMAP_arg_DEF),
+  [],
+  `((! :('a -> bool) -> bool) (\(l :'a). (((= :'a -> 'a -> bool)
+   ((FINMAP_arg :'a finmap -> 'a) ((FINMAP :'a -> 'a finmap) $0)))
+   $0)))`),
+ ((FINMAP_DEF),
+  [],
+  `((! :('a -> bool) -> bool) (\(x :'a).
+   (((= :'a finmap -> 'a finmap -> bool) ((FINMAP :'a -> 'a finmap)
+   $0)) ((ABS_finmap :'a ltree -> 'a finmap)
+   (((Node :'a -> 'a ltree list -> 'a ltree) $0)
+   (NIL :'a ltree list))))))`),
+ ((finmap_ISO_DEF),
+  [],
+  `((/\ ((! :('a finmap -> bool) -> bool) (\(a :'a finmap).
+   (((= :'a finmap -> 'a finmap -> bool)
+   ((ABS_finmap :'a ltree -> 'a finmap)
+   ((REP_finmap :'a finmap -> 'a ltree) $0))) $0))))
+   ((! :('a ltree -> bool) -> bool) (\(r :'a ltree).
+   (((= :bool -> bool -> bool)
+   (((TRP :('a -> 'a ltree list -> bool) -> 'a ltree -> bool)
+   (\(v :'a). (\(tl :'a ltree list). ((/\ ((? :('a -> bool) -> bool)
+   (\(x :'a). (((= :'a -> 'a -> bool) $2) $0))))
+   (((= :num -> num -> bool) ((LENGTH :'a ltree list -> num) $0))
+   0))))) $0)) (((= :'a ltree -> 'a ltree -> bool)
+   ((REP_finmap :'a finmap -> 'a ltree)
+   ((ABS_finmap :'a ltree -> 'a finmap) $0))) $0)))))`),
+ ((finmap_TY_DEF),
+  [],
+  `((? :(('a finmap -> 'a ltree) -> bool) -> bool)
+   (\(rep :'a finmap -> 'a ltree).
+   (((TYPE_DEFINITION :('a ltree -> bool) ->
+                       ('a finmap -> 'a ltree) -> bool)
+   ((TRP :('a -> 'a ltree list -> bool) -> 'a ltree -> bool)
+   (\(v :'a). (\(tl :'a ltree list). ((/\ ((? :('a -> bool) -> bool)
+   (\(x :'a). (((= :'a -> 'a -> bool) $2) $0))))
+   (((= :num -> num -> bool) ((LENGTH :'a ltree list -> num) $0))
+   0)))))) $0)))`)]
+theorems =
+[((nonempty_MAP_thm),
+  [],
+  `((! :('a nonemptylist -> bool) -> bool) (\(l :'a nonemptylist).
+   ((! :('a nonemptylist -> bool) -> bool) (\(l' :'a nonemptylist).
+   ((! :(('a -> 'b) -> bool) -> bool) (\(f :'a -> 'b). ((==>
+   ((ONE_ONE :('a -> 'b) -> bool) $0)) (((= :bool -> bool -> bool)
+   (((= :'b nonemptylist -> 'b nonemptylist -> bool)
+   (((nonempty_MAP :('a -> 'b) -> 'a nonemptylist -> 'b nonemptylist)
+   $0) $2))
+   (((nonempty_MAP :('a -> 'b) -> 'a nonemptylist -> 'b nonemptylist)
+   $0) $1))) (((= :'a nonemptylist -> 'a nonemptylist -> bool) $2)
+   $1)))))))))`),
+ ((length_suc_thm),
+  [],
+  `((! :('a nonemptylist -> bool) -> bool) (\(l :'a nonemptylist).
+   (((= :bool -> bool -> bool) (((= :num -> num -> bool)
+   ((ne_length :'a nonemptylist -> num) $0)) (SUC (n :num))))
+   ((? :('a -> bool) -> bool) (\(x :'a).
+   ((? :('a nonemptylist -> bool) -> bool) (\(l2 :'a nonemptylist).
+   ((/\ (((= :'a nonemptylist -> 'a nonemptylist -> bool) $2)
+   (((MORE :'a -> 'a nonemptylist -> 'a nonemptylist) $1) $0)))
+   (((= :num -> num -> bool) ((ne_length :'a nonemptylist -> num) $0))
+   (n :num))))))))))`),
+ ((length_0_thm),
+  [],
+  `((! :('a nonemptylist -> bool) -> bool) (\(l :'a nonemptylist).
+   (((= :bool -> bool -> bool) (((= :num -> num -> bool)
+   ((ne_length :'a nonemptylist -> num) $0)) 0))
+   ((? :('a -> bool) -> bool) (\(x :'a).
+   (((= :'a nonemptylist -> 'a nonemptylist -> bool) $1)
+   ((ONE :'a -> 'a nonemptylist) $0)))))))`),
+ ((length_preserved),
+  [],
+  `((! :('a nonemptylist -> bool) -> bool) (\(n :'a nonemptylist).
+   ((! :(('a -> 'b) -> bool) -> bool) (\(f :'a -> 'b).
+   (((= :num -> num -> bool) ((ne_length :'b nonemptylist -> num)
+   (((nonempty_MAP :('a -> 'b) -> 'a nonemptylist -> 'b nonemptylist)
+   $0) $1))) ((ne_length :'a nonemptylist -> num) $1))))))`),
+ ((next_dom_thm),
+  [],
+  `((! :(('a # 'b) list finmap -> bool) -> bool)
+   (\(f :('a # 'b) list finmap). ((! :((num -> 'a) -> bool) -> bool)
+   (\(from_num :num -> 'a). ((! :(('a -> num) -> bool) -> bool)
+   (\(to_num :'a -> num). ((! :(('a -> 'a -> bool) -> bool) -> bool)
+   (\(less :'a -> 'a -> bool). ((==> ((/\
+   (((bij_inv :(num -> 'a) -> ('a -> num) -> bool) $2) $1))
+   ((! :('a -> bool) -> bool) (\(a :'a). ((! :('a -> bool) -> bool)
+   (\(a' :'a). (((= :bool -> bool -> bool) (($2 $1) $0)) ((< ($3 $1))
+   ($3 $0))))))))) ((/\ (~
+   (((in_dom :('a # 'b) list finmap -> 'a -> bool) $3)
+   (((next_dom :('a -> 'a -> bool) -> ('a # 'b) list finmap -> 'a) $0)
+   $3)))) ((! :('a -> bool) -> bool) (\(a' :'a). ((==> (($1 $0)
+   (((next_dom :('a -> 'a -> bool) -> ('a # 'b) list finmap -> 'a) $1)
+   $4))) (((in_dom :('a # 'b) list finmap -> 'a -> bool) $4)
+   $0))))))))))))))`),
+ ((empty_finmap_is_zero),
+  [],
+  `((! :(('a -> 'a -> bool) -> bool) -> bool)
+   (\(less :'a -> 'a -> bool).
+   ((! :(('a # 'b) list finmap -> bool) -> bool)
+   (\(f :('a # 'b) list finmap). ((/\
+   (((= :('a # 'b) list finmap -> ('a # 'b) list finmap -> bool)
+   ((((finmap_modify :('a -> 'a -> bool) -> ('a # 'b) list finmap ->
+                      ('a # 'b) list finmap -> ('a # 'b) list finmap)
+   $1) (empty_finmap :('a # 'b) list finmap)) $0)) $0))
+   (((= :('a # 'b) list finmap -> ('a # 'b) list finmap -> bool)
+   ((((finmap_modify :('a -> 'a -> bool) -> ('a # 'b) list finmap ->
+                      ('a # 'b) list finmap -> ('a # 'b) list finmap)
+   $1) $0) (empty_finmap :('a # 'b) list finmap))) $0))))))`),
+ ((finmap_cases_thm),
+  [],
+  `((! :('a finmap -> bool) -> bool) (\(f :'a finmap).
+   ((? :('a -> bool) -> bool) (\(x :'a).
+   (((= :'a finmap -> 'a finmap -> bool) $1)
+   ((FINMAP :'a -> 'a finmap) $0))))))`),
+ ((finmap_induction_thm),
+  [],
+  `((! :(('a finmap -> bool) -> bool) -> bool)
+   (\(P :'a finmap -> bool). ((==> ((! :('a -> bool) -> bool)
+   (\(x :'a). ($1 ((FINMAP :'a -> 'a finmap) $0)))))
+   ((! :('a finmap -> bool) -> bool) (\(f :'a finmap). ($1 $0))))))`),
+ ((finmap_constructors_one_one),
+  [],
+  `((! :('a -> bool) -> bool) (\(x :'a). ((! :('a -> bool) -> bool)
+   (\(x' :'a). (((= :bool -> bool -> bool)
+   (((= :'a finmap -> 'a finmap -> bool) ((FINMAP :'a -> 'a finmap)
+   $1)) ((FINMAP :'a -> 'a finmap) $0))) (((= :'a -> 'a -> bool) $1)
+   $0))))))`),
+ ((finmap_Axiom),
+  [],
+  `((! :(('a -> 'a1) -> bool) -> bool) (\(f :'a -> 'a1).
+   ((?! :(('a finmap -> 'a1) -> bool) -> bool)
+   (\(fn :'a finmap -> 'a1). ((! :('a -> bool) -> bool) (\(x :'a).
+   (((= :'a1 -> 'a1 -> bool) ($1 ((FINMAP :'a -> 'a finmap) $0))) ($2
+   $0))))))))`)]

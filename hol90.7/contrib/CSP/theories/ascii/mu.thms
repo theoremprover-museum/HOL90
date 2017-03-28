@@ -1,0 +1,70 @@
+thid = (mu, 784894948, 634878)
+axioms = []
+definitions =
+[((MU),
+  [],
+  `((! :(string set -> bool) -> bool) (\(A :string set).
+   ((! :((process -> process) -> bool) -> bool)
+   (\(G :process -> process). ((==> (CONTINUOUS $0))
+   (((= :process -> process -> bool) ((MU $1) $0)) (LIM_PROC
+   (\(n :num).
+   ((((ITER :num -> (process -> process) -> process -> process) $0)
+   $1) (STOP $2))))))))))`)]
+theorems =
+[((TRACES_MU),
+  [],
+  `((==> (CHAIN (\(n :num).
+   ((((ITER :num -> (process -> process) -> process -> process) $0)
+   (G :process -> process)) (STOP (A :string set)))))) ((==>
+   (CONTINUOUS (G :process -> process)))
+   (((= :string list set -> string list set -> bool) (TRACES ((MU
+   (A :string set)) (G :process -> process))))
+   ((IT_UNION :(num -> string list set) -> string list set)
+   (\(n :num). (TRACES
+   ((((ITER :num -> (process -> process) -> process -> process) $0)
+   (G :process -> process)) (STOP (A :string set)))))))))`),
+ ((ALPHA_MU),
+  [],
+  `((==> (CHAIN (\(n :num).
+   ((((ITER :num -> (process -> process) -> process -> process) $0)
+   (G :process -> process)) (STOP (A :string set)))))) ((==>
+   (CONTINUOUS (G :process -> process)))
+   (((= :string set -> string set -> bool) (ALPHA ((MU
+   (A :string set)) (G :process -> process)))) (A :string set))))`),
+ ((IS_PROCESS_MU'),
+  [],
+  `((! :((process -> process) -> bool) -> bool)
+   (\(G :process -> process). ((! :(string set -> bool) -> bool)
+   (\(A :string set). ((==> (CHAIN (\(n :num).
+   ((((ITER :num -> (process -> process) -> process -> process) $0)
+   $2) (STOP $1))))) ((==> (CONTINUOUS $1)) (IS_PROCESS
+   (((, :string set -> string list set ->
+         string set # string list set) $0)
+   ((IT_UNION :(num -> string list set) -> string list set)
+   (\(n :num). (TRACES
+   ((((ITER :num -> (process -> process) -> process -> process) $0)
+   $2) (STOP $1)))))))))))))`),
+ ((IS_PROCESS_MU),
+  [],
+  `((! :(string set -> bool) -> bool) (\(A :string set).
+   ((! :((process -> process) -> bool) -> bool)
+   (\(G :process -> process). ((==> (CHAIN (\(n :num).
+   ((((ITER :num -> (process -> process) -> process -> process) $0)
+   $1) (STOP $2))))) (IS_PROCESS
+   (((, :string set -> string list set ->
+         string set # string list set) $1)
+   ((IT_UNION :(num -> string list set) -> string list set)
+   (\(n :num). (TRACES
+   ((((ITER :num -> (process -> process) -> process -> process) $0)
+   $1) (STOP $2))))))))))))`),
+ ((EXISTS_MU),
+  [],
+  `((? :((string set -> (process -> process) -> process) -> bool) ->
+        bool) (\(f :string set -> (process -> process) -> process).
+   ((! :(string set -> bool) -> bool) (\(A :string set).
+   ((! :((process -> process) -> bool) -> bool)
+   (\(G :process -> process). ((==> (CONTINUOUS $0))
+   (((= :process -> process -> bool) (($2 $1) $0)) (LIM_PROC
+   (\(n :num).
+   ((((ITER :num -> (process -> process) -> process -> process) $0)
+   $1) (STOP $2))))))))))))`)]

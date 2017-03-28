@@ -1,0 +1,128 @@
+head	1.2;
+access;
+symbols;
+locks; strict;
+comment	@# @;
+
+
+1.2
+date	96.01.04.14.15.09;	author drs1004;	state dead;
+branches;
+next	1.1;
+
+1.1
+date	95.12.18.11.39.38;	author drs1004;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.2
+log
+@Added simplifier components, added drule files, added MK_ABS_CONV, better error messages
+@
+text
+@
+
+(* ---------------------------------------------------------------------
+ * QCONV-toolset, taken from conv.sml, hol90
+ *
+ * QCONV : conv -> conv							
+ *									
+ * Takes a conversion that uses failure to indicate that it has not	 
+ * changed its argument term, and produces an ordinary conversion.	
+ *
+ * ALL_QCONV : conv							
+ *									
+ * Identity conversion for conversions using failure.			
+ *
+ * IF_CHANGED_THENQC : conv -> conv -> conv
+ *
+ * Takes two conversions that use failure and produces a conversion that
+ * applies them in succession. The new conversion also uses failure. It	
+ * fails if neither of the two argument conversions cause a change.
+ * The second conversion is only applied if the first raises UNCHANGED.
+ *
+ * ORELSEQC : conv -> conv -> conv					
+ *									
+ * Takes two conversions that use failure and produces a conversion that
+ * tries the first one, and if this fails for a reason other than that	
+ * the term is unchanged, it tries the second one. 			
+ *
+ * ---------------------------------------------------------------------*)
+   
+infix ORELSEQC THENQC
+signature Qconv_sig = sig
+
+   val QCONV : Abbrev.conv -> Abbrev.conv
+   val CONVQ : Abbrev.conv -> Abbrev.conv
+   val ALL_QCONV : Abbrev.conv
+   val TRY_QCONV : Abbrev.conv -> Abbrev.conv
+   val THENQC : Abbrev.conv * Abbrev.conv -> Abbrev.conv
+   val ORELSEQC : Abbrev.conv * Abbrev.conv -> Abbrev.conv
+   val REPEATQC : Abbrev.conv -> Abbrev.conv
+   val FIRST_QCONV : Abbrev.conv list -> Abbrev.conv
+   val CHANGED_QCONV : Abbrev.conv -> Abbrev.conv
+end;
+
+
+
+structure Qconv : Qconv_sig = struct
+
+   open Thm;
+   open Drule;
+   open Term;
+   open Dsyntax;
+   open Rsyntax;
+   
+   fun QCONV conv tm = conv tm
+                       handle UNCHANGED => REFL tm;
+   fun CHANGED_QCONV conv tm = 
+       conv tm
+       handle UNCHANGED => ERR("CHANGED_QCONV","no change")
+            
+   fun CONVQ conv tm = 
+      let val res = conv tm 
+      in if (tm = (rhs (concl res)))
+         then raise UNCHANGED
+         else res
+      end
+
+   val ALL_QCONV = fn _ => raise UNCHANGED;
+
+   fun conv1 THENQC conv2 = fn tm =>
+      let val th1 = conv1 tm
+      in  
+         TRANS th1 (conv2 (rhs (concl th1)))
+         handle UNCHANGED => th1
+      end
+      handle UNCHANGED => conv2 tm
+
+   fun conv1 ORELSEQC conv2 = fn (tm:term) =>
+      (conv1 tm 
+       handle UNCHANGED => (raise UNCHANGED)
+              | _ => (conv2 tm))
+   
+   fun TRY_QCONV conv = conv ORELSEQC ALL_QCONV;
+   fun REPEATQC conv tm = ((conv THENQC (REPEATQC conv)) ORELSEQC ALL_QCONV) tm;
+
+   fun FIRST_QCONV [] tm = ERR("FIRST_QCONV","no conversion applied")
+     | FIRST_QCONV (c::rst) tm = (c tm handle UNCHANGED => raise UNCHANGED | _ => FIRST_QCONV rst tm);
+   
+
+end;
+
+
+
+                      @
+
+
+1.1
+log
+@Preterm and other changes, see 7.changes
+@
+text
+@@

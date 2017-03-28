@@ -1,0 +1,107 @@
+head	1.1;
+branch	1.1.1;
+access;
+symbols
+	HOL97:1.1.1.1.0.6
+	bpHOL97:1.1.1.1
+	hol90_9_alpha:1.1.1.1
+	hol90_pre8_for_multiple_compilers:1.1.1.1.0.4
+	hol90_pre8_after_donalds_separate_compilation_changes:1.1.1.1
+	hol90_8_after_merging_Konrad_Elsa:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	95.10.16.13.35.54;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.35.54;	author rjb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@\DOC delete_restriction
+
+\TYPE {delete_restriction : (string -> unit)}
+
+\SYNOPSIS
+Removes a restriction semantics from a binder.
+
+\DESCRIBE
+Recall that if {B} is a binder and {RES_B} a constant then
+{
+   associate_restriction("B", "RES_B")
+}
+\noindent will cause the parser and pretty-printer to support:
+{
+               ---- parse ---->
+   Bv::P. B                       RES_B  P (\v. B)
+              <---- print ----
+}
+This behaviour may be disabled by calling {delete_restriction} with 
+the binder name ("B" in this example).
+
+\FAILURE
+Fails if you attempt to remove one of the builtin restrictions. These are 
+associated with the binders
+{
+  ["!","?","@@","\\"]
+}
+Also fails if the named binder is not restricted, i.e., found as the first 
+member of a pair on the list returned by {binder_restrictions}.
+
+\EXAMPLE
+{
+    associate_restriction("DURING","RES_DURING");
+    () : unit
+
+    --`DURING x::(m,n). p x`--;
+    (--`DURING x ::(m,n). p x`--) : term
+
+    - delete_restriction "DURING";
+    () : unit
+
+    --`DURING x::(m,n). p x`--;
+
+    Exception raised at Parse_support.restr_binder:
+    no restriction associated with "DURING"
+}
+
+\SEEALSO
+associate_restrictions, binder_restrictions
+
+\ENDDOC
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

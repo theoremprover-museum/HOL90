@@ -1,0 +1,415 @@
+head	1.4;
+access;
+symbols
+	HOL97:1.2.0.4
+	bpHOL97:1.2
+	hol90_9_alpha:1.2
+	hol90_pre8_for_multiple_compilers:1.2.0.2
+	hol90_pre8_after_donalds_separate_compilation_changes:1.2
+	hol90_8_after_merging_Konrad_Elsa:1.2
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.4
+date	96.02.08.00.31.31;	author drs1004;	state Exp;
+branches;
+next	1.3;
+
+1.3
+date	95.12.18.11.34.52;	author drs1004;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	95.10.18.16.37.07;	author drs1004;	state Exp;
+branches
+	1.2.4.1;
+next	1.1;
+
+1.1
+date	95.10.16.13.29.55;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.29.55;	author rjb;	state Exp;
+branches
+	1.1.1.1.2.1;
+next	;
+
+1.1.1.1.2.1
+date	95.10.17.18.42.59;	author drs1004;	state Exp;
+branches;
+next	;
+
+1.2.4.1
+date	97.06.11.17.24.19;	author kxs;	state Exp;
+branches;
+next	1.2.4.2;
+
+1.2.4.2
+date	97.07.10.20.30.04;	author kxs;	state Exp;
+branches;
+next	1.2.4.3;
+
+1.2.4.3
+date	97.10.05.21.07.22;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.4
+log
+@New theory mechanism, by Donald Syme, and many other enhancements.
+@
+text
+@(* ===================================================================== *)
+(* FILE          : parse.sig                                             *)
+(* DESCRIPTION   : Signature for the type and term parsers.              *)
+(*                                                                       *)
+(* CHANGED       : For Tim Griffin and Roderick, June 4 1992             *)
+(* AUTHOR        : Konrad Slind, University of Calgary                   *)
+(* DATE          : August 26, 1991                                       *)
+(* ===================================================================== *)
+
+
+
+
+signature Parse_sig =
+sig
+  include Parse0_sig;
+
+  (* control over all enhanced IO features *)
+  val set_enhanced_io : bool -> unit
+  val enhanced_io : unit -> bool
+
+  (* imperative *)
+  val set_maximize_types : bool -> unit
+  val maximize_types : unit -> bool
+
+  val set_typetable : (string * typ) list -> unit
+  val clear_typetable : unit -> unit
+  val current_typetable : unit -> Io_transformers.typetable
+
+  val set_type_map :  (string * string) list -> unit
+  val clear_type_map : unit -> unit
+  val current_type_map : unit -> Io_transformers.type_map
+
+  val set_term_map :  (string * string) list -> unit
+  val clear_term_map : unit -> unit
+  val current_term_map : unit -> Io_transformers.term_map
+
+  val set_type_macros :  (string list * quotation * quotation) list -> unit
+  val clear_type_macros : unit -> unit
+  val current_type_macros : unit -> Io_transformers.type_macros
+
+  val set_term_macros :  (string list * quotation * quotation) list -> unit
+  val clear_term_macros : unit -> unit
+  val current_term_macros : unit -> Io_transformers.term_macros
+
+
+  val current_constant_resolver : unit -> string -> preterm list
+  val set_constant_resolver : (string -> preterm list) -> unit
+
+  val -- : quotation -> 'a -> term
+  val == : quotation -> 'a -> typ
+  val type_parser : quotation -> typ
+  val simple_term_parser : quotation -> term
+  val term_parser : quotation -> term
+  val simple_type_parser : quotation -> typ
+  val string_to_type : string -> typ
+  val string_to_term : string -> term
+end
+
+
+@
+
+
+1.3
+log
+@Preterm and other changes, see 7.changes
+@
+text
+@d11 2
+d15 1
+a15 16
+  structure Parse_support : Parse_support_sig
+
+  type typ sharing type typ = Parse_support.Preterm.Term.Type.typ
+  type term sharing type term = Parse_support.Preterm.Term.term
+  type preterm sharing type preterm = Parse_support.Preterm.preterm
+  
+  val pretype_parser : term frag list -> Parse_support.Preterm.pretype
+  val preterm_parser : term frag list -> preterm
+  val type_parser : term frag list -> typ
+  val term_parser : term frag list -> term
+
+  val type_spec_parser
+   : term frag list ->
+     {ty_name:string,
+      clauses : {constructor:string, 
+                 args:Parse_support.arg list} list}
+d17 38
+a54 5
+  val -- : term frag list -> 'a -> term
+  val == : term frag list -> 'a -> typ
+
+  val string_to_preterm : string -> Parse_support.Preterm.preterm
+  val string_to_pretype : string -> Parse_support.Preterm.pretype
+d57 1
+a57 13
+  val string_to_type_spec
+   : string -> {ty_name:string,
+                clauses : {constructor:string,
+                           args:Parse_support.arg list} list}
+
+  (*--------------------------------------------------------------------
+   * Term parsers with arbitrary manipulations of preterms beforehand
+   *------------------------------------------------------------------*)
+
+  val mk_term_parser : 
+      (preterm -> preterm) list -> (term frag list -> term)
+
+end;
+@
+
+
+1.2
+log
+@Check in after merging in Konrad's changes made after
+the release of hol90.7.  This involved creating a side branch
+in which to check in Konrad's changes, then merging in that
+side branch into the main development (which contains changes
+made by Elsa Gunter).
+
+Some other small modification have been made to the source code,
+as I begun to try to make this version into a working version:
+	- hol90 will now be compiled in an environment were no
+structures can be considered opn.  This means many structures
+now need "open Lib" and other such commands at their head.
+This has not yet been completed, but has been begun.
+	- "rotl" and "rotr" have been added to Lib, something
+which I just did impulsively.   Documentation files
+have also been added in help/90.
+@
+text
+@d15 9
+a23 6
+  val type_parser : Parse_support.Preterm.Term.term frag list -> 
+                    Parse_support.Preterm.Term.Type.hol_type
+  val preterm_parser : Parse_support.Preterm.Term.term frag list -> 
+                       Parse_support.Preterm.preterm
+  val term_parser : Parse_support.Preterm.Term.term frag list -> 
+                    Parse_support.Preterm.Term.term
+d25 1
+a25 1
+   : Parse_support.Preterm.Term.term frag list ->
+d30 2
+a31 4
+  val -- : Parse_support.Preterm.Term.term frag list -> 'a -> 
+           Parse_support.Preterm.Term.term
+  val == : Parse_support.Preterm.Term.term frag list -> 'a -> 
+           Parse_support.Preterm.Term.Type.hol_type
+a32 1
+  val string_to_type : string -> Parse_support.Preterm.Term.Type.hol_type
+d34 3
+a36 1
+  val string_to_term : string -> Parse_support.Preterm.Term.term
+d41 8
+d50 2
+@
+
+
+1.2.4.1
+log
+@Removed files are parse files and portability files that have
+effectively been moved elsewhere.
+
+Modified files are up to date for ML 109.26.
+@
+text
+@d5 1
+d15 16
+a30 17
+  val parse0 : (int,Parse_support.Preterm.Term.Type.hol_type) istream 
+                -> string 
+                  ->  Parse_support.Preterm.Term.term list
+                    -> Parse_support.parse
+
+  val type_parser : Parse_support.Preterm.Term.term frag list 
+                    -> Parse_support.Preterm.Term.Type.hol_type
+  val term_parser : Parse_support.Preterm.Term.term frag list 
+                     -> Parse_support.Preterm.Term.term
+  val preterm_parser : (int,Parse_support.Preterm.Term.Type.hol_type) istream 
+            -> Parse_support.Preterm.Term.term frag list 
+            -> Parse_support.Preterm.preterm
+
+  val -- : Parse_support.Preterm.Term.term frag list 
+             -> 'a -> Parse_support.Preterm.Term.term
+  val == : Parse_support.Preterm.Term.term frag list 
+            -> 'a -> Parse_support.Preterm.Term.Type.hol_type
+d33 1
+a33 3
+  val string_to_preterm 
+    : (int,Parse_support.Preterm.Term.Type.hol_type) istream 
+       -> string -> Parse_support.Preterm.preterm
+a34 5
+
+  val type_spec_parser
+   : Parse_support.Preterm.Term.term frag list -> {ty_name:string,
+                             clauses : {constructor:string, 
+                                        args:Parse_support.arg list} list}
+@
+
+
+1.2.4.2
+log
+@Minor editing for CM-friendliness.
+@
+text
+@d14 1
+a14 1
+  val parse0 : (int,Parse_support.Preterm.Term.Type.hol_type) Lib.istream 
+d23 3
+a25 4
+  val preterm_parser 
+     : (int,Parse_support.Preterm.Term.Type.hol_type) Lib.istream 
+        -> Parse_support.Preterm.Term.term frag list 
+          -> Parse_support.Preterm.preterm
+a32 1
+
+d34 1
+a34 1
+    : (int,Parse_support.Preterm.Term.Type.hol_type) Lib.istream 
+@
+
+
+1.2.4.3
+log
+@These modifications are to make frags known (parse.{sig, sml}), and to
+make the hash function run properly (a change in the underlying exception
+that substring raises (from Ord to Subscript))  (type.sml, term.sml).
+@
+text
+@d19 1
+a19 1
+  val type_parser : Parse_support.Preterm.Term.term Portable.frag list 
+d21 1
+a21 1
+  val term_parser : Parse_support.Preterm.Term.term Portable.frag list 
+d25 1
+a25 1
+        -> Parse_support.Preterm.Term.term Portable.frag list 
+d28 1
+a28 1
+  val -- : Parse_support.Preterm.Term.term Portable.frag list 
+d30 1
+a30 1
+  val == : Parse_support.Preterm.Term.term Portable.frag list 
+d41 1
+a41 1
+   : Parse_support.Preterm.Term.term Portable.frag list -> {ty_name:string,
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d13 1
+a13 12
+structure Parse_support : Parse_support_sig
+val type_parser : Parse_support.Preterm.Term.term frag list -> 
+                  Parse_support.Preterm.Term.Type.hol_type
+val preterm_parser : Parse_support.Preterm.Term.term frag list -> 
+                  Parse_support.Preterm.preterm
+val term_parser : Parse_support.Preterm.Term.term frag list -> 
+                  Parse_support.Preterm.Term.term
+val type_spec_parser
+ : Parse_support.Preterm.Term.term frag list ->
+   {ty_name:string,
+    clauses : {constructor:string, 
+               args:Parse_support.arg list} list}
+d15 11
+a25 4
+val -- : Parse_support.Preterm.Term.term frag list -> 'a -> 
+         Parse_support.Preterm.Term.term
+val == : Parse_support.Preterm.Term.term frag list -> 'a -> 
+         Parse_support.Preterm.Term.Type.hol_type
+d27 12
+a38 7
+val string_to_type : string -> Parse_support.Preterm.Term.Type.hol_type
+val string_to_preterm : string -> Parse_support.Preterm.preterm
+val string_to_term : string -> Parse_support.Preterm.Term.term
+val string_to_type_spec
+ : string -> {ty_name:string,
+              clauses : {constructor:string,
+                         args:Parse_support.arg list} list}
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@
+
+
+1.1.1.1.2.1
+log
+@Konrad's bug fixes up to start of serious
+hol90.8 devel;opment.  Checked into branch revision for
+later merging with trunk (elsa's work).  See
+doc/7.chages for a full description of what's been done.
+@
+text
+@d13 12
+a24 1
+  structure Parse_support : Parse_support_sig
+d26 4
+a29 11
+  val type_parser : Parse_support.Preterm.Term.term frag list -> 
+                    Parse_support.Preterm.Term.Type.hol_type
+  val preterm_parser : Parse_support.Preterm.Term.term frag list -> 
+                       Parse_support.Preterm.preterm
+  val term_parser : Parse_support.Preterm.Term.term frag list -> 
+                    Parse_support.Preterm.Term.term
+  val type_spec_parser
+   : Parse_support.Preterm.Term.term frag list ->
+     {ty_name:string,
+      clauses : {constructor:string, 
+                 args:Parse_support.arg list} list}
+d31 7
+a37 12
+  val -- : Parse_support.Preterm.Term.term frag list -> 'a -> 
+           Parse_support.Preterm.Term.term
+  val == : Parse_support.Preterm.Term.term frag list -> 'a -> 
+           Parse_support.Preterm.Term.Type.hol_type
+
+  val string_to_type : string -> Parse_support.Preterm.Term.Type.hol_type
+  val string_to_preterm : string -> Parse_support.Preterm.preterm
+  val string_to_term : string -> Parse_support.Preterm.Term.term
+  val string_to_type_spec
+   : string -> {ty_name:string,
+                clauses : {constructor:string,
+                           args:Parse_support.arg list} list}
+@

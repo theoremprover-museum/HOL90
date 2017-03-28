@@ -1,0 +1,101 @@
+head	1.1;
+branch	1.1.1;
+access;
+symbols
+	HOL97:1.1.1.1.0.6
+	bpHOL97:1.1.1.1
+	hol90_9_alpha:1.1.1.1
+	hol90_pre8_for_multiple_compilers:1.1.1.1.0.4
+	hol90_pre8_after_donalds_separate_compilation_changes:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	95.10.16.13.32.55;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.32.55;	author rjb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@\DOC add_weak
+
+\TYPE {add_weak : (thm -> unit)}
+
+\SYNOPSIS
+Adds a weakening rule to the window system tables.
+
+\LIBRARY window
+
+\DESCRIBE
+The window inference system can compensate for a missing window rule
+in its database by substituting a rule which preserves a relation
+which is stronger than the one the user wanted to preserve. To do
+this, the system must know how to weaken a theorem where two terms
+are related by the stronger relation to a theorem where the two terms are
+related by the required relation.
+
+The system already knows that equality is stronger than any reflexive
+relation, and how to weaken a theorem which relates terms by equality
+to a theorem which relates the terms by any reflexive relation.
+Suppose you would like the system to know that the relation {"S"} is
+stronger than the relation {"R"}. First you should define the
+following theorem:
+{
+   WEAK_SR |- !x y. (x S y) ==> (x R y)
+}
+\noindent Next you add this theorem with the command
+{add_weak WEAK_SR}. From this information system maintains lists of
+which relationships may be substituted for which. Suppose we had
+added to the system rules for weakening {"S"} to {"R"} and {"R"} to
+{"Q"}, the system can infer that both {"R"} and {"S"} can be used as
+substitutes for {"Q"}, but {"R"} is preferable since it is the weaker
+of the two relations.
+
+\FAILURE
+{add_weak} will fail if you try to add a rule which duplicates
+information already stored or inferred by the system. {add_weak} will
+fail if you try to add a rule which would create a cycle in the list
+of possible substitutes for a relation. {add_weak} will fail if you
+try to add a rule which would create a branch in the list of possible
+substitutes for a relation.
+
+\SEEALSO
+add_relation
+
+\ENDDOC
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

@@ -1,0 +1,81 @@
+fun LIB_PARSE_ERR(s1,s2) = 
+ Exception.HOL_ERR{origin_structure = "Library_parse",
+                   origin_function = s1, message = s2};
+
+%%
+%term lbrace   | rbrace
+    | lbracket | rbracket
+    | lparen   | rparen
+    | eq
+    | comma
+    | lib_id
+    | doc
+    | path
+    | parents
+    | theories
+    | code
+    | help
+    | loaded
+    | id of string
+    | num of string
+    | string_constant of string
+    | EOLEX
+    | EOF 
+
+
+%nonterm START of Lib_data.lib_data
+       | LIB of Lib_data.lib_data
+       | LIB_ID of Lib_data.lib_id
+       | ID of string
+       | ID_LIST of string list
+       | LIB_ID_LIST of Lib_data.lib_id list 
+
+%start START
+%eop EOF EOLEX
+%pos int
+%header (functor libLrValsFun (structure Token : TOKEN
+                               structure Lib_data : Lib_data_sig))
+
+%name lib
+%noshift EOF
+%pure
+%%
+
+START : LIB (LIB)
+
+LIB : lib_id eq LIB_ID 
+      doc eq string_constant
+      path eq id
+      parents eq lbracket LIB_ID_LIST rbracket 
+      theories eq lbracket ID_LIST rbracket 
+      code eq lbracket ID_LIST rbracket
+      help eq lbracket ID_LIST rbracket
+      loaded eq string_constant
+      (Lib_data.mk_lib_data{lib_id = LIB_ID,
+                            doc = string_constant1,
+                            path = id,
+                            parents = LIB_ID_LIST,
+                            theories = ID_LIST1,
+                            code = ID_LIST2,
+                            help = ID_LIST3,
+                            loaded = string_constant2})
+
+LIB_ID : lparen id comma num comma num rparen
+         (Lib_data.mk_lib_id{name = id, 
+                  timestamp = Portable.Time.mk_time{sec = num1,usec = num2}})
+ID : id       (id)
+   | lib_id   ("lib_id")
+   | doc      ("doc")
+   | path     ("path")
+   | parents  ("parents")
+   | theories ("theories")
+   | code     ("code")
+   | help     ("help")
+   | loaded   ("loaded")
+
+
+ID_LIST : ([]) | ID ([ID]) | ID comma ID_LIST(ID::ID_LIST)
+
+LIB_ID_LIST : ([]) | LIB_ID ([LIB_ID])
+            | LIB_ID comma LIB_ID_LIST(LIB_ID::LIB_ID_LIST)
+

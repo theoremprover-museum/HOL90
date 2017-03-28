@@ -1,0 +1,720 @@
+\documentstyle[a4]{article}
+% pargap.sty
+% implement a non-indented with gaps between paragraphs style
+%
+% david shepherd
+% 30may89
+%
+% nb various odds and ends in some styles may take some time before
+% they get spotted
+
+\parindent=0pt
+\parskip=0.5\baselineskip plus 1pt
+\listparindent=0pt
+
+% need to change parindent and skip in footnote macro
+% [DES] 15jun89
+\long\def\@makefntext#1{\parindent 0pt\parskip 0.5\baselineskip
+ \noindent 
+ \hbox to 1.8em{\hss$^{\@thefnmark}$}#1}
+
+% no indents in quotations -- esp abtract !!
+% [DES] 7aug89
+\def\quotation{\list{}{\listparindent 0pt
+ \itemindent\listparindent
+ \rightmargin\leftmargin\parsep 0.5\baselineskip plus 1pt}\item[]}
+
+% no indents + gap in parboxen
+\def\@arrayparboxrestore{\let\par\@@par
+    \let\-\@dischyph
+    \let\'\@acci \let\`\@accii \let\=\@acciii
+    \parindent\z@
+    \parskip=0.5\baselineskip plus 1pt
+    \everypar{}\linewidth\hsize 
+    \@totalleftmargin\z@ \leftskip\z@ \rightskip\z@ \@rightskip\z@ 
+    \parfillskip\@flushglue \lineskip\normallineskip 
+    \baselineskip\normalbaselineskip\sloppy}
+
+\title{Abstract Theories for HOL90}
+\author{David Shepherd\thanks{All the credit for this really belongs to
+Phil Windley, all I have done is to move his Hol88 package into Hol90
+with a bit of re-engineering and what I consider to be tidying up!}}
+\date{February 24, 1993}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+This paper serves to document my port of the abstract theory package
+into Hol90. Rather than give proper ``Manual'' style entries, I am just
+annotating a couple of SML files that illustrate all the bits of the
+package in action. We will do this by using the traditional example of 
+monoids and groups! For a motivation for and description of abstract
+theories please refer to the paper by Phil Windley in the Hol88 abstract
+theory package or in the proceedings of HOL-92.
+\end{abstract}
+
+\section{Monoids}
+
+To start off with we need to load the package in, open the
+structure containing the definitions and declare a new theory.
+N.b. unless relevent I will omit the responses from the system.
+
+\begin{small}
+\begin{verbatim}
+   - load_library_in_place abs_theory_lib;
+
+   - open Abs_theory Goalstack;
+
+   - new_theory "monoid";
+\end{verbatim}
+\end{small}
+
+The first thing we do is to declare a new ``abstract entity''. This
+declaration combines the declaration of an abstract representation and
+obligations which in the Hol88 version were done separately. The
+declaration has two parameters, the name of the new entity (here
+``monoid'') and a predicate containing the obligations. The type
+operations are derived from all the free variables in this predicate.
+
+\begin{small}
+\begin{verbatim}
+- val monoid_th = new_abstract_entity
+    {Name="monoid",
+     Predicate=(--`(! x. op x (e:'a) = x) /\
+                   (! x. op e x = x) /\
+                   (! x y z. (op x (op y z)) = (op (op x y) z))`--)};
+
+val monoid_th = |- !f. ?!fn. !x f'. fn (monoid x f') = f x f' : thm
+\end{verbatim}
+\end{small}  
+
+Next we define a couple of auxiliary functions, firstly a derived rule
+that's missing from Hol90 and secondly a function to save a theorem and
+bind it to an SML variable at the same time.
+
+\begin{small}
+\begin{verbatim}
+- val SYM_RULE = CONV_RULE(ONCE_DEPTH_CONV SYM_CONV);
+
+- fun define_theorem name th =
+    (save_thm (name,th);
+     add_to_sml[(name,th)]);
+\end{verbatim}
+\end{small}
+
+
+When proving theorems the approach I have taken is to set the goal by
+universally quantifying all the abstract terms without including any theory
+obligations. The abstract theory versions of various functions then
+put in these obligations. This simplifies the matter of specifying
+goals.
+
+Here we set a goal to prove that the monoid operation defines the identity.
+
+\begin{small}
+\begin{verbatim}
+- abs_set_goal([],(--`! (m: 'a monoid) f.
+                      (!a. (op m a f = a) /\ (op m f a = a))
+                      ==> (f = (e m))`--));
+
+(--`!m.
+      monoid_oblig m ==>
+      (!f. (!a. (op m a f = a) /\ (op m f a = a)) ==> (f = e m))`--)
+------------------------------------
+
+val it = () : unit
+\end{verbatim}
+\end{small}
+
+Note how the monoid obligation was added to the goal. The goal is now
+in what I define to be the normal form for abstract terms --- all
+abstract entities are universally quantified at the outside of an
+implication whose antecedent is a conjunction of the obligations for
+all these abstract entities.
+
+To continue with the proof we first strip off all the outer universal
+quantifications and obligations using the tactic
+\verb!STRIP_THOBS_TAC!.
+
+\begin{small}
+\begin{verbatim}
+- expand(STRIP_THOBS_TAC);
+
+OK..
+1 subgoal:
+(--`!f. (!a. (op m a f = a) /\ (op m f a = a)) ==> (f = e m)`--)
+=============================
+  (--`monoid_oblig m`--)
+  (--`!x. op m x (e m) = x`--)
+  (--`!x. op m (e m) x = x`--)
+  (--`!x y z. op m x (op m y z) = op m (op m x y) z`--)
+\end{verbatim}
+\end{small}
+
+Note that this places both the obligation {\em and} its expansion
+on the assumption list. The reason for this will become apparent later.
+There is also a related tactic continuation \verb!STRIP_THOBS_THEN! which takes
+two theorem tactics as arguments to define what to do with firstly the
+unexpanded obligations and then the expanded obligations.
+After this the proof is the same as in the Hol88 version and it
+can all be gathered together into
+
+\begin{small}
+\begin{verbatim}
+- define_theorem "IDENTITY_UNIQUE"
+  (abs_prove((--`! (m:'a monoid) f .
+                   (!a .(op m a f = a) /\ (op m f a = a)) ==> (f = (e m))`--),
+             STRIP_THOBS_TAC
+             THEN REPEAT GEN_TAC
+             THEN STRIP_GOAL_THEN
+                    (SUBST1_TAC o SYM_RULE
+                     o CONJUNCT1 o SPEC (--`e (m:'a monoid)`--))
+             THEN ASM_REWRITE_TAC []
+             ));
+
+
+val IDENTITY_UNIQUE =
+  |- !m.
+       monoid_oblig m ==>
+       (!f. (!a. (op m a f = a) /\ (op m f a = a)) ==> (f = e m)) : thm
+\end{verbatim}
+\end{small}
+
+\verb!abs_prove! is to \verb!prove! what \verb!abs_set_goal! is to
+\verb!set_goal! in that it adds the abstract obligations to the term it
+proves. Similarily there is an \verb!abs_store_thm! which proves and
+saves a theorem about abstract terms.
+
+Another simple proof which follows the same pattern is:
+    
+\begin{small}
+\begin{verbatim}
+- define_theorem "OP_DETERMINES_IDENTITY"
+  (abs_prove
+   ( --`! m1 (m2:'a monoid) . (op m1 = (op m2)) ==> (e m1 = (e m2))`--,
+    STRIP_THOBS_TAC
+    THEN STRIP_TAC
+    THEN (let val t1 = ASSUME (--`!x:'a. op m1 (e m1) x = x`--)
+          in SUBST_TAC (map SYM_RULE [SPEC (--`e m2:'a`--) t1])
+          end)
+    THEN (
+          let val t2 = ASSUME (--`!x:'a. op m2 x (e m2) = x`--)
+          in SUBST_TAC (map SYM_RULE [SPEC(--`e m1:'a`--) t2])
+          end)
+    THEN ASM_REWRITE_TAC [])
+   );
+  
+val OP_DETERMINES_IDENTITY =
+  |- !m1 m2.
+       monoid_oblig m1 /\ monoid_oblig m2 ==> (op m1 = op m2) ==> (e m1 = e m2)
+  : thm
+\end{verbatim}
+\end{small}
+
+Finally we define a squaring operation on monoids.
+
+\begin{small}
+\begin{verbatim}
+- new_definition("monoid_sq",
+                 (--`monoid_sq (m:'a monoid) a = (op m a a)`--));
+
+val it = |- !m a. monoid_sq m a = op m a a : thm
+\end{verbatim}
+\end{small}
+
+And save the theory:
+
+\begin{small}
+\begin{verbatim}
+- export_theory();
+\end{verbatim}
+\end{small}
+
+That concludes the simple theory of monoids. 
+
+\section{Groups}
+
+Next we assume that we wish to start a new Hol90 session and develop a
+theory of groups. Again we load the package, define the auxiliary
+functions and open the theory.
+
+\begin{small}
+\begin{verbatim}
+- load_library_in_place abs_theory_lib;
+- open Abs_theory Goalstack;
+    
+- fun define_theorem name th =
+    (save_thm (name,th);
+     add_to_sml[(name,th)]);
+
+- val SYM_RULE = CONV_RULE(ONCE_DEPTH_CONV SYM_CONV);
+
+- new_theory "groups";
+\end{verbatim}
+\end{small}
+
+We first declare the monoid theory to be a parent
+
+\begin{small}
+\begin{verbatim}
+- new_parent "monoid";
+\end{verbatim}
+\end{small}
+
+Next we add all the abstract representation and obligation information
+from that theory into the current state -- without doing this
+various subsequent steps will fail when the system cannot find the
+relevant information about the obligations of the monoid subtype.
+
+\begin{small}
+\begin{verbatim}
+- add_obligs "monoid";
+\end{verbatim}
+\end{small}
+
+While \verb!add_obligs! could be built into a \verb!new_abs_parent!
+function, it seems better to force that obligations are explicitly
+loaded. The reason for this is that any parent declaration may bring
+in abstract theories from higher up the theory hierachy. Hence for
+consistency, either every parent declaration needs to add obligations
+from all its ancestors, which is time consuming, or we force
+obligations to be explicitly loaded by the user.
+
+The final set up stage is to load the theorems we will use out of the
+monoid theory. The function \verb!abs_add_theory! is a version of
+\verb!add_theory! which adds binds everything in the theory to SML
+variables apart from the definitions used to define the abstract
+representation (i.e. the obligation theory, the term represenation
+definitions and the definition theorems for the representing type. N.b.
+these are in fact de-selected by suffix of the definition name so
+actually any definition with suffix \verb!_DEF!, \verb!_oblig! or
+\verb!_abs_rep! will be skipped by this!)
+
+\begin{small}
+\begin{verbatim}
+- abs_add_theory_to_sml "monoid";
+\end{verbatim}
+\end{small}
+
+Now we can define the abstract entity for groups.
+
+\begin{small}
+\begin{verbatim}
+- new_abstract_entity 
+  {Name="group",
+   Predicate=(--`(!x .fn x (id:'a) = x) /\
+                 (!x .fn id x = x) /\
+                 (!x .fn x (inv x) = id ) /\
+                 (!x. fn (inv x) x = id) /\
+                 (!x y z. (fn x (fn y z)) = (fn (fn x y) z))`--)
+   };
+\end{verbatim}
+\end{small}
+
+The first thing that we prove is that a group is a monoid. We set up the
+goal and strip off the group obligations. We set up the goal using
+\verb!ag! which is an abstract analogue to \verb!g!.
+
+\begin{small}
+\begin{verbatim}
+- ag`! g:'a group . monoid_oblig(monoid (id g) (fn g))`;
+
+(--`!g. group_oblig g ==> monoid_oblig (monoid (id g) (fn g))`--)
+=============================
+
+- expand(STRIP_THOBS_TAC)
+OK..
+1 subgoal:
+(--`monoid_oblig (monoid (id g) (fn g))`--)
+=============================
+  (--`group_oblig g`--)
+  (--`!x. fn g x (id g) = x`--)
+  (--`!x. fn g (id g) x = x`--)
+  (--`!x. fn g x (inv g x) = id g`--)
+  (--`!x. fn g (inv g x) x = id g`--)
+  (--`!x y z. fn g x (fn g y z) = fn g (fn g x y) z`--)
+\end{verbatim}
+\end{small}
+
+The is a conversion in the package that will expand an abstract obligation
+with rule and tactic versions designed for cases like this. We apply this
+here.
+
+\begin{small}
+\begin{verbatim}
+- expand(EXPAND_THOBS_TAC);
+OK..
+1 subgoal:
+(--`(!x. fn g x (id g) = x) /\
+    (!x. fn g (id g) x = x) /\
+    (!x y z. fn g x (fn g y z) = fn g (fn g x y) z)`--)
+=============================
+  (--`group_oblig g`--)
+  (--`!x. fn g x (id g) = x`--)
+  (--`!x. fn g (id g) x = x`--)
+  (--`!x. fn g x (inv g x) = id g`--)
+  (--`!x. fn g (inv g x) x = id g`--)
+  (--`!x y z. fn g x (fn g y z) = fn g (fn g x y) z`--)
+\end{verbatim}
+\end{small}
+
+This rewrites first with the relevant obligation theorem and then with the
+representation definitions for that abstract entity. The proof is now
+simply rewriting with the assumptions.
+
+\begin{small}
+\begin{verbatim}
+- val GROUP_EXTENDS_MONOID = 
+    abs_prove((--`! g:'a group . monoid_oblig(monoid (id g) (fn g))`--),
+              STRIP_THOBS_TAC
+              THEN EXPAND_THOBS_TAC
+              THEN ASM_REWRITE_TAC []
+              );
+
+val GROUP_EXTENDS_MONOID =
+  |- !g. group_oblig g ==> monoid_oblig (monoid (id g) (fn g)) : thm
+\end{verbatim}
+\end{small}
+
+Now that we know that a group is a monoid, we can lift the monoid
+theorems into group theory. \verb!instantiate_abs_thm! takes as its
+arguments an instatiation list and an theorem. The instantiation list is a
+list of instantiations consisting of the abstract variable in the
+theorem to be instaniated, a term which contains the new representation
+and a validation that the new representation satisfies the relevant
+obligation. In these examples the representation is a monoid using the
+group identity and operation.
+
+\begin{small}
+\begin{verbatim}
+- define_theorem "IDENTITY_UNIQUE"
+  (instantiate_abs_thm[{abs_term=(--`m:'a monoid`--),
+                        rep_term=(--`monoid (id(g:'a group))(fn g)`--),
+                        validation=GROUP_EXTENDS_MONOID}]
+                      IDENTITY_UNIQUE);
+
+val IDENTITY_UNIQUE =
+  |- !g.
+       group_oblig g ==>
+       (!f. (!a. (fn g a f = a) /\ (fn g f a = a)) ==> (f = id g)) : thm
+
+- define_theorem "OP_DETERMINES_IDENTITY"
+  (instantiate_abs_thm[{abs_term=(--`m1:'a monoid`--),
+                        rep_term=(--`monoid (id(g1:'a group))(fn g1)`--),
+                        validation=GROUP_EXTENDS_MONOID},
+                       {abs_term=(--`m2:'a monoid`--),
+                        rep_term=(--`monoid (id(g2:'a group))(fn g2)`--),
+                        validation=GROUP_EXTENDS_MONOID}]
+                    OP_DETERMINES_IDENTITY);
+  
+val OP_DETERMINES_IDENTITY =
+  |- !g2 g1.
+       group_oblig g1 /\ group_oblig g2 ==> (fn g1 = fn g2) ==> (id g1 = id g2)
+  : thm
+\end{verbatim}
+\end{small}
+
+Notice how the monoid obligations have turned into group obligations.
+Lifting definitions into the new theory is slightly more complex as we take
+2 steps. Firstly we define the new definition in terms of the old one
+
+\begin{small}
+\begin{verbatim}
+- val group_sq =
+    new_definition("group_sq",
+                   (--`group_sq (g:'a group) a 
+                       = (monoid_sq (monoid(id g)(fn g)) a)`--));
+
+val group_sq = |- !g a. group_sq g a = monoid_sq (monoid (id g) (fn g)) a : thm
+\end{verbatim}
+\end{small}
+
+Then we instantiate the definition using an instantiation list (without the
+validation this time as definitions are not guarded by obligations), the old
+definition and the new definiiton
+
+\begin{small}
+\begin{verbatim}
+- val group_sq_thm 
+    = instantiate_abstract_definition 
+        [{abs_term=(--`m:'a monoid`--),
+          rep_term=(--`monoid(id (g:'a group))(fn g)`--)}]
+        monoid_sq group_sq;
+
+val group_sq_thm = |- !a g. group_sq g a = fn g a a : thm
+\end{verbatim}
+\end{small}
+
+Of course, in this trivial example it would have been simpler to make this
+definition directly!.
+
+We can prove theorems of group theory just as we did in monoid theory.
+
+\begin{small}
+\begin{verbatim}
+- define_theorem "LEFT_CANCELLATION"
+   (abs_prove
+     (--`! (g:'a group) x y a. ((fn g) a x = ((fn g) a y)) ==> (x = y)`--,
+      STRIP_THOBS_TAC
+      THEN REPEAT STRIP_TAC
+      THEN ACCEPT_TAC 
+      let val t1 = ASSUME(--`!x y z. fn (g:'a group) x(fn g y z)
+			     = fn g(fn g x y)z`--)
+	  and t2 = ASSUME (--`!x. fn (g:'a group)(inv g x)x = id g`--)
+	  and t3 = ASSUME (--`!x. fn (g:'a group)(id g) x  = x`--)
+	  and t4 = ASSUME (--`fn (g:'a group) a x = fn g a y`--)
+      in
+      SYM_RULE (REWRITE_RULE [t1,t2,t3] 
+		(REWRITE_RULE [t2,t3,t4] 
+		 (ISPECL[(--`(inv g (a:'a))`--),(--`a:'a`--),(--`x:'a`--)]t1)))
+      end));
+
+val LEFT_CANCELLATION =
+  |- !g. group_oblig g ==> (!x y a. (fn g a x = fn g a y) ==> (x = y))
+  : thm
+
+- define_theorem "INVERSE_INVERSE_LEMMA"
+  (abs_prove
+    (--`!(g:'a group). !a. (((inv g) ((inv g) a)) = a)`--,
+     STRIP_THOBS_TAC
+     THEN GEN_TAC
+     THEN ACCEPT_TAC 
+     let val t1 = ASSUME(--`!x. fn (g:'a group) x(inv g x) = id g`--)
+	 and t2 = ASSUME(--`!x. fn (g:'a group) (inv g x)x = id g`--)
+	 and LC_LEMMA = (ISPECL [--`inv (g:'a group) (inv g a)`--,
+				 --`a:'a`--,--`inv g (a:'a)`--]
+			 o UNDISCH o ISPEC(--`g:'a group`--))
+			LEFT_CANCELLATION 
+     in
+     MATCH_MP LC_LEMMA (TRANS (ISPEC(--`(inv g)(a:'a)`--)t1) 
+			(SYM_RULE (ISPEC (--`a:'a`--)t2)))
+     end));
+
+val INVERSE_INVERSE_LEMMA = 
+  |- !g. group_oblig g ==> (!a. inv g (inv g a) = a)
+  : thm
+\end{verbatim}
+\end{small}
+
+This last theory shows us that a double inverse can be removed. This is
+something we clearly would like to use as a rewrite rule. If we
+instantiate the theorem with a concrete representation (for example
+integers and plus) then we clearly have a theorem (effectively 
+\verb|!a. - (- a) = a|). However while in the abstract theory we cannot 
+do this as we have the group obligation to deal with. This can be 
+handled by suitable resolutions but it would be nice to be able to treat
+it as a simple rewrite rule. To do this there is in addition a
+structure of rewriting conversions, rules and tactics for theorems with
+preconditions. We load this into the system now.
+
+\begin{small}
+\begin{verbatim}
+- open Imp_rewrite;
+\end{verbatim}
+\end{small}
+
+For any existing rewrite rule there is an new one with \verb!IMP_! prefixed
+to \verb!REWRITE! in its name. These rules strip off an outer levels of
+universal quantification and implication by generalising quantifications
+and undischarging antecentedents in the assumption lists. The resulting
+theorems are used as rewrites with the condition that they are not
+allowed to introduce any new assumptions into the theorem or goal --- the
+conversions have an additional parameter listing the assumptions that
+may be created. To show this in action we set up a simple goal
+
+\begin{small}
+\begin{verbatim}
+- ag `! (g:num group) a. inv g(inv g(inv g a)) = inv g a`;
+
+(--`!g. group_oblig g ==> (!a. inv g (inv g (inv g a)) = inv g a)`--)
+=============================
+\end{verbatim}
+\end{small}
+
+We strip off the obligations as before
+
+\begin{small}
+\begin{verbatim}
+- expand(STRIP_THOBS_TAC);
+
+OK..
+1 subgoal:
+(--`!a. inv g (inv g (inv g a)) = inv g a`--)
+=============================
+  (--`group_oblig g`--)
+  (--`!x. fn g x (id g) = x`--)
+  (--`!x. fn g (id g) x = x`--)
+  (--`!x. fn g x (inv g x) = id g`--)
+  (--`!x. fn g (inv g x) x = id g`--)
+  (--`!x y z. fn g x (fn g y z) = fn g (fn g x y) z`--)
+\end{verbatim}
+\end{small}
+
+We can now rewrite this with \verb!INVERSE_INVERSE_LEMMA!. Note that
+the relevant obligation is in the assumptions (so the rewrite will work)
+--- this was the reason for putting both the unexpanded and expanded
+obligations on the assumption list.
+
+\begin{small}
+\begin{verbatim}
+- expand(PURE_ONCE_IMP_REWRITE_TAC[INVERSE_INVERSE_LEMMA]);
+OK..
+1 subgoal:
+(--`!a. inv g a = inv g a`--)
+=============================
+  (--`group_oblig g`--)
+  (--`!x. fn g x (id g) = x`--)
+  (--`!x. fn g (id g) x = x`--)
+  (--`!x. fn g x (inv g x) = id g`--)
+  (--`!x. fn g (inv g x) x = id g`--)
+  (--`!x y z. fn g x (fn g y z) = fn g (fn g x y) z`--)
+\end{verbatim}
+\end{small}
+
+And the rest of the proof is simple:
+
+\begin{small}
+\begin{verbatim}       
+- abs_prove((--`! (g:num group) a. inv g(inv g(inv g a)) = inv g a`--),
+          STRIP_THOBS_TAC
+          THEN IMP_REWRITE_TAC[INVERSE_INVERSE_LEMMA]);
+
+val it = |- !g. group_oblig g ==> (!a. inv g (inv g (inv g a)) = inv g a) : thm
+\end{verbatim}
+\end{small}
+
+This also demonstrates the advantage of having a normal form for theorems
+with abstract types which allows support functions to be built to handle them.
+
+Finally we save the theory
+
+\begin{small}
+\begin{verbatim}
+val _ = export_theory();
+\end{verbatim}
+\end{small}
+
+\section{Booleans and exclusive-or}
+
+We now provide a concrete example of a group. We start the theory
+
+\begin{small}
+\begin{verbatim}
+- load_library_in_place abs_theory_lib;
+- open Abs_theory Goalstack;
+    
+- new_theory "exorgroup";
+
+- new_parent"groups";
+
+- add_obligs "groups";
+\end{verbatim}
+\end{small}
+
+and then we define exclusive-or by
+
+\begin{small}
+\begin{verbatim}
+- val exclusive_or =
+  new_infix_definition("exclusive_or",
+                       (--`! (x:bool) y. $>< x y = ~(x=y)`--),20);
+
+val exclusive_or = |- !x y. (x >< y) = ~(x = y) : thm
+\end{verbatim}
+\end{small}
+
+N.b. I'm not sure if the fixity value is sensible!
+
+First we need to show that we have a group with exclusive-or as the
+operation, false as the identity and the identity function as the inverse!.
+
+\begin{small}
+\begin{verbatim}
+- g`group_oblig(group I F ($><))`;
+
+- expand(EXPAND_THOBS_TAC);
+OK..
+1 subgoal:
+(--`(!x. (x >< F) = x) /\
+    (!x. (F >< x) = x) /\
+    (!x. (x >< I x) = F) /\
+    (!x. (I x >< x) = F) /\
+    (!x y z. (x >< y >< z) = ((x >< y) >< z))`--)
+=============================
+\end{verbatim}
+\end{small}
+
+Now we can rewrite with existing definitions and prove the goal:
+
+\begin{small}
+\begin{verbatim}
+- val exorgroup =
+  prove((--`group_oblig(group I F ($><))`--),
+        EXPAND_THOBS_TAC
+        THEN REWRITE_TAC[exclusive_or,theorem"combin""I_THM"]
+        THEN (REPEAT GEN_TAC
+              THEN MAP_EVERY BOOL_CASES_TAC [--`x:bool`--,
+                                             --`y:bool`--,
+                                             --`z:bool`--]
+              THEN REWRITE_TAC[]));
+  
+val exorgroup = |- group_oblig (group I F $><) : thm
+\end{verbatim}
+\end{small}
+
+So now we can lift the group theorems.
+  
+\begin{small}
+\begin{verbatim}
+- val EXOR_IDENTITY_UNIQUE =
+    instantiate_abs_thm [{abs_term=(--`g:'a group`--),
+                          rep_term=(--`group I F ($><)`--),
+                          validation=exorgroup}]
+                        IDENTITY_UNIQUE;
+
+val EXOR_IDENTITY_UNIQUE =
+  |- !f. (!a. ((a >< f) = a) /\ ((f >< a) = a)) ==> (f = F) : thm
+
+- val EXOR_GROUP_ID =       
+    instantiate_abs_thm [{abs_term=(--`g2:'a group`--),
+                          rep_term=(--`group I F ($><)`--),
+                          validation=exorgroup}]
+                        OP_DETERMINES_IDENTITY;
+
+val EXOR_GROUP_ID = |- !g1. group_oblig g1 ==> (fn g1 = $><) ==> (id g1 = F)
+  : thm
+
+- val EXOR_LEFT_CANCELLATION =
+    instantiate_abs_thm [{abs_term=(--`g:'a group`--),
+                          rep_term=(--`group I F ($><)`--),
+                          validation=exorgroup}]
+                        LEFT_CANCELLATION;
+
+val EXOR_LEFT_CANCELLATION = |- !x y a. ((a >< x) = (a >< y)) ==> (x = y) : thm
+    
+- val EXOR_INVERSE_INVERSE_LEMMA =
+    instantiate_abs_thm [{abs_term=(--`g:'a group`--),
+                          rep_term=(--`group I F ($><)`--),
+                          validation=exorgroup}]
+                        INVERSE_INVERSE_LEMMA;
+
+val EXOR_INVERSE_INVERSE_LEMMA = |- !a. I (I a) = a : thm
+\end{verbatim}
+\end{small}
+
+Note that in the second case we do not instantiate all the abstract
+variables. Also note that we have 4 theorems here of which the second
+two were proved in terms of general groups while the first two originate
+from proofs about monoids. Simply by showing that a group can be viewed
+as a monoid and that exclusive-or, not and false together form a group
+has enabled us to derive theorems in the boolean domain from theorems
+about generic monoids. In this case the saving may not seem readily
+apparent, however, if a fuller group theory was developed then a whole
+body of theorems about groups could be instantiated both inside ring
+theory as well as in concrete cases such as arithmetic over integers,
+rationals, reals etc. The proofs are only done once in group theory with
+each instantiation only requiring proof of an instance of a group in
+terms of other abstract or concrete entities.
+
+\end{document}

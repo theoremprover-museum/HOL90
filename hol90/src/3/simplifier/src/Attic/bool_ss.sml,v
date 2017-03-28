@@ -1,0 +1,186 @@
+head	1.2;
+access;
+symbols;
+locks; strict;
+comment	@# @;
+
+
+1.2
+date	96.01.04.14.14.48;	author drs1004;	state dead;
+branches;
+next	1.1;
+
+1.1
+date	95.12.18.11.39.14;	author drs1004;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.2
+log
+@Added simplifier components, added drule files, added MK_ABS_CONV, better error messages
+@
+text
+@
+(* =====================================================================
+ * Simpsets for Vanilla HOL
+ *
+ * =====================================================================*)
+
+signature Bool_ss_sig =
+sig
+	structure Simplifier : Simplifier_sig
+
+	val bool_ss : Simplifier.simpset
+	val BOOL_ss : Simplifier.simpset
+
+        val imp_congrule : Thm.thm
+        val cond_congrule : Thm.thm
+
+end;
+
+
+structure Bool_ss : Bool_ss_sig =
+struct 
+  structure Simplifier = Simplifier;
+  structure Pure_ss = Pure_ss;
+  open Core;
+     infix |>;
+  open Simplifier;
+  infix ++
+  open Pure_ss;
+
+(* ---------------------------------------------------------------------
+ * bool_ss
+ *   This is essentially the same as the old REWRITE_TAC []
+ *   with the "basic rewrites" plus:
+ *      - ABS_SIMP removed in favour of BETA_CONV
+ *      - COND_ID added: (P => Q | Q) = Q
+ *      - contextual rewrites for P ==> Q and P => T1 | T2 added
+ *      - (t ==> t) = T removed because it matches every implication,
+ * and it is redundant due to contextual rewriting.
+ * --------------------------------------------------------------------*)
+
+val imp_congrule = 
+    prove (--`(P = P') ==> (P' ==> (Q = Q')) ==> ((P ==> Q) = (P' ==> Q'))`--,
+        REPEAT GEN_TAC
+        THEN EVERY (map ASM_CASES_TAC [(--`P:bool`--), (--`P':bool`--), (--`Q:bool`--), (--`Q':bool`--)])
+        THEN ASM_REWRITE_TAC []);
+
+val cond_congrule = prove(
+    (--`(g = g') ==> 
+        (g' ==> (t:'a = t')) ==> 
+        (~g' ==> (e = e')) ==> 
+        ((g => t | e) = (g' => t' | e'))`--),
+        REPEAT GEN_TAC
+        THEN EVERY (map ASM_CASES_TAC [(--`g:bool`--), (--`g':bool`--)])
+        THEN ASM_REWRITE_TAC []
+        THEN EVERY (map ASM_CASES_TAC [(--`t:bool`--), (--`t':bool`--)])
+        THEN ASM_REWRITE_TAC []
+        THEN EVERY (map ASM_CASES_TAC [(--`e:bool`--), (--`e':bool`--)])
+        THEN ASM_REWRITE_TAC []);
+
+val IMP_CLAUSES' = 
+    EQT_ELIM (REWRITE_CONV [] (--`(T ==> t = t) /\ 
+                                  (t ==> T = T) /\ 
+                                  (F ==> t = T) /\ 
+                                  (t ==> F = ~t)`--));
+
+val BOOL_ss =
+   pure_ss
+   |> addcongs [imp_congrule, cond_congrule]
+   |> addconvs [mk_convdata{name="BETA_CONV (beta reduction)",
+                         key=SOME ([],--`(\x:'a. y:'b) z`--),
+                         trace=1,
+                         conv=K BETA_CONV}]
+   ++ [REFL_CLAUSE,  EQ_CLAUSES,
+       NOT_CLAUSES,  AND_CLAUSES,
+       OR_CLAUSES,   IMP_CLAUSES',
+       COND_CLAUSES, FORALL_SIMP,
+       EXISTS_SIMP,  COND_ID];
+
+
+val bool_ss = BOOL_ss;
+
+
+(* ---------------------------------------------------------------------
+ * CNF_ss
+ * DNF_ss
+ *
+ * Conjunctive/Disjunctive normal forms.  These are experimental and
+ * not complete.  They do not sort the clauses, thus do not take
+ * the formulae to unique normal forms.
+ * --------------------------------------------------------------------*)
+
+val AND_SIMPS = prove(--`((x /\ ~x) = F) /\ ((~y /\ y) = F)`--, 
+    MAP_EVERY BOOL_CASES_TAC [(--`x:bool`--),(--`y:bool`--)] THEN 
+    SIMP_TAC bool_ss);
+val OR_SIMPS = prove(--`(x \/ ~x) /\ (~y \/ y)`--, 
+    MAP_EVERY BOOL_CASES_TAC [(--`x:bool`--),(--`y:bool`--)] THEN 
+    SIMP_TAC bool_ss);
+
+val CNF_ss =
+    pure_ss 
+    ++ [EQ_EXPAND, LEFT_OR_OVER_AND, RIGHT_OR_OVER_AND,
+                 COND_EXPAND, IMP_DISJ_THM, 
+                 GSYM DISJ_ASSOC,
+                 GSYM CONJ_ASSOC, 
+                NOT_CLAUSES,  
+                AND_CLAUSES, AND_SIMPS,
+                OR_CLAUSES, OR_SIMPS,
+                FORALL_SIMP,
+                EXISTS_SIMP, DE_MORGAN_THM];
+
+val DNF_ss =
+    pure_ss 
+    ++ [EQ_EXPAND, LEFT_AND_OVER_OR, RIGHT_AND_OVER_OR,
+                 COND_EXPAND, IMP_DISJ_THM,
+                GSYM DISJ_ASSOC,
+                GSYM CONJ_ASSOC,
+                AND_CLAUSES, AND_SIMPS,
+                OR_CLAUSES, OR_SIMPS,
+                NOT_CLAUSES,  
+                FORALL_SIMP,
+                EXISTS_SIMP, DE_MORGAN_THM];
+
+
+end; 
+
+
+
+
+
+
+(* Tests:
+
+open Simplifier;
+open Bool_ss;
+open Trace;
+trace_level 5;
+
+prove(--`!P. ~P = (P = F)`--,SIMP_TAC bool_ss);
+prove(--`!P. P = (P = T)`--,SIMP_TAC bool_ss);
+prove(--`!P. P = (P /\ T)`--, SIMP_TAC bool_ss);
+SIMP_CONV bool_ss (--`1=1`--);
+SIMP_CONV bool_ss (--`!x:'a. 1=1`--);
+SIMP_CONV bool_ss (--`!x:'a. x = x`--);
+SIMP_CONV bool_ss (--`!x:'a. (\y. P x y) x`--);
+SIMP_CONV bool_ss (--`(x = 0) ==> (x + y = z + x)`--);
+profile2 SIMP_CONV CNF_ss (--`(x = y) ==> x ==> (~x /\ (y \/ z))`--);
+profile2 SIMP_CONV DNF_ss (--`(x = y) ==> x ==> (~x /\ (y \/ z))`--);
+*)
+
+
+@
+
+
+1.1
+log
+@Preterm and other changes, see 7.changes
+@
+text
+@@

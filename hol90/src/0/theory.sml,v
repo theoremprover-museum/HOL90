@@ -1,0 +1,466 @@
+head	1.1;
+access;
+symbols;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	96.02.08.00.32.14;	author drs1004;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@New theory mechanism, by Donald Syme, and many other enhancements.
+@
+text
+@functor THEORY(structure PrivateTerm : Private_term_sig
+	       structure Thm : Thm_sig
+		   sharing Thm.Term = PrivateTerm): Theory_sig =
+struct
+
+structure Thm = Thm;
+open Thm;
+open Lib;
+open PrivateTerm;
+open PrivateTerm.Type;
+    
+open Sexprs;
+    
+
+val ERR = Exception.ERR "Theory";
+val WRAP_ERR = Exception.WRAP_ERR "Theory";
+
+(*----------------------------------------------------------------------
+ * Extensions
+ * 
+ * Extensions are atomic.  We do not save the logical content of extensions,
+ * we only save a unique id for each extension.  We could write out axioms
+ * as well, but it doesn't seem worth it.
+ *----------------------------------------------------------------------*)
+    
+type uid = string
+val uid = 
+    let val count = ref 0
+    in fn () => (Lib.inc count;
+		 Portable.Time.time_to_string (Portable.Time.timestamp())^int_to_string (!count))
+    end;
+    
+
+datatype thysig = 
+    THYSIG of ((string*int) list * (string * typ) list * uid) list;
+
+val thysig_empty = THYSIG [];
+
+fun disjoint_map s1 s2 = all (fn (x,y) => not (can (assoc x) s2)) s1;
+fun map_eq s1 s2 = 
+    (all (fn (x,y) => assoc x s2 = y) s1 
+     andalso all (fn (x,y) => assoc x s1 = y) s2) handle _ => false;
+    
+
+(* true if thysig1 is an extension of thysig2 *)
+fun extends (THYSIG thysig1) (THYSIG thysig2) =
+    let fun extends2 (tyc1,tmc1,uid1) =
+	    all (fn (tyc2,tmc2,uid2) => 
+		 (uid1=uid2 
+		  andalso map_eq tyc1 tyc2 
+		  andalso map_eq tmc1 tmc2)
+		 orelse (disjoint_map tyc1 tyc2 andalso disjoint_map tmc1 tmc2)) 
+	    thysig2
+    in all extends2 thysig1
+    end;
+
+
+fun rec_eq (tyc1,tmc1,uid1) (tyc2,tmc2,uid2) = 
+    map_eq tyc1 tyc2
+    andalso map_eq tmc1 tmc2
+    andalso uid1 = uid2;
+    
+(* assumes first extends second in the sense of above *)
+fun merge_thysig (THYSIG thysig1) (THYSIG thysig2) =
+    THYSIG (op_union rec_eq thysig1 thysig2);
+    
+
+(*-----------------------------------------------------------------------
+ * current_thysig
+ *
+ * The current complete theory signature.  Contains absolutely everything
+ * ever defined in the history of this executable.
+ *----------------------------------------------------------------------*)
+
+val current_thysig_ref = ref (THYSIG []);
+fun current_thysig() = (!current_thysig_ref)
+fun add_to_current_thysig r = 
+    let val THYSIG t = !current_thysig_ref 
+    in (current_thysig_ref := THYSIG (r::t)) 
+    end;
+
+fun merge_into_current (thysig as THYSIG recs) =
+    let fun add_tmc (name,ty) = 
+	    if is_constant name then ()
+	    else add_const {Name=name,Ty=ty}
+	fun add_tyc (name,arity) = 
+	    if is_type name then ()
+	    else add_type {Name=name,Arity=arity}
+	val _ =  current_thysig_ref := merge_thysig thysig (current_thysig())
+	val _ = map (map add_tmc o #2) recs
+	val _ = map (map add_tyc o #1) recs
+    in ()
+    end
+handle e => WRAP_ERR("merge_into_current",e);
+    
+(*-----------------------------------------------------------------------
+ * Basic theory operations
+ *----------------------------------------------------------------------*)
+    
+
+
+fun atomic_theory_op f x =
+    let val t = !current_thysig_ref
+	val c = PrivateTerm.symtab_copy()
+    in f x handle e => (current_thysig_ref := t; 
+			PrivateTerm.replace_symtab c;
+			raise e)
+    end;
+    
+			 
+   
+
+fun new_extension{tyc,tmc,mk_axiom} =
+    (map add_type tyc;
+     map add_const tmc;
+     let val axiom = option_app optimize_thm (mk_axiom ()) 
+	             handle e => NONE
+	 fun mk_tyc {Arity,Name} = (Name,Arity)
+	 fun mk_tmc {Name,Ty} = (Name,Ty)
+	 val _ = add_to_current_thysig (map mk_tyc tyc,map mk_tmc tmc,uid())
+     in axiom
+     end
+ );
+   
+
+    
+(*-----------------------------------------------------------------------
+ * thysig_for_thms
+ *
+ * Compute the subset of the entire thysig used by this set of theorems.
+ *
+ * OLD VERSION
+ *
+fun thysig_for_thms l = 
+    let fun collect (thms,consts) =
+	let val more_consts = collect_more_consts thms consts
+	in if more_consts = ([],[]) then consts
+	   else let val more_thms = collect_thms more_consts
+		in collect (more_thms,AA more_consts consts)
+		end
+	end
+    in THYSIG (get_axioms (current_thysig()) @@ (collect_recs (collect (l,([],[])))))
+    end
+handle e => WRAP_ERR("thysig_for_thms",e);
+
+(* collect any constants used in the given records and
+   not already in the set found     *)
+fun collect_more_consts thms (tycs,tmcs) =
+    let val (tycs',tmcs') = itlist thm_consts thms ([],[])
+    in (subtract tycs' tycs,subtract tmcs' tmcs)
+    end
+
+(* collect definitions for the given constants *)
+fun collect_recs constants =
+    let val THYSIG current = current_thysig()
+	fun find_tyc tyc = first (fn (tycs,_,_) => can (assoc tyc) tycs)
+	fun find_tmc tmc = first (fn (_,tmcs,_) => can (assoc tmc) tmcs) 
+	fun filt (tycs,tmcs) (tycs',tmcs') =
+	    (filter (fn x => not (can (assoc x) tycs')) tycs,
+	     filter (fn x => not (can (assoc x) tmcs')) tmcs)
+	fun collect (tyc::tycs,tmcs) =
+	    let val (recd as (tycs',tmcs',_)) = find_tyc tyc current
+	    in recd::collect (filt (tycs,tmcs) (tycs',tmcs'))
+	    end
+	  | collect (tycs,tmc::tmcs) =
+	    let val (recd as (tycs',tmcs',_)) = find_tmc tmc current
+	    in recd::collect (filt (tycs,tmcs) (tycs',tmcs'))
+	    end
+	  | collect ([],[]) = []
+    in collect constants
+    end;
+    
+fun get_axioms (THYSIG l) = filter (fn ([],[],SOME x) => true | _ => false) l;
+    
+fun AA (x,y) (z,w) = (x@@z,y@@w);
+
+ *----------------------------------------------------------------------*)
+
+fun ty_consts (Tyapp {Tyop,Args}) tyc = insert Tyop tyc    
+  | ty_consts _ tyc = tyc;
+    
+fun tm_consts (Fv {Name,Ty}) (tyc,tmc) = (ty_consts Ty tyc,tmc)
+  | tm_consts (Bv _) l = l
+  | tm_consts (Const {Name,Ty}) (tyc,tmc) = (tyc,insert Name tmc)
+  | tm_consts (Comb {Rator,Rand}) l = tm_consts Rand (tm_consts Rator l)
+  | tm_consts (Abs {Bvar,Body}) l = tm_consts Bvar (tm_consts Body l)
+  | tm_consts _ l = l;
+    
+    
+fun thm_consts thm l =
+    tm_consts (concl thm) (itlist tm_consts (hyp thm) l);
+
+
+(* collect any constants used in the given set of theorems *)
+val collect_consts = itlist thm_consts;
+
+(* collect definitions for the given constants *)
+fun collect_recs constants =
+    let val THYSIG current = current_thysig()
+	fun find_tyc tyc = first (fn (tycs,_,_) => can (assoc tyc) tycs)
+	fun find_tmc tmc = first (fn (_,tmcs,_) => can (assoc tmc) tmcs) 
+	fun filt (tycs,tmcs) (tycs',tmcs') =
+	    (filter (fn x => not (can (assoc x) tycs')) tycs,
+	     filter (fn x => not (can (assoc x) tmcs')) tmcs)
+	fun collect (tyc::tycs,tmcs) =
+	    let val (recd as (tycs',tmcs',_)) = 
+		find_tyc tyc current
+		handle e => (say ("implementation error: type "^quote tyc^" not found in signature\n");
+			     ([],[],tyc))
+	    in recd::collect (filt (tycs,tmcs) (tycs',tmcs'))
+	    end
+	  | collect (tycs,tmc::tmcs) =
+	    if Lexis.is_num_literal tmc then (collect (tycs,tmcs))
+		else if Lexis.is_string_literal tmc then (collect (tycs,tmcs))
+		else 
+		    let val (recd as (tycs',tmcs',_)) = find_tmc tmc current
+			handle e => (say ("warning: term "^quote tmc^" not found in signature\n");
+				     ([],[],tmc))
+	    in recd::collect (filt (tycs,tmcs) (tycs',tmcs'))
+	    end
+	  | collect ([],[]) = []
+    in collect constants
+    end
+handle e => WRAP_ERR("collect_recs",e);
+    
+fun thysig_for_thms l = 
+    let val THYSIG current = current_thysig()
+	val axioms = filter (fn ([],[],_) => true | _ => false) current
+	val consts = collect_recs (collect_consts l ([],[]))
+    in THYSIG (axioms@@consts)
+    end
+    
+fun thysig_for_consts (tycs,tmcs) = 
+    let val THYSIG current = current_thysig()
+	val axioms = filter (fn (tycs',tmcs',_) => 
+				    exists (fn x => can (assoc x) tycs') tycs
+				    orelse exists (fn x => can (assoc x) tmcs') tmcs) current
+    in THYSIG axioms
+    end
+handle e => WRAP_ERR("thysig_for_thms",e);
+
+
+(*
+fun thysig_for_thms l = 
+    let fun collect (thms,consts) =
+	let val more_consts = collect_more_consts thms consts
+	in if more_consts = ([],[]) then consts
+	   else let val more_thms = collect_thms more_consts
+		in collect (more_thms,AA more_consts consts)
+		end
+	end
+    in THYSIG (get_axioms (current_thysig()) @@ (collect_recs (collect (l,([],[])))))
+    end;
+*)
+
+(*-----------------------------------------------------------------------
+ * Term/Type/Thm/Thysig/Thmdb IO
+ *
+ * IO vis sexprs.
+ *----------------------------------------------------------------------*)
+
+fun typ_to_sexpr (Tyapp {Tyop,Args}) = 
+    SAPP(SCON Tyop::map typ_to_sexpr Args)
+  | typ_to_sexpr (Utv c) = SCON c;
+    
+fun sexpr_to_typ (SCON c) = Utv c
+  | sexpr_to_typ (SAPP (SCON tyc::args)) = Tyapp {Tyop=tyc,Args=map sexpr_to_typ args}
+  | sexpr_to_typ _ = ERR("sexpr_to_typ","Bad sexpr construction");
+    
+fun term_to_sexpr (Fv {Name,Ty}) = 
+    SAPP [SCON "F",SCON Name,typ_to_sexpr Ty]
+  | term_to_sexpr (Bv n) = 
+    SCON (int_to_string n)
+  | term_to_sexpr (Const {Name,Ty}) = 
+    SAPP[SCON "K",SCON Name,typ_to_sexpr Ty]
+  | term_to_sexpr (Comb {Rator,Rand}) = 
+    SAPP[SCON "C",term_to_sexpr Rator,term_to_sexpr Rand]
+  | term_to_sexpr (Abs {Bvar,Body}) = 
+    SAPP[SCON "A",term_to_sexpr Bvar,term_to_sexpr Body];
+
+fun sexpr_to_term (SAPP [SCON "F",SCON Name,Ty]) =
+    Fv {Name=Name,Ty=sexpr_to_typ Ty}
+  | sexpr_to_term (SCON n) = 
+    Bv (string_to_int n)
+  | sexpr_to_term (SAPP[SCON "K",SCON Name, Ty]) =
+    (Const {Name=Name,Ty=sexpr_to_typ Ty})
+  | sexpr_to_term (SAPP[SCON "C",Rator,Rand]) =
+    (Comb {Rator=sexpr_to_term Rator,Rand=sexpr_to_term Rand})
+  | sexpr_to_term (SAPP[SCON "A",Bvar,Body]) =
+    (Abs {Bvar=sexpr_to_term Bvar,Body=sexpr_to_term Body})
+  | sexpr_to_term _ = ERR("sexpr_to_term","Bad sexpr construction");
+    
+
+
+fun thm_to_sexpr thm = SAPP (term_to_sexpr (concl thm)::map term_to_sexpr (hyp thm));
+fun sexpr_to_thm (SAPP (concl::hyp)) = 
+    optimize_thm (mk_disk_thm (map sexpr_to_term hyp, sexpr_to_term concl))
+  | sexpr_to_thm _ = ERR("sexpr_to_thm","Bad sexpr construction");
+    
+    
+fun tmc_to_sexpr (n,ty) = SAPP [SCON n,typ_to_sexpr ty];
+fun sexpr_to_tmc (SAPP [SCON n,ty]) = (n,sexpr_to_typ ty)
+  | sexpr_to_tmc _ = ERR("sexpr_to_tmc","Bad sexpr construction");
+    
+fun tyc_to_sexpr (n,arity) = SAPP [SCON n,SCON (int_to_string arity)];
+fun sexpr_to_tyc (SAPP [SCON n,SCON arity]) = (n,string_to_int arity)
+  | sexpr_to_tyc _ = ERR("sexpr_to_tyc","Bad sexpr construction");
+    
+fun thyrec_to_sexpr (tyc,tmc,uid) = 
+    SAPP [list_to_sexpr tyc_to_sexpr tyc,
+	  list_to_sexpr tmc_to_sexpr tmc,
+	  string_to_sexpr uid];
+    
+fun sexpr_to_thyrec (SAPP [tyc,tmc,uid]) = 
+    (sexpr_to_list sexpr_to_tyc tyc,
+     sexpr_to_list sexpr_to_tmc tmc,
+     sexpr_to_string uid)
+  | sexpr_to_thyrec _ = ERR("sexpr_to_thyrec","Bad sexpr construction");
+    
+fun thysig_to_sexpr (THYSIG l) =
+    list_to_sexpr thyrec_to_sexpr l;
+fun sexpr_to_thysig l = THYSIG (sexpr_to_list sexpr_to_thyrec l);
+    
+
+
+fun thysig_reader str =
+    let val [(key,data)] = Sdict_io.sdict_reader str
+    in (key,sexpr_to_pair (sexpr_to_thysig,sexpr_to_list sexpr_to_string) data)
+    end
+handle e => WRAP_ERR("thysig_reader",e);
+
+fun thysig_writer str (uid,data) =
+    Sdict_io.sdict_qwriter str [(uid,pair_to_sexpr (thysig_to_sexpr,list_to_sexpr string_to_sexpr) data)]
+handle e => WRAP_ERR("thysig_writer",e);
+
+fun thms_reader str =
+    let val [(key,data)] = Sdict_io.sdict_reader str
+    in (key,sexpr_to_list sexpr_to_thm data)
+    end
+handle e => WRAP_ERR("thms_reader",e);
+
+fun thms_writer str (uid,thms) =
+    Sdict_io.sdict_qwriter str [(uid,list_to_sexpr thm_to_sexpr thms)]
+handle e => WRAP_ERR("thms_writer",e);
+
+
+fun thmdb_writer (thysig_str,thms_str) (thms:(string * thm) list) =
+    let val thysig = thysig_for_thms (map #2 thms)
+	val uid = Portable.Time.time_to_string (Portable.Time.timestamp());
+    in (thysig_writer thysig_str (uid,(thysig,map #1 thms));
+	thms_writer thms_str (uid,map #2 thms))
+    end
+handle e => WRAP_ERR("thmdb_writer",e);
+    
+
+fun thmdb_reader thysig_str =
+    let val (key1,(thysig,thmnames)) = thysig_reader thysig_str
+    in if extends thysig (current_thysig()) then
+	let val _ = atomic_theory_op merge_into_current thysig
+	    fun thmsf thms_str = 
+		let val (key2,res) = thms_reader thms_str
+		in if (key1 = key2) then res
+		   else ERR("thmdb_reader","key of .holsig and .thms files do not match")
+		end
+	in (thmnames,thmsf)
+	end
+       else ERR("thmdb_reader","incompatibilities exist between imported theory and existing theory")
+    end
+    handle e => WRAP_ERR("thmdb_reader",e);
+
+fun write_thmdb base thms =
+    let val _ = say ("[writing "^base^"]\n")
+	val os1 = open_out (base^".holsig")
+    in let val os2 = open_out (base^".thms")
+       in (thmdb_writer (os1,os2) thms;
+	   close_out os1;
+	   close_out os2)
+	   handle e => (close_out os2; raise e)
+       end
+       handle e => (close_out os1; raise e)
+    end
+    handle e => WRAP_ERR ("write_thmdb",e);
+    
+    
+fun read_thmdb base =
+    let val _ = say ("[reading "^base^".holsig]\n")
+	val is1 = open_in (base^".holsig")
+    in let val (thmnames,f) = thmdb_reader is1
+	   val _ = close_in is1
+	   fun thmsf () = 
+	       let val _ = say ("[reading "^base^".thms]\n")
+		   val is2 = open_in (base^".thms")
+	       in let val res = f is2 
+		   val _ = close_in is2
+		  in res 
+		  end
+	          handle e => (close_in is2; raise e)
+	       end
+	   in (thmnames,thmsf)
+       end
+       handle e => (close_in is1; raise e)
+    end
+    handle e => WRAP_ERR ("read_thmdb",e);
+    
+fun write_consts file consts =
+    let val os1 = open_out file
+    in (thysig_writer os1 ("consts",(thysig_for_consts consts,[]));
+	close_out os1)
+	handle e => (close_out os1; raise e)
+    end
+    handle e => WRAP_ERR ("write_consts",e);
+    
+    
+fun read_consts file =
+    let val is1 = open_in file
+    in let val (_,(thysig,_)) = thysig_reader is1
+	   val _ = close_in is1
+       in if extends thysig (current_thysig()) then
+	   (atomic_theory_op merge_into_current thysig;
+	    (U (map #1 (case thysig of THYSIG x => x)),
+	     U (map #2 (case thysig of THYSIG x => x))))
+	  else ERR("read_consts","incompatibilities exist between imported constants and existing theory")
+       end
+       handle e => (close_in is1; raise e)
+    end
+    handle e => WRAP_ERR ("read_thysig",e);
+    
+
+
+
+end; (* THEORIES *)
+
+(*---------------------------------------------------------------------------
+ write_thmdb "/tmp/xyz" [BOOL_CASES_AX];
+ val f = read_thysig "/tmp/xyz";
+     thysig_for_thms [BOOL_CASES_AX];
+     
+ val f = read_thmdb "/tmp/xyz";
+ 
+
+     extends (thysig_for_thms [BOOL_CASES_AX]) (current_thysig());
+     
+ *-------------------------------------------------------------------------*)
+@

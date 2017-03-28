@@ -1,0 +1,131 @@
+
+
+          HHH                 LL
+          HHH                  LL
+          HHH                   LL
+          HHH                    LL
+          HHH          OOOO       LL
+          HHHHHHH     OO  OO       LL
+          HHHHHHH     OO  OO       LLL
+          HHH          OOOO        LLLL
+          HHH                     LL  LL
+          HHH                    LL    LL
+          HHH                   LL      LL
+          HHH                  LL        LL90.7
+
+Created on Tue Nov 15 10:19:01 GMT 1994
+using: Standard ML of New Jersey, Version 0.93, February 15, 1993
+
+
+val it = () : unit
+val it = () : unit
+- [opening prefix.sml]
+
+Declaring theory "prefix".
+
+Theory "CSP_base" already consistent with disk, hence not exported.
+val it = () : unit
+val it = () : unit
+val it = [(),()] : unit list
+val TRACES_DEF = |- !P. TRACES P = SND (REP_process P) : thm
+val ALPHA_DEF = |- !P. ALPHA P = FST (REP_process P) : thm
+val IS_PROCESS =
+  |- !A TR.
+       IS_PROCESS (A,TR) =
+       TR SUBSET STAR A /\ [] IN TR /\ (!s t. APPEND s t IN TR ==> s IN TR)
+  : thm
+val TRACES_IN_STAR = |- !P. TRACES P SUBSET STAR (ALPHA P) : thm
+val APPEND_IN_TRACES = |- !P s t. APPEND s t IN TRACES P ==> s IN TRACES P
+  : thm
+val PROCESS_LEMMA6 = |- !r. IS_PROCESS r = REP_process (ABS_process r) = r
+  : thm
+val CONS_STAR = |- !a t A. CONS a t IN STAR A = a IN A /\ t IN STAR A : thm
+val NIL_IN_STAR = |- !A. [] IN STAR A : thm
+val CONS_EQ_APPEND = |- !a l. CONS a l = APPEND [a] l : thm
+val CONS_MEMBER_LIST =
+  |- !s s' t a.
+       (APPEND s t = CONS a s') ==>
+       (s = []) \/ (?r. (s = CONS a r) /\ (s' = APPEND r t)) : thm
+val ONE_MEMBER_LIST = |- !s t a. (APPEND s t = [a]) ==> (s = []) \/ (s = [a])
+  : thm
+val TL_APPEND = |- !l. ~(l = []) ==> (!l'. TL (APPEND l l') = APPEND (TL l) l')
+  : thm
+val HD_APPEND = |- !l. ~(l = []) ==> (!l'. HD (APPEND l l') = HD l) : thm
+val NULL_EQ_NIL = |- !l. (l = []) = NULL l : thm
+val APPEND_EQ_NIL = |- !l1 l2. (APPEND l1 l2 = []) = (l1 = []) /\ (l2 = [])
+  : thm
+val NOT_LENGTH_EQ = |- !l2 l1. ~(LENGTH l1 = LENGTH l2) ==> ~(l1 = l2) : thm
+val LENGTH_LESS_EQ =
+  |- !l1 l2. LENGTH l1 <= LENGTH l2 ==> (!a. LENGTH l1 < LENGTH (CONS a l2))
+  : thm
+val APPEND_NIL = |- !l. APPEND l [] = l : thm
+val APPEND_ID = |- !l l'. (l = APPEND l l') = l' = [] : thm
+val it = [(),(),()] : unit list
+val event = (--`(ty_antiq((==`:string`==)))`--) : term
+val trace = (--`(ty_antiq((==`:string list`==)))`--) : term
+val alphabet = (--`(ty_antiq((==`:string set`==)))`--) : term
+val IS_PROCESS_PREFIX =
+  |- !a P.
+       a IN ALPHA P ==>
+       IS_PROCESS (ALPHA P,{[]} UNION {CONS a t | t IN TRACES P}) : thm
+val PREFIX_LEMMA1 =
+  |- !a P.
+       a IN ALPHA P ==>
+       (REP_process
+          (ABS_process (ALPHA P,{[]} UNION {CONS a t | t IN TRACES P})) =
+        (ALPHA P,{[]} UNION {CONS a t | t IN TRACES P})) : thm
+val DEST_PROCESS =
+  |- ?f.
+       !a P.
+         a IN ALPHA P ==>
+         (ALPHA (f a P) = ALPHA P) /\
+         (TRACES (f a P) = {[]} UNION {CONS a t | t IN TRACES P}) : thm
+val PREFIX =
+  |- !a P.
+       a IN ALPHA P ==>
+       (ALPHA (a --> P) = ALPHA P) /\
+       (TRACES (a --> P) = {[]} UNION {CONS a t | t IN TRACES P}) : thm
+val it =
+  [|- !P a. a IN ALPHA P ==> (ALPHA (a --> P) = ALPHA P),
+   |- !P a.
+        a IN ALPHA P ==>
+        (TRACES (a --> P) = {[]} UNION {CONS a t | t IN TRACES P})] : thm list
+
+Theory "prefix" exported.
+val it = () : unit
+val it = () : unit
+Theory: prefix
+
+Parents:
+    process_ty
+    CSP_base
+
+Type constants:
+    
+
+Term constants:
+    --> (Infix 450)   :string -> process -> process
+
+Axioms:
+    
+
+Definitions:
+    PREFIX
+    |- !a P.
+         a IN ALPHA P ==>
+         (ALPHA (a --> P) = ALPHA P) /\
+         (TRACES (a --> P) = {[]} UNION {CONS a t | t IN TRACES P})
+
+Theorems:
+    IS_PROCESS_PREFIX
+    |- !a P.
+         a IN ALPHA P ==>
+         IS_PROCESS (ALPHA P,{[]} UNION {CONS a t | t IN TRACES P})
+    ALPHA_PREFIX |- !P a. a IN ALPHA P ==> (ALPHA (a --> P) = ALPHA P)
+    TRACES_PREFIX
+    |- !P a.
+         a IN ALPHA P ==>
+         (TRACES (a --> P) = {[]} UNION {CONS a t | t IN TRACES P})
+
+Theory "prefix" is consistent with disk.
+val it = () : unit

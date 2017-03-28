@@ -1,0 +1,116 @@
+<TITLE>Theory: num</TITLE>
+<H1>Theory: num</H1>
+<H1>Parents</H1>
+    <UL>
+    <LI><A HREF = "bool.html"><STRONG>bool</STRONG></A>
+    </UL>
+
+
+<HR>
+<H1>Type constants</H1>
+    <UL>
+    <LI><STRONG>num</STRONG>(Arity = 0)
+    </UL>
+
+
+<HR>
+<H1>Term constants</H1>
+    <UL>
+    <LI><STRONG>SUC_REP</STRONG><EM>:ind -> ind</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>ZERO_REP</STRONG><EM>:ind</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>IS_NUM_REP</STRONG><EM>:ind -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>REP_num</STRONG><EM>:num -> ind</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>ABS_num</STRONG><EM>:ind -> num</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>0</STRONG><EM>:num</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>SUC</STRONG><EM>:num -> num</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    </UL>
+
+
+<HR>
+<H1>Axioms</H1>
+<DL>
+
+</DL>
+
+
+<HR>
+<H1>Definitions</H1>
+<DL>
+<DT><STRONG>SUC_REP_DEF</STRONG>
+<DD>
+<PRE>
+|- SUC_REP = (@f. ONE_ONE f /\ ~(ONTO f))
+</PRE>
+
+<DT><STRONG>ZERO_REP_DEF</STRONG>
+<DD>
+<PRE>
+|- ZERO_REP = (@x. !y. ~(x = SUC_REP y))
+</PRE>
+
+<DT><STRONG>IS_NUM_REP</STRONG>
+<DD>
+<PRE>
+|- !m. IS_NUM_REP m = (!P. P ZERO_REP /\ (!n. P n ==> P (SUC_REP n)) ==> P m)
+</PRE>
+
+<DT><STRONG>num_TY_DEF</STRONG>
+<DD>
+<PRE>
+|- ?rep. TYPE_DEFINITION IS_NUM_REP rep
+</PRE>
+
+<DT><STRONG>num_ISO_DEF</STRONG>
+<DD>
+<PRE>
+|- (!a. ABS_num (REP_num a) = a) /\
+   (!r. IS_NUM_REP r = REP_num (ABS_num r) = r)
+</PRE>
+
+<DT><STRONG>ZERO_DEF</STRONG>
+<DD>
+<PRE>
+|- 0 = ABS_num ZERO_REP
+</PRE>
+
+<DT><STRONG>SUC_DEF</STRONG>
+<DD>
+<PRE>
+|- !m. SUC m = ABS_num (SUC_REP (REP_num m))
+</PRE>
+
+</DL>
+
+
+<HR>
+<H1>Theorems</H1>
+<DL>
+<DT><STRONG>NOT_SUC</STRONG>
+<DD>
+<PRE>
+|- !n. ~(SUC n = 0)
+</PRE>
+
+<DT><STRONG>INV_SUC</STRONG>
+<DD>
+<PRE>
+|- !m n. (SUC m = SUC n) ==> (m = n)
+</PRE>
+
+<DT><STRONG>INDUCTION</STRONG>
+<DD>
+<PRE>
+|- !P. P 0 /\ (!n. P n ==> P (SUC n)) ==> (!n. P n)
+</PRE>
+
+</DL>
+
+
+<HR>

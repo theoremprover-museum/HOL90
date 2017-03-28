@@ -1,0 +1,99 @@
+head	1.1;
+branch	1.1.1;
+access;
+symbols
+	HOL97:1.1.1.1.0.6
+	bpHOL97:1.1.1.1
+	hol90_9_alpha:1.1.1.1
+	hol90_pre8_for_multiple_compilers:1.1.1.1.0.4
+	hol90_pre8_after_donalds_separate_compilation_changes:1.1.1.1
+	hol90_8_after_merging_Konrad_Elsa:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	95.10.16.13.34.48;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.34.48;	author rjb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@\DOC get_state
+
+\TYPE {get_state : (void -> goalstack)}
+
+\SYNOPSIS
+Returns the current proof state of the subgoal package.
+
+\DESCRIBE
+The function {get_state} is part of the subgoal package. It returns the current
+proof state. A proof state of the package consists of either  goal and
+justification stacks if a proof is in progress or a theorem if a proof has just
+been completed. For a description of the subgoal package, see {set_goal}.
+
+\USES
+Providing additional backup. Pausing in the proof of a goal whilst lemmas
+required for its completion are proved. {get_state} is used in conjunction with
+{set_state}. The current state may be bound to an ML variable using {get_state}
+and later restored using {set_state}.
+
+\EXAMPLE
+In this example, a proof state is bound to the ML variable {main_proof}.
+{
+   #g "(HD[1;2;3] = 1) /\ (TL[1;2;3] = [2;3])";;
+   "(HD[1;2;3] = 1) /\ (TL[1;2;3] = [2;3])"
+
+   () : void
+
+   #let main_proof = get_state();;
+   main_proof = - : goalstack
+}
+\noindent Other goals may now be set and proved. The proof state may later be
+restored using {set_state} and the original proof continued.
+{
+   #set_state main_proof;;
+   "(HD[1;2;3] = 1) /\ (TL[1;2;3] = [2;3])"
+
+   () : void
+}
+\SEEALSO
+b, backup, backup_limit, e, expand, expandf, g, p, print_state, r,
+rotate, save_top_thm, set_goal, set_state, top_goal, top_thm.
+
+\ENDDOC
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

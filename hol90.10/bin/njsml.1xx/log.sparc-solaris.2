@@ -1,0 +1,1651 @@
+val it = () : unit
+- GC #0.0.0.0.1.9:   (20 ms)
+[opening /Nfs/bescot/grp11/hol/hol90.10/src/2/sources.sml]
+[opening ../theories/src/ld_BASIC_HOL.sml]
+
+Loading theory "BASIC_HOL"
+
+Theory "bool" already consistent with disk, hence not exported.
+structure BASIC_HOL : sig end
+val it = () : unit
+[opening 2/rec_type_support.sig]
+signature Rec_type_support_sig =
+  sig
+    structure Thm :
+      sig
+        structure Term : <sig>
+        type thm
+        val reset_thm_count : unit -> unit
+        val counting_thms : bool -> unit
+        val thm_count : unit
+                        -> {ABS:int, ASSUME:int, BETA_CONV:int, DISCH:int,
+                            INST_TYPE:int, MP:int, REFL:int, SUBST:int,
+                            axiom:int, definition:int, drule:int,
+                            from_disk:int, other:int, valid_tac:int}
+        val hyp : thm -> Term.term list
+        val concl : thm -> Term.term
+        val dest_thm : thm -> Term.term list * Term.term
+        val thm_free_vars : thm -> Term.term list
+        val hyp_union : thm list -> Term.term list
+        val pp_thm : ?.PrettyPrint.ppstream -> thm -> unit
+        val thm_to_string : thm -> string
+        val print_thm : thm -> unit
+        val ASSUME : Term.term -> thm
+        val REFL : Term.term -> thm
+        val BETA_CONV : Term.term -> thm
+        val SUBST : {thm:thm, var:Term.term} list -> Term.term -> thm -> thm
+        val ABS : Term.term -> thm -> thm
+        val INST_TYPE : Term.Type.hol_type subst -> thm -> thm
+        val DISCH : Term.term -> thm -> thm
+        val MP : thm -> thm -> thm
+        val mk_axiom_thm : Term.term list * Term.term -> thm
+        val mk_definition_thm : Term.term list * Term.term -> thm
+        val mk_drule_thm : Term.term list * Term.term -> thm
+        val mk_disk_thm : Term.term list * Term.term -> thm
+        val mk_tac_thm : Term.term list * Term.term -> thm
+        val mk_thm : Term.term list * Term.term -> thm
+        datatype just_arg
+          = JA_INT of int
+          | JA_INTLIST of int list
+          | JA_PAIR of just_arg * just_arg
+          | JA_STRING of string
+          | JA_TERM of Term.term
+          | JA_THM of thm
+          | JA_TYPE of Term.Type.hol_type
+        datatype step = STEP of {Just:just_arg list, Name:string, Thm:thm}
+        val record_step : (step -> thm) ref
+        val record_proof : bool -> unit
+        val suspend_recording : unit -> unit
+        val resume_recording : unit -> unit
+        val is_recording_proof : unit -> bool
+        val note : step * thm -> thm
+      end
+    val prove_induction_thm : Thm.thm -> Thm.thm
+    val prove_cases_thm : Thm.thm -> Thm.thm
+    val prove_constructors_one_one : Thm.thm -> Thm.thm
+    val prove_constructors_distinct : Thm.thm -> Thm.thm
+  end
+val it = () : unit
+GC #0.0.0.1.2.44:   (50 ms)
+GC #0.0.0.1.3.95:   (50 ms)
+GC #0.0.0.1.4.157:   (60 ms)
+[opening 2/rec_type_support.sml]
+2/rec_type_support.sml:763.8-763.57 Warning: binding not exhaustive
+          {Args=_ :: ty :: nil,Tyop=_} = ...
+2/rec_type_support.sml:758.29-759.69 Warning: match nonexhaustive
+          (rul,eq :: eqs,nil) => ...
+          (rul,eq :: eqs,h :: t) => ...
+  
+2/rec_type_support.sml:748.32-757.10 Warning: match nonexhaustive
+          (rul,eq,eqs,nil,acc) => ...
+          (rul,eq,heq :: eqrst,h :: t,acc) => ...
+  
+2/rec_type_support.sml:731.13-731.65 Warning: binding not exhaustive
+          l :: r :: nil = ...
+2/rec_type_support.sml:14.1-785.4 Warning: match nonexhaustive
+          _ :: nil => ...
+          h :: rst => ...
+  
+2/rec_type_support.sml:721.4-728.7 Warning: match nonexhaustive
+          (h :: rst,t) => ...
+  
+2/rec_type_support.sml:610.23-611.59 Warning: match nonexhaustive
+          (nil,nil) => ...
+          (a :: L1,b :: L2) => ...
+  
+2/rec_type_support.sml:362.8-362.61 Warning: binding not exhaustive
+          {Args=ty :: rty :: nil,Tyop=_} = ...
+GC #0.0.0.1.5.196:   (80 ms)
+GC #0.0.0.1.6.201:   (60 ms)
+GC #0.0.1.2.7.239:   (140 ms)
+GC #0.0.1.2.8.258:   (80 ms)
+GC #0.0.1.2.9.276:   (70 ms)
+GC #0.0.1.2.10.312:   (10 ms)
+GC #0.0.1.2.11.319:   (10 ms)
+GC #0.0.1.2.12.379:   (80 ms)
+GC #0.1.2.3.13.432:   (330 ms)
+GC #1.2.3.4.14.465:   (870 ms)
+GC #1.3.4.5.15.484:   (150 ms)
+GC #1.3.4.6.16.488:   (70 ms)
+GC #1.3.4.7.17.489:   (50 ms)
+GC #1.3.5.8.18.503:   (90 ms)
+GC #1.3.5.8.19.510:   (30 ms)
+GC #1.3.5.9.20.543:   (140 ms)
+GC #1.3.6.10.21.576:   (120 ms)
+GC #1.3.6.10.22.588:   (50 ms)
+GC #1.3.7.11.23.593:   (0 ms)
+GC #1.3.7.12.24.594:   (0 ms)
+structure Rec_type_support : Rec_type_support_sig
+val it = () : unit
+[opening 2/num_induct.sig]
+signature Num_induct_sig =
+  sig
+    structure Thm :
+      sig
+        structure Term : <sig>
+        type thm
+        val reset_thm_count : unit -> unit
+        val counting_thms : bool -> unit
+        val thm_count : unit
+                        -> {ABS:int, ASSUME:int, BETA_CONV:int, DISCH:int,
+                            INST_TYPE:int, MP:int, REFL:int, SUBST:int,
+                            axiom:int, definition:int, drule:int,
+                            from_disk:int, other:int, valid_tac:int}
+        val hyp : thm -> Term.term list
+        val concl : thm -> Term.term
+        val dest_thm : thm -> Term.term list * Term.term
+        val thm_free_vars : thm -> Term.term list
+        val hyp_union : thm list -> Term.term list
+        val pp_thm : ?.PrettyPrint.ppstream -> thm -> unit
+        val thm_to_string : thm -> string
+        val print_thm : thm -> unit
+        val ASSUME : Term.term -> thm
+        val REFL : Term.term -> thm
+        val BETA_CONV : Term.term -> thm
+        val SUBST : {thm:thm, var:Term.term} list -> Term.term -> thm -> thm
+        val ABS : Term.term -> thm -> thm
+        val INST_TYPE : Term.Type.hol_type subst -> thm -> thm
+        val DISCH : Term.term -> thm -> thm
+        val MP : thm -> thm -> thm
+        val mk_axiom_thm : Term.term list * Term.term -> thm
+        val mk_definition_thm : Term.term list * Term.term -> thm
+        val mk_drule_thm : Term.term list * Term.term -> thm
+        val mk_disk_thm : Term.term list * Term.term -> thm
+        val mk_tac_thm : Term.term list * Term.term -> thm
+        val mk_thm : Term.term list * Term.term -> thm
+        datatype just_arg
+          = JA_INT of int
+          | JA_INTLIST of int list
+          | JA_PAIR of just_arg * just_arg
+          | JA_STRING of string
+          | JA_TERM of Term.term
+          | JA_THM of thm
+          | JA_TYPE of Term.Type.hol_type
+        datatype step = STEP of {Just:just_arg list, Name:string, Thm:thm}
+        val record_step : (step -> thm) ref
+        val record_proof : bool -> unit
+        val suspend_recording : unit -> unit
+        val resume_recording : unit -> unit
+        val is_recording_proof : unit -> bool
+        val note : step * thm -> thm
+      end
+    val INDUCT : Thm.thm * Thm.thm -> Thm.thm
+    val INDUCT_TAC : tactic
+  end
+val it = () : unit
+GC #1.3.7.13.25.616:   (10 ms)
+GC #1.3.7.14.26.634:   (30 ms)
+GC #1.3.7.15.27.654:   (30 ms)
+[opening 2/num_induct.sml]
+structure Num_induct : Num_induct_sig
+val it = () : unit
+[opening 2/let_conv.sig]
+signature Let_conv_sig =
+  sig
+    val PAIRED_BETA_CONV : conv
+    val let_CONV : conv
+    val PAIRED_ETA_CONV : conv
+    val GEN_BETA_CONV : conv
+  end
+val it = () : unit
+GC #1.3.7.15.28.708:   (30 ms)
+[opening 2/let_conv.sml]
+2/let_conv.sml:251.8-251.58 Warning: binding not exhaustive
+          {Args=ty1 :: ty2 :: nil,Tyop=_} = ...
+2/let_conv.sml:89.8-89.55 Warning: binding not exhaustive
+          (fv,xv :: yv :: nil) = ...
+2/let_conv.sml:87.8-87.42 Warning: binding not exhaustive
+          t2 :: t3 :: nil = ...
+2/let_conv.sml:86.8-86.51 Warning: binding not exhaustive
+          t1 :: ty' :: nil = ...
+GC #1.3.7.16.29.739:   (70 ms)
+GC #1.3.7.17.30.758:   (60 ms)
+GC #1.3.7.17.31.770:   (30 ms)
+GC #1.3.7.17.32.786:   (20 ms)
+GC #1.3.8.18.33.788:   (50 ms)
+GC #1.3.8.18.34.831:   (30 ms)
+GC #1.3.8.18.35.853:   (60 ms)
+GC #1.3.8.18.36.875:   (10 ms)
+structure Let_conv : Let_conv_sig
+val it = () : unit
+[opening 2/num_conv.sig]
+signature Num_conv_sig =
+  sig
+    structure Thm :
+      sig
+        structure Term : <sig>
+        type thm
+        val reset_thm_count : unit -> unit
+        val counting_thms : bool -> unit
+        val thm_count : unit
+                        -> {ABS:int, ASSUME:int, BETA_CONV:int, DISCH:int,
+                            INST_TYPE:int, MP:int, REFL:int, SUBST:int,
+                            axiom:int, definition:int, drule:int,
+                            from_disk:int, other:int, valid_tac:int}
+        val hyp : thm -> Term.term list
+        val concl : thm -> Term.term
+        val dest_thm : thm -> Term.term list * Term.term
+        val thm_free_vars : thm -> Term.term list
+        val hyp_union : thm list -> Term.term list
+        val pp_thm : ?.PrettyPrint.ppstream -> thm -> unit
+        val thm_to_string : thm -> string
+        val print_thm : thm -> unit
+        val ASSUME : Term.term -> thm
+        val REFL : Term.term -> thm
+        val BETA_CONV : Term.term -> thm
+        val SUBST : {thm:thm, var:Term.term} list -> Term.term -> thm -> thm
+        val ABS : Term.term -> thm -> thm
+        val INST_TYPE : Term.Type.hol_type subst -> thm -> thm
+        val DISCH : Term.term -> thm -> thm
+        val MP : thm -> thm -> thm
+        val mk_axiom_thm : Term.term list * Term.term -> thm
+        val mk_definition_thm : Term.term list * Term.term -> thm
+        val mk_drule_thm : Term.term list * Term.term -> thm
+        val mk_disk_thm : Term.term list * Term.term -> thm
+        val mk_tac_thm : Term.term list * Term.term -> thm
+        val mk_thm : Term.term list * Term.term -> thm
+        datatype just_arg
+          = JA_INT of int
+          | JA_INTLIST of int list
+          | JA_PAIR of just_arg * just_arg
+          | JA_STRING of string
+          | JA_TERM of Term.term
+          | JA_THM of thm
+          | JA_TYPE of Term.Type.hol_type
+        datatype step = STEP of {Just:just_arg list, Name:string, Thm:thm}
+        val record_step : (step -> thm) ref
+        val record_proof : bool -> unit
+        val suspend_recording : unit -> unit
+        val resume_recording : unit -> unit
+        val is_recording_proof : unit -> bool
+        val note : step * thm -> thm
+      end
+    val num_CONV : Thm.Term.term -> Thm.thm
+  end
+val it = () : unit
+[opening 2/num_conv.sml]
+structure Num_conv : Num_conv_sig
+val it = () : unit
+val it = () : unit
+[opening /Nfs/bescot/grp11/hol/hol90.10/src/2/hol2.sml]
+opening Num_conv
+  structure Thm :
+    sig
+      structure Term : <sig>
+      datatype thm = ...
+      val reset_thm_count : unit -> unit
+      val counting_thms : bool -> unit
+      val thm_count : unit
+                      -> {ABS:int, ASSUME:int, BETA_CONV:int, DISCH:int,
+                          INST_TYPE:int, MP:int, REFL:int, SUBST:int,
+                          axiom:int, definition:int, drule:int, from_disk:int,
+                          other:int, valid_tac:int}
+      val hyp : thm -> Term.term list
+      val concl : thm -> Term.term
+      val dest_thm : thm -> Term.term list * Term.term
+      val thm_free_vars : thm -> Term.term list
+      val hyp_union : thm list -> Term.term list
+      val pp_thm : ?.PrettyPrint.ppstream -> thm -> unit
+      val thm_to_string : thm -> string
+      val print_thm : thm -> unit
+      val ASSUME : Term.term -> thm
+      val REFL : Term.term -> thm
+      val BETA_CONV : Term.term -> thm
+      val SUBST : {thm:thm, var:Term.term} list -> Term.term -> thm -> thm
+      val ABS : Term.term -> thm -> thm
+      val INST_TYPE : Term.Type.hol_type subst -> thm -> thm
+      val DISCH : Term.term -> thm -> thm
+      val MP : thm -> thm -> thm
+      val mk_axiom_thm : Term.term list * Term.term -> thm
+      val mk_definition_thm : Term.term list * Term.term -> thm
+      val mk_drule_thm : Term.term list * Term.term -> thm
+      val mk_disk_thm : Term.term list * Term.term -> thm
+      val mk_tac_thm : Term.term list * Term.term -> thm
+      val mk_thm : Term.term list * Term.term -> thm
+      datatype just_arg
+        = JA_INT of int
+        | JA_INTLIST of int list
+        | JA_PAIR of just_arg * just_arg
+        | JA_STRING of string
+        | JA_TERM of Term.term
+        | JA_THM of thm
+        | JA_TYPE of Term.Type.hol_type
+      datatype step = STEP of {Just:just_arg list, Name:string, Thm:thm}
+      val record_step : (step -> thm) ref
+      val record_proof : bool -> unit
+      val suspend_recording : unit -> unit
+      val resume_recording : unit -> unit
+      val is_recording_proof : unit -> bool
+      val note : step * thm -> thm
+    end
+  val num_CONV : Thm.Term.term -> Thm.thm
+opening Let_conv
+  val PAIRED_BETA_CONV : conv
+  val let_CONV : conv
+  val PAIRED_ETA_CONV : conv
+  val GEN_BETA_CONV : conv
+GC #1.3.8.18.37.919:   (10 ms)
+opening Num_induct
+  structure Thm :
+    sig
+      structure Term : <sig>
+      datatype thm = ...
+      val reset_thm_count : unit -> unit
+      val counting_thms : bool -> unit
+      val thm_count : unit
+                      -> {ABS:int, ASSUME:int, BETA_CONV:int, DISCH:int,
+                          INST_TYPE:int, MP:int, REFL:int, SUBST:int,
+                          axiom:int, definition:int, drule:int, from_disk:int,
+                          other:int, valid_tac:int}
+      val hyp : thm -> Term.term list
+      val concl : thm -> Term.term
+      val dest_thm : thm -> Term.term list * Term.term
+      val thm_free_vars : thm -> Term.term list
+      val hyp_union : thm list -> Term.term list
+      val pp_thm : ?.PrettyPrint.ppstream -> thm -> unit
+      val thm_to_string : thm -> string
+      val print_thm : thm -> unit
+      val ASSUME : Term.term -> thm
+      val REFL : Term.term -> thm
+      val BETA_CONV : Term.term -> thm
+      val SUBST : {thm:thm, var:Term.term} list -> Term.term -> thm -> thm
+      val ABS : Term.term -> thm -> thm
+      val INST_TYPE : Term.Type.hol_type subst -> thm -> thm
+      val DISCH : Term.term -> thm -> thm
+      val MP : thm -> thm -> thm
+      val mk_axiom_thm : Term.term list * Term.term -> thm
+      val mk_definition_thm : Term.term list * Term.term -> thm
+      val mk_drule_thm : Term.term list * Term.term -> thm
+      val mk_disk_thm : Term.term list * Term.term -> thm
+      val mk_tac_thm : Term.term list * Term.term -> thm
+      val mk_thm : Term.term list * Term.term -> thm
+      datatype just_arg
+        = JA_INT of int
+        | JA_INTLIST of int list
+        | JA_PAIR of just_arg * just_arg
+        | JA_STRING of string
+        | JA_TERM of Term.term
+        | JA_THM of thm
+        | JA_TYPE of Term.Type.hol_type
+      datatype step = STEP of {Just:just_arg list, Name:string, Thm:thm}
+      val record_step : (step -> thm) ref
+      val record_proof : bool -> unit
+      val suspend_recording : unit -> unit
+      val resume_recording : unit -> unit
+      val is_recording_proof : unit -> bool
+      val note : step * thm -> thm
+    end
+  val INDUCT : Thm.thm * Thm.thm -> Thm.thm
+  val INDUCT_TAC : tactic
+opening Rec_type_support
+  structure Thm :
+    sig
+      structure Term : <sig>
+      datatype thm = ...
+      val reset_thm_count : unit -> unit
+      val counting_thms : bool -> unit
+      val thm_count : unit
+                      -> {ABS:int, ASSUME:int, BETA_CONV:int, DISCH:int,
+                          INST_TYPE:int, MP:int, REFL:int, SUBST:int,
+                          axiom:int, definition:int, drule:int, from_disk:int,
+                          other:int, valid_tac:int}
+      val hyp : thm -> Term.term list
+      val concl : thm -> Term.term
+      val dest_thm : thm -> Term.term list * Term.term
+      val thm_free_vars : thm -> Term.term list
+      val hyp_union : thm list -> Term.term list
+      val pp_thm : ?.PrettyPrint.ppstream -> thm -> unit
+      val thm_to_string : thm -> string
+      val print_thm : thm -> unit
+      val ASSUME : Term.term -> thm
+      val REFL : Term.term -> thm
+      val BETA_CONV : Term.term -> thm
+      val SUBST : {thm:thm, var:Term.term} list -> Term.term -> thm -> thm
+      val ABS : Term.term -> thm -> thm
+      val INST_TYPE : Term.Type.hol_type subst -> thm -> thm
+      val DISCH : Term.term -> thm -> thm
+      val MP : thm -> thm -> thm
+      val mk_axiom_thm : Term.term list * Term.term -> thm
+      val mk_definition_thm : Term.term list * Term.term -> thm
+      val mk_drule_thm : Term.term list * Term.term -> thm
+      val mk_disk_thm : Term.term list * Term.term -> thm
+      val mk_tac_thm : Term.term list * Term.term -> thm
+      val mk_thm : Term.term list * Term.term -> thm
+      datatype just_arg
+        = JA_INT of int
+        | JA_INTLIST of int list
+        | JA_PAIR of just_arg * just_arg
+        | JA_STRING of string
+        | JA_TERM of Term.term
+        | JA_THM of thm
+        | JA_TYPE of Term.Type.hol_type
+      datatype step = STEP of {Just:just_arg list, Name:string, Thm:thm}
+      val record_step : (step -> thm) ref
+      val record_proof : bool -> unit
+      val suspend_recording : unit -> unit
+      val resume_recording : unit -> unit
+      val is_recording_proof : unit -> bool
+      val note : step * thm -> thm
+    end
+  val prove_induction_thm : Thm.thm -> Thm.thm
+  val prove_cases_thm : Thm.thm -> Thm.thm
+  val prove_constructors_one_one : Thm.thm -> Thm.thm
+  val prove_constructors_distinct : Thm.thm -> Thm.thm
+signature EMPTY = sig end
+signature EMPTY = sig end
+signature EMPTY = sig end
+signature EMPTY = sig end
+signature EMPTY = sig end
+val it = () : unit
+GC #2.4.9.19.38.930:   (590 ms)
+write 1,0: 3004 bytes [0xeca50000..0xeca50bbc) @ 0x2000
+write 1,1: 5016 bytes [0xecaf0008..0xecaf13a0) @ 0x3000
+write 1,2: 2272 bytes [0xecb90000..0xecb908e0) @ 0x5000
+write 1,3: 700 bytes [0xecc20000..0xecc202bc) @ 0x6000
+write 2,0: 3360 bytes [0xeed50000..0xeed50d20) @ 0x7000
+write 2,1: 20136 bytes [0xeed60008..0xeed64eb0) @ 0x8000
+write 2,2: 552 bytes [0xeed80000..0xeed80228) @ 0xd000
+write 2,3: 8840 bytes [0xeed90000..0xeed92288) @ 0xe000
+write 2,0: 3 big objects (37 pages) @ 0x11000
+write 3,0: 0 bytes [0xef290000..0xef290000) @ 0x1a430
+write 3,1: 4632 bytes [0xef2a0008..0xef2a1220) @ 0x1a430
+write 3,2: 0 bytes [0xef2b0000..0xef2b0000) @ 0x1c430
+write 3,3: 2328 bytes [0xef2c0000..0xef2c0918) @ 0x1c430
+write 4,0: 3176 bytes [0xee390000..0xee390c68) @ 0x1d430
+write 4,1: 21944 bytes [0xee3a0008..0xee3a55c0) @ 0x1e430
+write 4,2: 2312 bytes [0xee3f0000..0xee3f0908) @ 0x24430
+write 4,3: 5048 bytes [0xee400000..0xee4013b8) @ 0x25430
+write 4,0: 2 big objects (94 pages) @ 0x27430
+write 5,0: 907368 bytes [0xeb650000..0xeb72d868) @ 0x3ec50
+write 5,1: 1790072 bytes [0xeb920008..0xebad5080) @ 0x11cc50
+write 5,2: 387820 bytes [0xebf60000..0xebfbeaec) @ 0x2d2c50
+write 5,3: 177336 bytes [0xec090000..0xec0bb4b8) @ 0x331c50
+write 5,0: 412 big objects (8353 pages) @ 0x35dc50
+val it = () : unit
+- val it = () : unit
+- [opening /Nfs/bescot/grp11/hol/hol90.10/theories/src/mk_prim_rec.sml]
+
+Declaring theory "prim_rec".
+
+Theory "BASIC_HOL" already consistent with disk, hence not exported.
+val it = () : unit
+val NOT_SUC = |- !n. ~(SUC n = 0) : thm
+val INV_SUC = |- !m n. (SUC m = SUC n) ==> (m = n) : thm
+val INDUCTION = |- !P. P 0 /\ (!n. P n ==> P (SUC n)) ==> (!n. P n) : thm
+val LESS_DEF = |- !m n. m < n = (?P. (!n. P (SUC n) ==> P n) /\ P m /\ ~(P n))
+  : thm
+GC #0.0.0.0.1.17:   (20 ms)
+val INV_SUC_EQ = |- !m n. (SUC m = SUC n) = m = n : thm
+val LESS_REFL = |- !n. ~(n < n) : thm
+val SUC_LESS = |- !m n. SUC m < n ==> m < n : thm
+GC #0.0.0.0.2.36:   (10 ms)
+val NOT_LESS_0 = |- !n. ~(n < 0) : thm
+val LESS_0_0 = |- 0 < SUC 0 : thm
+GC #0.0.0.0.3.65:   (10 ms)
+val LESS_MONO = |- !m n. m < n ==> SUC m < SUC n : thm
+val LESS_SUC_REFL = |- !n. n < SUC n : thm
+val LESS_SUC = |- !m n. m < n ==> m < SUC n : thm
+val LESS_LEMMA1 = |- !m n. m < SUC n ==> (m = n) \/ m < n : thm
+val LESS_LEMMA2 = |- !m n. (m = n) \/ m < n ==> m < SUC n : thm
+val LESS_THM = |- !m n. m < SUC n = (m = n) \/ m < n : thm
+val LESS_SUC_IMP = |- !m n. m < SUC n ==> ~(m = n) ==> m < n : thm
+GC #0.0.0.1.4.131:   (20 ms)
+val LESS_0 = |- !n. 0 < SUC n : thm
+val EQ_LESS = |- !n. (SUC m = n) ==> m < n : thm
+val SUC_ID = |- !n. ~(SUC n = n) : thm
+val NOT_LESS_EQ = |- !m n. (m = n) ==> ~(m < n) : thm
+val LESS_NOT_EQ = |- !m n. m < n ==> ~(m = n) : thm
+val SIMP_REC_REL =
+  |- !fun x f n.
+       SIMP_REC_REL fun x f n =
+       (fun 0 = x) /\ (!m. m < n ==> (fun (SUC m) = f (fun m))) : thm
+val SIMP_REC_FUN =
+  |- !x f n. SIMP_REC_FUN x f n = (@fun. SIMP_REC_REL fun x f n) : thm
+val SIMP_REC = |- !x f n. SIMP_REC x f n = SIMP_REC_FUN x f (SUC n) n : thm
+val SIMP_REC_FUN_LEMMA =
+  |- (?fun. SIMP_REC_REL fun x f n) =
+     (SIMP_REC_FUN x f n 0 = x) /\
+     (!m. m < n ==> (SIMP_REC_FUN x f n (SUC m) = f (SIMP_REC_FUN x f n m)))
+  : thm
+GC #0.0.0.1.5.204:   (0 ms)
+val SIMP_REC_EXISTS = |- !x f n. ?fun. SIMP_REC_REL fun x f n : thm
+val SIMP_REC_FUN_THM =
+  |- !n f x.
+       (SIMP_REC_FUN x f n 0 = x) /\
+       (!m. m < n ==> (SIMP_REC_FUN x f n (SUC m) = f (SIMP_REC_FUN x f n m)))
+  : thm
+val SIMP_REC_FUN_THM1 = |- !n f x. SIMP_REC_FUN x f n 0 = x : thm
+val SIMP_REC_FUN_THM2 =
+  |- !n m. m < n ==> (SIMP_REC_FUN x f n (SUC m) = f (SIMP_REC_FUN x f n m))
+  : thm
+val SIMP_REC_UNIQUE =
+  |- !n m1 m2 x f.
+       n < m1 ==> n < m2 ==> (SIMP_REC_FUN x f m1 n = SIMP_REC_FUN x f m2 n)
+  : thm
+val LESS_SUC_SUC = |- !m. m < SUC m /\ m < SUC (SUC m) : thm
+val SIMP_REC_THM =
+  |- !x f.
+       (SIMP_REC x f 0 = x) /\ (!m. SIMP_REC x f (SUC m) = f (SIMP_REC x f m))
+  : thm
+val PRE_DEF = |- !m. PRE m = ((m = 0) => 0 | (@n. m = SUC n)) : thm
+val SELECT_LEMMA = |- (@n. m = n) = m : thm
+val PRE = |- (PRE 0 = 0) /\ (!m. PRE (SUC m) = m) : thm
+GC #0.0.0.1.6.272:   (20 ms)
+val PRIM_REC_FUN =
+  |- !x f. PRIM_REC_FUN x f = SIMP_REC (\n. x) (\fun n. f (fun (PRE n)) n)
+  : thm
+val PRIM_REC_EQN =
+  |- !x f.
+       (!n. PRIM_REC_FUN x f 0 n = x) /\
+       (!m n. PRIM_REC_FUN x f (SUC m) n = f (PRIM_REC_FUN x f m (PRE n)) n)
+  : thm
+val PRIM_REC = |- !x f m. PRIM_REC x f m = PRIM_REC_FUN x f m (PRE m) : thm
+val PRIM_REC_THM =
+  |- !x f.
+       (PRIM_REC x f 0 = x) /\
+       (!m. PRIM_REC x f (SUC m) = f (PRIM_REC x f m) m) : thm
+val num_Axiom = |- !e f. ?!fn1. (fn1 0 = e) /\ (!n. fn1 (SUC n) = f (fn1 n) n)
+  : thm
+
+Theory "prim_rec" exported.
+val it = () : unit
+- val it = () : unit
+- GC #0.0.0.0.1.14:   (0 ms)
+[opening /Nfs/bescot/grp11/hol/hol90.10/theories/src/mk_arithmetic.sml]
+
+Loading theory "prim_rec"
+
+Theory "BASIC_HOL" already consistent with disk, hence not exported.
+val it = () : unit
+
+Declaring theory "arithmetic".
+
+Theory "prim_rec" already consistent with disk, hence not exported.
+val it = () : unit
+GC #0.0.0.0.2.45:   (10 ms)
+val num_Axiom = |- !e f. ?!fn1. (fn1 0 = e) /\ (!n. fn1 (SUC n) = f (fn1 n) n)
+  : thm
+val ADD = |- (!n. 0 + n = n) /\ (!m n. SUC m + n = SUC (m + n)) : thm
+val SUB =
+  |- (!m. 0 - m = 0) /\ (!m n. SUC m - n = ((m < n) => 0 | (SUC (m - n))))
+  : thm
+val MULT = |- (!n. 0 * n = 0) /\ (!m n. SUC m * n = m * n + n) : thm
+val EXP = |- (!m. m EXP 0 = 1) /\ (!m n. m EXP SUC n = m * m EXP n) : thm
+val GREATER_DEF = |- !m n. m > n = n < m : thm
+val LESS_OR_EQ = |- !m n. m <= n = m < n \/ (m = n) : thm
+val GREATER_OR_EQ = |- !m n. m >= n = m > n \/ (m = n) : thm
+GC #0.0.0.0.3.81:   (10 ms)
+val FACT = |- (FACT 0 = 1) /\ (!n. FACT (SUC n) = SUC n * FACT n) : thm
+val EVEN = |- (EVEN 0 = T) /\ (!n. EVEN (SUC n) = ~(EVEN n)) : thm
+val ODD = |- (ODD 0 = F) /\ (!n. ODD (SUC n) = ~(ODD n)) : thm
+val num_case_def =
+  |- (!b f. num_case b f 0 = b) /\ (!b f n. num_case b f (SUC n) = f n) : thm
+
+Theory "arithmetic" closed.
+val it = () : unit
+val INV_SUC_EQ = |- !m n. (SUC m = SUC n) = m = n : thm
+val LESS_REFL = |- !n. ~(n < n) : thm
+val SUC_LESS = |- !m n. SUC m < n ==> m < n : thm
+val NOT_LESS_0 = |- !n. ~(n < 0) : thm
+val LESS_MONO = |- !m n. m < n ==> SUC m < SUC n : thm
+val LESS_SUC_REFL = |- !n. n < SUC n : thm
+val LESS_SUC = |- !m n. m < n ==> m < SUC n : thm
+val LESS_THM = |- !m n. m < SUC n = (m = n) \/ m < n : thm
+val LESS_SUC_IMP = |- !m n. m < SUC n ==> ~(m = n) ==> m < n : thm
+val LESS_0 = |- !n. 0 < SUC n : thm
+val EQ_LESS = |- !n. (SUC m = n) ==> m < n : thm
+val SUC_ID = |- !n. ~(SUC n = n) : thm
+val NOT_LESS_EQ = |- !m n. (m = n) ==> ~(m < n) : thm
+val LESS_NOT_EQ = |- !m n. m < n ==> ~(m = n) : thm
+val LESS_SUC_SUC = |- !m. m < SUC m /\ m < SUC (SUC m) : thm
+val PRE = |- (PRE 0 = 0) /\ (!m. PRE (SUC m) = m) : thm
+val NOT_SUC = |- !n. ~(SUC n = 0) : thm
+val INV_SUC = |- !m n. (SUC m = SUC n) ==> (m = n) : thm
+val INDUCTION = |- !P. P 0 /\ (!n. P n ==> P (SUC n)) ==> (!n. P n) : thm
+val EQ_SYM_EQ' = |- !x y. (x = y) = y = x : thm
+GC #0.0.0.1.4.118:   (50 ms)
+val SUC_NOT = |- !n. ~(0 = SUC n) : thm
+val ADD_0 = |- !m. m + 0 = m : thm
+val ADD_SUC = |- !m n. SUC (m + n) = m + SUC n : thm
+val ADD_CLAUSES =
+  |- (0 + m = m) /\
+     (m + 0 = m) /\
+     (SUC m + n = SUC (m + n)) /\
+     (m + SUC n = SUC (m + n)) : thm
+val ADD_SYM = |- !m n. m + n = n + m : thm
+val num_CASES = |- !m. (m = 0) \/ (?n. m = SUC n) : thm
+val LESS_MONO_REV = |- !m n. SUC m < SUC n ==> m < n : thm
+val LESS_MONO_EQ = |- !m n. SUC m < SUC n = m < n : thm
+GC #0.0.0.1.5.164:   (0 ms)
+val SUC_SUB1 = |- !m. SUC m - 1 = m : thm
+val PRE_SUB1 = |- !m. PRE m = m - 1 : thm
+val LESS_ADD = |- !m n. n < m ==> (?p. p + n = m) : thm
+val SUB_0 = |- !m. (0 - m = 0) /\ (m - 0 = m) : thm
+val LESS_TRANS = |- !m n p. m < n /\ n < p ==> m < p : thm
+GC #0.0.0.1.6.217:   (10 ms)
+val ADD1 = |- !m. SUC m = m + 1 : thm
+val LESS_ANTISYM = |- !m n. ~(m < n /\ n < m) : thm
+val LESS_LESS_SUC = |- !m n. ~(m < n /\ n < SUC m) : thm
+val FUN_EQ_LEMMA = |- !f x1 x2. f x1 /\ ~(f x2) ==> ~(x1 = x2) : thm
+val LESS_OR = |- !m n. m < n ==> SUC m <= n : thm
+val OR_LESS = |- !m n. SUC m <= n ==> m < n : thm
+val LESS_EQ = |- !m n. m < n = SUC m <= n : thm
+val LESS_SUC_EQ = |- !m n. m < n ==> SUC m <= n : thm
+val LESS_SUC_EQ_COR = |- !m n. m < n /\ ~(SUC m = n) ==> SUC m < n : thm
+GC #0.0.0.1.7.291:   (10 ms)
+val LESS_NOT_SUC = |- !m n. m < n /\ ~(n = SUC m) ==> SUC m < n : thm
+val LESS_0_CASES = |- !m. (0 = m) \/ 0 < m : thm
+val LESS_CASES_IMP = |- !m n. ~(m < n) /\ ~(m = n) ==> n < m : thm
+val LESS_CASES = |- !m n. m < n \/ n <= m : thm
+val ADD_INV_0 = |- !m n. (m + n = m) ==> (n = 0) : thm
+val LESS_EQ_ADD = |- !m n. m <= m + n : thm
+val LESS_EQ_SUC_REFL = |- !m. m <= SUC m : thm
+GC #0.0.1.2.8.369:   (50 ms)
+val LESS_ADD_NONZERO = |- !m n. ~(n = 0) ==> m < m + n : thm
+val LESS_EQ_ANTISYM = |- !m n. ~(m < n /\ n <= m) : thm
+val NOT_LESS = |- !m n. ~(m < n) = n <= m : thm
+val SUB_EQ_0 = |- !m n. (m - n = 0) = m <= n : thm
+val ADD_ASSOC = |- !m n p. m + n + p = (m + n) + p : thm
+val MULT_0 = |- !m. m * 0 = 0 : thm
+val MULT_SUC = |- !m n. m * SUC n = m + m * n : thm
+val MULT_LEFT_1 = |- !m. 1 * m = m : thm
+val MULT_RIGHT_1 = |- !m. m * 1 = m : thm
+val MULT_CLAUSES =
+  |- !m n.
+       (0 * m = 0) /\
+       (m * 0 = 0) /\
+       (1 * m = m) /\
+       (m * 1 = m) /\
+       (SUC m * n = m * n + n) /\
+       (m * SUC n = m + m * n) : thm
+val MULT_SYM = |- !m n. m * n = n * m : thm
+GC #0.0.1.2.9.475:   (20 ms)
+val RIGHT_ADD_DISTRIB = |- !m n p. (m + n) * p = m * p + n * p : thm
+val LEFT_ADD_DISTRIB = |- !m n p. p * (m + n) = p * m + p * n : thm
+val MULT_ASSOC = |- !m n p. m * n * p = (m * n) * p : thm
+val SUB_ADD = |- !m n. n <= m ==> ((m - n) + n = m) : thm
+val PRE_SUB = |- !m n. PRE (m - n) = PRE m - n : thm
+val ADD_EQ_0 = |- !m n. (m + n = 0) = (m = 0) /\ (n = 0) : thm
+val ADD_INV_0_EQ = |- !m n. (m + n = m) = n = 0 : thm
+val PRE_SUC_EQ = |- !m n. 0 < n ==> ((m = PRE n) = SUC m = n) : thm
+val INV_PRE_EQ = |- !m n. 0 < m /\ 0 < n ==> ((PRE m = PRE n) = m = n) : thm
+val LESS_SUC_NOT = |- !m n. m < n ==> ~(n < SUC m) : thm
+/Nfs/bescot/grp11/hol/hol90.10/theories/src/mk_arithmetic.sml:572.13-572.33 Warning: match nonexhaustive
+          _ :: _ :: _ :: th :: nil => ...
+  
+val TOTALLY_AD_HOC_LEMMA = |- !m n. (m + SUC n = n) = SUC m = 0 : thm
+/Nfs/bescot/grp11/hol/hol90.10/theories/src/mk_arithmetic.sml:595.17-595.36 Warning: match nonexhaustive
+          _ :: _ :: _ :: th :: nil => ...
+  
+GC #0.0.1.2.10.594:   (20 ms)
+val ADD_EQ_SUB = |- !m n p. n <= p ==> ((m + n = p) = m = p - n) : thm
+val LESS_MONO_ADD = |- !m n p. m < n ==> m + p < n + p : thm
+val LESS_MONO_ADD_INV = |- !m n p. m + p < n + p ==> m < n : thm
+val LESS_MONO_ADD_EQ = |- !m n p. m + p < n + p = m < n : thm
+val EQ_MONO_ADD_EQ = |- !m n p. (m + p = n + p) = m = n : thm
+val LESS_EQ_MONO_ADD_EQ = |- !m n p. m + p <= n + p = m <= n : thm
+val LESS_EQ_TRANS = |- !m n p. m <= n /\ n <= p ==> m <= p : thm
+val LESS_EQ_LESS_EQ_MONO = |- !m n p q. m <= p /\ n <= q ==> m + n <= p + q
+  : thm
+val LESS_EQ_REFL = |- !m. m <= m : thm
+val LESS_IMP_LESS_OR_EQ = |- !m n. m < n ==> m <= n : thm
+val LESS_MONO_MULT = |- !m n p. m <= n ==> m * p <= n * p : thm
+GC #0.0.1.2.11.730:   (30 ms)
+val RIGHT_SUB_DISTRIB = |- !m n p. (m - n) * p = m * p - n * p : thm
+val LEFT_SUB_DISTRIB = |- !m n p. p * (m - n) = p * m - p * n : thm
+val LESS_ADD_1 = |- !m n. n < m ==> (?p. m = n + p + 1) : thm
+val EXP_ADD = |- !p q n. n EXP (p + q) = n EXP p * n EXP q : thm
+val NOT_ODD_EQ_EVEN = |- !n m. ~(SUC (n + n) = m + m) : thm
+val MULT_SUC_EQ = |- !p m n. (n * SUC p = m * SUC p) = n = m : thm
+val MULT_EXP_MONO = |- !p q n m. (n * SUC q EXP p = m * SUC q EXP p) = n = m
+  : thm
+val LESS_EQUAL_ANTISYM = |- !n m. n <= m /\ m <= n ==> (n = m) : thm
+val LESS_ADD_SUC = |- !m n. m < m + SUC n : thm
+GC #0.0.1.3.12.863:   (30 ms)
+val ZERO_LESS_EQ = |- !n. 0 <= n : thm
+val LESS_EQ_MONO = |- !n m. SUC n <= SUC m = n <= m : thm
+val LESS_OR_EQ_ADD = |- !n m. n < m \/ (?p. n = p + m) : thm
+val lemma =
+  |- ~(?n. P n /\ (!m. m < n ==> ~(P m))) ==> (!n m. m < n ==> ~(P m)) : thm
+val WOP = |- !P. (?n. P n) ==> (?n. P n /\ (!m. m < n ==> ~(P m))) : thm
+val GEN_INDUCTION =
+  |- !P. P 0 /\ (!n. (!m. m < n ==> P m) ==> P n) ==> (!n. P n) : thm
+val exists_lemma = |- ?r q. k = q * n + r : thm
+val smallest_lemma =
+  |- ?n'. (?q. k = q * n + n') /\ (!m. m < n' ==> (!q. ~(k = q * n + m))) : thm
+val leq_add_lemma = |- !m n. n <= m ==> (?p. m = n + p) : thm
+val k_expr_lemma = |- (k = q * n + n + p) ==> (k = (q + 1) * n + p) : thm
+val less_add = . |- p < n + p : thm
+GC #0.0.1.3.13.1000:   (10 ms)
+val DA = |- !k n. 0 < n ==> (?r q. (k = q * n + r) /\ r < n) : thm
+
+Extending theory "arithmetic"
+val it = () : unit
+val MOD_exists =
+  |- ?MOD. !n. 0 < n ==> (!k. ?q. (k = q * n + MOD k n) /\ MOD k n < n) : thm
+val MOD_DIV_exist =
+  |- ?MOD DIV. !n. 0 < n ==> (!k. (k = DIV k n * n + MOD k n) /\ MOD k n < n)
+  : thm
+val DIVISION =
+  |- !n. 0 < n ==> (!k. (k = (k DIV n) * n + k MOD n) /\ k MOD n < n) : thm
+
+Theory "arithmetic" closed.
+val it = () : unit
+val MOD_ONE = |- !k. k MOD SUC 0 = 0 : thm
+val DIV_LESS_EQ = |- !n. 0 < n ==> (!k. k DIV n <= k) : thm
+GC #0.0.1.3.14.1132:   (40 ms)
+val DIV_UNIQUE = |- !n k q. (?r. (k = q * n + r) /\ r < n) ==> (k DIV n = q)
+  : thm
+val lemma = |- !n k q r. (k = q * n + r) /\ r < n ==> (k DIV n = q) : thm
+val MOD_UNIQUE = |- !n k r. (?q. (k = q * n + r) /\ r < n) ==> (k MOD n = r)
+  : thm
+val DIV_MULT = |- !n r. r < n ==> (!q. (q * n + r) DIV n = q) : thm
+val LESS_MOD = |- !n k. k < n ==> (k MOD n = k) : thm
+val MOD_EQ_0 = |- !n. 0 < n ==> (!k. (k * n) MOD n = 0) : thm
+val ZERO_MOD = |- !n. 0 < n ==> (0 MOD n = 0) : thm
+val ZERO_DIV = |- !n. 0 < n ==> (0 DIV n = 0) : thm
+val MOD_MULT = |- !n r. r < n ==> (!q. (q * n + r) MOD n = r) : thm
+val MOD_TIMES = |- !n. 0 < n ==> (!q r. (q * n + r) MOD n = r MOD n) : thm
+val MOD_PLUS =
+  |- !n. 0 < n ==> (!j k. (j MOD n + k MOD n) MOD n = (j + k) MOD n) : thm
+val MOD_MOD = |- !n. 0 < n ==> (!k. (k MOD n) MOD n = k MOD n) : thm
+GC #0.1.2.4.15.1301:   (100 ms)
+val SUB_MONO_EQ = |- !n m. SUC n - SUC m = n - m : thm
+val SUB_PLUS = |- !a b c. a - (b + c) = (a - b) - c : thm
+val INV_PRE_LESS = |- !m. 0 < m ==> (!n. PRE m < PRE n = m < n) : thm
+val INV_PRE_LESS_EQ = |- !n. 0 < n ==> (!m. PRE m <= PRE n = m <= n) : thm
+val SUB_LESS_EQ = |- !n m. n - m <= n : thm
+val SUB_EQ_EQ_0 = |- !m n. (m - n = m) = (m = 0) \/ (n = 0) : thm
+val SUB_LESS_0 = |- !n m. m < n = 0 < n - m : thm
+val SUB_LESS_OR = |- !m n. n < m ==> n <= m - 1 : thm
+val LESS_SUB_ADD_LESS = |- !n m i. i < n - m ==> i + m < n : thm
+val TIMES2 = |- !n. 2 * n = n + n : thm
+val LESS_MULT_MONO = |- !m i n. SUC n * m < SUC n * i = m < i : thm
+GC #0.1.2.4.16.1485:   (20 ms)
+val MULT_MONO_EQ = |- !m i n. (SUC n * m = SUC n * i) = m = i : thm
+val ADD_SUB = |- !a c. (a + c) - c = a : thm
+val LESS_EQ_ADD_SUB = |- !c b. c <= b ==> (!a. (a + b) - c = a + (b - c)) : thm
+val SUB_EQUAL_0 = |- !c. c - c = 0 : thm
+val LESS_EQ_SUB_LESS = |- !a b. b <= a ==> (!c. a - b < c = a < b + c) : thm
+val NOT_SUC_LESS_EQ = |- !n m. ~(SUC n <= m) = m <= n : thm
+val SUB_SUB = |- !b c. c <= b ==> (!a. a - b - c = (a + c) - b) : thm
+val LESS_IMP_LESS_ADD = |- !n m. n < m ==> (!p. n < m + p) : thm
+val LESS_EQ_IMP_LESS_SUC = |- !n m. n <= m ==> n < SUC m : thm
+val SUB_LESS_EQ_ADD = |- !m p. m <= p ==> (!n. p - m <= n = p <= m + n) : thm
+GC #0.1.2.4.17.1668:   (20 ms)
+val SUB_CANCEL = |- !p n m. n <= p /\ m <= p ==> ((p - n = p - m) = n = m)
+  : thm
+val CANCEL_SUB = |- !p n m. p <= n /\ p <= m ==> ((n - p = m - p) = n = m)
+  : thm
+val NOT_EXP_0 = |- !m n. ~(SUC n EXP m = 0) : thm
+val ZERO_LESS_EXP = |- !m n. 0 < SUC n EXP m : thm
+val ODD_OR_EVEN = |- !n. ?m. (n = SUC (SUC 0) * m) \/ (n = SUC (SUC 0) * m + 1)
+  : thm
+val LESS_EXP_SUC_MONO = |- !n m. SUC (SUC m) EXP n < SUC (SUC m) EXP SUC n
+  : thm
+val LESS_LESS_CASES = |- !m n. (m = n) \/ m < n \/ n < m : thm
+val GREATER_EQ = |- !n m. n >= m = m <= n : thm
+val LESS_EQ_CASES = |- !m n. m <= n \/ n <= m : thm
+val LESS_EQUAL_ADD = |- !m n. m <= n ==> (?p. n = m + p) : thm
+GC #0.1.2.4.18.1823:   (20 ms)
+val LESS_EQ_EXISTS = |- !m n. m <= n = (?p. n = m + p) : thm
+val NOT_LESS_EQUAL = |- !m n. ~(m <= n) = n < m : thm
+val LESS_EQ_0 = |- !n. n <= 0 = n = 0 : thm
+val MULT_EQ_0 = |- !m n. (m * n = 0) = (m = 0) \/ (n = 0) : thm
+val LESS_MULT2 = |- !m n. 0 < m /\ 0 < n ==> 0 < m * n : thm
+val LESS_EQ_LESS_TRANS = |- !m n p. m <= n /\ n < p ==> m < p : thm
+val LESS_LESS_EQ_TRANS = |- !m n p. m < n /\ n <= p ==> m < p : thm
+val FACT_LESS = |- !n. 0 < FACT n : thm
+val EVEN_ODD = |- !n. EVEN n = ~(ODD n) : thm
+val ODD_EVEN = |- !n. ODD n = ~(EVEN n) : thm
+val EVEN_OR_ODD = |- !n. EVEN n \/ ODD n : thm
+val EVEN_AND_ODD = |- !n. ~(EVEN n /\ ODD n) : thm
+val EVEN_ADD = |- !m n. EVEN (m + n) = EVEN m = EVEN n : thm
+val EVEN_MULT = |- !m n. EVEN (m * n) = EVEN m \/ EVEN n : thm
+val ODD_ADD = |- !m n. ODD (m + n) = ~(ODD m = ODD n) : thm
+val ODD_MULT = |- !m n. ODD (m * n) = ODD m /\ ODD n : thm
+val EVEN_DOUBLE = |- !n. EVEN (2 * n) : thm
+val ODD_DOUBLE = |- !n. ODD (SUC (2 * n)) : thm
+val EVEN_ODD_EXISTS =
+  |- !n. (EVEN n ==> (?m. n = 2 * m)) /\ (ODD n ==> (?m. n = SUC (2 * m)))
+  : thm
+val EVEN_EXISTS = |- !n. EVEN n = (?m. n = 2 * m) : thm
+val ODD_EXISTS = |- !n. ODD n = (?m. n = SUC (2 * m)) : thm
+val EQ_LESS_EQ = |- !m n. (m = n) = m <= n /\ n <= m : thm
+val ADD_MONO_LESS_EQ = |- !m n p. m + n <= m + p = n <= p : thm
+val NOT_SUC_LESS_EQ_0 = |- !n. ~(SUC n <= 0) : thm
+val NOT_LEQ = |- !m n. ~(m <= n) = SUC n <= m : thm
+val NOT_NUM_EQ = |- !m n. ~(m = n) = SUC m <= n \/ SUC n <= m : thm
+val NOT_GREATER = |- !m n. ~(m > n) = m <= n : thm
+val NOT_GREATER_EQ = |- !m n. ~(m >= n) = SUC m <= n : thm
+val SUC_ONE_ADD = |- !n. SUC n = 1 + n : thm
+val SUC_ADD_SYM = |- !m n. SUC (m + n) = SUC n + m : thm
+val NOT_SUC_ADD_LESS_EQ = |- !m n. ~(SUC (m + n) <= m) : thm
+GC #0.1.2.4.19.2044:   (30 ms)
+val MULT_LESS_EQ_SUC = |- !m n p. m <= n = SUC p * m <= SUC p * n : thm
+val SUB_LEFT_ADD = |- !m n p. m + (n - p) = ((n <= p) => m | ((m + n) - p))
+  : thm
+val SUB_RIGHT_ADD = |- !m n p. (m - n) + p = ((m <= n) => p | ((m + p) - n))
+  : thm
+val SUB_LEFT_SUB = |- !m n p. m - n - p = ((n <= p) => m | ((m + p) - n)) : thm
+val SUB_RIGHT_SUB = |- !m n p. (m - n) - p = m - (n + p) : thm
+val SUB_LEFT_SUC = |- !m n. SUC (m - n) = ((m <= n) => (SUC 0) | (SUC m - n))
+  : thm
+val SUB_LEFT_LESS_EQ = |- !m n p. m <= n - p = m + p <= n \/ m <= 0 : thm
+val SUB_RIGHT_LESS_EQ = |- !m n p. m - n <= p = m <= n + p : thm
+GC #0.1.2.5.20.2215:   (50 ms)
+val SUB_LEFT_LESS = |- !m n p. m < n - p = m + p < n : thm
+val SUB_RIGHT_LESS = |- !m n p. m - n < p = m < n + p /\ 0 < p : thm
+val SUB_LEFT_GREATER_EQ = |- !m n p. m >= n - p = m + p >= n : thm
+val SUB_RIGHT_GREATER_EQ = |- !m n p. m - n >= p = m >= n + p \/ 0 >= p : thm
+val SUB_LEFT_GREATER = |- !m n p. m > n - p = m + p > n /\ m > 0 : thm
+val SUB_RIGHT_GREATER = |- !m n p. m - n > p = m > n + p : thm
+val SUB_LEFT_EQ = |- !m n p. (m = n - p) = (m + p = n) \/ m <= 0 /\ n <= p
+  : thm
+val SUB_RIGHT_EQ = |- !m n p. (m - n = p) = (m = n + p) \/ m <= n /\ p <= 0
+  : thm
+
+Theory "arithmetic" exported.
+val it = () : unit
+val it = () : unit
+- val it = () : unit
+- GC #0.0.0.0.1.14:   (0 ms)
+GC #0.0.0.0.2.51:   (30 ms)
+[opening /Nfs/bescot/grp11/hol/hol90.10/theories/src/mk_list.sml]
+
+Loading theory "arithmetic"
+
+Theory "BASIC_HOL" already consistent with disk, hence not exported.
+val it = () : unit
+
+Declaring theory "list".
+
+Theory "arithmetic" already consistent with disk, hence not exported.
+val it = () : unit
+GC #0.0.0.1.3.99:   (0 ms)
+val NOT_LESS_0 = |- !n. ~(n < 0) : thm
+val PRIM_REC_THM =
+  |- !x f.
+       (PRIM_REC x f 0 = x) /\
+       (!m. PRIM_REC x f (SUC m) = f (PRIM_REC x f m) m) : thm
+val PRE = |- (PRE 0 = 0) /\ (!m. PRE (SUC m) = m) : thm
+val LESS_0 = |- !n. 0 < SUC n : thm
+val NOT_SUC = |- !n. ~(SUC n = 0) : thm
+GC #0.0.0.1.4.170:   (20 ms)
+val ADD_CLAUSES =
+  |- (0 + m = m) /\
+     (m + 0 = m) /\
+     (SUC m + n = SUC (m + n)) /\
+     (m + SUC n = SUC (m + n)) : thm
+val LESS_ADD_1 = |- !m n. n < m ==> (?p. m = n + p + 1) : thm
+val LESS_EQ = |- !m n. m < n = SUC m <= n : thm
+val NOT_LESS = |- !m n. ~(m < n) = n <= m : thm
+val LESS_EQ_ADD = |- !m n. m <= m + n : thm
+val num_CASES = |- !m. (m = 0) \/ (?n. m = SUC n) : thm
+val LESS_MONO_EQ = |- !m n. SUC m < SUC n = m < n : thm
+val PAIR_EQ = |- ((x,y) = (a,b)) = (x = a) /\ (y = b) : thm
+val IS_list_REP =
+  |- !r. IS_list_REP r = (?f n. r = ((\m. (m < n) => (f m) | (@x. T)),n)) : thm
+val EXISTS_list_REP = |- ?p. IS_list_REP p : thm
+val list_TY_DEF = |- ?rep. TYPE_DEFINITION IS_list_REP rep : thm
+val list_ISO_DEF =
+  |- (!a. ABS_list (REP_list a) = a) /\
+     (!r. IS_list_REP r = REP_list (ABS_list r) = r) : thm
+val R_ONTO = |- !r. IS_list_REP r = (?a. r = REP_list a) : thm
+val A_11 =
+  |- !r r'.
+       IS_list_REP r ==>
+       IS_list_REP r' ==>
+       ((ABS_list r = ABS_list r') = r = r') : thm
+val A_R = |- !a. ABS_list (REP_list a) = a : thm
+val R_A = |- !r. IS_list_REP r = REP_list (ABS_list r) = r : thm
+val NIL_DEF = |- [] = ABS_list ((\n. @e. T),0) : thm
+GC #0.0.0.1.5.234:   (30 ms)
+val CONS_DEF =
+  |- !h t.
+       CONS h t =
+       ABS_list
+         ((\m. (m = 0) => h | (FST (REP_list t) (PRE m))),
+          SUC (SND (REP_list t))) : thm
+
+Theory "list" closed.
+val it = () : unit
+val lemma1 =
+  |- !x f.
+       ?fn1.
+         (!g. fn1 (g,0) = x) /\
+         (!g n.
+           fn1 (g,n + 1) =
+           f (fn1 ((\i. g (i + 1)),n)) (g 0) (ABS_list ((\i. g (i + 1)),n)))
+  : thm
+val NIL_lemma = |- REP_list [] = ((\n. @x. T),0) : thm
+val REP_lemma = |- IS_list_REP (REP_list l) : thm
+GC #0.0.0.1.6.284:   (20 ms)
+val CONS_lemma =
+  |- REP_list (CONS h t) =
+     ((\m. (m = 0) => h | (FST (REP_list t) (PRE m))),SUC (SND (REP_list t)))
+  : thm
+val exists_lemma =
+  |- !x f. ?fn1. (fn1 [] = x) /\ (!h t. fn1 (CONS h t) = f (fn1 t) h t) : thm
+val A_11_lemma =
+  |- (IS_list_REP r' /\ IS_list_REP r) /\ (r = r') ==>
+     (ABS_list r = ABS_list r') : thm
+val R_A_lemma =
+  |- REP_list (ABS_list ((\m. (m < n) => (f (SUC m)) | (@x. T)),n)) =
+     ((\m. (m < n) => (f (SUC m)) | (@x. T)),n) : thm
+GC #0.0.0.1.7.349:   (10 ms)
+val cons_lemma =
+  |- ABS_list ((\m. (m < SUC n) => (f m) | (@x. T)),SUC n) =
+     CONS (f 0) (ABS_list ((\m. (m < n) => (f (SUC m)) | (@x. T)),n)) : thm
+GC #0.0.0.1.8.413:   (10 ms)
+val list_Axiom =
+  |- !x f. ?!fn1. (fn1 [] = x) /\ (!h t. fn1 (CONS h t) = f (fn1 t) h t) : thm
+
+Theory "list" exported.
+val it = () : unit
+val it = () : unit
+[opening /Nfs/bescot/grp11/hol/hol90.10/theories/src/mk_list_thms.sml]
+val it = () : unit
+
+Extending theory "list"
+val it = () : unit
+val list_Axiom =
+  |- !x f. ?!fn1. (fn1 [] = x) /\ (!h t. fn1 (CONS h t) = f (fn1 t) h t) : thm
+val num_Axiom = |- !e f. ?!fn1. (fn1 0 = e) /\ (!n. fn1 (SUC n) = f (fn1 n) n)
+  : thm
+val NOT_LESS_0 = |- !n. ~(n < 0) : thm
+val LESS_0 = |- !n. 0 < SUC n : thm
+val LESS_MONO = |- !m n. m < n ==> SUC m < SUC n : thm
+val INV_SUC_EQ = |- !m n. (SUC m = SUC n) = m = n : thm
+val ADD_CLAUSES =
+  |- (0 + m = m) /\
+     (m + 0 = m) /\
+     (SUC m + n = SUC (m + n)) /\
+     (m + SUC n = SUC (m + n)) : thm
+val LESS_MONO_EQ = |- !m n. SUC m < SUC n = m < n : thm
+val ADD_EQ_0 = |- !m n. (m + n = 0) = (m = 0) /\ (n = 0) : thm
+val INV_SUC = |- !m n. (SUC m = SUC n) ==> (m = n) : thm
+GC #0.0.0.1.9.450:   (0 ms)
+val NOT_SUC = |- !n. ~(SUC n = 0) : thm
+val NULL_DEF = |- (NULL [] = T) /\ (!t h. NULL (CONS h t) = F) : thm
+val HD = |- !t h. HD (CONS h t) = h : thm
+val TL = |- !t h. TL (CONS h t) = t : thm
+val SUM = |- (SUM [] = 0) /\ (!h t. SUM (CONS h t) = h + SUM t) : thm
+val APPEND =
+  |- (!l. APPEND [] l = l) /\
+     (!l1 l2 h. APPEND (CONS h l1) l2 = CONS h (APPEND l1 l2)) : thm
+val FLAT = |- (FLAT [] = []) /\ (!h t. FLAT (CONS h t) = APPEND h (FLAT t))
+  : thm
+val LENGTH = |- (LENGTH [] = 0) /\ (!h t. LENGTH (CONS h t) = SUC (LENGTH t))
+  : thm
+GC #0.0.0.1.10.492:   (10 ms)
+val MAP =
+  |- (!f. MAP f [] = []) /\ (!f h t. MAP f (CONS h t) = CONS (f h) (MAP f t))
+  : thm
+val list_case_def =
+  |- (!b f. list_case b f [] = b) /\
+     (!b f h t. list_case b f (CONS h t) = f h t) : thm
+val MAP2 =
+  |- (!f. MAP2 f [] [] = []) /\
+     (!f h1 t1 h2 t2.
+       MAP2 f (CONS h1 t1) (CONS h2 t2) = CONS (f h1 h2) (MAP2 f t1 t2)) : thm
+val EL = |- (!l. EL 0 l = HD l) /\ (!l n. EL (SUC n) l = EL n (TL l)) : thm
+val EVERY_DEF =
+  |- (!P. EVERY P [] = T) /\ (!P h t. EVERY P (CONS h t) = P h /\ EVERY P t)
+  : thm
+
+Theory "list" closed.
+val it = () : unit
+val NULL = |- NULL [] /\ (!h t. ~(NULL (CONS h t))) : thm
+val list_INDUCT = |- !P. P [] /\ (!t. P t ==> (!h. P (CONS h t))) ==> (!l. P l)
+  : thm
+val LIST_INDUCT_TAC = fn : tactic
+val list_CASES = |- !l. (l = []) \/ (?t h. l = CONS h t) : thm
+val CONS_11 = |- !h t h' t'. (CONS h t = CONS h' t') = (h = h') /\ (t = t')
+  : thm
+val NOT_NIL_CONS = |- !t h. ~([] = CONS h t) : thm
+val NOT_CONS_NIL = |- !t h. ~(CONS h t = []) : thm
+GC #0.0.0.1.11.548:   (10 ms)
+val LIST_NOT_EQ =
+  |- !l1 l2. ~(l1 = l2) ==> (!h1 h2. ~(CONS h1 l1 = CONS h2 l2)) : thm
+val NOT_EQ_LIST =
+  |- !h1 h2. ~(h1 = h2) ==> (!l1 l2. ~(CONS h1 l1 = CONS h2 l2)) : thm
+val EQ_LIST =
+  |- !h1 h2. (h1 = h2) ==> (!l1 l2. (l1 = l2) ==> (CONS h1 l1 = CONS h2 l2))
+  : thm
+val CONS = |- !l. ~(NULL l) ==> (CONS (HD l) (TL l) = l) : thm
+val APPEND_ASSOC =
+  |- !l1 l2 l3. APPEND l1 (APPEND l2 l3) = APPEND (APPEND l1 l2) l3 : thm
+val LENGTH_APPEND = |- !l1 l2. LENGTH (APPEND l1 l2) = LENGTH l1 + LENGTH l2
+  : thm
+val MAP_APPEND =
+  |- !f l1 l2. MAP f (APPEND l1 l2) = APPEND (MAP f l1) (MAP f l2) : thm
+val LENGTH_MAP = |- !l f. LENGTH (MAP f l) = LENGTH l : thm
+GC #0.0.0.2.12.604:   (100 ms)
+val EVERY_EL = |- !l P. EVERY P l = (!n. n < LENGTH l ==> P (EL n l)) : thm
+val EVERY_CONJ = |- !l. EVERY (\x. P x /\ Q x) l = EVERY P l /\ EVERY Q l : thm
+val LENGTH_NIL = |- !l. (LENGTH l = 0) = l = [] : thm
+val LENGTH_CONS =
+  |- !l n. (LENGTH l = SUC n) = (?h l'. (LENGTH l' = n) /\ (l = CONS h l'))
+  : thm
+GC #0.0.0.2.13.659:   (10 ms)
+val LENGTH_EQ_SUC =
+  |- !P n.
+       (!l. (LENGTH l = SUC n) ==> P l) =
+       (!l. (LENGTH l = n) ==> (\l. !x. P (CONS x l)) l) : thm
+val LENGTH_EQ_NIL = |- !P. (!l. (LENGTH l = 0) ==> P l) = P [] : thm
+
+Theory "list" exported.
+val it = () : unit
+val it = () : unit
+- val it = () : unit
+- GC #0.0.0.0.1.11:   (0 ms)
+GC #0.0.0.0.2.36:   (20 ms)
+[opening /Nfs/bescot/grp11/hol/hol90.10/theories/src/mk_tree.sml]
+
+Loading theory "list"
+
+Theory "BASIC_HOL" already consistent with disk, hence not exported.
+val it = () : unit
+
+Declaring theory "tree".
+
+Theory "list" already consistent with disk, hence not exported.
+val it = () : unit
+GC #0.0.0.1.3.78:   (40 ms)
+val list_Axiom =
+  |- !x f. ?!fn1. (fn1 [] = x) /\ (!h t. fn1 (CONS h t) = f (fn1 t) h t) : thm
+val list_INDUCT = |- !P. P [] /\ (!t. P t ==> (!h. P (CONS h t))) ==> (!l. P l)
+  : thm
+val CONS_11 = |- !h t h' t'. (CONS h t = CONS h' t') = (h = h') /\ (t = t')
+  : thm
+val NULL = |- NULL [] /\ (!h t. ~(NULL (CONS h t))) : thm
+val NOT_CONS_NIL = |- !t h. ~(CONS h t = []) : thm
+val NOT_NIL_CONS = |- !t h. ~([] = CONS h t) : thm
+val EVERY_CONJ = |- !l. EVERY (\x. P x /\ Q x) l = EVERY P l /\ EVERY Q l : thm
+val EVERY_DEF =
+  |- (!P. EVERY P [] = T) /\ (!P h t. EVERY P (CONS h t) = P h /\ EVERY P t)
+  : thm
+val MAP =
+  |- (!f. MAP f [] = []) /\ (!f h t. MAP f (CONS h t) = CONS (f h) (MAP f t))
+  : thm
+val HD = |- !t h. HD (CONS h t) = h : thm
+val TL = |- !t h. TL (CONS h t) = t : thm
+GC #0.0.0.1.4.151:   (40 ms)
+val LESS_OR_EQ = |- !m n. m <= n = m < n \/ (m = n) : thm
+val EXP = |- (!m. m EXP 0 = 1) /\ (!m n. m EXP SUC n = m * m EXP n) : thm
+val LESS_ADD_1 = |- !m n. n < m ==> (?p. m = n + p + 1) : thm
+val ADD_SYM = |- !m n. m + n = n + m : thm
+val EXP_ADD = |- !p q n. n EXP (p + q) = n EXP p * n EXP q : thm
+val MULT_ASSOC = |- !m n p. m * n * p = (m * n) * p : thm
+val MULT_EXP_MONO = |- !p q n m. (n * SUC q EXP p = m * SUC q EXP p) = n = m
+  : thm
+val MULT_CLAUSES =
+  |- !m n.
+       (0 * m = 0) /\
+       (m * 0 = 0) /\
+       (1 * m = m) /\
+       (m * 1 = m) /\
+       (SUC m * n = m * n + n) /\
+       (m * SUC n = m + m * n) : thm
+val ADD_CLAUSES =
+  |- (0 + m = m) /\
+     (m + 0 = m) /\
+     (SUC m + n = SUC (m + n)) /\
+     (m + SUC n = SUC (m + n)) : thm
+val NOT_ODD_EQ_EVEN = |- !n m. ~(SUC (n + n) = m + m) : thm
+val LESS_CASES = |- !m n. m < n \/ n <= m : thm
+val WOP = |- !P. (?n. P n) ==> (?n. P n /\ (!m. m < n ==> ~(P m))) : thm
+val num_CASES = |- !m. (m = 0) \/ (?n. m = SUC n) : thm
+val NOT_LESS = |- !m n. ~(m < n) = n <= m : thm
+val LESS_IMP_LESS_OR_EQ = |- !m n. m < n ==> m <= n : thm
+val LESS_EQ_TRANS = |- !m n p. m <= n /\ n <= p ==> m <= p : thm
+val LESS_EQ_ADD = |- !m n. m <= m + n : thm
+val LESS_TRANS = |- !m n p. m < n /\ n < p ==> m < p : thm
+val LESS_EQ_ANTISYM = |- !m n. ~(m < n /\ n <= m) : thm
+val LESS_EQ = |- !m n. m < n = SUC m <= n : thm
+val INV_SUC_EQ = |- !m n. (SUC m = SUC n) = m = n : thm
+val PRIM_REC_THM =
+  |- !x f.
+       (PRIM_REC x f 0 = x) /\
+       (!m. PRIM_REC x f (SUC m) = f (PRIM_REC x f m) m) : thm
+val LESS_0 = |- !n. 0 < SUC n : thm
+val LESS_SUC_REFL = |- !n. n < SUC n : thm
+val LESS_THM = |- !m n. m < SUC n = (m = n) \/ m < n : thm
+val LESS_SUC = |- !m n. m < n ==> m < SUC n : thm
+val NOT_LESS_0 = |- !n. ~(n < 0) : thm
+val LESS_REFL = |- !n. ~(n < n) : thm
+val NOT_SUC = |- !n. ~(SUC n = 0) : thm
+GC #0.0.0.1.5.213:   (30 ms)
+val LIST_INDUCT_TAC = fn : tactic
+val arith_lemma =
+  |- !p q n m. p < q ==> ~(SUC (n + n) * 2 EXP p = SUC (m + m) * 2 EXP q) : thm
+val fun_11_1 =
+  |- !p q n m. (SUC (n + n) * 2 EXP p = SUC (m + m) * 2 EXP q) ==> (p = q)
+  : thm
+GC #0.0.0.2.6.256:   (100 ms)
+val fun_11_2 =
+  |- !p q n m. (SUC (n + n) * 2 EXP p = SUC (m + m) * 2 EXP q) ==> (n = m)
+  : thm
+val ty = ``:num`` : hol_type
+val node_REP =
+  |- (node_REP [] = 0) /\
+     (!t h. node_REP (CONS h t) = SUC (h + h) * 2 EXP node_REP t) : thm
+GC #0.0.0.2.7.311:   (20 ms)
+val node_REP_one_one = |- !l1 l2. (node_REP l1 = node_REP l2) = l1 = l2 : thm
+val Is_tree_REP =
+  |- Is_tree_REP = (\t. !P. (!tl. EVERY P tl ==> P (node_REP tl)) ==> P t)
+  : thm
+val EVERY_Is_tree_REP =
+  |- !trl.
+       EVERY Is_tree_REP trl =
+       (!P. EVERY (\t. (!tl. EVERY P tl ==> P (node_REP tl)) ==> P t) trl)
+  : thm
+val Is_tree_lemma1 =
+  |- !trl. EVERY Is_tree_REP trl ==> Is_tree_REP (node_REP trl) : thm
+val taut1 = |- !a b. ~(a ==> b) = a /\ ~b : thm
+GC #0.0.0.2.8.381:   (20 ms)
+val Is_tree_lemma2 =
+  |- !t. Is_tree_REP t ==> (?trl. EVERY Is_tree_REP trl /\ (t = node_REP trl))
+  : thm
+/Nfs/bescot/grp11/hol/hol90.10/theories/src/mk_tree.sml:243.8-243.61 Warning: binding not exhaustive
+          t1 :: t2 :: nil = ...
+val Is_tree_lemma3 = |- !tl. Is_tree_REP (node_REP tl) ==> EVERY Is_tree_REP tl
+  : thm
+val Is_tree_lemma4 = |- !tl. Is_tree_REP (node_REP tl) = EVERY Is_tree_REP tl
+  : thm
+val Exists_tree_REP = |- ?t. Is_tree_REP t : thm
+val tree_TY_DEF = |- ?rep. TYPE_DEFINITION Is_tree_REP rep : thm
+val tree_ISO_DEF =
+  |- (!a. ABS_tree (REP_tree a) = a) /\
+     (!r. Is_tree_REP r = REP_tree (ABS_tree r) = r) : thm
+val R_11 = |- !a a'. (REP_tree a = REP_tree a') = a = a' : thm
+val R_ONTO = |- !r. Is_tree_REP r = (?a. r = REP_tree a) : thm
+val A_11 =
+  |- !r r'.
+       Is_tree_REP r ==>
+       Is_tree_REP r' ==>
+       ((ABS_tree r = ABS_tree r') = r = r') : thm
+val A_ONTO = |- !a. ?r. (a = ABS_tree r) /\ Is_tree_REP r : thm
+val A_R = |- !a. ABS_tree (REP_tree a) = a : thm
+val R_A = |- !r. Is_tree_REP r = REP_tree (ABS_tree r) = r : thm
+val node = |- !tl. node tl = ABS_tree (node_REP (MAP REP_tree tl)) : thm
+val dest_node = |- !t. dest_node t = (@p. t = node p) : thm
+val IS_REP_lemma = |- !tl. EVERY Is_tree_REP (MAP REP_tree tl) : thm
+GC #0.0.0.2.9.459:   (20 ms)
+val REP_ABS_lemma = |- !tl. REP_tree (node tl) = node_REP (MAP REP_tree tl)
+  : thm
+val ABS_REP = |- !tl. Is_tree_REP (node_REP (MAP REP_tree tl)) : thm
+val ABS_11_lemma =
+  |- (ABS_tree (node_REP (MAP REP_tree tl1)) =
+      ABS_tree (node_REP (MAP REP_tree tl2))) =
+     node_REP (MAP REP_tree tl1) =
+     node_REP (MAP REP_tree tl2) : thm
+val node_11 = |- !tl1 tl2. (node tl1 = node tl2) = tl1 = tl2 : thm
+val A_R_list = |- !tl. tl = MAP ABS_tree (MAP REP_tree tl) : thm
+val R_A_R = |- REP_tree (ABS_tree (REP_tree t)) = REP_tree t : thm
+val Is_R = |- Is_tree_REP (REP_tree t) : thm
+val R_A_R_list =
+  |- !tl. MAP REP_tree (MAP ABS_tree (MAP REP_tree tl)) = MAP REP_tree tl : thm
+val A_ONTO_list =
+  |- !tl. ?trl. (tl = MAP ABS_tree trl) /\ EVERY Is_tree_REP trl : thm
+GC #0.0.0.2.10.556:   (20 ms)
+val R_ONTO_list =
+  |- !trl. EVERY Is_tree_REP trl ==> (?tl. trl = MAP REP_tree tl) : thm
+val R_A_list =
+  |- !trl. EVERY Is_tree_REP trl ==> (MAP REP_tree (MAP ABS_tree trl) = trl)
+  : thm
+val EVERY_MAP = |- !l P f. EVERY P (MAP f l) = EVERY (\x. P (f x)) l : thm
+val induct_lemma1 =
+  |- (!tl. EVERY P tl ==> P (node tl)) =
+     (!trl.
+       EVERY Is_tree_REP trl ==>
+       EVERY (\x. P (ABS_tree x)) trl ==>
+       (\x. P (ABS_tree x)) (node_REP trl)) : thm
+val induct_lemma2 =
+  |- (!t. P t) =
+     (!rep.
+       Is_tree_REP rep ==> (\r. Is_tree_REP r /\ (\x. P (ABS_tree x)) r) rep)
+  : thm
+val tree_Induct = |- !P. (!tl. EVERY P tl ==> P (node tl)) ==> (!t. P t) : thm
+exception tree_INDUCT_ERR
+/Nfs/bescot/grp11/hol/hol90.10/theories/src/mk_tree.sml:487.8-487.46 Warning: binding not exhaustive
+          (EVERY,P :: tll :: nil) = ...
+val tree_INDUCT = fn : thm -> thm
+GC #0.0.0.2.11.661:   (20 ms)
+exception tree_INDUCT_TAC_ERR
+/Nfs/bescot/grp11/hol/hol90.10/theories/src/mk_tree.sml:532.5-532.54 Warning: match nonexhaustive
+          thm :: nil => ...
+  
+val tree_INDUCT_TAC = fn
+  : term list * term -> (term list * term) list * (thm list -> thm)
+val bht =
+  |- bht =
+     PRIM_REC (\tr. tr = node [])
+       (\res n tr. ?trl. (tr = node trl) /\ EVERY res trl) : thm
+val bht_thm =
+  |- (bht 0 tr = tr = node []) /\
+     (bht (SUC n) tr = (?trl. (tr = node trl) /\ EVERY (bht n) trl)) : thm
+val bht_lemma1 = |- !n tr. bht n tr ==> bht (SUC n) tr : thm
+val bht_lemma2 = |- !tr n. bht n tr ==> (!m. bht (n + m) tr) : thm
+val bht_lemma3 =
+  |- !trl. EVERY (\tr. ?n. bht n tr) trl ==> (?n. EVERY (bht n) trl) : thm
+val exists_bht = |- !t. ?n. bht n t : thm
+GC #0.0.0.2.12.771:   (10 ms)
+val min_bht = |- !t. ?n. bht n t /\ (!m. m < n ==> ~(bht m t)) : thm
+val HT = |- !t. HT t = (@n. bht n t /\ (!m. m < n ==> ~(bht m t))) : thm
+val HT_thm1 = |- !tr. bht (HT tr) tr : thm
+val HT_thm2 = |- !tr m. m < HT tr ==> ~(bht m tr) : thm
+val HT_leaf = |- !trl. (HT (node trl) = 0) = trl = [] : thm
+val HT_thm3 = |- !m tr. ~(bht m tr) ==> m < HT tr : thm
+val HT_thm4 = |- !tr m. m < HT tr = ~(bht m tr) : thm
+val HT_thm5 = |- !n tl h. ~(bht n (node tl)) ==> ~(bht n (node (CONS h tl)))
+  : thm
+val HT_thm6 =
+  |- !trl tl t.
+       EVERY (\t. ~(bht (HT t) (node tl))) trl ==>
+       EVERY (\t. ~(bht (HT t) (node (CONS h tl)))) trl : thm
+GC #0.0.0.2.13.895:   (20 ms)
+val HT_node = |- !tl. EVERY (\t. HT t < HT (node tl)) tl : thm
+val Less_lemma = |- !n m. n < SUC m = n <= m : thm
+val less_HT =
+  |- !trl m n.
+       m <= n ==> EVERY (\t. HT t < m) trl ==> EVERY (\t. HT t <= n) trl : thm
+val less_HT2 = |- !trl n. HT (node trl) < n ==> EVERY (\t. HT t < n) trl : thm
+val less_HT3 = |- !trl. HT (node trl) <= HT (node [node trl]) : thm
+val less_HT4 =
+  |- !trl m n. m <= n ==> EVERY (\t. HT t < m) trl ==> EVERY (\t. HT t < n) trl
+  : thm
+val less_HT5 = |- !h. HT h < HT (node [h]) : thm
+val less_HT6 = |- !trl h. HT h < HT (node [node (CONS h trl)]) : thm
+val less_HT7 = |- EVERY (\t. HT t < HT (node [node tl])) tl : thm
+val less_HT8 = |- EVERY (\t. HT t < HT (node [node (CONS h trl)])) trl : thm
+val dest_node_thm = |- !tl. dest_node (node tl) = tl : thm
+GC #0.0.1.3.14.1037:   (110 ms)
+val approx_lemma =
+  |- !f n. ?fn. !trl. HT (node trl) <= n ==> (fn (node trl) = f (MAP fn trl))
+  : thm
+val trf =
+  |- !n f.
+       trf n f =
+       (@fn. !trl. HT (node trl) <= n ==> (fn (node trl) = f (MAP fn trl)))
+  : thm
+val trf_thm =
+  |- !f n trl.
+       HT (node trl) <= n ==> (trf n f (node trl) = f (MAP (trf n f) trl))
+  : thm
+val trf_EQ_thm = |- !t n m f. HT t < n /\ HT t < m ==> (trf n f t = trf m f t)
+  : thm
+GC #0.0.1.3.15.1164:   (10 ms)
+val trf_EQ_thm2 =
+  |- !trl n m f.
+       EVERY (\t. HT t < n) trl /\ EVERY (\t. HT t < m) trl ==>
+       (MAP (trf n f) trl = MAP (trf m f) trl) : thm
+val FN_EXISTS = |- !f. ?fn. !trl. fn (node trl) = f (MAP fn trl) : thm
+val FN_thm = |- ?FN. !f trl. FN f (node trl) = f (MAP (FN f) trl) : thm
+val AP =
+  |- ?AP.
+       (!l. AP [] l = []) /\
+       (!h t l. AP (CONS h t) l = CONS (h (HD l)) (AP t (TL l))) : thm
+val AP =
+  |- ?AP.
+       (!l. AP [] l = []) /\
+       (!h t l. AP (CONS h t) l = CONS (h (HD l)) (AP t (TL l))) : thm
+val AP_DEF =
+  [``!l. AP [] l = []``,
+   ``!h t l. AP (CONS h t) l = CONS (h (HD l)) (AP t (TL l))``] : term list
+val AP_MAP = .. |- !l. AP (MAP f l) l = MAP (\x. f x x) l : thm
+val EXISTS_THM = |- !f. ?fn. !tl. fn (node tl) = f (MAP fn tl) tl : thm
+val lemma = |- !l. EVERY (\x. f x = g x) l ==> (MAP f l = MAP g l) : thm
+val tree_Axiom = |- !f. ?!fn. !tl. fn (node tl) = f (MAP fn tl) tl : thm
+
+Theory "tree" exported.
+val it = () : unit
+val it = () : unit
+- val it = () : unit
+- GC #0.0.0.0.1.11:   (20 ms)
+[opening /Nfs/bescot/grp11/hol/hol90.10/theories/src/mk_ltree.sml]
+
+Loading theory "tree"
+
+Theory "BASIC_HOL" already consistent with disk, hence not exported.
+val it = () : unit
+
+Declaring theory "ltree".
+
+Theory "tree" already consistent with disk, hence not exported.
+val it = () : unit
+val it = () : unit
+val node_11 = |- !tl1 tl2. (node tl1 = node tl2) = tl1 = tl2 : thm
+val tree_Induct = |- !P. (!tl. EVERY P tl ==> P (node tl)) ==> (!t. P t) : thm
+val tree_Axiom = |- !f. ?!fn. !tl. fn (node tl) = f (MAP fn tl) tl : thm
+GC #0.0.0.0.2.44:   (10 ms)
+val SUM = |- (SUM [] = 0) /\ (!h t. SUM (CONS h t) = h + SUM t) : thm
+val LENGTH = |- (LENGTH [] = 0) /\ (!h t. LENGTH (CONS h t) = SUC (LENGTH t))
+  : thm
+val MAP =
+  |- (!f. MAP f [] = []) /\ (!f h t. MAP f (CONS h t) = CONS (f h) (MAP f t))
+  : thm
+val FLAT = |- (FLAT [] = []) /\ (!h t. FLAT (CONS h t) = APPEND h (FLAT t))
+  : thm
+val APPEND =
+  |- (!l. APPEND [] l = l) /\
+     (!l1 l2 h. APPEND (CONS h l1) l2 = CONS h (APPEND l1 l2)) : thm
+val HD = |- !t h. HD (CONS h t) = h : thm
+val TL = |- !t h. TL (CONS h t) = t : thm
+val EVERY_DEF =
+  |- (!P. EVERY P [] = T) /\ (!P h t. EVERY P (CONS h t) = P h /\ EVERY P t)
+  : thm
+val list_Axiom =
+  |- !x f. ?!fn1. (fn1 [] = x) /\ (!h t. fn1 (CONS h t) = f (fn1 t) h t) : thm
+val list_INDUCT = |- !P. P [] /\ (!t. P t ==> (!h. P (CONS h t))) ==> (!l. P l)
+  : thm
+val LENGTH_APPEND = |- !l1 l2. LENGTH (APPEND l1 l2) = LENGTH l1 + LENGTH l2
+  : thm
+val LENGTH_NIL = |- !l. (LENGTH l = 0) = l = [] : thm
+val LENGTH_CONS =
+  |- !l n. (LENGTH l = SUC n) = (?h l'. (LENGTH l' = n) /\ (l = CONS h l'))
+  : thm
+val o_THM = |- !f g x. (f o g) x = f (g x) : thm
+GC #0.0.0.1.3.96:   (50 ms)
+val ADD_CLAUSES =
+  |- (0 + m = m) /\
+     (m + 0 = m) /\
+     (SUC m + n = SUC (m + n)) /\
+     (m + SUC n = SUC (m + n)) : thm
+val ADD_EQ_0 = |- !m n. (m + n = 0) = (m = 0) /\ (n = 0) : thm
+GC #0.0.0.1.4.176:   (40 ms)
+val num_Axiom = |- !e f. ?!fn1. (fn1 0 = e) /\ (!n. fn1 (SUC n) = f (fn1 n) n)
+  : thm
+val INV_SUC_EQ = |- !m n. (SUC m = SUC n) = m = n : thm
+val PAIR = |- !x. (FST x,SND x) = x : thm
+exception tree_INDUCT_ERR
+/Nfs/bescot/grp11/hol/hol90.10/theories/src/mk_ltree.sml:74.8-74.46 Warning: binding not exhaustive
+          (EVERY,P :: tll :: nil) = ...
+GC #0.0.0.2.5.211:   (100 ms)
+val tree_INDUCT = fn : thm -> thm
+exception tree_INDUCT_TAC_ERR
+/Nfs/bescot/grp11/hol/hol90.10/theories/src/mk_ltree.sml:119.5-119.54 Warning: match nonexhaustive
+          thm :: nil => ...
+  
+val tree_INDUCT_TAC = fn
+  : term list * term -> (term list * term) list * (thm list -> thm)
+val LIST_INDUCT_TAC = fn : tactic
+val size = |- size = (@fn. !tl. fn (node tl) = SUC (SUM (MAP fn tl))) : thm
+val size_thm = |- !tl. size (node tl) = SUC (SUM (MAP size tl)) : thm
+val Is_ltree = |- !t l. Is_ltree (t,l) = size t = LENGTH l : thm
+val ty = ``:tree # 'a list`` : hol_type
+val Exists_ltree_REP = |- ?t. Is_ltree t : thm
+val ltree_TY_DEF = |- ?rep. TYPE_DEFINITION Is_ltree rep : thm
+GC #0.0.0.2.6.264:   (0 ms)
+val ltree_ISO_DEF =
+  |- (!a. ABS_ltree (REP_ltree a) = a) /\
+     (!r. Is_ltree r = REP_ltree (ABS_ltree r) = r) : thm
+val R_11 = |- !a a'. (REP_ltree a = REP_ltree a') = a = a' : thm
+val R_ONTO = |- !r. Is_ltree r = (?a. r = REP_ltree a) : thm
+val A_11 =
+  |- !r r'.
+       Is_ltree r ==> Is_ltree r' ==> ((ABS_ltree r = ABS_ltree r') = r = r')
+  : thm
+val A_ONTO = |- !a. ?r. (a = ABS_ltree r) /\ Is_ltree r : thm
+val A_R = |- !a. ABS_ltree (REP_ltree a) = a : thm
+val R_A = |- !r. Is_ltree r = REP_ltree (ABS_ltree r) = r : thm
+val Node =
+  |- !v tl.
+       Node v tl =
+       ABS_ltree
+         (node (MAP (FST o REP_ltree) tl),
+          CONS v (FLAT (MAP (SND o REP_ltree) tl))) : thm
+val REP_Node =
+  |- !tl.
+       REP_ltree (Node v tl) =
+       (node (MAP (FST o REP_ltree) tl),
+        CONS v (FLAT (MAP (SND o REP_ltree) tl))) : thm
+GC #0.0.0.2.7.323:   (20 ms)
+val size_LENGTH_lemma =
+  |- !t. size (FST (REP_ltree t)) = LENGTH (SND (REP_ltree t)) : thm
+val MAP_size_LENGTH =
+  |- !tl.
+       MAP size (MAP (FST o REP_ltree) tl) =
+       MAP LENGTH (MAP (SND o REP_ltree) tl) : thm
+val AP =
+  |- (!l. AP [] l = []) /\
+     (!h t l. AP (CONS h t) l = CONS (h (HD l)) (AP t (TL l))) : thm
+val SPLIT =
+  |- (!l. SPLIT 0 l = ([],l)) /\
+     (!n l.
+       SPLIT (SUC n) l =
+       (CONS (HD l) (FST (SPLIT n (TL l))),SND (SPLIT n (TL l)))) : thm
+val PART =
+  |- (!l. PART [] l = []) /\
+     (!n t l.
+       PART (CONS n t) l = CONS (FST (SPLIT n l)) (PART t (SND (SPLIT n l))))
+  : thm
+val SPLIT_APPEND = |- !l l'. SPLIT (LENGTH l) (APPEND l l') = (l,l') : thm
+val PART_FLAT = |- !l. PART (MAP LENGTH l) (FLAT l) = l : thm
+val NUM_EQ_SYM_EQ = |- !x y. (x = y) = y = x : thm
+val LENGTH_SND_SPLIT =
+  |- !l n m. (LENGTH l = n + m) ==> (LENGTH (SND (SPLIT n l)) = m) : thm
+GC #0.0.0.2.8.406:   (10 ms)
+val LENGTH_FST_SPLIT =
+  |- !l n m. (LENGTH l = n + m) ==> (LENGTH (FST (SPLIT n l)) = n) : thm
+val APPEND_SPLIT =
+  |- !l n m.
+       (LENGTH l = n + m) ==> (APPEND (FST (SPLIT n l)) (SND (SPLIT n l)) = l)
+  : thm
+GC #0.0.0.2.9.483:   (40 ms)
+val REP_REC_lemma =
+  |- !f.
+       ?!fn.
+         !tl l.
+           fn (node tl,l) =
+           f (AP (MAP (\t e. fn (t,e)) tl) (PART (MAP size tl) (TL l))) (HD l)
+             (MAP ABS_ltree (AP (MAP $, tl) (PART (MAP size tl) (TL l)))) : thm
+val lemma1 =
+  |- !tl.
+       MAP ABS_ltree
+         (AP (MAP $, (MAP (FST o REP_ltree) tl))
+           (PART (MAP size (MAP (FST o REP_ltree) tl))
+             (FLAT (MAP (SND o REP_ltree) tl)))) =
+       tl : thm
+val lemma2 =
+  |- !tl.
+       AP (MAP (\t e. fn' (t,e)) (MAP (FST o REP_ltree) tl))
+         (PART (MAP size (MAP (FST o REP_ltree) tl))
+           (FLAT (MAP (SND o REP_ltree) tl))) =
+       MAP (fn' o REP_ltree) tl : thm
+val lemma3 =
+  |- !trl l.
+       (LENGTH l = SUM (MAP size trl)) ==>
+       (FLAT
+          (MAP (SND o REP_ltree)
+            (MAP ABS_ltree (AP (MAP $, trl) (PART (MAP size trl) l)))) =
+        l) : thm
+GC #0.0.1.3.10.586:   (130 ms)
+val lemma4 =
+  |- !trl l.
+       (LENGTH l = SUM (MAP size trl)) ==>
+       (node
+          (MAP (FST o REP_ltree)
+            (MAP ABS_ltree (AP (MAP $, trl) (PART (MAP size trl) l)))) =
+        node trl) : thm
+val lemma5 =
+  |- !trl l.
+       (size (node trl) = LENGTH l) ==>
+       (ABS_ltree (node trl,l) =
+        Node (HD l)
+          (MAP ABS_ltree (AP (MAP $, trl) (PART (MAP size trl) (TL l))))) : thm
+val lemma6 =
+  |- !trl l.
+       (size (node trl) = LENGTH l) ==>
+       EVERY (\p. size (FST p) = LENGTH (SND p))
+         (AP (MAP $, trl) (PART (MAP size trl) (TL l))) : thm
+val lemma7 =
+  |- !trl.
+       EVERY
+         (\t.
+           !l.
+             (size t = LENGTH l) ==>
+             (x (ABS_ltree (t,l)) = y (ABS_ltree (t,l))))
+         trl ==>
+       (!l.
+         EVERY (\p. size (FST p) = LENGTH (SND p)) (AP (MAP $, trl) l) ==>
+         (MAP x (MAP ABS_ltree (AP (MAP $, trl) l)) =
+          MAP y (MAP ABS_ltree (AP (MAP $, trl) l)))) : thm
+GC #0.0.1.3.11.682:   (10 ms)
+val ltree_Axiom = |- !f. ?!fn. !v tl. fn (Node v tl) = f (MAP fn tl) v tl : thm
+val unique_lemma =
+  |- !f fn fn'.
+       (!v tl. fn (Node v tl) = f (MAP fn tl) v tl) /\
+       (!v tl. fn' (Node v tl) = f (MAP fn' tl) v tl) ==>
+       (fn = fn') : thm
+val ltree_Induct = |- !P. (!t. EVERY P t ==> (!h. P (Node h t))) ==> (!l. P l)
+  : thm
+GC #0.0.1.3.12.774:   (10 ms)
+val exists_lemma = |- !f. ?fn. !v tl. fn (Node v tl) = f (MAP fn tl) v tl : thm
+val Node_11 =
+  |- !v1 v2 trl1 trl2.
+       (Node v1 trl1 = Node v2 trl2) = (v1 = v2) /\ (trl1 = trl2) : thm
+exception ltree_INDUCT_ERR
+/Nfs/bescot/grp11/hol/hol90.10/theories/src/mk_ltree.sml:598.8-598.46 Warning: binding not exhaustive
+          (EVERY,P :: tll :: nil) = ...
+val ltree_INDUCT = fn : thm -> thm
+exception ltree_INDUCT_TAC_ERR
+/Nfs/bescot/grp11/hol/hol90.10/theories/src/mk_ltree.sml:644.5-644.53 Warning: match nonexhaustive
+          th :: nil => ...
+  
+/Nfs/bescot/grp11/hol/hol90.10/theories/src/mk_ltree.sml:630.8-630.60 Warning: binding not exhaustive
+          {Args=t_ty :: _,Tyop=_} = ...
+val ltree_INDUCT_TAC = fn
+  : term list * term -> (term list * term) list * (thm list -> thm)
+val Node_onto = |- !l. ?v trl. l = Node v trl : thm
+
+Theory "ltree" exported.
+val it = () : unit
+val it = () : unit
+- val it = () : unit
+- GC #0.0.0.0.1.11:   (20 ms)
+[opening /Nfs/bescot/grp11/hol/hol90.10/theories/src/mk_rec_type.sml]
+
+Loading theory "ltree"
+
+Theory "BASIC_HOL" already consistent with disk, hence not exported.
+val it = () : unit
+
+Declaring theory "rec_type".
+
+Theory "ltree" already consistent with disk, hence not exported.
+val it = () : unit
+val o_THM = |- !f g x. (f o g) x = f (g x) : thm
+GC #0.0.0.0.2.40:   (0 ms)
+val list_INDUCT = |- !P. P [] /\ (!t. P t ==> (!h. P (CONS h t))) ==> (!l. P l)
+  : thm
+GC #0.0.0.0.3.87:   (20 ms)
+val ltree_Axiom = |- !f. ?!fn. !v tl. fn (Node v tl) = f (MAP fn tl) v tl : thm
+val ltree_Induct = |- !P. (!t. EVERY P t ==> (!h. P (Node h t))) ==> (!l. P l)
+  : thm
+val Node_onto = |- !l. ?v trl. l = Node v trl : thm
+val EVERY_DEF =
+  |- (!P. EVERY P [] = T) /\ (!P h t. EVERY P (CONS h t) = P h /\ EVERY P t)
+  : thm
+val MAP =
+  |- (!f. MAP f [] = []) /\ (!f h t. MAP f (CONS h t) = CONS (f h) (MAP f t))
+  : thm
+val LIST_INDUCT_TAC = fn : tactic
+exception ltree_INDUCT_ERR
+/Nfs/bescot/grp11/hol/hol90.10/theories/src/mk_rec_type.sml:57.8-57.46 Warning: binding not exhaustive
+          (EVERY,P :: tll :: nil) = ...
+GC #0.0.0.1.4.108:   (70 ms)
+val ltree_INDUCT = fn : thm -> thm
+exception ltree_INDUCT_TAC_ERR
+/Nfs/bescot/grp11/hol/hol90.10/theories/src/mk_rec_type.sml:103.5-103.53 Warning: match nonexhaustive
+          th :: nil => ...
+  
+/Nfs/bescot/grp11/hol/hol90.10/theories/src/mk_rec_type.sml:89.8-89.60 Warning: binding not exhaustive
+          {Args=t_ty :: _,Tyop=_} = ...
+GC #0.0.0.1.5.136:   (20 ms)
+val ltree_INDUCT_TAC = fn
+  : term list * term -> (term list * term) list * (thm list -> thm)
+val EVERY_MAP_lemma = |- !l. EVERY (\x. x) (MAP P l) = EVERY P l : thm
+val exists_lemma = |- !f. ?fn. !v tl. fn (Node v tl) = f (MAP fn tl) v tl : thm
+val TRP_thm = |- !P. ?TRP. !v tl. TRP (Node v tl) = P v tl /\ EVERY TRP tl
+  : thm
+val lemma1 =
+  |- !l x y.
+       EVERY P l /\ EVERY (\e. P e ==> (x e = y e)) l ==> (MAP x l = MAP y l)
+  : thm
+val TRP_EU =
+  |- !TRP P.
+       (!v tl. TRP (Node v tl) = P v tl /\ EVERY TRP tl) ==>
+       (!f.
+         (?fn.
+           !v tl. TRP (Node v tl) ==> (fn (Node v tl) = f (MAP fn tl) v tl)) /\
+         (!x y.
+           (!v tl. TRP (Node v tl) ==> (x (Node v tl) = f (MAP x tl) v tl)) ==>
+           (!v tl. TRP (Node v tl) ==> (y (Node v tl) = f (MAP y tl) v tl)) ==>
+           (!l. TRP l ==> (x l = y l)))) : thm
+val TRP_DEF =
+  |- !P. TRP P = (@trp. !v tl. trp (Node v tl) = P v tl /\ EVERY trp tl) : thm
+GC #0.0.0.1.6.206:   (10 ms)
+val TRP = |- !P v tl. TRP P (Node v tl) = P v tl /\ EVERY (TRP P) tl : thm
+val TRP_EU_thm =
+  |- !P f.
+       (?fn.
+         !v tl. TRP P (Node v tl) ==> (fn (Node v tl) = f (MAP fn tl) v tl)) /\
+       (!x y.
+         (!v tl. TRP P (Node v tl) ==> (x (Node v tl) = f (MAP x tl) v tl)) ==>
+         (!v tl. TRP P (Node v tl) ==> (y (Node v tl) = f (MAP y tl) v tl)) ==>
+         (!l. TRP P l ==> (x l = y l))) : thm
+val AR_lemma1 =
+  |- (!a. ABS (REP a) = a) ==>
+     (!r. TRP P r = REP (ABS r) = r) ==>
+     (!tl. EVERY (TRP P) (MAP REP tl)) : thm
+val AR_lemma2 =
+  |- (!a. ABS (REP a) = a) ==>
+     (!r. TRP P r = REP (ABS r) = r) ==>
+     (!tl v.
+       P v (MAP REP tl) ==>
+       (REP (ABS (Node v (MAP REP tl))) = Node v (MAP REP tl))) : thm
+val AR_lemma3 =
+  |- (!a. ABS (REP a) = a) ==>
+     (!r. TRP P r = REP (ABS r) = r) ==>
+     (!trl. EVERY (TRP P) trl ==> (?tl. trl = MAP REP tl)) : thm
+val AR_lemma4 = |- (!a. ABS (REP a) = a) ==> (!al. MAP ABS (MAP REP al) = al)
+  : thm
+val AR_lemma5 = .. |- !a. ?r. (a = ABS r) /\ TRP P r : thm
+val MAP_o = |- !f g. MAP (f o g) = MAP f o MAP g : thm
+GC #0.0.0.1.7.292:   (30 ms)
+val TY_DEF_THM =
+  |- !REP ABS P.
+       (!a. ABS (REP a) = a) /\ (!r. TRP P r = REP (ABS r) = r) ==>
+       (!f.
+         ?!fn.
+           !v tl.
+             P v (MAP REP tl) ==>
+             (fn (ABS (Node v (MAP REP tl))) = f (MAP fn tl) v tl)) : thm
+val exists_TRP = |- !P. (?v. P v []) ==> (?t. TRP P t) : thm
+
+Theory "rec_type" exported.
+val it = () : unit
+- GC #0.0.1.2.8.368:   (50 ms)
+val it = () : unit
+- GC #0.0.0.0.1.10:   (0 ms)
+[opening /Nfs/bescot/grp11/hol/hol90.10/theories/src/mk_HOL.sml]
+
+Loading theory "rec_type"
+
+Theory "BASIC_HOL" already consistent with disk, hence not exported.
+val it = () : unit
+
+Declaring theory "HOL".
+
+Theory "rec_type" already consistent with disk, hence not exported.
+val it = () : unit
+val it = () : unit
+val it = () : unit
+val it = () : unit
+
+Theory "HOL" exported.
+val it = () : unit
+val it = () : unit
+- 

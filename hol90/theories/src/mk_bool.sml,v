@@ -1,0 +1,456 @@
+head	1.4;
+access;
+symbols
+	HOL97:1.3.0.4
+	bpHOL97:1.3
+	hol90_9_alpha:1.3
+	hol90_pre8_for_multiple_compilers:1.3.0.2
+	hol90_pre8_after_donalds_separate_compilation_changes:1.3
+	hol90_8_after_merging_Konrad_Elsa:1.2
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.4
+date	96.01.04.21.50.27;	author drs1004;	state Exp;
+branches;
+next	1.3;
+
+1.3
+date	95.10.31.14.01.09;	author drs1004;	state Exp;
+branches
+	1.3.4.1;
+next	1.2;
+
+1.2
+date	95.10.18.16.05.20;	author drs1004;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	95.10.16.13.30.24;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.30.24;	author rjb;	state Exp;
+branches;
+next	;
+
+1.3.4.1
+date	97.06.11.18.11.19;	author kxs;	state Exp;
+branches;
+next	1.3.4.2;
+
+1.3.4.2
+date	97.07.11.16.37.34;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.4
+log
+@see changes file
+@
+text
+@(* ===================================================================== *)
+(* FILE          : mk_bool.sml                                           *)
+(* DESCRIPTION   : Definition of the logical constants and assertion of  *)
+(*                 the axioms. Translated from hol88.                    *)
+(*                                                                       *)
+(* AUTHOR        : (c) Mike Gordon, University of Cambridge              *)
+(* TRANSLATOR    : Konrad Slind, University of Calgary                   *)
+(* DATE          : September 11, 1991                                    *)
+(* MODIFIED BY   : Donald Syme, University of Cambridge, October 1995    *)
+(*                 This file now constructs - ld_bool loads if not       *)
+(*                 remaking theory files.                                *)
+(* ===================================================================== *)
+
+
+(*-------------------------------------------------------------------
+ * The rest of the theory bool.                          DRS 
+ *------------------------------------------------------------------*) 
+
+new_theory "bool";
+
+hol_binder "?";
+hol_binder "!";
+hol_infix 400 "/\\";
+hol_infix 300 "\\/";
+hol_binder "?!";
+
+Exists_def.new_simple_definition("EXISTS_DEF",
+				 --`$? = \P:'a->bool. P ($@@ P)`--);
+new_definition("TRUTH", 
+     --`T = ((\x:bool. x) = \x:bool. x)`--) handle e => Raise e;
+
+new_definition ("FORALL_DEF", 
+     --`$! = (\P:'a->bool. P = \x. T)`--);
+
+
+new_definition("AND_DEF",
+     --`$/\ = \t1. \t2. !t. (t1 ==> (t2 ==> t)) ==> t`--);
+
+new_definition("OR_DEF",
+     --`$\/ = \t1 t2. !t. (t1 ==> t) ==> ((t2 ==> t) ==> t)`--);
+
+new_definition("F_DEF",
+     --`F = !t.t`--);
+
+new_definition("NOT_DEF",
+     --`~ = \t. t ==> F`--);
+
+new_definition("EXISTS_UNIQUE_DEF",
+            --`$?! = \P:'a->bool. ($? P) /\ !x y. (P x /\ P y) ==> (x=y)`--);
+
+new_definition("LET_DEF", 
+            --`LET = \(f:'a->'b) (x:'a). f x`--);
+
+new_definition("COND_DEF",
+            --`COND = \t t1 t2. @@x:'a. ((t=T)==>(x=t1)) /\ 
+                                       ((t=F)==>(x=t2))`--);
+
+new_definition("ONE_ONE_DEF",
+            --`ONE_ONE (f:'a->'b) = !x1 x2. (f x1 = f x2) ==> (x1 = x2)`--);
+
+new_definition("ONTO_DEF",
+            --`ONTO (f:'a->'b) = !y.?x. y = f x`--);
+
+new_definition("TYPE_DEFINITION",
+            --`!P rep. TYPE_DEFINITION (P:'a->bool) (rep:'b->'a) =
+                       (!x' x''. (rep x' = rep x'') ==> (x' = x'')) /\	
+                       (!x. P x = (?x'. x = rep x'))`--);
+
+
+
+new_open_axiom("BOOL_CASES_AX", 
+            --`!t:bool. (t=T) \/ (t=F)`--);
+
+new_open_axiom("IMP_ANTISYM_AX", 
+            --`!t1 t2. (t1 ==> t2) ==> ((t2 ==> t1) ==> (t1 = t2))`--);
+
+new_open_axiom("ETA_AX", 
+            --`!t:'a->'b. (\x. t x) = t`--);
+
+new_open_axiom("SELECT_AX",
+            --`!(P:'a->bool) x. P x ==> P ($@@ P)`--);
+
+new_open_axiom("INFINITY_AX", 
+	       --`?f:ind->ind. ONE_ONE f /\ ~ONTO f`--);
+
+close_theory();
+export_theory();
+
+
+
+@
+
+
+1.3
+log
+@First phase of hol90.8 development.  hol90 now compiles using NJSML-CM
+108.5, with separate compilation of libraries.  System dependencies
+have been isolated in the makefiles and "portable.sml".
+
+This involved a large number of enhancments to the source files,
+most of which are documented in the 7.changes file (or will be shortly).
+See also the correpsonding email corrspondence between RJB, KLS, TFM,
+JRH and DRS that happened during this development.
+@
+text
+@a14 15
+structure Boolean : Boolean_sig =
+struct
+
+structure Thm = Thm;
+
+open Min; (* Create dependency on "min" theory *)
+open Exists; (* Create dependency on exists portion of "bool" theory *)
+
+open Exception;
+open Lib;
+open Theory;
+open Thm;
+open Const_def;
+open Term_io.Parse;
+
+d19 1
+a19 1
+  val _ = extend_theory "bool" handle e => Raise e; 
+d21 9
+a29 1
+  val T_DEF = new_definition("TRUTH", 
+d32 2
+a33 2
+  val FORALL_DEF = new_binder_definition ("FORALL_DEF", 
+     --`! = (\P:'a->bool. P = \x. T)`--);
+a34 2
+  val AND_DEF = new_infix_definition("AND_DEF",
+     --`/\ = \t1. \t2. !t. (t1 ==> (t2 ==> t)) ==> t`--, 400);
+d36 2
+a37 2
+  val OR_DEF = new_infix_definition("OR_DEF",
+     --`\/ = \t1 t2. !t. (t1 ==> t) ==> ((t2 ==> t) ==> t)`--, 300);
+d39 4
+a42 1
+  val F_DEF = new_definition("F_DEF",
+d45 1
+a45 1
+  val NOT_DEF = new_definition("NOT_DEF",
+d48 2
+a49 2
+  val EXISTS_UNIQUE_DEF = new_binder_definition("EXISTS_UNIQUE_DEF",
+            --`?! = \P:'a->bool. ($? P) /\ !x y. (P x /\ P y) ==> (x=y)`--);
+d51 1
+a51 1
+  val LET_DEF = new_definition("LET_DEF", 
+d54 1
+a54 1
+  val COND_DEF = new_definition("COND_DEF",
+d58 1
+a58 1
+  val ONE_ONE_DEF = new_definition("ONE_ONE_DEF",
+d61 1
+a61 1
+  val ONTO_DEF = new_definition("ONTO_DEF",
+d64 1
+a64 1
+  val TYPE_DEFINITION = new_definition("TYPE_DEFINITION",
+d69 3
+a71 2
+(* AXIOMS *)
+  val BOOL_CASES_AX = new_open_axiom("BOOL_CASES_AX", 
+d74 1
+a74 1
+  val IMP_ANTISYM_AX = new_open_axiom("IMP_ANTISYM_AX", 
+d77 1
+a77 1
+  val ETA_AX = new_open_axiom("ETA_AX", 
+d80 1
+a80 1
+  val SELECT_AX = new_open_axiom("SELECT_AX",
+d83 2
+a84 5
+  val INFINITY_AX = new_open_axiom("INFINITY_AX", 
+            --`?f:ind->ind. ONE_ONE f /\ ~ONTO f`--)
+
+val _ = close_theory();
+val _ = export_theory();
+d86 2
+a87 1
+end; (* MK_BOOL *)
+@
+
+
+1.3.4.1
+log
+@Changes to have HOL build on SML/NJ 109.26
+@
+text
+@d28 1
+a28 1
+open Parse;
+@
+
+
+1.3.4.2
+log
+@Minor changes to accomodate requirements of CM.
+@
+text
+@d15 1
+a15 1
+structure boolThry : boolThrySig =
+d18 1
+a18 2
+structure Min = Min; (* Create dependency on "min" theory *)
+structure Exists = Exists; (* Create dependency on defn of "?".  *)
+d20 8
+a27 2
+open CoreHol.Theory;
+open CoreHol.Const_def;
+d34 1
+a34 1
+  val _ = Lib.try extend_theory "bool";
+d36 2
+a37 2
+  val T_DEF = Lib.try new_definition("TRUTH", 
+     --`T = ((\x:bool. x) = \x:bool. x)`--);
+d91 1
+d95 3
+@
+
+
+1.2
+log
+@Konrad's changes since hol90.7, merged in off a side branch.
+Also some minor changes to mk_exists.sml and mk_bool.sml to
+adjust them for the new "no-structures-open" compilation rule.
+@
+text
+@d9 3
+d15 1
+a15 1
+structure Bool : Mk_bool_sig =
+d18 7
+d30 3
+a32 1
+(* The rest of the theory bool *) 
+d34 1
+a34 1
+val _ = extend_theory "bool"; 
+d36 2
+a37 2
+val T_DEF = new_definition("TRUTH", 
+            --`T = ((\x:bool. x) = \x:bool. x)`--);
+d39 2
+a40 2
+val FORALL_DEF = new_binder_definition ("FORALL_DEF", 
+            --`! = (\P:'a->bool. P = \x. T)`--);
+d42 2
+a43 2
+val AND_DEF = new_infix_definition("AND_DEF",
+            --`/\ = \t1. \t2. !t. (t1 ==> (t2 ==> t)) ==> t`--, 400);
+d45 2
+a46 2
+val OR_DEF = new_infix_definition("OR_DEF",
+            --`\/ = \t1 t2. !t. (t1 ==> t) ==> ((t2 ==> t) ==> t)`--, 300);
+d48 2
+a49 2
+val F_DEF = new_definition("F_DEF",
+            --`F = !t.t`--);
+d51 2
+a52 2
+val NOT_DEF = new_definition("NOT_DEF",
+            --`~ = \t. t ==> F`--);
+d54 1
+a54 1
+val EXISTS_UNIQUE_DEF = new_binder_definition("EXISTS_UNIQUE_DEF",
+d57 1
+a57 1
+val LET_DEF = new_definition("LET_DEF", 
+d60 1
+a60 1
+val COND_DEF = new_definition("COND_DEF",
+d64 1
+a64 1
+val ONE_ONE_DEF = new_definition("ONE_ONE_DEF",
+d67 1
+a67 1
+val ONTO_DEF = new_definition("ONTO_DEF",
+d70 1
+a70 1
+val TYPE_DEFINITION = new_definition("TYPE_DEFINITION",
+d76 1
+a76 1
+val BOOL_CASES_AX = new_open_axiom("BOOL_CASES_AX", 
+d79 1
+a79 1
+val IMP_ANTISYM_AX = new_open_axiom("IMP_ANTISYM_AX", 
+d82 1
+a82 1
+val ETA_AX = new_open_axiom("ETA_AX", 
+d85 1
+a85 1
+val SELECT_AX = new_open_axiom("SELECT_AX",
+d88 2
+a89 2
+val INFINITY_AX = new_open_axiom("INFINITY_AX", 
+            --`?f:ind->ind. ONE_ONE f /\ ~ONTO f`--);
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@a13 1
+type thm = Theory.Thm.thm;
+d15 4
+a18 1
+val -- = Term_io.Parse.--;
+d22 1
+a22 1
+val _ = Theory.extend_theory "bool"; 
+d24 1
+a24 1
+val T_DEF = Const_def.new_definition("TRUTH", 
+d27 1
+a27 1
+val FORALL_DEF = Const_def.new_binder_definition ("FORALL_DEF", 
+d30 1
+a30 1
+val AND_DEF = Const_def.new_infix_definition("AND_DEF",
+d33 1
+a33 1
+val OR_DEF = Const_def.new_infix_definition("OR_DEF",
+d36 1
+a36 1
+val F_DEF = Const_def.new_definition("F_DEF",
+d39 1
+a39 1
+val NOT_DEF = Const_def.new_definition("NOT_DEF",
+d42 1
+a42 1
+val EXISTS_UNIQUE_DEF = Const_def.new_binder_definition("EXISTS_UNIQUE_DEF",
+d45 1
+a45 1
+val LET_DEF = Const_def.new_definition("LET_DEF", 
+d48 1
+a48 1
+val COND_DEF = Const_def.new_definition("COND_DEF",
+d52 1
+a52 1
+val ONE_ONE_DEF = Const_def.new_definition("ONE_ONE_DEF",
+d55 1
+a55 1
+val ONTO_DEF = Const_def.new_definition("ONTO_DEF",
+d58 1
+a58 1
+val TYPE_DEFINITION = Const_def.new_definition("TYPE_DEFINITION",
+d64 1
+a64 1
+val BOOL_CASES_AX = Theory.new_open_axiom("BOOL_CASES_AX", 
+d67 1
+a67 1
+val IMP_ANTISYM_AX = Theory.new_open_axiom("IMP_ANTISYM_AX", 
+d70 1
+a70 1
+val ETA_AX = Theory.new_open_axiom("ETA_AX", 
+d73 1
+a73 1
+val SELECT_AX = Theory.new_open_axiom("SELECT_AX",
+d76 1
+a76 1
+val INFINITY_AX = Theory.new_open_axiom("INFINITY_AX", 
+d79 2
+a80 2
+val _ = Theory.close_theory();
+val _ = Theory.export_theory();
+d83 3
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

@@ -1,0 +1,108 @@
+<TITLE>Theory: order</TITLE>
+<H1>Theory: order</H1>
+<H1>Parents</H1>
+    <UL>
+    <LI><A HREF = "restrict.html"><STRONG>restrict</STRONG></A>
+    <LI><A HREF = "CSP_base.html"><STRONG>CSP_base</STRONG></A>
+    </UL>
+
+
+<HR>
+<H1>Type constants</H1>
+    <UL>
+    
+    </UL>
+
+
+<HR>
+<H1>Term constants</H1>
+    <UL>
+    <LI><STRONG>LEQ</STRONG><EM>:'a list -> 'a list -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Infix 450<STRONG>}</STRONG>
+    <LI><STRONG>In</STRONG><EM>:'a list -> 'a list -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Infix 450<STRONG>}</STRONG>
+    <LI><STRONG>MONOTONIC</STRONG><EM>:('a list -> 'a list) -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    </UL>
+
+
+<HR>
+<H1>Axioms</H1>
+<DL>
+
+</DL>
+
+
+<HR>
+<H1>Definitions</H1>
+<DL>
+<DT><STRONG>PREFIX</STRONG>
+<DD>
+<PRE>
+|- !s t. s LEQ t = (?u. APPEND s u = t)
+</PRE>
+
+<DT><STRONG>IN_TRACE</STRONG>
+<DD>
+<PRE>
+|- !s t. s In t = (?u v. t = APPEND u (APPEND s v))
+</PRE>
+
+<DT><STRONG>MONOTONIC</STRONG>
+<DD>
+<PRE>
+|- !f. MONOTONIC f = (!s t. s LEQ t ==> f s LEQ f t)
+</PRE>
+
+</DL>
+
+
+<HR>
+<H1>Theorems</H1>
+<DL>
+<DT><STRONG>LEAST</STRONG>
+<DD>
+<PRE>
+|- !s. [] LEQ s
+</PRE>
+
+<DT><STRONG>REFLEXIVE</STRONG>
+<DD>
+<PRE>
+|- !s. s LEQ s
+</PRE>
+
+<DT><STRONG>ANTI_SYM</STRONG>
+<DD>
+<PRE>
+|- !s t. s LEQ t /\ t LEQ s ==> (s = t)
+</PRE>
+
+<DT><STRONG>TRANS_PREFIX</STRONG>
+<DD>
+<PRE>
+|- !s t v. s LEQ t /\ t LEQ v ==> s LEQ v
+</PRE>
+
+<DT><STRONG>ST_IND_PREFIX</STRONG>
+<DD>
+<PRE>
+|- !s t x. APPEND [x] s LEQ t = ~(t = []) /\ (x = HD t) /\ s LEQ TL t
+</PRE>
+
+<DT><STRONG>ST_IND_PREFIX'</STRONG>
+<DD>
+<PRE>
+|- !s t x. CONS x s LEQ t = ~(t = []) /\ (x = HD t) /\ s LEQ TL t
+</PRE>
+
+<DT><STRONG>TOT_ORDER_PREFIX</STRONG>
+<DD>
+<PRE>
+|- !s t v. s LEQ v /\ t LEQ v ==> s LEQ t \/ t LEQ s
+</PRE>
+
+</DL>
+
+
+<HR>

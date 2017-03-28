@@ -1,0 +1,728 @@
+head	1.6;
+access;
+symbols
+	HOL97:1.3.0.4
+	bpHOL97:1.3
+	hol90_9_alpha:1.3
+	hol90_pre8_for_multiple_compilers:1.3.0.2
+	last_edition:1.5
+	hol90_pre8_after_donalds_separate_compilation_changes:1.3
+	hol90_8_after_merging_Konrad_Elsa:1.2
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.6
+date	96.02.08.00.24.04;	author drs1004;	state dead;
+branches;
+next	1.5;
+
+1.5
+date	96.01.04.14.07.39;	author drs1004;	state Exp;
+branches;
+next	1.4;
+
+1.4
+date	95.12.18.11.22.33;	author drs1004;	state Exp;
+branches;
+next	1.3;
+
+1.3
+date	95.10.31.15.06.31;	author drs1004;	state Exp;
+branches
+	1.3.4.1;
+next	1.2;
+
+1.2
+date	95.10.18.16.37.55;	author drs1004;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	95.10.16.13.30.11;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.30.11;	author rjb;	state Exp;
+branches
+	1.1.1.1.2.1;
+next	;
+
+1.1.1.1.2.1
+date	95.10.18.10.09.14;	author drs1004;	state Exp;
+branches;
+next	;
+
+1.3.4.1
+date	97.06.11.17.26.12;	author kxs;	state Exp;
+branches;
+next	1.3.4.2;
+
+1.3.4.2
+date	97.07.10.18.39.00;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.6
+log
+@New theory mechanism, by Donald Syme
+@
+text
+@(*****************************************************************************
+ * Implements the coordination between cache and disk. Also provides
+ * routines that add to the theory graph, possibly with side-effects
+ * (like adding constants to the symbol table).
+ *****************************************************************************)
+
+functor THEORY_OPS(structure Globals : Globals_sig
+                   structure Theory_data : Theory_data_sig
+                   structure Theory_io : Theory_io_sig
+                   structure Theory_cache : Theory_cache_sig
+                   structure Theory_graph : Theory_graph_sig
+                   structure Term : Private_term_sig
+                   structure Fixity : Fixity_sig
+                   sharing Theory_io.Theory_data = Theory_data
+                   sharing Theory_data.Thm.Term = Term
+                   sharing type
+                     Theory_data.theory = Theory_cache.object
+                   sharing type
+                     Theory_data.theory_id = Theory_graph.node_id
+                   sharing type
+                     Theory_cache.key = string)
+                 : Theory_ops_sig =
+struct
+structure Theory_data = Theory_data;
+structure Theory_io = Theory_io;
+structure Theory_cache = Theory_cache;
+structure Theory_graph = Theory_graph;
+
+structure Term = Term;
+open Theory_data;
+open Lib;
+    
+
+val ERR = Exception.ERR "Theory_ops";
+val WRAP_ERR = Exception.WRAP_ERR "Theory_ops";
+    
+val current_theory_name = theory_id_name o theory_id o the_current_theory;
+
+
+(*****************************************************************************
+ * There's a hack here for strings. If I load the theory of strings in,
+ * I want string literals to be constants. But I can't interpret string
+ * literals as string constants until that time. The call to 
+ * Globals.assert_strings_defined does the job. It basically informs
+ * Parse_support.make_string when it can make consts instead of variables.
+ *****************************************************************************)
+local
+fun TY_CLASH{common_name, theory1, theory2} =
+     ERR(" install_hol_sig.add_type_const",
+		    "\nType constant clash: "^quote common_name^
+			      " appears in both "^quote theory1^" and "^
+			      quote theory2^"\n")
+fun TM_CLASH {common_name,theory1,theory2} =
+    ERR("install_hol_sig.add_term_const",
+		   "\nTerm constant clash: "^quote common_name^
+			      " appears in both "^quote theory1^" and "^
+			      quote theory2^"\n")
+in
+fun install_hol_sig hol_sig =
+   let val {thid,type_constants,term_constants,...} = 
+                                Theory_io.dest_hol_sig hol_sig
+       val thname = Theory_data.theory_id_name thid
+
+       (* Temporary hack - assert strings defined *)
+
+       val _ = if (thname = "string")
+               then Globals.assert_strings_defined()
+               else()
+
+
+       val _ = map Term.Type.add_type_const type_constants
+	   handle Term.Type.TYPE_SYMTAB_CLASH strs => TY_CLASH strs;
+       val _ = map (Term.add_term_const) term_constants
+	   handle Term.TERM_SYMTAB_CLASH strs => TM_CLASH strs
+
+
+       (* Temporary hack - read the fixities file *)
+       val _ = 
+	   let val fixities_file = File.find_file (!Globals.theory_path) (thname^".fixities")
+               val _ = Lib.say ("[reading "^fixities_file^"]\n")
+	       val instream = open_in fixities_file
+	       val _ = while (not (end_of_stream instream)) do 
+		   let val line = Portable.input_line instream
+		       val most = 
+			   (if (Portable.String.sub (line,Portable.String.size line - 1) = #"\n")
+				then Portable.String.substring (line,0,Portable.String.size line - 1)
+			    else line)
+				handle _ => line
+		   in
+		       case Lib.words2 #" " most of
+			   [str,"Infix",prec] => Fixity.hol_infix (Lib.string_to_int prec) str
+			 | [str,"Prefix"] => Fixity.hol_prefix str
+			 | [str,"Nonfix"] => Fixity.hol_nonfix str
+			 | [str,"Binder"] => Fixity.hol_binder str
+			 | [] => ()
+			 | _ => Lib.say ("strange line in fixities file "^fixities_file^": "^most^"\n")
+		   end
+	      val _ = close_in instream
+	   in ()
+	   end
+           handle _ => Lib.say ("[no "^thname^".fixities file found... continuing]\n")
+
+       (* Temporary hack - read a user ML file if one exists *)
+       val _ = 
+	   let val ML_file = File.find_file (!Globals.theory_path) (thname^".ML")
+               val _ = Lib.say ("reading "^ML_file)
+	   in Portable.use ML_file
+	   end
+           handle _ => () 
+
+   in
+   ( )
+   end
+end;
+
+
+val slash = "/";
+(*****************************************************************************
+ * The path is s1^s2, the normalized path is the path less the last component,
+ * where components are separated by a slash.
+ *****************************************************************************)
+fun normalize_path (s1,s2) =
+   let val p = s1^s2
+       val is_absolute = (Portable.String.ordof(p,0) = Portable.String.ordof(slash,0))
+   in
+   case (words2 (Portable.String.sub(slash,0)) p)
+     of [] => ERR("normalize_path",
+                    "empty string can not be interpreted as a path")
+      | [s] => ""
+      | slist => ((if is_absolute then slash else "")
+                  ^itlist (fn s => fn S => (s^slash^S)) 
+                            (fst(front_n_back slist)) "")
+   end;
+
+         
+(*****************************************************************************
+ * Takes a path name and returns the theory found there. Some redundancy in
+ * consistency checking in Theory_io, but that's modularity for you. The
+ * uses to which "get_theory_from_disk" is put (from the uses of
+ * grab_ances_theory) don't seem to be speed-critical. It seems stupid to 
+ * re-get the holsig, since we know that all the constants from it are already
+ * in the symtab. We have to re-get it because the symtab is unstructured
+ * wrt theories: it would take a sweep of the symbol table to get all the
+ * info for a theory. <Later comment: maybe that's OK - it's apt to be faster
+ * than going to disk.
+ *
+ *****************************************************************************)
+fun get_theory_from_disk str : Theory_data.theory =
+   let val path = !Globals.theory_path
+       val {data=hsig,path=thms_path} = Theory_io.get_hol_sig_by_name path str
+       val thms_path' = normalize_path (thms_path,str)
+       val thyid = #thid (Theory_io.dest_hol_sig hsig)
+       val {data=thms, ...} = Theory_io.get_thms [thms_path'] thyid
+
+   in Theory_io.mk_theory hsig thms
+   end handle e => WRAP_ERR("get_theory_from_disk",e);
+       
+
+
+(****************************************************************************
+ * Gets the named theory. Looks first to see if it is the current theory. 
+ * If not, it checks the cache for it. If it's not there, it attempts to 
+ * get it from disk. If it's on disk, it gets put in the cache, before being 
+ * returned as a value. The heuristic used (in theory.sml) is that, if any 
+ * part of a theory is requested, then the whole theory is brought in.
+ ****************************************************************************)
+fun grab_ances_theory "" = ERR("grab_ances_theory",
+			         "theory name can't be null string")
+  | grab_ances_theory thry_str =
+      if ((thry_str = current_theory_name()) orelse (thry_str = "-"))
+      then Theory_data.the_current_theory()
+      else if (Theory_graph.is_ancestor thry_str)
+           then Theory_cache.get_object_from_cache thry_str
+                handle _ => 
+                  let val thry = get_theory_from_disk thry_str
+                      val _ = Theory_cache.add_object_to_cache thry
+                  in thry 
+                  end
+           else ERR("grab_ances_theory",
+                    quote thry_str^" is not an ancestor theory");
+
+(* Not for casual use, as can wreck soundness. *)
+fun perform_atomic_theory_op (f:unit -> 'a) =
+   let val g = Theory_graph.graph_copy()
+       val ty_st = Term.Type.symtab_copy()
+       val tm_st = Term.symtab_copy()
+       val ct = Theory_data.the_current_theory()
+   in
+   f() handle e => ( Theory_graph.replace_graph g;
+                     Term.Type.replace_symtab ty_st;
+                     Term.replace_symtab tm_st;
+                     Theory_data.make_current ct;
+                     raise e )
+   end;
+   
+
+(****************************************************************************
+ * When one does a "load_theory" or "extend_theory", the target theory's 
+ * signature is loaded into the symtab, and loading recurses on its parents
+ * until the theory being loaded is equal to one that has already been loaded 
+ * or is the the current theory at the time of the call to 
+ * {load,extend}_theory. The reference "found_terminus" is set whenever the 
+ * original theory is encountered in the recursion. It's an error if the
+ * original theory is never encountered. 
+ *
+ * When one does a "new_parent", the new_parent and, recursively, its 
+ * ancestors are loaded into the symtab. This case differs from that of
+ * {load,extend}_theory in that there is no terminus that must be found.
+ * Instead, the recursion terminates when the frontier of the existing
+ * theory graph is encountered (and is found to be consistent with the
+ * newly-built sub-graph!).
+ *
+ * Note: in the test
+ *
+ *   if (theory_id_eq (thid,p) andalso check p)
+ *
+ * the first test seems to be always "true" because of unique ids. A re-think
+ * is probably needed, if this is true.
+ ****************************************************************************)
+
+fun install_parents {done_test,check} = 
+let fun install plist =
+      (rev_itlist 
+         (fn p => fn _ =>
+           if (Theory_graph.node_in_graph p)
+           then done_test p
+           else let val {data=psig,...} = Theory_io.get_hol_sig_by_uid 
+                                                  (!Globals.theory_path) p
+                    val {thid,parents,...} = Theory_io.dest_hol_sig psig
+                in if (theory_id_eq (thid,p) andalso check p)
+                   then ( install_hol_sig psig;
+                          Theory_graph.add_node thid parents;
+                          install parents;
+                        ())
+                   else ERR("install_parents",
+                    "attempt to construct inconsistent theory graph")
+                end) plist ()
+         ;
+         plist)
+in
+  install
+end;
+
+
+
+
+(**************************************************************************
+ * Checks, done by {load,extend}_theory on the hol_sig of the theory
+ * to be loaded/extended.
+ * 
+ *     1. Check that theory not in graph
+ *     2. Load constants into symtab
+ *     3. Add theory to graph. The parents of the theory are associated
+ *        with it in the graph.
+ *     4. Return parents for the call to install.
+ *************************************************************************)
+fun goto_theory str terminus_id =
+   let val path = !Globals.theory_path
+       val {data=hsig,path=hsig_path} = Theory_io.get_hol_sig_by_name path str
+       val hsig_path' = normalize_path (hsig_path,str)
+       val {thid,parents,...} = Theory_io.dest_hol_sig hsig
+       val _ = if (Theory_graph.node_in_graph thid)
+               then ERR("goto_theory",
+                  "attempt to install node already in theory graph.")
+               else ()
+       val _ = install_hol_sig hsig
+       val _ = Theory_graph.add_node thid parents
+       val found_terminus = ref false
+       fun done_test p = if (theory_id_eq (p,terminus_id))
+                         then found_terminus := true
+                         else ()
+   in
+     (case (install_parents {done_test=done_test,check = fn _ => true} parents)
+        of [] => ()
+         | _ => if (!found_terminus)
+                then ()
+                else ERR("goto_theory","cannot load/extend given theory"))
+     ;
+     Theory_io.mk_theory hsig (#data(Theory_io.get_thms [hsig_path'] thid))
+   end;
+
+
+
+(****************************************************************************
+ * Checks, done by new_parent on the holsig corresponding to the new 
+ * parent.
+ * 
+ *     0. If proposed parent is already in graph, you are done. Signal this
+ *        by returning empty list. "install_parents" will take this 
+ *        argument and not do anything.
+ * Otherwise,       
+ *     1. Load signature into symtab
+ *     2. Add theory_id to graph. The parents of the theory_id are associated
+ *        with it in the graph.
+ *     3. Return parents (for call to install_parents).
+ *     4. Call install_parents. We must check that the name of the current
+ *        theory is not the name of any of the new parents being brought
+ *        in, hence the "check" function.
+ ****************************************************************************)
+fun install_new_parent (ct,hsig) =
+   let val {thid,parents,...} = Theory_io.dest_hol_sig hsig
+       val pnts = if (Theory_graph.node_in_graph thid)
+                  then []
+                  else ( install_hol_sig hsig;
+                         Theory_graph.add_node thid parents;
+                         parents )
+       fun check p = (ct <> Theory_data.theory_id_name p)
+   in perform_atomic_theory_op 
+       (fn () => install_parents{done_test = fn _ => (),check = check} pnts)
+      ;
+      ()
+   end;
+
+
+(**************************************************************************
+ * Needs to be called to write the contents of a theory to disk. Does not
+ * change any contents of the theory. The "draft_mode" is not altered. 
+ * Consistent_with_disk is initially false, and only becomes true when
+ * export_theory is called, or after a {load,extend}_theory.
+ **************************************************************************)
+fun export_theory() = 
+   if (Theory_data.theory_consistent_with_disk(the_current_theory()))
+   then say ("\nTheory "^quote(current_theory_name())^" already consistent with disk, hence not exported.\n")
+   else ( Theory_io.put_theory_to_disk (Theory_data.the_current_theory());
+	 Theory_data.make_current
+	 (Theory_data.set_consistency_with_disk true (the_current_theory()));
+	 say ("\nTheory "^quote(current_theory_name())^" exported.\n");
+
+         (* temporary hack - write fixities out to file *)
+	 let val fixities_file = (hd(!Globals.theory_path))^ (current_theory_name()^".fixities")
+	     val _ = Lib.say ("[writing "^fixities_file^"]\n")
+	     val outstream = open_out fixities_file
+		 fun wf (name,Fixity.Prefix) = output(outstream,name^" Prefix\n")
+		   | wf (name,Fixity.Infix prec) = output(outstream,name^" Infix "^int_to_string prec^"\n")
+		   | wf (name,Fixity.Binder) = output(outstream,name^" Binder\n")
+	     val _ = map wf (Fixity.fixities())
+	     val _ = close_out outstream
+	 in ()
+	 end);
+	
+
+    
+
+
+(*************************************************************************
+ * It can happen that a "system" theory gets read in, a theorem gets
+ * saved in it, and then "export_theory" or "close" is called. The theory
+ * will get dumped to the file prefixed by the first path name in the
+ * theory_path, if the file is writable. This gives a scheme for users to
+ * get private copies of system theories, which is OK, but can be
+ * confusing. The moral: always consider the theory_path in matters of
+ * theory i/o.
+ *************************************************************************)
+
+(* From Elsa Gunter. *)
+fun close () = ( export_theory(); Portable.exit () );
+
+
+end; (* THEORY_OPS *)
+@
+
+
+1.5
+log
+@Added simplifier components, added drule files, added MK_ABS_CONV, better error messages
+@
+text
+@@
+
+
+1.4
+log
+@Preterm and other changes, see 7.changes
+@
+text
+@d7 1
+a7 2
+functor THEORY_OPS((* structure Lib : Lib_sig *)
+		   structure Globals : Globals_sig
+d13 1
+d31 2
+d34 3
+a36 5
+fun THEORY_OPS_ERR{function,message} =
+    Exception.HOL_ERR{origin_structure = "Theory_ops",
+		      origin_function = function,
+		      message = message}
+
+d49 4
+a52 4
+     THEORY_OPS_ERR{function =" install_hol_sig.add_type_const",
+		    message = "\nType constant clash: "^Lib.quote common_name^
+			      " appears in both "^Lib.quote theory1^" and "^
+			      Lib.quote theory2^"\n"}
+d54 4
+a57 4
+    THEORY_OPS_ERR{function = "install_hol_sig.add_term_const",
+		   message = "\nTerm constant clash: "^Lib.quote common_name^
+			      " appears in both "^Lib.quote theory1^" and "^
+			      Lib.quote theory2^"\n"}
+d62 5
+a66 1
+       val _ = if (Theory_data.theory_id_name thid = "string")
+d69 42
+d112 1
+a112 6
+   ( map Term.Type.add_type_const type_constants
+     handle Term.Type.TYPE_SYMTAB_CLASH strs => raise (TY_CLASH strs);
+
+     map (Term.add_term_const Term.Loading) term_constants
+     handle Term.TERM_SYMTAB_CLASH strs => raise (TM_CLASH strs)
+   )
+d126 3
+a128 3
+   case (Lib.words2 (Portable.String.sub(slash,0)) p)
+     of [] => raise THEORY_OPS_ERR{function = "normalize_path",
+                    message = "empty string can not be interpreted as a path"}
+d131 2
+a132 2
+                  ^Lib.itlist (fn s => fn S => (s^slash^S)) 
+                            (Lib.fst(Lib.front_n_back slist)) "")
+d154 1
+d156 2
+a157 3
+   end handle (e as Exception.HOL_ERR _) => raise e
+            | _ => raise THEORY_OPS_ERR{function = "get_theory_from_disk",
+                                  message = "unable to read theory from disk"};
+d167 2
+a168 2
+fun grab_ances_theory "" = raise THEORY_OPS_ERR{function = "grab_ances_theory",
+			         message = "theory name can't be null string"}
+d174 1
+a174 1
+                handle (Exception.HOL_ERR _) => 
+d179 2
+a180 2
+           else raise THEORY_OPS_ERR{function = "grab_ances_theory",
+                    message = Lib.quote thry_str^" is not an ancestor theory"};
+d223 1
+a223 1
+      (Lib.rev_itlist 
+d235 2
+a236 2
+                   else raise THEORY_OPS_ERR{function = "install_parents",
+                    message = "attempt to construct inconsistent theory graph"}
+d263 2
+a264 2
+               then raise THEORY_OPS_ERR{function = "goto_theory",
+                  message = "attempt to install node already in theory graph."}
+d277 1
+a277 2
+                else raise THEORY_OPS_ERR{function = "goto_theory",
+                                    message="cannot load/extend given theory"})
+d323 1
+a323 2
+   then Lib.say ("\nTheory "^Lib.quote(current_theory_name())^" already \
+                    \consistent with disk, hence not exported.\n")
+d325 18
+a342 3
+          Theory_data.make_current
+           (Theory_data.set_consistency_with_disk true (the_current_theory()));
+          Lib.say ("\nTheory "^Lib.quote(current_theory_name())^" exported.\n"));
+@
+
+
+1.3
+log
+@First phase of hol90.8 development.  hol90 now compiles using NJSML-CM
+108.5, with separate compilation of libraries.  System dependencies
+have been isolated in the makefiles and "portable.sml".
+
+This involved a large number of enhancments to the source files,
+most of which are documented in the 7.changes file (or will be shortly).
+See also the correpsonding email corrspondence between RJB, KLS, TFM,
+JRH and DRS that happened during this development.
+@
+text
+@d13 1
+a13 1
+                   structure Term : Term_sig
+@
+
+
+1.3.4.1
+log
+@Removed files are parse files and portability files that have
+effectively been moved elsewhere.
+
+Modified files are up to date for ML 109.26.
+@
+text
+@d7 2
+a8 1
+functor THEORY_OPS(structure Globals : Globals_sig
+d83 1
+a83 2
+       val is_absolute = (Portable.String.ordof(p,0) 
+                          = Portable.String.ordof(slash,0))
+d85 1
+a85 1
+   case (Lib.words2 slash p)
+d91 1
+a91 1
+                            (Lib.fst(Lib.front_last slist)) "")
+@
+
+
+1.3.4.2
+log
+@Closing up HOL so it is CM-friendly.
+@
+text
+@d1 1
+a1 1
+(*---------------------------------------------------------------------------
+d5 1
+a5 1
+ *---------------------------------------------------------------------------*)
+d10 1
+a10 2
+                   structure Theory_cache : sig include Theory_cache_sig end
+                                            where type key = string
+d18 3
+a20 1
+                     Theory_data.theory_id = Theory_graph.node_id)
+@
+
+
+1.2
+log
+@Check in after merging in Konrad's changes made after
+the release of hol90.7.  This involved creating a side branch
+in which to check in Konrad's changes, then merging in that
+side branch into the main development (which contains changes
+made by Elsa Gunter).
+
+Some other small modification have been made to the source code,
+as I begun to try to make this version into a working version:
+	- hol90 will now be compiled in an environment were no
+structures can be considered opn.  This means many structures
+now need "open Lib" and other such commands at their head.
+This has not yet been completed, but has been begun.
+	- "rotl" and "rotr" have been added to Lib, something
+which I just did impulsively.   Documentation files
+have also been added in help/90.
+@
+text
+@d83 1
+a83 1
+       val is_absolute = (Sml_system.String.ordof(p,0) = Sml_system.String.ordof(slash,0))
+d85 1
+a85 1
+   case (Lib.words2 (Sml_system.String.sub(slash,0)) p)
+d302 1
+a302 1
+fun close () = ( export_theory(); Sml_system.exit () );
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d7 2
+a8 1
+functor THEORY_OPS(structure Globals : Globals_sig
+d33 3
+a35 3
+      HOL_ERR{origin_structure = "Theory_ops",
+	      origin_function = function,
+	      message = message}
+d83 1
+a83 1
+       val is_absolute = (ordof(p,0) = ordof(slash,0))
+d85 1
+a85 1
+   case (Lib.words2 slash p)
+d90 2
+a91 2
+                  ^itlist (fn s => fn S => (s^slash^S)) 
+                            (fst(front_n_back slist)) "")
+d103 3
+a105 1
+ * info for a theory.
+d114 1
+a114 1
+   end handle (e as HOL_ERR _) => raise e
+d133 1
+a133 1
+                handle (HOL_ERR _) => 
+d152 1
+a152 2
+                     raise e
+                   )
+d165 1
+a165 1
+ *  When one does a "new_parent", the new_parent and, recursively, its 
+d182 1
+a182 1
+      (rev_itlist 
+d283 1
+a283 1
+   then Lib.say ("\nTheory "^quote(current_theory_name())^" already \
+d288 1
+a288 1
+          Lib.say ("\nTheory "^quote(current_theory_name())^" exported.\n"));
+d302 1
+a302 1
+fun close () = ( export_theory(); Lib.exit () );
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@
+
+
+1.1.1.1.2.1
+log
+@	Konrad's bug fixes and further development to hol90.7 after it's release.
+	Checked n on a side branch for later merging with the main trunk
+	(Elsa's revisions).  See doc/7.changes for details.
+@
+text
+@d102 1
+a102 3
+ * info for a theory. <Later comment: maybe that's OK - it's apt to be faster
+ * than going to disk.
+ *
+d149 2
+a150 1
+                     raise e )
+d163 1
+a163 1
+ * When one does a "new_parent", the new_parent and, recursively, its 
+@

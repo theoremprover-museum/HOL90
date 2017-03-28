@@ -1,0 +1,189 @@
+head	1.3;
+access;
+symbols
+	HOL97:1.2.0.4
+	bpHOL97:1.2
+	hol90_9_alpha:1.2
+	hol90_pre8_for_multiple_compilers:1.2.0.2
+	hol90_pre8_after_donalds_separate_compilation_changes:1.2
+	hol90_8_after_merging_Konrad_Elsa:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.3
+date	96.01.04.15.59.14;	author drs1004;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	95.10.31.15.07.42;	author drs1004;	state Exp;
+branches
+	1.2.4.1;
+next	1.1;
+
+1.1
+date	95.10.16.13.30.21;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.30.21;	author rjb;	state Exp;
+branches;
+next	;
+
+1.2.4.1
+date	97.07.11.15.33.25;	author kxs;	state Exp;
+branches;
+next	1.2.4.2;
+
+1.2.4.2
+date	97.10.05.21.11.18;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.3
+log
+@io transformers moved to 0/
+@
+text
+@(* ===================================================================== *)
+(* FILE          : define_type.sig                                       *)
+(* DESCRIPTION   : Signature for the (concrete) recursive type definition*)
+(*                 facility. Translated from hol88.                      *)
+(*                                                                       *)
+(* AUTHOR        : (c) Tom Melham, University of Cambridge               *)
+(* TRANSLATOR    : Konrad Slind, University of Calgary                   *)
+(* DATE          : September 15, 1991                                    *)
+(* Note in the following that                                            *)
+(*                                                                       *)
+(*     datatype args = Rec_occ | Hty of pretype                          *)
+(*                                                                       *)
+(* It's defined in 0/parse_support.sml                                   *)
+(* ===================================================================== *)
+
+
+signature Define_type_sig =
+sig
+    val simpset_for_datatype : Thm.thm -> Simplifier.simpset
+
+    val hol_datatype : Term.term frag list -> Thm.thm
+
+
+(* old interfaces to this functionality *)	
+    val dtype : {save_name:string,ty_name:string,
+		 clauses:{constructor:string, 
+			  args:Parse_support.arg list,
+			  fixity:Fixity.fixity} list}
+	-> Thm.thm
+    val define_type : {name:string, 
+		       type_spec: Term.term frag list, 
+		       fixities : Fixity.fixity list} -> Thm.thm
+
+    val string_define_type : 
+	string -> string -> Fixity.fixity list -> Thm.thm
+end;
+@
+
+
+1.2
+log
+@First phase of hol90.8 development.  hol90 now compiles using NJSML-CM
+108.5, with separate compilation of libraries.  System dependencies
+have been isolated in the makefiles and "portable.sml".
+
+This involved a large number of enhancments to the source files,
+most of which are documented in the 7.changes file (or will be shortly).
+See also the correpsonding email corrspondence between RJB, KLS, TFM,
+JRH and DRS that happened during this development.
+@
+text
+@d11 1
+a11 1
+(*     datatype args = Rec_occ | Hty of hol_type                          *)
+d19 17
+a35 9
+val dtype : {save_name:string,ty_name:string,
+             clauses:{constructor:string, 
+                      args:Parse_support.arg list,
+                      fixity:Term.fixity} list}
+            -> Thm.thm
+val define_type : {name:string, 
+                   type_spec: Term.term frag list, 
+                   fixities : Term.fixity list} -> Thm.thm
+val string_define_type : string -> string -> Term.fixity list -> Thm.thm
+@
+
+
+1.2.4.1
+log
+@Updates to make HOP CM-friendly. gstack.sml.0 deleted because it was just a
+security copy.
+@
+text
+@d11 1
+a11 1
+(*     datatype args = Rec_occ | Hty of hol_type                         *)
+d22 2
+a23 2
+                      fixity :CoreHol.Term.fixity} list}
+            -> CoreHol.Thm.thm
+d25 3
+a27 4
+                   type_spec: CoreHol.Term.term frag list, 
+                   fixities : CoreHol.Term.fixity list} -> CoreHol.Thm.thm
+val string_define_type 
+    : string -> string -> CoreHol.Term.fixity list -> CoreHol.Thm.thm
+@
+
+
+1.2.4.2
+log
+@Changes so that frags are known.
+@
+text
+@d25 1
+a25 1
+                   type_spec: CoreHol.Term.term Portable.frag list, 
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d23 1
+a23 1
+            -> thm
+d25 3
+a27 3
+                   type_spec: term frag list, 
+                   fixities : Term.fixity list} -> thm
+val string_define_type : string -> string -> Term.fixity list -> thm
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

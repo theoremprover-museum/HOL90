@@ -1,0 +1,279 @@
+thid = (bword_num, 783977719, 211556)
+axioms = []
+definitions =
+[((NBWORD_DEF),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num). ((! :(num -> bool) -> bool)
+   (\(m :num). (((= :bool word -> bool word -> bool) ((NBWORD $1) $0))
+   ((WORD :bool list -> bool word)
+   (((((NLIST :num -> (num -> bool) -> num -> num -> bool list) $1)
+   VB) 2) $0)))))))`),
+ ((VB_DEF),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num). (((= :bool -> bool -> bool)
+   (VB $0)) (~ (((= :num -> num -> bool) ((MOD $0) 2)) 0)))))`),
+ ((BNVAL_DEF),
+  [],
+  `((! :(bool list -> bool) -> bool) (\(l :bool list).
+   (((= :num -> num -> bool) (BNVAL ((WORD :bool list -> bool word)
+   $0))) ((((LVAL :(bool -> num) -> num -> bool list -> num) BV) 2)
+   $0))))`),
+ ((BV_DEF),
+  [],
+  `((! :(bool -> bool) -> bool) (\(b :bool). (((= :num -> num -> bool)
+   (BV $0)) ((((COND :bool -> num -> num -> num) $0) (SUC 0)) 0))))`)]
+theorems =
+[((ADD_BNVAL_SPLIT),
+  [],
+  `((! :(num -> bool) -> bool) (\(n1 :num).
+   ((! :(num -> bool) -> bool) (\(n2 :num).
+   (((RES_FORALL :(bool word -> bool) -> (bool word -> bool) -> bool)
+   ((PWORDLEN :num -> bool word -> bool) ((+ $1) $0)))
+   (\(w1 :bool word).
+   (((RES_FORALL :(bool word -> bool) -> (bool word -> bool) -> bool)
+   ((PWORDLEN :num -> bool word -> bool) ((+ $2) $1)))
+   (\(w2 :bool word). (((= :num -> num -> bool) ((+ (BNVAL $1)) (BNVAL
+   $0))) ((+ ((* ((+ (BNVAL
+   ((((WSEG :num -> num -> bool word -> bool word) $3) $2) $1)))
+   (BNVAL ((((WSEG :num -> num -> bool word -> bool word) $3) $2)
+   $0)))) ((EXP 2) $2))) ((+ (BNVAL
+   ((((WSEG :num -> num -> bool word -> bool word) $2) 0) $1))) (BNVAL
+   ((((WSEG :num -> num -> bool word -> bool word) $2) 0)
+   $0)))))))))))))`),
+ ((ADD_BNVAL_RIGHT),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num).
+   (((RES_FORALL :(bool word -> bool) -> (bool word -> bool) -> bool)
+   ((PWORDLEN :num -> bool word -> bool) (SUC $0))) (\(w1 :bool word).
+   (((RES_FORALL :(bool word -> bool) -> (bool word -> bool) -> bool)
+   ((PWORDLEN :num -> bool word -> bool) (SUC $1))) (\(w2 :bool word).
+   (((= :num -> num -> bool) ((+ (BNVAL $1)) (BNVAL $0))) ((+ ((* ((+
+   (BNVAL ((((WSEG :num -> num -> bool word -> bool word) $2) 1) $1)))
+   (BNVAL ((((WSEG :num -> num -> bool word -> bool word) $2) 1)
+   $0)))) 2)) ((+ (BV (((BIT :num -> bool word -> bool) 0) $1))) (BV
+   (((BIT :num -> bool word -> bool) 0) $0)))))))))))`),
+ ((ADD_BNVAL_LEFT),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num).
+   (((RES_FORALL :(bool word -> bool) -> (bool word -> bool) -> bool)
+   ((PWORDLEN :num -> bool word -> bool) (SUC $0))) (\(w1 :bool word).
+   (((RES_FORALL :(bool word -> bool) -> (bool word -> bool) -> bool)
+   ((PWORDLEN :num -> bool word -> bool) (SUC $1))) (\(w2 :bool word).
+   (((= :num -> num -> bool) ((+ (BNVAL $1)) (BNVAL $0))) ((+ ((* ((+
+   (BV (((BIT :num -> bool word -> bool) $2) $1))) (BV
+   (((BIT :num -> bool word -> bool) $2) $0)))) ((EXP 2) $2))) ((+
+   (BNVAL ((((WSEG :num -> num -> bool word -> bool word) $2) 0) $1)))
+   (BNVAL ((((WSEG :num -> num -> bool word -> bool word) $2) 0)
+   $0)))))))))))`),
+ ((BIT_NBWORD0),
+  [],
+  `((! :(num -> bool) -> bool) (\(k :num). ((! :(num -> bool) -> bool)
+   (\(n :num). ((==> ((< $1) $0)) (((= :bool -> bool -> bool)
+   (((BIT :num -> bool word -> bool) $1) ((NBWORD $0) 0))) F))))))`),
+ ((NBWORD_SUC_FST),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num). ((! :(num -> bool) -> bool)
+   (\(m :num). (((= :bool word -> bool word -> bool) ((NBWORD (SUC
+   $1)) $0)) ((WCAT :bool word # bool word -> bool word)
+   (((, :bool word -> bool word -> bool word # bool word)
+   ((WORD :bool list -> bool word)
+   (((CONS :bool -> bool list -> bool list) (VB ((MOD ((DIV $0) ((EXP
+   2) $1))) 2))) (NIL :bool list)))) ((NBWORD $1) $0))))))))`),
+ ((WSEG_NBWORD),
+  [],
+  `((! :(num -> bool) -> bool) (\(m :num). ((! :(num -> bool) -> bool)
+   (\(k :num). ((! :(num -> bool) -> bool) (\(n :num). ((==> ((<= ((+
+   $2) $1)) $0)) ((! :(num -> bool) -> bool) (\(l :num).
+   (((= :bool word -> bool word -> bool)
+   ((((WSEG :num -> num -> bool word -> bool word) $3) $2) ((NBWORD
+   $1) $0))) ((NBWORD $3) ((DIV $0) ((EXP 2) $2)))))))))))))`),
+ ((NBWORD_SPLIT),
+  [],
+  `((! :(num -> bool) -> bool) (\(n1 :num).
+   ((! :(num -> bool) -> bool) (\(n2 :num).
+   ((! :(num -> bool) -> bool) (\(m :num).
+   (((= :bool word -> bool word -> bool) ((NBWORD ((+ $2) $1)) $0))
+   ((WCAT :bool word # bool word -> bool word)
+   (((, :bool word -> bool word -> bool word # bool word) ((NBWORD $2)
+   ((DIV $0) ((EXP 2) $1)))) ((NBWORD $1) $0))))))))))`),
+ ((MSB_NBWORD),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num). ((! :(num -> bool) -> bool)
+   (\(m :num). (((= :bool -> bool -> bool)
+   (((BIT :num -> bool word -> bool) $1) ((NBWORD (SUC $1)) $0))) (VB
+   ((MOD ((DIV $0) ((EXP 2) $1))) 2)))))))`),
+ ((DOUBL_EQ_SHL),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num). ((==> ((< 0) $0))
+   (((RES_FORALL :(bool word -> bool) -> (bool word -> bool) -> bool)
+   ((PWORDLEN :num -> bool word -> bool) $0)) (\(w :bool word).
+   ((! :(bool -> bool) -> bool) (\(b :bool).
+   (((= :bool word -> bool word -> bool) ((NBWORD $2) ((+ (BNVAL $1))
+   ((+ (BNVAL $1)) (BV $0))))) ((SND :bool # bool word -> bool word)
+   ((((SHL :bool -> bool word -> bool -> bool # bool word) F) $1)
+   $0))))))))))`),
+ ((NBWORD_SUC_WSEG),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num).
+   (((RES_FORALL :(bool word -> bool) -> (bool word -> bool) -> bool)
+   ((PWORDLEN :num -> bool word -> bool) (SUC $0))) (\(w :bool word).
+   (((= :bool word -> bool word -> bool) ((NBWORD $1) (BNVAL $0)))
+   ((((WSEG :num -> num -> bool word -> bool word) $1) 0) $0))))))`),
+ ((WSEG_NBWORD_SUC),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num). ((! :(num -> bool) -> bool)
+   (\(m :num). (((= :bool word -> bool word -> bool)
+   ((((WSEG :num -> num -> bool word -> bool word) $1) 0) ((NBWORD
+   (SUC $1)) $0))) ((NBWORD $1) $0))))))`),
+ ((NBWORD_MOD),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num). ((! :(num -> bool) -> bool)
+   (\(m :num). (((= :bool word -> bool word -> bool) ((NBWORD $1)
+   ((MOD $0) ((EXP 2) $1)))) ((NBWORD $1) $0))))))`),
+ ((EQ_NBWORD0_SPLIT),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num).
+   (((RES_FORALL :(bool word -> bool) -> (bool word -> bool) -> bool)
+   ((PWORDLEN :num -> bool word -> bool) $0)) (\(w :bool word).
+   ((! :(num -> bool) -> bool) (\(m :num). ((==> ((<= $0) $2))
+   (((= :bool -> bool -> bool) (((= :bool word -> bool word -> bool)
+   $1) ((NBWORD $2) 0))) ((/\ (((= :bool word -> bool word -> bool)
+   ((((WSEG :num -> num -> bool word -> bool word) ((- $2) $0)) $0)
+   $1)) ((NBWORD ((- $2) $0)) 0)))
+   (((= :bool word -> bool word -> bool)
+   ((((WSEG :num -> num -> bool word -> bool word) $0) 0) $1))
+   ((NBWORD $0) 0)))))))))))`),
+ ((WSPLIT_NBWORD_0),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num). ((! :(num -> bool) -> bool)
+   (\(m :num). ((==> ((<= $0) $1))
+   (((= :bool word # bool word -> bool word # bool word -> bool)
+   (((WSPLIT :num -> bool word -> bool word # bool word) $0) ((NBWORD
+   $1) 0))) (((, :bool word -> bool word -> bool word # bool word)
+   ((NBWORD ((- $1) $0)) 0)) ((NBWORD $0) 0))))))))`),
+ ((WCAT_NBWORD_0),
+  [],
+  `((! :(num -> bool) -> bool) (\(n1 :num).
+   ((! :(num -> bool) -> bool) (\(n2 :num).
+   (((= :bool word -> bool word -> bool)
+   ((WCAT :bool word # bool word -> bool word)
+   (((, :bool word -> bool word -> bool word # bool word) ((NBWORD $1)
+   0)) ((NBWORD $0) 0)))) ((NBWORD ((+ $1) $0)) 0))))))`),
+ ((ZERO_WORD_VAL),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num).
+   (((RES_FORALL :(bool word -> bool) -> (bool word -> bool) -> bool)
+   ((PWORDLEN :num -> bool word -> bool) $0)) (\(w :bool word).
+   (((= :bool -> bool -> bool) (((= :bool word -> bool word -> bool)
+   $0) ((NBWORD $1) 0))) (((= :num -> num -> bool) (BNVAL $0))
+   0))))))`),
+ ((BNVAL_NBWORD),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num). ((! :(num -> bool) -> bool)
+   (\(m :num). ((==> ((< $0) ((EXP 2) $1))) (((= :num -> num -> bool)
+   (BNVAL ((NBWORD $1) $0))) $0))))))`),
+ ((NBWORD_BNVAL),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num).
+   (((RES_FORALL :(bool word -> bool) -> (bool word -> bool) -> bool)
+   ((PWORDLEN :num -> bool word -> bool) $0)) (\(w :bool word).
+   (((= :bool word -> bool word -> bool) ((NBWORD $1) (BNVAL $0)))
+   $0)))))`),
+ ((BV_VB),
+  [],
+  `((! :(num -> bool) -> bool) (\(x :num). ((==> ((< $0) 2))
+   (((= :num -> num -> bool) (BV (VB $0))) $0))))`),
+ ((VB_BV),
+  [],
+  `((! :(bool -> bool) -> bool) (\(x :bool).
+   (((= :bool -> bool -> bool) (VB (BV $0))) $0)))`),
+ ((NBWORD_SUC),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num). ((! :(num -> bool) -> bool)
+   (\(m :num). (((= :bool word -> bool word -> bool) ((NBWORD (SUC
+   $1)) $0)) ((WCAT :bool word # bool word -> bool word)
+   (((, :bool word -> bool word -> bool word # bool word) ((NBWORD $1)
+   ((DIV $0) 2))) ((WORD :bool list -> bool word)
+   (((CONS :bool -> bool list -> bool list) (VB ((MOD $0) 2)))
+   (NIL :bool list))))))))))`),
+ ((PWORDLEN_NBWORD),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num). ((! :(num -> bool) -> bool)
+   (\(m :num). (((PWORDLEN :num -> bool word -> bool) $1) ((NBWORD $1)
+   $0))))))`),
+ ((WORDLEN_NBWORD),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num). ((! :(num -> bool) -> bool)
+   (\(m :num). (((= :num -> num -> bool) ((WORDLEN :bool word -> num)
+   ((NBWORD $1) $0))) $1)))))`),
+ ((NBWORD0),
+  [],
+  `((! :(num -> bool) -> bool) (\(m :num).
+   (((= :bool word -> bool word -> bool) ((NBWORD 0) $0))
+   ((WORD :bool list -> bool word) (NIL :bool list)))))`),
+ ((BNVAL_WCAT),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num). ((! :(num -> bool) -> bool)
+   (\(m :num).
+   (((RES_FORALL :(bool word -> bool) -> (bool word -> bool) -> bool)
+   ((PWORDLEN :num -> bool word -> bool) $1)) (\(w1 :bool word).
+   (((RES_FORALL :(bool word -> bool) -> (bool word -> bool) -> bool)
+   ((PWORDLEN :num -> bool word -> bool) $1)) (\(w2 :bool word).
+   (((= :num -> num -> bool) (BNVAL
+   ((WCAT :bool word # bool word -> bool word)
+   (((, :bool word -> bool word -> bool word # bool word) $1) $0))))
+   ((+ ((* (BNVAL $1)) ((EXP 2) $2))) (BNVAL $0)))))))))))`),
+ ((BNVAL_WCAT2),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num).
+   (((RES_FORALL :(bool word -> bool) -> (bool word -> bool) -> bool)
+   ((PWORDLEN :num -> bool word -> bool) $0)) (\(w :bool word).
+   ((! :(bool -> bool) -> bool) (\(x :bool). (((= :num -> num -> bool)
+   (BNVAL ((WCAT :bool word # bool word -> bool word)
+   (((, :bool word -> bool word -> bool word # bool word)
+   ((WORD :bool list -> bool word)
+   (((CONS :bool -> bool list -> bool list) $0) (NIL :bool list))))
+   $1)))) ((+ ((* (BV $0)) ((EXP 2) $2))) (BNVAL $1)))))))))`),
+ ((BNVAL_WCAT1),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num).
+   (((RES_FORALL :(bool word -> bool) -> (bool word -> bool) -> bool)
+   ((PWORDLEN :num -> bool word -> bool) $0)) (\(w :bool word).
+   ((! :(bool -> bool) -> bool) (\(x :bool). (((= :num -> num -> bool)
+   (BNVAL ((WCAT :bool word # bool word -> bool word)
+   (((, :bool word -> bool word -> bool word # bool word) $1)
+   ((WORD :bool list -> bool word)
+   (((CONS :bool -> bool list -> bool list) $0) (NIL :bool list)))))))
+   ((+ ((* (BNVAL $1)) 2)) (BV $0)))))))))`),
+ ((BNVAL_MAX),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num).
+   (((RES_FORALL :(bool word -> bool) -> (bool word -> bool) -> bool)
+   ((PWORDLEN :num -> bool word -> bool) $0)) (\(w :bool word). ((<
+   (BNVAL $0)) ((EXP 2) $1))))))`),
+ ((BNVAL_ONTO),
+  [],
+  `((! :(bool word -> bool) -> bool) (\(w :bool word).
+   ((? :(num -> bool) -> bool) (\(n :num). (((= :num -> num -> bool)
+   (BNVAL $1)) $0)))))`),
+ ((BNVAL_11),
+  [],
+  `((! :(bool word -> bool) -> bool) (\(w1 :bool word).
+   ((! :(bool word -> bool) -> bool) (\(w2 :bool word). ((==>
+   (((= :num -> num -> bool) ((WORDLEN :bool word -> num) $1))
+   ((WORDLEN :bool word -> num) $0))) ((==> (((= :num -> num -> bool)
+   (BNVAL $1)) (BNVAL $0))) (((= :bool word -> bool word -> bool) $1)
+   $0)))))))`),
+ ((BNVAL0),
+  [],
+  `(((= :num -> num -> bool) (BNVAL ((WORD :bool list -> bool word)
+   (NIL :bool list)))) 0)`),
+ ((BNVAL_NVAL),
+  [],
+  `((! :(bool word -> bool) -> bool) (\(w :bool word).
+   (((= :num -> num -> bool) (BNVAL $0))
+   ((((NVAL :(bool -> num) -> num -> bool word -> num) BV) 2)
+   $0))))`),
+ ((BV_LESS_2),
+  [],
+  `((! :(bool -> bool) -> bool) (\(x :bool). ((< (BV $0)) 2)))`)]

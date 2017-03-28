@@ -1,0 +1,109 @@
+\DOC new_multiple_recursive_specification
+
+\TYPE new_multiple_recursive_specification
+      : {{def:term, name:string, rec_axiom:thm} -> thm}}
+
+\SYNOPSIS
+Introduces a constant or constants satisfying a given property and
+installs a definitional axiom in the current theory.
+
+\DESCRIBE
+new_multiple_recursive_specification provides the facility for defining
+primitive recursive functions with multiple type-constructors as arguments
+on arbitrary concrete recursive types. name is a name under which the
+resulting specification will be saved in the current theory segment.
+rec_axiom is the primitive recursion theorem for the concrete type in
+question; this must be a theorem obtained from define_type.
+def is a term giving the desired primitive recursive function specification.
+Let C1, ..., Cn be the constructors of the definied type, and let `(Ci vs)'
+represent an application of the ith constructor to a sequence of variables
+then def has to be a conjunction of clauses of the form
+
+  (f (Ca vs11) (Cb vs12) ... (Cc vs1k) = (body1 vs11 vs12 ... vs1k) ) /\
+  (f (Cd vs21) (Ce vs22) ... (Cf vs2k) = (body2 vs21 vs22 ... vs2k) ) /\
+                                      .
+                                      .
+  (f (Cx vsj1) (Cy vsj2) ... (Cz vsjk) = (bodyj vsj1 vsj2 ... vsjk) )
+
+where the variables contained in vs are distinct in each clause and
+a,b,c,d,e,f,x,y,z are in 1,...,n.
+
+If tm is a conjunction of clauses, as described above, then evaluating:
+
+  new_multiple_recursive_specification{name="name", rec_axiom=th, def=tm}
+
+automatically proves the existence of a function fn that satisfies the
+defining equations supplied as the third argument, and then declares a new
+constant in the current theory with this definition as its specification. This
+constant specification is returned as a theorem and is saved in the current
+theory segment under the name name.
+
+\FAILURE
+A call to new_multiple_recursive_specification fails if the supplied theorem
+is not a primitive recursion theorem of the form returned by define_type;
+if the term argument supplied is not a well-formed primitive multiple
+recursive specification; or if any other condition for making a constant
+specification is violated (see the failure conditions for new_specification).
+
+\EXAMPLE
+val th_a = define_type{name      = "a",
+                       fixities  = [Prefix,Prefix,Prefix,Prefix],
+                       type_spec = `a = C1 of bool=>bool=>bool|
+                                        C2 of bool=>bool|
+                                        C3 of bool|
+                                        C4 of bool`};
+
+val th_fa =
+ new_multiple_recursive_specification
+ {name      = "fa",
+  rec_axiom = th_a,
+  def       = (--`
+  (f (C1 b11 b11' b11'') (C3 b12)      (C2 b13 b13') = 
+  b11 /\ b11' /\ b11'' /\ b12 /\ b13 /\ b13') 
+  /\
+  (f (C1 b21 b21' b21'') (C3 b22)      (C4 b23)      = 
+  b21 \/ b21' \/ b21'' \/ b22 \/ b23) 
+  /\
+  (f (C4 b31)            (C2 b32 b32') (C4 b33)      = 
+  b31 ==> b32 ==> b32' ==> b33)
+  `--)};
+th_fa =
+  |- !b11 b11' b11'' b12 b13 b13' b21 b21' b21'' b22 b23 b31 b32 b32' b33.
+       (fa (C1 b11 b11' b11'') (C3 b12) (C2 b13 b13') =
+        b11 /\ b11' /\ b11'' /\ b12 /\ b13 /\ b13') /\
+       (fa (C1 b21 b21' b21'') (C3 b22) (C4 b23) =
+        b21 \/ b21' \/ b21'' \/ b22 \/ b23) /\
+       (fa (C4 b31) (C2 b32 b32') (C4 b33) = b31 ==> b32 ==> b32' ==> b33)
+
+The result is a theorem which states that the constant fa
+satisfies the primitive-recursive defining equations supplied by the user.
+
+Note: The function defined using new_multiple_recursive_specification need not,
+      in fact, be recursive.
+
+val th_b = define_type{name      = "b",
+                       fixities  = [Prefix,Prefix],
+                       type_spec = `b = Cb1 of 'a list|
+                                        Cb2 of 'a`};
+
+val th_fb =
+ new_multiple_recursive_specification
+ {name      = "fb",
+  rec_axiom = th_b,
+  def       = (--`
+  (fb (Cb1 (l1:'a list)) (Cb1 (l2:'a list)) = 
+  APPEND l1 l2) 
+  /\
+  (fb (Cb2 (x:'a))       (Cb1 (l:'a list))  =
+  CONS x l)
+  `--)};
+th_fb =
+  |- !l1 l2 x l.
+       (fb (Cb1 l1) (Cb1 l2) = APPEND l1 l2) /\ (fb (Cb2 x) (Cb1 l) = CONS x l)
+
+\USES
+
+\SEEALSO
+new_definition, new_recursive_definition, new_specification.
+
+\ENDDOC

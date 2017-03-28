@@ -1,0 +1,229 @@
+head	1.2;
+access;
+symbols
+	HOL97:1.2.0.4
+	bpHOL97:1.2
+	hol90_9_alpha:1.2
+	hol90_pre8_for_multiple_compilers:1.2.0.2
+	hol90_pre8_after_donalds_separate_compilation_changes:1.2
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.2
+date	95.10.31.15.16.04;	author drs1004;	state Exp;
+branches
+	1.2.4.1;
+next	1.1;
+
+1.1
+date	95.10.16.13.30.53;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.30.53;	author rjb;	state Exp;
+branches;
+next	;
+
+1.2.4.1
+date	97.07.14.14.54.20;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.2
+log
+@Changes by DRS for separate compilation using NJSML 108.5/CM
+@
+text
+@(*======================================================================*)
+(* FILE         : integer_tactics.ml                                    *)
+(* DESCRIPTION  : gives the signature for IntegerTactics                *)
+(*                                                                      *)
+(* AUTHOR       : E. L. Gunter                                          *)
+(* DATE         : 92.11.19                                              *)
+(*                                                                      *)
+(*======================================================================*)
+
+(* Copyright 1992 by AT&T Bell Laboratories *)
+
+signature IntegerTactics_sig =
+    sig
+   type term sharing type term = Term.term
+   type thm sharing type thm = Thm.thm
+   type tactic sharing type tactic = Abbrev.tactic
+   type conv sharing type conv = Abbrev.conv
+
+	val INT_CASES_RULE : {int_case_thm:thm, neg_int_case_thm:thm} -> thm
+
+(*
+  A1 |- !n1:num. P(INT n1)   A2 |- !n2:num. P(neg(INT n2))
+------------------------------------------------------------
+                  A1 u A2 |- !M:integer. P M
+*)
+
+
+	val INT_CASES_TAC : tactic
+
+(*
+                   [A] !n:integer. P n
+============================================================================
+ [A] !n1:num. P (INT n1)   [A,!n1:num. P (INT n1)] !n2:num. P (neg(INT n2))
+
+  INT_CASES_TAC allows a reduction of a problem about all integers to
+  two problems about natural numbers.  After making this reduction one
+  can proceed by induction on the natural numbers.
+*)
+
+
+(****************************************************************************)
+
+(*
+  SIMPLE_INT_CASES_RULE and SIMPLE_INT_CASES_TAC allow a reduction of a
+  problem about all integers to the three cases where the integer is
+  positive, where it is negative, and where it is zero.
+*)
+
+	val SIMPLE_INT_CASES_RULE : {pos_case_thm:thm,
+				     neg_case_thm:thm,
+				     zero_case_thm:thm} -> thm
+
+(*
+      A1 |- !N:integer. POS N ==> P N
+      A2 |- !N:integer. NEG N ==> P N
+              A3 |- P (INT 0)
+     ---------------------------------
+      A1 u A2 u A3 |- !N:integer. P N
+*)
+
+
+	val SIMPLE_INT_CASES_TAC : tactic
+
+(*
+                   [A] !N:integer. P N
+==============================================================================
+ [A] !N. POS N ==> P N  [A, !N. POS N ==> P N] !N. NEG N ==> P N  [A] P(INT 0)
+*)
+
+
+(****************************************************************************)
+
+(*
+  INT_MIN_RULE, INT_MAX_RULE, INT_MIN_TAC, and INT_MAX_TAC are for
+  showing that minimum and maximun elements for bounded subsets of
+  the integers exist.
+*)
+
+	val INT_MIN_RULE : {non_empty_thm:thm, bnd_below_thm:thm} -> thm
+
+(*
+  A1 |- ?M:integer. S1 M    A2 |- ?K1. !N. N below K1 ==> ~S1 N
+  -------------------------------------------------------------
+     A1 u A2 |- ?MIN. S1 MIN /\ (!N1. N1 below MIN ==> ~S1 N1)
+*)
+
+
+	val INT_MIN_TAC : term -> tactic
+
+(* term = S1
+
+                   [A] Goal
+   =============================================
+     [A, S1 MIN, !N. N below MIN ==> ~S1 N] Goal
+     [A] ?M:integer. S1 M
+     [A, S1 M] ?LB. !N. N below LB ==> ~S1 N
+*)
+
+
+	val INT_MAX_RULE : {non_empty_thm:thm, bnd_above_thm:thm} -> thm
+
+(*  A1 |- ?M:integer. S1 M    A2 |- ?K1. !N. K1 below N ==> ~S1 N
+  -------------------------------------------------------------
+     A1 u A2 |- ?MAX. S1 MAX /\ (!N1. MAX below N1 ==> ~S1 N1)
+*)
+
+
+	val INT_MAX_TAC : term -> tactic
+
+(* term = S1
+                   [A] Goal
+   =============================================
+     [A, S1 MAX. !N. MAX below N ==> ~S1 N] Goal
+     [A] ?M:integer. S1 M
+     [A, S1 M] ?UB. !N. UB below N ==> ~S1 N
+*)
+
+
+(***************************************************************************)
+
+	val INT_RIGHT_ASSOC_TAC : term -> tactic
+
+(* term = (a plus b) plus c
+
+   A |-  t((a plus b) plus c)
+---------------------------------
+   A |-  t(a plus (b plus c))
+*)
+
+
+	val INT_LEFT_ASSOC_TAC : term -> tactic
+
+(* term = a plus (b plus c)
+
+   A |-  t(a plus (b plus c))
+---------------------------------
+   A |-  t((a plus b) plus c)
+*)
+
+    end (* signature IntegerTactics_sig *)
+@
+
+
+1.2.4.1
+log
+@Changes to accomodate CM. When the integer library is loaded, it now returns
+a structure "integerLib";
+@
+text
+@d13 5
+a17 5
+ sig
+   type term
+   type thm 
+   type tactic
+   type conv
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d14 5
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

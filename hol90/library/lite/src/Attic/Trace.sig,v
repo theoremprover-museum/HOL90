@@ -1,0 +1,62 @@
+head	1.1;
+access;
+symbols
+	HOL97:1.1.0.2;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	97.07.14.16.46.35;	author kxs;	state dead;
+branches
+	1.1.2.1;
+next	;
+
+1.1.2.1
+date	97.07.14.16.46.36;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@file Trace.sig was initially added on branch HOL97.
+@
+text
+@@
+
+
+1.1.2.1
+log
+@Changes to make library build under CM. The file "liteLib.sml" introduces a
+single structure -- liteLib -- through which to access the other items
+in the library, e.g., LiteLib. Sorry about the near-overlap on names!
+@
+text
+@a0 21
+signature Trace_sig =
+sig
+  type term
+  type thm
+
+    datatype action = TEXT of string 
+                    | REDUCE of (string * term)
+                    | REWRITING of (term * thm)
+                    | SIDECOND_ATTEMPT of term
+                    | SIDECOND_SOLVED of thm
+                    | SIDECOND_NOT_SOLVED of term
+                    | OPENING of (term * thm)
+                    | PRODUCE of (term * string * thm)
+                    | IGNORE of (string * thm)
+                    | MORE_CONTEXT of thm
+
+   val trace_hook : (int * action -> unit) ref;
+   val trace : int * action -> unit
+   val trace_level : int ref
+   val tty_trace : action -> unit
+end;
+@

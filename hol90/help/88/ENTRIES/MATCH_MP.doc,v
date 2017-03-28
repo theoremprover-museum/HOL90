@@ -1,0 +1,110 @@
+head	1.1;
+branch	1.1.1;
+access;
+symbols
+	HOL97:1.1.1.1.0.6
+	bpHOL97:1.1.1.1
+	hol90_9_alpha:1.1.1.1
+	hol90_pre8_for_multiple_compilers:1.1.1.1.0.4
+	hol90_pre8_after_donalds_separate_compilation_changes:1.1.1.1
+	hol90_8_after_merging_Konrad_Elsa:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	95.10.16.13.34.08;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.34.08;	author rjb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@\DOC MATCH_MP
+
+\TYPE {MATCH_MP : (thm -> thm -> thm)}
+
+\SYNOPSIS
+Modus Ponens inference rule with automatic matching.
+
+\KEYWORDS
+rule, modus ponens, implication.
+
+\DESCRIBE
+When applied to theorems {A1 |- !x1...xn. t1 ==> t2} and {A2 |- t1'}, the
+inference rule {MATCH_MP} matches {t1} to {t1'} by instantiating free or
+universally quantified variables in the first theorem (only), and returns a
+theorem {A1 u A2 |- !xa..xk. t2'}, where {t2'} is a correspondingly
+instantiated version of {t2}. Polymorphic types are also instantiated if
+necessary.
+
+Variables free in the consequent but not the antecedent of the first argument
+theorem will be replaced by variants if this is necessary to maintain the full
+generality of the theorem, and any which were universally quantified over in
+the first argument theorem will be universally quantified over in the result,
+and in the same order.
+{
+    A1 |- !x1..xn. t1 ==> t2   A2 |- t1'
+   --------------------------------------  MATCH_MP
+          A1 u A2 |- !xa..xk. t2'
+}
+\FAILURE
+Fails unless the first theorem is a (possibly repeatedly universally
+quantified) implication whose antecedent can be instantiated to match
+the conclusion of the second theorem, without instantiating any variables
+which are free in {A1}, the first theorem's assumption list.
+
+\EXAMPLE
+In this example, automatic renaming occurs to maintain the most general form of
+the theorem, and the variant corresponding to {z} is universally quantified
+over, since it was universally quantified over in the first argument theorem.
+{
+   #let ith =
+   # (GENL ["x:num"; "z:num"] o DISCH_ALL o AP_TERM "$+ (w + z)")
+   #   (ASSUME "x:num = y");;
+   ith = |- !x z. (x = y) ==> ((w + z) + x = (w + z) + y)
+
+   #let th = ASSUME "w:num = z";;
+   th = w = z |- w = z
+
+   #MATCH_MP5 ith th;;
+   w = z |- !z'. (w' + z') + w = (w' + z') + z
+}
+\SEEALSO
+EQ_MP, MATCH_MP_TAC, MP, MP_TAC.
+
+\ENDDOC
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

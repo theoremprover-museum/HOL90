@@ -1,0 +1,82 @@
+head	1.2;
+access;
+symbols;
+locks; strict;
+comment	@# @;
+
+
+1.2
+date	96.01.04.14.15.21;	author drs1004;	state dead;
+branches;
+next	1.1;
+
+1.1
+date	95.12.18.11.39.57;	author drs1004;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.2
+log
+@Added simplifier components, added drule files, added MK_ABS_CONV, better error messages
+@
+text
+@
+
+signature Trace_sig =
+sig
+
+   (* ---------------------------------------------------------------------
+    * Utilities to trace the progress of simplification.
+    * ---------------------------------------------------------------------*)
+    
+   val trace_ref : int ref;
+   val trace : (int * string) -> string
+   val trace_tm : (int * string * Term.term) -> Term.term
+   val trace_tm_2string : (int * string * Term.term * string * string) -> Term.term
+   val trace_thm : (int * string * Thm.thm) -> Thm.thm 
+   val trace_tm_thm : (int * string * Term.term * string * Thm.thm) -> Term.term
+   val trace_name : (int * string * string) -> string
+   val trace_production : (int * Term.term * string * Thm.thm) -> Thm.thm
+   val trace_level : int -> unit
+end;
+
+
+structure Trace : Trace_sig =
+struct
+
+open Lib;
+open Term_io.Hol_pp;
+open Thm;
+open Term;
+   (* ---------------------------------------------------------------------
+    * Tracing utilities
+    * ---------------------------------------------------------------------*)
+
+   val trace_ref = ref 0;
+   fun trace_level n  = trace_ref := n;
+   fun trace (n,s) = if (n <= !trace_ref) then (say "  "; say s; say "\n"; s) else s;
+   fun trace_tm (n,s,tm) = if (n <= !trace_ref) then (say "  "; say s; say " "; print_term tm; say "\n"; tm) else tm;
+   fun trace_tm_2string (n,s,tm,s1,s2) = if (n <= !trace_ref) then (say "  "; say s; say " "; print_term tm; say (s1^s2^"\n"); tm) else tm;
+   fun trace_thm (n,s,thm) = if (n <= !trace_ref) then (say "  "; say s; say " "; print_thm thm; say "\n"; thm) else thm;
+   fun trace_tm_thm (n,s,tm,s2,thm) = if (n <= !trace_ref) then (say "  "; say s; say " "; print_term tm; say " "; say s2; say " "; print_thm thm; say "\n"; tm) else tm;
+   fun trace_thm (n,s,thm) = if (n <= !trace_ref) then (say "  "; say s; say " "; print_thm thm; say "\n"; thm) else thm;
+   fun trace_production (n,tm,s,thm) = if (n <= !trace_ref) then (say "  "; say "("; print_term tm; say ") via "; say s; say " produces "; (print_term (rand (concl thm)) handle _ => print_thm thm); say "\n"; thm) else thm;
+   fun trace_name (n,s,name) = if (n <= !trace_ref) then (say "  "; say s; say " "; say name; say "\n"; name) else name;
+   
+
+
+end;
+@
+
+
+1.1
+log
+@Preterm and other changes, see 7.changes
+@
+text
+@@

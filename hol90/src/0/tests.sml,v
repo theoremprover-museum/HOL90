@@ -1,0 +1,241 @@
+head	1.1;
+access;
+symbols;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	96.02.08.00.32.09;	author drs1004;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@New theory mechanism, by Donald Syme, and many other enhancements.
+@
+text
+@(*--------------------------------------------------
+ * Test Suite for Level 0
+ *--------------------------------------------------*)
+
+use "0/hol0.sml";
+
+fun check x =
+    assert (fn y => y) x handle e => Exception.Raise e;
+fun check_error f = (SOME (f ()) handle e => Exception.Raise e) handle _ => NONE;
+    
+(*--------------------------------------------------
+ * Plain parsing
+ *--------------------------------------------------*)
+open Pterms;
+    
+check ((--`T`--) = truth);
+check ((--`T = T`--) = mk_eq(truth,truth));
+check ((--`\x. (x = T)`--) = mk_abs(mk_var("x",bool_ty),mk_eq(mk_var("x",bool_ty),truth)));
+check ((--`\x:bool. (x = T)`--) = mk_abs(mk_var("x",bool_ty),mk_eq(mk_var("x",bool_ty),truth)));
+val alpha = mk_vartype "'a";
+val a1 = mk_vartype "'a1";
+    
+check ((--`\x:'a. x`--) = mk_abs(mk_var("x",alpha),mk_var("x",alpha)));
+check ((--`\(x,y). T`--) = (--`UNCURRY (\x y. T)`--));
+check ((--`\(x,y):(bool # bool). T`--) = (--`UNCURRY (\(x:bool) (y:bool). T)`--));
+check ((--`\x y:bool. T`--) = (--`\(x:'a1) (y:bool). T`--));
+
+val t = (--`T`--);
+    
+    check ((--`^t`--) = t);
+    check ((--`^t = ^t`--) = mk_eq(t,t));
+    
+(*--------------------------------------------------
+ * Parser errors
+ *--------------------------------------------------*)
+
+check_error (fn () => (--`\x . .`--));
+check_error (fn () => (--`)`--));
+check_error (fn () => (--`(abc def ) ) abd cea`--));
+
+check ((--`\(x,y). (x = T)`--) = mk_abs(mk_var("x",bool_ty),mk_eq(mk_var("x",bool_ty),truth)));
+    
+
+(*--------------------------------------------------
+ * Maximizing types 
+ *--------------------------------------------------*)
+
+open Pterms;
+open Advanced_inference;
+open Preterm;
+    
+check ((--`x:'a`--) = mk_var("x",mk_vartype("'a")));
+    
+check ((--`x:'a`--) = mk_var("x",mk_vartype("'a")));
+check ((--`x`--) = mk_var("x",mk_vartype("'a1")));
+check ((--`x = y`--) = (--`(x:'a1) = y`--));
+check ((--`x = y`--) <> (--`(x:'a2) = y`--));
+check ((--`f x`--) = (--`(f:'a1 -> 'a2) x`--));
+check ((--`f T`--) = (--`(f:bool -> 'a1) T`--));
+
+(*--------------------------------------------------
+ * Type tables
+ *--------------------------------------------------*)
+
+infix |-->
+fun a |--> b = (a,b);
+val _ = set_typetable ["P" |--> (==`:ind -> bool`==)];
+val _ = check ((--`P`--) = (--`P:ind -> bool`--));
+val _ = check ((--`P x`--) = (--`(P:ind -> bool) x`--));
+val _ = check_error (fn () => (--`P T`--));
+
+(*--------------------------------------------------
+ * Sticky types
+fun -- x _ = mk_term_parser [type_inference, sticky_types] x;
+val pt = preterm_parser `P:ind -> bool`;
+val pt' = type_inference pt;
+val x = glean pt';
+  
+val _ = (--`P:ind -> bool`--);
+sticky_types_ref;
+val _ = check ((--`P`--) = (--`P:ind -> bool`--));
+val _ = (--`P:bool -> bool`--);
+sticky_types_ref;
+val _ = check ((--`P`--) = (--`P:bool -> bool`--));
+val _ = check ((--`P T`--) = (--`(P:bool -> bool) T`--));
+val _ = check ((--`P x`--) = (--`(P:bool -> bool) x`--));
+sticky_types_ref;
+    
+ *--------------------------------------------------*)
+
+
+
+
+
+(*--------------------------------------------------
+ * String Interface Maps
+ *--------------------------------------------------*)
+
+set_term_map ["TRUTH"    |--> "T"          ,
+	      "FALSITY"  |--> "F"           ];
+
+
+set_type_map ["FUN"      |--> "fun"          ];
+  
+Globals.show_types := true;
+
+string_map_ty bool_string_map (pretype_parser `:('a,'b) fun`);
+string_map bool_string_map (preterm_parser `P:'a set`);
+
+check_error (fn () => (--`T F`--));
+Globals.show_types := false;
+
+val _ = check ((--`f:'a`--) = (--`f:'a`--));
+val _ = check ((--`\x. x = F`--) = (--`\x. x = F`--));
+val _ = check ((--`\x. x = FALSITY`--) = (--`\x. x = F`--));
+val _ = check ((--`f:('a,'b) FUN`--) = (--`f:'a -> 'b`--));
+val _ = check ((--`f:(('a,'b) FUN,'c) FUN`--) = (--`f:('a -> 'b) -> 'c`--));
+val _ = check ((--`TRUTH`--) = (--`T`--));
+val _ = check ((--`TRUTH = FALSITY`--) = (--`T = F`--));
+    
+(* this one is allowed but a bit dodgy... *)    
+val _ = check ((--`\TRUTH:'a. TRUTH = FALSITY`--) = (--`\TRUTH:'a. T = F`--));
+    
+
+(*--------------------------------------------------
+ * Macro Interface Maps (kind of... no substitution yet!)
+ *--------------------------------------------------*)
+
+    clear_term_map();
+    clear_type_map();
+    clear_term_macros();
+
+hol_infix 400 "XOR";
+hol_infix 400 "<>";
+hol_infix 400 ",";
+hol_infix 400 "++";
+    
+set_term_macros [([],         `TRUTH`  , `T`),
+		 ([],         `FALSITY`, `F`),
+                 (["a","b"],  `a <> b`, `~(a = b)`),
+		 (["a","b"],  `a XOR b`, `(a /\ ~b) \/ (b /\ ~a)`),
+		 (["l1","l2"],`l1 ++ l2`,`APPEND l1 l2`),
+		 (["x"],      `G x`,     `GROUP_SET (G, +++) x`)];
+
+
+(--`TRUTH`--);
+(--`F`--);
+(--`T <> F`--);
+(--`G T`--);
+(--`[] ++ []`--);
+ use "/homes/drs1004/hol90.8/src/0/hol0.sml"; 
+
+set_type_macros [(["'a"], `:'a set`, `:'a -> bool`)];
+  
+    
+Globals.show_types := true;
+(--`P:'a -> bool`--);
+(--`P:bool set`--);
+(--`P:bool -> bool -> bool`--);  (* problematic because of PP's special case *)
+(--`P:(bool -> bool) set`--);
+(--`P:bool -> (bool set)`--);
+
+
+check_error (fn () => (--`P (x:'a) = T F`--));
+(--`P (x:'a) = T`--);
+Globals.show_types := false;
+
+val _ = check ((--`TRUTH`--) = (--`T`--));
+val _ = check ((--`TRUTH = FALSITY`--) = (--`T = F`--));
+val _ = check ((--`TT = x`--) = (--`& T = (x:'a)`--));
+val _ = check ((--`TT = FF`--) = (--`((& T):'a) = & F`--));
+
+
+
+(*--------------------------------------------------
+ * Preterm fixities
+ *--------------------------------------------------*)
+
+new_theory "junk";
+new_constant{Name="APPEND",Ty=(==`:ind -> ind -> ind`==)};
+new_infix{Name="@@@@@@",Prec=400,Ty=(==`:ind -> ind -> ind`==)};
+new_infix{Name="MINUS",Prec=400,Ty=(==`:ind -> ind -> ind`==)};
+new_constant{Name="@@@@",Ty=(==`:ind -> ind -> ind`==)};
+    
+val bool_imap = 
+    mk_imap {term_map=[`@@@@`       |--> (--`APPEND`--),
+		       `--`       |--> (--`MINUS`--)],
+	     type_map=[]};
+Parse_support.preterm_infix ("@@@@",400);
+Parse_support.preterm_infix ("--",400);
+Parse_support.preterm_binder "FORALL";
+Parse_support.preterm_fixities();
+Parse_support.is_binder "FORALL";
+fun -- x _ = Parse.mk_term_parser [imap bool_imap] x;
+val _ = install_imap_pp bool_imap;
+
+val _ = Portable.PrettyPrint.install_pp
+         ["Preterm","preterm"] 
+	 ( fn x => raise Match); 
+    
+    Parse.preterm_parser `APPEND`;
+    Parse.preterm_parser `@@@@`;
+    Parse.preterm_parser `@@@@@@`;
+    check_error (fn () => Parse.preterm_parser `@@@@@@ x`);
+    Parse.preterm_parser `x @@@@@@ y`;
+    Parse.preterm_parser `FORALL x. P x`;
+    Parse.preterm_parser `x @@@@ y`;  (* nb. @@@@ is a constant *)
+    Parse.preterm_parser `x -- y`;  (* nb. -- is a variable *)
+    Parse.preterm_parser `x @@@@ (y @@@@ z)`;
+    Parse.preterm_parser `x -- (y -- z)`;
+    Parse.preterm_parser `x MINUS y`;
+    Parse.preterm_parser `x -- y`;
+    (--`x MINUS y`--);
+    (--`x -- y`--);
+    (--`x @@@@ y`--);
+    
+open Parse_support;
+    
+@

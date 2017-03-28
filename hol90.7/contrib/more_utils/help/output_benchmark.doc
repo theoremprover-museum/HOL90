@@ -1,0 +1,83 @@
+\DOC output_benchmark
+
+\TYPE {output_benchmark : {{filename_summary  : string,
+                    filename_details  : string,
+                    rator             : ('a -> 'b),
+                    mk_rand           : int -> 'a,
+                    mk_step           : int -> int,
+                    mk_index          : int -> int,
+                    max_count         : int}} -> unit}
+
+\SYNOPSIS
+Making benchmarks. Measures prove time and number of applied rules.
+
+\LIBRARY benchmark
+
+\DESCRIBE
+for a sequence 
+j(0) j(1) j(2)...j(max_count) = (mk_step 0) (mk_step (mk_step 0)) ...
+let (mk_index j(0)) ... (mk_index j(max_count)) be i0...in. 
+Then, the following is written out into a textfile named filename_summary:
+
+                Index       Time   Rules   Rules/Time
+
+        mk_index j(0)         y0      r0        r0/y0
+                  ...        ...     ...          ...
+mk_index j(max_count)         yn      rn        rn/yn
+
+the row k above represents the results on applying rator to (mk_rand jk):
+Time is the execution time in seconds, Rules is the amount of applied rules 
+given by thm_count(), and Rules/Time is the number of applied rules per 
+second. Furthermore, the following is written into a textfile named
+filename_details:
+
+                Index   ABS   ASSUME   ...
+
+        mk_index j(0)    a0       b0   ...
+                  ...   ...      ...   ...
+mk_index j(max_count)    an       bn   ...
+
+the row k above represents the sorts of rules on applying rator to 
+(mk_rand jk) according to thm_count().
+
+Note that there is a side-effect: reset_thm_count() and
+start_counting_thms() is called by output_benchmark.
+
+\FAILURE
+fails if rator, mk_rand, mk_step or mk_index fails.
+
+\EXAMPLE
+
+Let rator be (REWRITE_CONV []), applied to
+
+fun mk_rand n =
+ if n<=1 then
+  (--`T\/F`--)
+ else
+  let
+   val t = mk_rand (n-1)
+  in
+   (--`T\/F /\ ^t`--)
+  end;
+
+Take e.g. the number of literals as index:
+
+fun number_of_literals n =
+ 2 * ( n + 1 );
+
+Now, measure twenty times with stepping rate of 10:
+
+val _ =
+ benchmark.output_benchmark
+ {filename_summary  = "rewrite_summary.txt",
+  filename_details  = "rewrite_details.txt",
+  rator             = (REWRITE_CONV []),
+  mk_rand           = mk_rand,
+  mk_index          = number_of_literals,
+  max_count         = 20,
+  mk_step           = (fn n => n+10)};
+
+\SEEALSO
+thm_count reset_thm_count start_counting_thms stop_counting_thms
+
+\ENDDOC

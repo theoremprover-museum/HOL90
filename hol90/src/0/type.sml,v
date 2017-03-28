@@ -1,0 +1,1771 @@
+head	1.8;
+access;
+symbols
+	HOL97:1.5.0.4
+	bpHOL97:1.5
+	hol90_9_alpha:1.5
+	hol90_pre8_for_multiple_compilers:1.5.0.2
+	hol90_pre8_after_donalds_separate_compilation_changes:1.4
+	hol90_8_after_merging_Konrad_Elsa:1.3
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.8
+date	96.02.08.00.32.35;	author drs1004;	state Exp;
+branches;
+next	1.7;
+
+1.7
+date	96.01.04.13.45.57;	author drs1004;	state Exp;
+branches;
+next	1.6;
+
+1.6
+date	95.12.18.11.35.41;	author drs1004;	state Exp;
+branches;
+next	1.5;
+
+1.5
+date	95.11.15.13.24.51;	author rjb;	state Exp;
+branches
+	1.5.4.1;
+next	1.4;
+
+1.4
+date	95.10.31.13.56.44;	author drs1004;	state Exp;
+branches;
+next	1.3;
+
+1.3
+date	95.10.18.16.37.20;	author drs1004;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	95.10.17.17.07.44;	author drs1004;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	95.10.16.13.29.57;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.29.57;	author rjb;	state Exp;
+branches
+	1.1.1.1.2.1;
+next	;
+
+1.1.1.1.2.1
+date	95.10.17.18.43.13;	author drs1004;	state Exp;
+branches;
+next	;
+
+1.5.4.1
+date	97.06.11.17.24.57;	author kxs;	state Exp;
+branches;
+next	1.5.4.2;
+
+1.5.4.2
+date	97.07.10.19.33.24;	author kxs;	state Exp;
+branches;
+next	1.5.4.3;
+
+1.5.4.3
+date	97.10.05.21.07.36;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.8
+log
+@New theory mechanism, by Donald Syme, and many other enhancements.
+@
+text
+@(* ===================================================================== 
+ * FILE          : type.sml                                              
+ * DESCRIPTION   : HOL types.                                            
+ *                                                                       
+ * AUTHOR        : (c) Konrad Slind, University of Calgary               
+ * DATE          : August 26, 1991                                       
+ * UPDATE        : October 94. Type signature implementation moved from  
+ *                 symtab.sml, which is now gone.                        
+ *                 Jan 96.  Types reimplemented by DRS.  Pretypes
+ *                 now remove most of the complexity.
+ * ===================================================================== *)
+
+functor TYPE (): Private_type_sig =
+struct
+
+open Lib;
+open Exception;
+
+val ERR = Exception.ERR "Type";
+val WRAP_ERR = Exception.WRAP_ERR "Type";
+
+
+
+datatype typ = Utv of string        (* User-given type variables *)
+             | Tyapp of {Tyop : string, Args : typ list};
+type hol_type = typ;
+
+
+(*-------------------------------------------------------------------------
+ * Type Hashing
+ *
+ * hash_type
+ *    Compute a hash value for a type.  Needs optimizing.
+ *
+ * fun hStv n = (n * 1000) mod prime
+ * and hLink tr = hash_type (!tr) + 1
+ * and hash_type (Stv n) = hStv n
+ *   | hash_type (Utv s) = hash_string s
+ *   | hash_type (Link tr) = hLink tr
+ *   | hash_type (Tyapp {Tyop,Args}) = hTyapp(Tyop,map hash_type Args);
+ *-----------------------------------------------------------------------*)
+
+
+val prime = 8388593; (* largest prime less than 2^23 *)
+fun hTyapp (Tyop,hArgs) = 
+       hash_string Tyop + foldr (op +) 11 hArgs
+        
+and hash_type (Utv s) = hash_string s
+  | hash_type (Tyapp {Tyop,Args}) = hTyapp(Tyop,map hash_type Args);
+  
+  
+(*-------------------------------------------------------------------------
+ * Type Sharing Table
+ *
+ * This is a global table of terms to implement cell sharing of 
+ * identical terms.  It is almost a hash table, except the hash keys
+ * don't map to anything, and we must implement it ourselves to
+ * ensure sharing.
+ *
+ * Not all terms need be optimized against this table - indeed only
+ * those which are known to be persistent should be optimized.  For
+ * instance, terms which are imported from the outside world when reading
+ * a theory file, or perhaps parsing, should be optimized.
+ *
+ * The table does not currently grow in size!!  
+ *
+ * NOTE: It is possible that the implementation of hash_term will
+ * be changed in the future to use some completely different
+ * algorithm.  In this case depth_hash will have to be isolated
+ * from hash_term.  Strictly speaking, the functions do not have 
+ * to compute the same hash values, since depth_hash is only used
+ * in the code below (which doesn't use hash_term).
+ *
+ *    fun depth_hash {fStv,fUtv,fTyapp,fLink} ty =
+ *      let fun partial_hash (Stv n) = 
+ *              let val h = hStv n
+ *              in (fStv (n,h),h) end
+ *         | partial_hash (Utv s) = 
+ *              let val h = hash_string s
+ *              in (fUtv (s,h),h) end
+ *         | partial_hash (Link (ref link)) = 
+ *              let val (rLink,hLink) = partial_hash link 
+ *                  val h = hLink + 1 
+ *              in (fLink (ref rLink,h),h) end
+ *         | partial_hash (Tyapp {Tyop,Args}) = 
+ *              let val hArgs = map partial_hash Args
+ *                  val h = hTyapp (Tyop,map #2 hArgs)
+ *              in
+ *                (fTyapp ({Tyop=Tyop,Args=map #1 hArgs},h), h)
+ *              end
+ *    in #1(partial_hash ty) end
+ *   handle e => WRAP_ERR("depth_hash",e);
+ *
+ * fun optimize_type ty =
+ *    depth_hash {
+ *       fStv=remember_and_remake Stv,
+ *       fUtv=remember_and_remake Utv,
+ *       fLink=remember_and_remake Link,
+ *       fTyapp=remember_and_remake Tyapp
+ *    } ty
+ *   handle e => WRAP_ERR("optimize_type failed when it shouldn't have",e);
+ *-----------------------------------------------------------------------*)
+ 
+local
+   fun depth_hash {fUtv,fTyapp} ty =
+     let fun partial_hash (Utv s) = 
+             let val h = hash_string s
+             in (fUtv (s,h),h) end
+        | partial_hash (Tyapp {Tyop,Args}) = 
+             let val hArgs = map partial_hash Args
+                 val h = hTyapp (Tyop,map #2 hArgs)
+             in
+               (fTyapp ({Tyop=Tyop,Args=map #1 hArgs},h), h)
+             end
+   in #1(partial_hash ty) end
+   handle e => WRAP_ERR("depth_hash",e);
+
+   val store_table_size = ref 1001;
+   val store_tab = ref (Array.array((!store_table_size), ([]:hol_type list)));
+   fun lookupL ty [] = (raise Fail "")
+     | lookupL ty (ty'::rst) = if (ty = ty') then ty' else lookupL ty rst
+   fun lookup (hval,ty) = lookupL ty (Array.sub(!store_tab, hval));
+   fun safe_lookup (hval,ty) = lookup (hval,ty) handle _ => ty;
+
+   fun remember (hval,ty) = 
+        (Array.update(!store_tab,hval,ty::Array.sub(!store_tab, hval)); ty)
+   fun remember_and_remake con (opt_subs,hval) =
+      lookup (hval mod (!store_table_size),con opt_subs) 
+      handle _ => remember (hval mod (!store_table_size),con opt_subs)
+
+in
+
+fun optimize_type ty =
+   depth_hash {
+      fUtv=remember_and_remake Utv,
+      fTyapp=remember_and_remake Tyapp
+   } ty
+  handle e => WRAP_ERR("optimize_type failed when it shouldn't have",e);
+end;
+
+
+
+(*-------------------------------------------------------------------------
+ * Type Constructors Table
+ *
+ * In concept type_record contains name/arity information for type
+ * constants.  In practice the name is stored as a type so
+ * monomorphic constants can be shared completely.  There is also
+ * a theory field to report errors.
+ *-----------------------------------------------------------------------*)
+
+type type_record = {Name : string,
+		    typ : typ option,
+                    Arity :int};
+
+type symtab = type_record Symtab.symtab;
+
+val symtab = ref (Symtab.mkTable(10,NOT_FOUND) : symtab);
+
+fun reset_symtab() = 
+   symtab := Symtab.mkTable (10,NOT_FOUND);
+
+fun symtab_copy () = Symtab.copy (!symtab);
+
+fun replace_symtab st = symtab := st;
+
+fun lookup_type s = Symtab.find (!symtab) s; (* do not eta convert!!*)
+
+fun type_decl x = 
+    let val data = lookup_type x
+    in {name = #Name data,arity = #Arity data}
+    end
+handle NOT_FOUND => ERR("type_decl", quote x^" not found in signature");
+
+exception TYPE_SYMTAB_CLASH of string;
+
+fun is_type x = (lookup_type x; true) handle NOT_FOUND => false;
+
+(* If it's already there, raise an exception, otherwise install it. *)
+fun add_type {Name,Arity} =
+   if is_type Name
+       then raise TYPE_SYMTAB_CLASH Name
+   else 
+       Symtab.insert (!symtab) 
+       (Name,{Name=Name,
+	      Arity=Arity,
+	      typ=if Arity=0 then SOME (Tyapp{Tyop=Name,Args=[]}) else NONE});
+       
+
+fun arity x = 
+   #Arity(lookup_type x) handle NOT_FOUND 
+   => ERR("arity",quote x^" not found in type signature");
+
+fun all_types () = map #1 (Symtab.listItems (!symtab));
+
+
+(*-------------------------------------------------------------------------
+ * The variables in a type.     
+ * 
+ *-----------------------------------------------------------------------*)
+
+local
+fun tyvars (v as Utv _) vlist = 
+      if (mem v vlist)
+      then vlist
+      else v::vlist
+  | tyvars (Tyapp{Args,...}) vlist = tyvarsl Args vlist
+and
+    tyvarsl L vlist = rev_itlist tyvars L vlist
+in
+fun type_vars ty = rev(tyvars ty [])
+fun type_varsl L = rev(tyvarsl L [])
+end;
+
+(*-------------------------------------------------------------------------
+ * Make a type. Shares type constants.
+ *-----------------------------------------------------------------------*)
+
+local 
+fun UNDEF_ERR s = ERR("mk_type","type "^quote s^" not defined")
+in
+fun mk_type{Tyop, Args = []} = 
+     (case (lookup_type Tyop handle NOT_FOUND => UNDEF_ERR Tyop)
+        of {typ=SOME typ,Arity = 0,...} => typ
+         | _ => ERR("mk_type", "arities don't match"))
+     
+  | mk_type(ty as {Tyop,Args}) =
+      if ((#Arity(lookup_type Tyop) = length Args) 
+          handle NOT_FOUND => UNDEF_ERR Tyop)
+      then Tyapp ty
+      else ERR("mk_type", "arities don't match")
+end;
+      
+
+(*-------------------------------------------------------------------------
+ * Take a type apart 
+ *-----------------------------------------------------------------------*)
+
+fun dest_type (Tyapp r) = r
+  | dest_type _ = ERR("dest_type", "");
+
+(*-------------------------------------------------------------------------
+ * Type variables
+ *-----------------------------------------------------------------------*)
+
+fun mk_vartype s = 
+      if (Lexis.allowed_user_type_var s)
+      then Utv s
+      else ERR("mk_vartype", "incorrect syntax")
+
+fun dest_vartype (Utv s) = s
+  | dest_vartype _ = ERR("dest_vartype","not a type variable");
+
+val is_vartype = can dest_vartype;
+
+
+(*-------------------------------------------------------------------------
+ * Extends an ordering on elements of a type to an ordering on lists of
+ * elements of that type. 
+ *
+ * A total ordering on types. Stv < Utv < Link < Tyapp
+ * 
+ *------------------------------------------------------------------------*)
+
+fun type_ord (Utv s1,Utv s2) = string_ord(s1,s2)
+  | type_ord (Utv _,_) = LESS
+
+  | type_ord (Tyapp{Tyop=s1, Args = L1},Tyapp{Tyop=s2, Args=L2}) =
+       (case (string_ord (s1,s2)) of
+	   EQUAL => list_ord type_ord (L1,L2)
+         | x => x)
+  | type_ord (Tyapp _, _) = GREATER;
+
+val type_lt = curry (lt_of_ord type_ord);
+    
+
+(*-------------------------------------------------------------------------
+ * Is a type polymorphic?
+ *
+ *------------------------------------------------------------------------*)
+
+fun polymorphic (Utv _) = true
+  | polymorphic (Tyapp{Args,...}) = exists polymorphic Args;
+    
+
+(*-------------------------------------------------------------------------
+ * type_subst
+ *    Substitute in a type  
+ *
+ * Sharing version 
+ *------------------------------------------------------------------------*)
+	   
+fun type_qsubst [] ty = raise UNCHANGED
+  | type_qsubst theta (Tyapp{Tyop,Args}) =
+      Tyapp{Tyop=Tyop,Args=appl_qfun (type_qsubst theta) Args}
+  | type_qsubst theta (v as Utv _) = 
+      (case (subst_assoc (fn x => (x = v)) theta)
+         of NONE => raise UNCHANGED
+       | SOME ty => ty);
+    
+fun type_subst theta = qfun_to_fun (type_qsubst theta);
+    
+
+
+end; (* TYPE *)
+
+
+@
+
+
+1.7
+log
+@Fixed types, pretypes, fixities, parsing.
+@
+text
+@d1 11
+a11 9
+(* ===================================================================== *)
+(* FILE          : type.sml                                              *)
+(* DESCRIPTION   : HOL types.                                            *)
+(*                                                                       *)
+(* AUTHOR        : (c) Konrad Slind, University of Calgary               *)
+(* DATE          : August 26, 1991                                       *)
+(* UPDATE        : October 94. Type signature implementation moved from  *)
+(*                 symtab.sml, which is now gone.                        *)
+(* ===================================================================== *)
+d13 1
+a13 1
+functor TYPE (structure Lexis : Lexis_sig): Private_type_sig =
+d152 1
+a152 1
+type type_record = {name : string,
+d154 1
+a154 2
+                    arity :int, 
+                    theory:string};
+d171 1
+a171 1
+    in {name = #name data,arity = #arity data,theory = #theory data}
+d175 1
+a175 3
+exception TYPE_SYMTAB_CLASH of {common_name:string, 
+                                theory1:string, 
+                                theory2:string};
+d177 2
+d180 4
+a183 7
+fun add_type_const {theory,name,arity} =
+   let val data = lookup_type name
+   in raise TYPE_SYMTAB_CLASH{common_name=name, 
+			      theory1= theory, 
+			      theory2= #theory data}
+   end
+   handle NOT_FOUND => 
+d185 3
+a187 4
+       (name,{theory=theory,
+	      name=name,
+	      arity=arity,
+	      typ=if arity=0 then SOME (Tyapp{Tyop=name,Args=[]}) else NONE});
+d190 3
+a192 3
+fun arity_of_type x = 
+   #arity(lookup_type x) handle NOT_FOUND 
+   => ERR("arity_of_type",quote x^" not found in type signature");
+d194 1
+a194 1
+fun is_type x = (lookup_type x; true) handle NOT_FOUND => false;
+a199 14
+ * local
+ * fun tyvars (v as Utv _) vlist = 
+ *       if (mem v vlist)
+ *       then vlist
+ *       else v::vlist
+ *   | tyvars (Tyapp{Args,...}) vlist = tyvarsl Args vlist
+ *   | tyvars _ _ = ERR("tyvars","type construction")
+ * and
+ *     tyvarsl L vlist = rev_itlist tyvars L vlist
+ * in
+ * fun type_vars ty = rev(tyvars ty [])
+ * fun type_varsl L = rev(tyvarsl L [])
+ * end;
+ * 
+d224 1
+a224 1
+        of {typ=SOME typ,arity = 0,...} => typ
+d228 1
+a228 1
+      if ((#arity(lookup_type Tyop) = Portable.List.length Args) 
+@
+
+
+1.6
+log
+@Preterm and other changes, see 7.changes
+@
+text
+@a20 7
+(*-------------------------------------------------------------------------
+ * typ
+ * datatype typ = Stv of int           (* System generated type variables *)
+ *              | Utv of string        (* User-given type variables *)
+ *              | Link of typ ref      (* Modifiable pointers *)
+ *              | Tyapp of {Tyop : string, Args : typ list};
+ *-----------------------------------------------------------------------*)
+d197 1
+a197 1
+fun is_st_type_const x = (lookup_type x; true) handle NOT_FOUND => false;
+a279 18
+ * fun type_ord (Stv i1,Stv i2) = int_ord (i1,i2)
+ *   | type_ord (Stv _,_) = LESS
+ * 
+ *   | type_ord (Utv _,Stv _)  = GREATER
+ *   | type_ord (Utv s1,Utv s2) = string_ord(s1,s2)
+ *   | type_ord (Utv _,_) = LESS
+ * 
+ *   | type_ord (Link (ref ty1),Link (ref ty2)) = type_ord (ty1,ty2)
+ *   | type_ord (Link _,Tyapp _) = LESS
+ *   | type_ord (Link _,_) = GREATER
+ * 
+ *   | type_ord (Tyapp{Tyop=s1, Args = L1},Tyapp{Tyop=s2, Args=L2}) =
+ *        (case (string_ord (s1,s2)) of
+ * 	   EQUAL => list_ord type_ord (L1,L2)
+ *          | x => x)
+ *   | type_ord (Tyapp _, _) = GREATER;
+ * 
+ * val type_lt = curry (lt_of_ord type_ord);
+a296 4
+ * fun polymorphic (Utv _) = true
+ *   | polymorphic (Tyapp{Args,...}) = exists polymorphic Args
+ *   | polymorphic _ = ERR("polymorphic","type construction");
+
+a303 138
+ * Used in type inference.  
+ *
+ * local
+ * val tyv_num = ref 0
+ * in
+ * fun new_type_var() = ( inc tyv_num;  Link(ref(Stv(!tyv_num))))
+ * fun reset_type_num() = (tyv_num := 0)
+ * end;
+ *------------------------------------------------------------------------*)
+
+
+(*-------------------------------------------------------------------------
+ * Unification of types by pointer redirection.
+ * 
+ * The order of the first three clauses of unif is delicate. They ensure 
+ * that the typ in the first argument, if it is an assignable variable, 
+ * gets assigned. 
+ * (* An "all" function defined for uncurried predicates.   *)
+ * fun pr_all2 f =
+ *    let fun trav (a1::rst1) (a2::rst2) = f(a1,a2) andalso trav rst1 rst2
+ *          | trav [] [] = true
+ *    in trav
+ *    end;
+ * 
+ * (* Are two types equal? Slower than the more clearly written version. *)
+ * fun ty_eq pr = 
+ *    (op =) pr
+ *    orelse 
+ *    (case pr
+ *      of (Tyapp{Tyop = s1, Args = A1},Tyapp{Tyop = s2, Args = A2}) =>
+ *             ((s1=s2) andalso pr_all2 ty_eq A1 A2)
+ *       | (Link(ref ty1), Link(ref ty2)) => ty_eq(ty1,ty2)
+ *       | (Link(ref ty1),ty2) => ty_eq(ty1,ty2)
+ *       | (ty1, Link(ref ty2)) => ty_eq(ty1,ty2)
+ *       | _ => false);
+ * 
+ * (* The occurs check. We know that the first argument is an Stv. *)
+ * fun occurs v =
+ *    let fun occ (Tyapp{Args, ...}) = exists occ Args
+ *          | occ (Link (ref ty)) = occ ty
+ *          | occ ty = (v = ty)
+ *    in occ
+ *    end;
+ * 
+ * exception UNIFY of string
+ * fun unify ty1 ty2 = if ty_eq(ty1,ty2) then () else unif(ty1,ty2)
+ * and unif (Link(r as ref(s as Stv _)), ty) = 
+ *         if (occurs s ty) then raise UNIFY "occurs check" else r := ty
+ *   | unif (Link(ref ty1), ty2) = unify ty1 ty2
+ *   | unif (ty, v as Link (ref (Stv _))) = unify v ty
+ *   | unif (ty1, Link (ref ty2)) = unify ty1 ty2
+ *   | unif (Tyapp{Tyop = s1, Args = args1},Tyapp{Tyop = s2, Args = args2}) =
+ *       if (s1 = s2)
+ *       then rev_itlist2 (fn ty1 => fn ty2 => fn _ => unify ty1 ty2)
+ *                        args1 args2 ()
+ *       else raise UNIFY "inequal constants"
+ *   | unif _ = raise UNIFY "structural difference in types";
+ *--------------------------------------------------------------------------*)
+
+
+
+(*************************************************************************
+ * Postprocessing of types. Delete all Links from a type. Raise an error 
+ * if there is a system type variable left in the type.
+ *************************************************************************)
+
+(* version that rebuilds type *********************************************
+ * fun shrink_type (Link(ref ty)) = shrink_type ty
+ *   | shrink_type (Tyapp{Tyop, Args}) = Tyapp{Tyop = Tyop, 
+ *                                             Args = map shrink_type Args}
+ *   | shrink_type (Stv _) =
+ *       ERR("shrink_type","Unconstrained type variable")
+ *   | shrink_type ty = ty;
+ ***************************************************************************)
+
+(*-------------------------------------------------------------------------
+ * (* Structure-sharing version.        *)
+ * exception SHRINK_TYPE
+ * fun shrink_type (Link(ref ty)) = 
+ *       (case (shrink_type ty) of NO_CHANGE => CHANGED ty | x => x)
+ *   | shrink_type (Tyapp{Tyop, Args}) = 
+ *       (case (apply_subst_to_list shrink_type Args)
+ *          of (YUP L') => CHANGED (Tyapp{Tyop = Tyop, Args = L'})
+ *           | (NOPE _) => NO_CHANGE)
+ *   | shrink_type (Stv _) = raise SHRINK_TYPE
+ *   | shrink_type ty = NO_CHANGE;
+ * 
+ * 
+ *--------------------------------------------------------------------------*)
+
+(****************************************************************************
+ * Maps from typ to typ, with type variables consistently renamed.
+ * Also deletes intermediate Links. Could be more careful: ground Tyapps 
+ * get rebuilt unnecessarily.
+ *****************************************************************************)
+
+(*  Non-sharing version ***************************************************
+ * local
+ * val tv_pair_list = ref ([]:(typ * typ) list)
+ * fun rn (v as Utv _) = 
+ *     ( assoc v (!tv_pair_list)
+ *       handle NOT_FOUND =>
+ *             let val v' = new_type_var()
+ *             in
+ *             ( tv_pair_list := ((v,v')::(!tv_pair_list));
+ *               v' )
+ *             end )
+ *   | rn (c as Tyc _) = c
+ *   | rn (Link(ref ty)) = rn ty
+ *   | rn (Tyapp{Tyop, Args}) = Tyapp{Tyop = Tyop, Args = map rn Args}
+ *   | rn (Stv _) =
+ *       ERR("rename_tv","attempt to rename system type variable")
+ * in
+ * fun rename_tv ty = ( tv_pair_list := []; rn ty)
+ * end;
+ *****************************************************************************)
+
+(*-------------------------------------------------------------------------
+ * (* Sharing version.   *)
+ * local
+ * val tv_pair_list = ref ([]:(typ * typ) list)
+ * fun rn (v as Utv _) = 
+ *       CHANGED(assoc v (!tv_pair_list) handle NOT_FOUND
+ *               => let val v' = new_type_var()
+ *                  in tv_pair_list := ((v,v')::(!tv_pair_list));  v'
+ *                  end)
+ *   | rn (Tyapp{Tyop, Args}) = 
+ *       (case (apply_subst_to_list rn Args)
+ *          of (YUP L) => CHANGED(Tyapp{Tyop = Tyop, Args = L})
+ *           | (NOPE _) => NO_CHANGE)
+ *   | rn _ = ERR("rename_tv","type construction")
+ * in
+ * fun rename_tv ty = ( tv_pair_list := []; rn ty)
+ * end;
+ *--------------------------------------------------------------------------*)
+
+
+(*-------------------------------------------------------------------------
+d307 1
+a307 50
+ * Non-sharing version:
+ *
+ * fun type_subst [] ty = ty
+ *   | type_subst theta (Tyapp{Tyop, Args}) = 
+ *       Tyapp{Tyop = Tyop, Args = map (type_subst theta) Args}
+ *   | type_subst theta (v as Utv _) = 
+ *          (subst_assoc v theta handle NOT_FOUND => v)
+ *   | type_subst theta (c as Tyc _) = c
+ *   | type_subst _ _ = ERR("type_subst","type construction");
+ *  
+ * (* Sharing version *)
+ * fun ty_sub [] ty = NO_CHANGE
+ *   | ty_sub theta (Tyapp{Tyop,Args}) =
+ *       (case (apply_subst_to_list (ty_sub theta) Args)
+ *          of (YUP L') => CHANGED (Tyapp{Tyop = Tyop, Args = L'})
+ *           | (NOPE _) => NO_CHANGE)
+ *   | ty_sub theta (v as Utv _) = 
+ *       (case (subst_assoc (fn x => (x = v)) theta)
+ *          of NONE => NO_CHANGE
+ *           | SOME ty => CHANGED ty)
+ *   | ty_sub _ _ = ERR("ty_sub","type construction");
+ *                                                 
+datatype 'a delta = NO_CHANGE | CHANGED of 'a;
+datatype 'a args_changed = YUP of 'a list | NOPE of 'a list;
+
+ * fun apply_subst_to_list f L =
+ *    itlist(fn ty => 
+ * 	      (fn (YUP L') 
+ * 	       => YUP((case (f ty)
+ * 			   of NO_CHANGE => ty
+ *                          | CHANGED ty' => ty')::L')
+ * 		| (NOPE L') 
+ * 		  => (case (f ty)
+ * 			  of NO_CHANGE => NOPE(ty::L')
+ * 			| CHANGED ty' => YUP(ty'::L'))))
+ *            L (NOPE[]);
+ *
+ * fun ty_sub [] ty = NO_CHANGE
+ *   | ty_sub theta (Tyapp{Tyop,Args}) =
+ *       (case (apply_subst_to_list (ty_sub theta) Args)
+ *          of (YUP L') => CHANGED (Tyapp{Tyop = Tyop, Args = L'})
+ *           | (NOPE _) => NO_CHANGE)
+ *   | ty_sub theta (v as Utv _) = 
+ *       (case (subst_assoc (fn x => (x = v)) theta)
+ *          of NONE => NO_CHANGE
+ *        | SOME ty => CHANGED ty);
+ * fun type_subst theta ty = case (ty_sub theta ty)
+ *                             of NO_CHANGE => ty
+ *                              | CHANGED ty' => ty';
+ * 
+a308 3
+
+
+(* Sharing version *)
+@
+
+
+1.5
+log
+@The HOL90 sources have been changed to allow for the use of different
+Standard ML compilers (possibly simultaneously).
+
+ * Many files in "src/0" changed to make them more portable across different
+   ML compilers. Various additions have been made to the Portable structure
+   and files changed to access identifiers in the Portable structure rather
+   than from the global environment. Worthy of special note are:
+
+   - The pointer equality used in "src/0/term.sml" has been made into a
+     function in the Portable structure.
+
+   - The ML-Lex and ML-Yacc files for the various parsers have been changed
+     to access the Portable structure. Both the source files and the SML
+     produced from them have been changed but I have not verified that the
+     source files would reproduce the new SML versions if ML-Lex and ML-Yacc
+     were to be rerun on them. The changes involve some hacks that exploit the
+     way ML-Lex and ML-Yacc work. See the sources for details.
+
+R.J.Boulton, 15th November 1995.
+@
+text
+@d11 1
+a11 2
+functor TYPE ((* structure Lib : Lib_sig *)
+	      structure Lexis : Lexis_sig): Type_sig =
+d15 1
+d17 2
+a18 17
+fun TYPE_ERR{function,message} =
+    Exception.HOL_ERR{origin_structure = "Type",
+		      origin_function = function,
+		      message = message}
+fun UNIFY_ERR s =
+    Exception.HOL_ERR{origin_structure = "Type",
+		      origin_function = "unify",
+		      message = s};
+val INEQUAL_CONST_ERR = UNIFY_ERR "inequal constants";
+val CONSTRAINT_CLASH = UNIFY_ERR "incompatible type variable constraints";
+val OCCUR_CHECK = UNIFY_ERR "occurs check";
+
+datatype hol_type = Stv of int           (* System generated type variables *)
+                  | Utv of string        (* User-given type variables *)
+                  | Tyc of string        (* Type constants  *)
+                  | Link of hol_type ref (* Modifiable pointers *)
+                  | Tyapp of {Tyop : string, Args : hol_type list};
+d21 7
+a27 1
+(* HOL TYPE SIGNATURES *)
+d29 130
+a158 1
+type type_record = {tyc   :hol_type, 
+d162 6
+a167 1
+type symtab = type_record list Array.array;
+d169 1
+a169 29
+(***********************************************************************
+ * The hash function for putting records into the symtab. "ordof" is
+ * SML/NJ-specific.
+ ***********************************************************************)
+val table_size = 311;
+fun hash s =
+   let fun hsh(n,m) =
+       hsh (((n*4) + Portable.String.ordof(s,m)) mod table_size, m+1)
+                     handle Portable.String.Ord => n
+   in hsh (0,0)
+   end;
+
+val symtab = ref (Array.array(table_size, ([]:type_record list)));
+
+fun add_entry (entry as {tyc = Tyc name, ...}) =  
+   let val i = hash name
+       val L = Array.sub(!symtab, i)
+   in
+   Array.update(!symtab,i,(L@@[entry]))
+   end;
+
+fun reset_symtab() = symtab := Array.array (table_size,([]: type_record list));
+
+fun symtab_copy () = 
+   let val st_clone = Array.array (table_size,([]:type_record list))
+       val _ = for_se 0 (table_size-1)
+                        (fn i => Array.update(st_clone,i,Array.sub(!symtab,i)))
+   in st_clone
+   end;
+d173 1
+a173 25
+(***************************************************************************
+ * For debugging and seeing the load
+ * local val colon = ":"
+ *       and space = " "
+ *       fun print_st_entry({tyc = Tyc s,...}:type_record) = 
+ *          output(std_out, s^space)
+ * in
+ * fun dump_symtab() =
+ *    for_se 0 (table_size-1)
+ *       (fn i => case Array.sub(!symtab,i)
+ *                of [] => output(std_out, (int_to_string i)^colon^space)
+ *                 | L =>(output(std_out,("\n"^(int_to_string i)^colon^space));
+ *                            map print_st_entry L; ()))
+ * end;
+ *************************************************************************)
+fun lookup_type s =
+   let fun lft [] = raise NOT_FOUND
+         | lft [tr as {tyc = Tyc name, ...}:type_record] = 
+              if (s = name) then tr else raise NOT_FOUND
+         | lft ((tr as {tyc = Tyc name, ...})::rst) = 
+              if (s = name) then tr else lft rst
+         | lft _ = raise TYPE_ERR{function = "lookup_type",
+                                  message = "implementation error"}
+   in  lft (Array.sub(!symtab, hash s))
+   end;
+d176 4
+a179 3
+   lookup_type x handle NOT_FOUND 
+   => raise TYPE_ERR{function = "type_decl", 
+                     message = quote x^" not found in signature"};
+d186 5
+a190 4
+fun add_type_const (entry as {theory = thry1,tyc = Tyc name, ...}) =
+   let val {theory = thry2, ...} = lookup_type name
+   in 
+   raise TYPE_SYMTAB_CLASH{common_name=name, theory1=thry1, theory2=thry2}
+d192 7
+a198 1
+   handle NOT_FOUND => add_entry entry;
+d202 1
+a202 2
+   => raise TYPE_ERR{function = "arity_of_type",
+                     message = quote x^" not found in type signature"};
+a205 1
+(* END TYPE SIGNATURES *)
+d207 18
+a225 1
+(* The variables in a type.     *)
+a230 1
+  | tyvars (Tyc _) vlist = vlist
+a231 2
+  | tyvars _ _ = raise TYPE_ERR{function = "tyvars",
+				message = "type construction"}
+d239 4
+a242 1
+(* Make a type. Shares type constants. *)
+d244 1
+a244 2
+fun UNDEF_ERR s = raise TYPE_ERR{function = "mk_type",
+                                 message = "type "^quote s^" not defined"}
+d248 2
+a249 3
+        of {tyc,arity = 0,...} => tyc
+         | _ => raise TYPE_ERR{function = "mk_type", 
+                               message = "arities don't match"})
+d255 1
+a255 2
+      else raise TYPE_ERR{function = "mk_type", 
+                          message = "arities don't match"}
+d257 1
+d259 4
+a262 1
+(* Take a type apart  *)
+d264 5
+a268 2
+  | dest_type (Tyc s) = {Tyop = s, Args = []}
+  | dest_type _ = raise TYPE_ERR{function = "dest_type", message = ""};
+d270 1
+a270 15
+(*************************************************************************
+ * Make a type variable. Simple sharing scheme. A bonafide hash table 
+ * would be better.
+ *************************************************************************)
+local
+val alpha = Utv "'a"      val beta  = Utv "'b"
+val c     = Utv "'c"      val d     = Utv "'d"
+val e     = Utv "'e"      val f     = Utv "'f"
+val g     = Utv "'g"      val h     = Utv "'h"
+in
+fun mk_vartype "'a" = alpha  | mk_vartype "'b" = beta
+  | mk_vartype "'c" = c      | mk_vartype "'d" = d
+  | mk_vartype "'e" = e      | mk_vartype "'f" = f
+  | mk_vartype "'g" = g      | mk_vartype "'h" = h
+  | mk_vartype s = 
+d273 1
+a273 3
+      else raise TYPE_ERR{function = "mk_vartype", 
+                          message = "incorrect syntax"}
+end;
+a274 1
+(* Take a type variable apart *)
+d276 1
+a276 2
+  | dest_vartype _ = raise TYPE_ERR{function = "dest_vartype",
+                                    message = "not a type variable"};
+a277 1
+(* Is something a type variable.   *)
+d281 1
+a281 1
+(**************************************************************************
+d284 34
+a317 38
+ **************************************************************************)
+fun lex_order order =
+   let fun ordered (t1::rst1) (t2::rst2) =
+           if (order t1 t2) 
+           then true
+           else if (order t2 t1)
+                then false
+                else ordered rst1 rst2
+         | ordered [] [] = false
+         | ordered [] _  = true
+         | ordered _  _  = false
+   in ordered 
+   end;
+
+(* A total ordering on types. Stv < Utv < Tyc < Link < Tyapp *)
+fun type_lt (Stv i1) (Stv i2) = (i1<i2)
+  | type_lt (Stv _) _ = true
+
+  | type_lt (Utv _) (Stv _)  = false
+  | type_lt (Utv s1) (Utv s2) = (s1<s2)
+  | type_lt (Utv _) _ = true
+
+  | type_lt (Tyc s1) (Tyc s2) = (s1<s2)
+  | type_lt (Tyc _) (Link _) = true
+  | type_lt (Tyc _) (Tyapp _) = true
+  | type_lt (Tyc _) _ = false
+
+  | type_lt (Link (ref ty1)) (Link (ref ty2)) = type_lt ty1 ty2
+  | type_lt (Link _) (Tyapp _) = true
+  | type_lt (Link _) _ = false
+
+  | type_lt (Tyapp{Tyop=s1, Args = L1}) (Tyapp{Tyop=s2, Args=L2}) =
+       if (s1<s2)
+       then true
+       else if (s2<s1)
+            then false
+            else lex_order type_lt L1 L2
+  | type_lt (Tyapp _) _ = false;
+d319 12
+d332 10
+a341 7
+(* Used in type inference.   *)
+local
+val tyv_num = ref 0
+in
+fun new_type_var() = ( inc tyv_num;  Link(ref(Stv(!tyv_num))))
+fun reset_type_num() = (tyv_num := 0)
+end;
+a342 27
+(* An "all" function defined for uncurried predicates.   *)
+fun pr_all2 f =
+   let fun trav (a1::rst1) (a2::rst2) = f(a1,a2) andalso trav rst1 rst2
+         | trav [] [] = true
+   in trav
+   end;
+
+(* Are two types equal? Slower than the more clearly written version. *)
+fun ty_eq pr = 
+   (op =) pr
+   orelse 
+   (case pr
+     of (Tyapp{Tyop = s1, Args = A1},Tyapp{Tyop = s2, Args = A2}) =>
+            ((s1=s2) andalso pr_all2 ty_eq A1 A2)
+      | (Link(ref ty1), Link(ref ty2)) => ty_eq(ty1,ty2)
+      | (Link(ref ty1),ty2) => ty_eq(ty1,ty2)
+      | (ty1, Link(ref ty2)) => ty_eq(ty1,ty2)
+      | _ => false);
+
+
+(* The occurs check. We know that the first argument is an Stv. *)
+fun occurs v =
+   let fun occ (Tyapp{Args, ...}) = Portable.List.exists occ Args
+         | occ (Link (ref ty)) = occ ty
+         | occ ty = (v = ty)
+   in occ
+   end;
+d344 1
+a344 1
+(**************************************************************************
+d346 1
+a346 1
+ *
+d348 1
+a348 1
+ * that the hol_type in the first argument, if it is an assignable variable, 
+d350 42
+a391 13
+ ***************************************************************************)
+fun unify ty1 ty2 = if ty_eq(ty1,ty2) then () else unif(ty1,ty2)
+and unif (Link(r as ref(s as Stv _)), ty) = 
+        if (occurs s ty) then raise OCCUR_CHECK else r := ty
+  | unif (Link(ref ty1), ty2) = unify ty1 ty2
+  | unif (ty, v as Link (ref (Stv _))) = unify v ty
+  | unif (ty1, Link (ref ty2)) = unify ty1 ty2
+  | unif (Tyapp{Tyop = s1, Args = args1},Tyapp{Tyop = s2, Args = args2}) =
+      if (s1 = s2)
+      then rev_itlist2 (fn ty1 => fn ty2 => fn _ => unify ty1 ty2)
+                       args1 args2 ()
+      else raise INEQUAL_CONST_ERR
+  | unif _ = raise UNIFY_ERR "structural difference in types";
+d404 1
+a404 2
+ *       raise TYPE_ERR{function = "shrink_type",
+ *                      message = "Unconstrained type variable"}
+d408 14
+a421 26
+datatype 'a delta = NO_CHANGE | CHANGED of 'a;
+datatype 'a args_changed = YUP of 'a list | NOPE of 'a list;
+
+fun apply_subst_to_list f L =
+   itlist(fn ty => 
+	      (fn (YUP L') 
+	       => YUP((case (f ty)
+			   of NO_CHANGE => ty
+                         | CHANGED ty' => ty')::L')
+		| (NOPE L') 
+		  => (case (f ty)
+			  of NO_CHANGE => NOPE(ty::L')
+			| CHANGED ty' => YUP(ty'::L'))))
+            L (NOPE[]);
+
+(* Structure-sharing version.        *)
+fun shrink_type (Link(ref ty)) = 
+      (case (shrink_type ty) of NO_CHANGE => CHANGED ty | x => x)
+  | shrink_type (Tyapp{Tyop, Args}) = 
+      (case (apply_subst_to_list shrink_type Args)
+         of (YUP L') => CHANGED (Tyapp{Tyop = Tyop, Args = L'})
+          | (NOPE _) => NO_CHANGE)
+  | shrink_type (Stv _) =
+      raise TYPE_ERR{function = "shrink_type",
+                     message = "Unconstrained type variable"}
+  | shrink_type ty = NO_CHANGE;
+a422 1
+
+d424 1
+a424 1
+ * Maps from hol_type to hol_type, with type variables consistently renamed.
+d431 1
+a431 1
+ * val tv_pair_list = ref ([]:(hol_type * hol_type) list)
+d444 1
+a444 2
+ *       raise TYPE_ERR{function = "rename_tv",
+ *                      message = "attempt to rename system type variable"}
+d450 18
+a467 17
+(* Sharing version.   *)
+local
+val tv_pair_list = ref ([]:(hol_type * hol_type) list)
+fun rn (v as Utv _) = 
+      CHANGED(assoc v (!tv_pair_list) handle NOT_FOUND
+              => let val v' = new_type_var()
+                 in tv_pair_list := ((v,v')::(!tv_pair_list));  v'
+                 end)
+  | rn (c as Tyc _) = NO_CHANGE
+  | rn (Tyapp{Tyop, Args}) = 
+      (case (apply_subst_to_list rn Args)
+         of (YUP L) => CHANGED(Tyapp{Tyop = Tyop, Args = L})
+          | (NOPE _) => NO_CHANGE)
+  | rn _ = raise TYPE_ERR{function = "rename_tv",message = "type construction"}
+in
+fun rename_tv ty = ( tv_pair_list := []; rn ty)
+end;
+d470 6
+a475 3
+(* Substitute in a type   *)
+
+(* Non-sharing version  ************************************************
+d482 43
+a524 3
+ *   | type_subst _ _ = raise TYPE_ERR{function = "type_subst",
+ *                                     message = "type construction"};
+ *************************************************************************)
+d528 5
+a532 6
+fun ty_sub [] ty = NO_CHANGE
+  | ty_sub theta (Tyapp{Tyop,Args}) =
+      (case (apply_subst_to_list (ty_sub theta) Args)
+         of (YUP L') => CHANGED (Tyapp{Tyop = Tyop, Args = L'})
+          | (NOPE _) => NO_CHANGE)
+  | ty_sub theta (v as Utv _) = 
+d534 5
+a538 9
+         of NONE => NO_CHANGE
+          | SOME ty => CHANGED ty)
+  | ty_sub theta (Tyc _) = NO_CHANGE
+  | ty_sub _ _ = raise TYPE_ERR{function = "ty_sub",
+                                message = "type construction"};
+                                                
+fun type_subst theta ty = case (ty_sub theta ty)
+                            of NO_CHANGE => ty
+                             | CHANGED ty' => ty';
+a539 6
+(* Is a type polymorphic? *)
+fun polymorphic (Utv _) = true
+  | polymorphic (Tyc _) = false
+  | polymorphic (Tyapp{Args,...}) = Portable.List.exists polymorphic Args
+  | polymorphic _ = raise TYPE_ERR{function="polymorphic",
+                                   message="type construction"};
+d542 2
+@
+
+
+1.5.4.1
+log
+@Removed files are parse files and portability files that have
+effectively been moved elsewhere.
+
+Modified files are up to date for ML 109.26.
+@
+text
+@d11 2
+a12 1
+structure Type : Type_sig =
+d15 1
+a15 1
+open Exception;
+d17 12
+d33 1
+a33 2
+                  | Tyapp of {Tyop:string, Args:hol_type list};
+
+a34 4
+fun TYPE_ERR{function,message} = 
+     HOL_ERR{origin_structure = "Type",
+             origin_function = function,
+             message = message}
+d36 1
+a37 4
+(*---------------------------------------------------------------------------
+ * HOL TYPE SIGNATURES
+ *---------------------------------------------------------------------------*)
+
+d44 1
+a44 1
+(*---------------------------------------------------------------------------
+d47 1
+a47 1
+ *---------------------------------------------------------------------------*)
+d50 3
+a52 2
+   let fun hsh(n,m) = hsh (((n*4) + ordof(s,m)) mod table_size, m+1)
+                     handle Ord => n
+d76 1
+a76 1
+(*---------------------------------------------------------------------------
+d90 1
+a90 1
+ *---------------------------------------------------------------------------*)
+d105 1
+a105 1
+                     message = Lib.quote x^" not found in signature"};
+d114 4
+a117 2
+   in raise TYPE_SYMTAB_CLASH{common_name=name, theory1=thry1, theory2=thry2}
+   end handle NOT_FOUND => add_entry entry;
+d122 1
+a122 1
+                     message = Lib.quote x^" not found in type signature"};
+d129 1
+a129 3
+(*---------------------------------------------------------------------------
+ * The variables in a type.
+ *---------------------------------------------------------------------------*)
+d131 4
+a134 1
+fun tyvars (v as Utv _) vlist = if (mem v vlist) then vlist else v::vlist
+a145 1
+
+d149 1
+a149 1
+                                 message = "type "^Lib.quote s^" not defined"}
+d156 1
+d158 1
+a158 1
+      if ((#arity(lookup_type Tyop) = length Args) 
+d161 2
+a162 1
+      else raise TYPE_ERR{function = "mk_type", message="arities don't match"}
+d170 1
+a170 1
+(*---------------------------------------------------------------------------
+d173 6
+a178 4
+ *---------------------------------------------------------------------------*)
+local val alpha = Utv "'a"      val beta  = Utv "'b"   val c   = Utv "'c"
+      val d     = Utv "'d"      val e     = Utv "'e"   val f   = Utv "'f"
+      val g     = Utv "'g"      val h     = Utv "'h"
+d184 5
+a188 2
+  | mk_vartype s = if (Lexis.allowed_user_type_var s) then Utv s
+      else raise TYPE_ERR{function = "mk_vartype", message="incorrect syntax"}
+d196 1
+d200 1
+a200 1
+(*---------------------------------------------------------------------------
+d203 1
+a203 1
+ *---------------------------------------------------------------------------*)
+d206 5
+a210 3
+           if (order t1 t2) then true else 
+           if (order t2 t1) then false
+           else ordered rst1 rst2
+d243 3
+a245 4
+(*---------------------------------------------------------------------------
+ * System type variable streams. Used in type inference.
+ *---------------------------------------------------------------------------*)
+local fun step i = Link(ref(Stv(i+1)))
+d247 2
+a248 1
+fun fresh_tyvar_stream() = Lib.mk_istream (fn x => x+1) 0 step
+a250 1
+
+d258 1
+a258 9
+(*---------------------------------------------------------------------------
+ * Are two types equal? This is Standard ML. A non-Standard version would 
+ * replace the "=" test with something like what is done in Term.aconv:
+ * 
+ *    open System.Unsafe
+ *    fun EQ (M:hol_type,N:hol_type) = ((cast M:int) = (cast N:int)) 
+ *
+ * Purists may cringe.
+ *---------------------------------------------------------------------------*)
+d261 8
+a268 7
+   orelse (case pr
+           of (Tyapp{Tyop = s1, Args = A1},Tyapp{Tyop = s2, Args = A2}) =>
+                 ((s1=s2) andalso pr_all2 ty_eq A1 A2)
+            | (Link(ref ty1), Link(ref ty2)) => ty_eq(ty1,ty2)
+            | (Link(ref ty1),ty2)  => ty_eq(ty1,ty2)
+            | (ty1, Link(ref ty2)) => ty_eq(ty1,ty2)
+            | _ => false);
+d270 1
+d273 1
+a273 1
+   let fun occ (Tyapp{Args, ...}) = exists occ Args
+d279 1
+a279 9
+(*---------------------------------------------------------------------------
+ * Various error messages for unification 
+ *---------------------------------------------------------------------------*)
+fun UNIFY_ERR s = TYPE_ERR{function = "unify",message = s};
+val INEQUAL_CONST_ERR = UNIFY_ERR "inequal constants";
+val OCCUR_CHECK = UNIFY_ERR "occurs check";
+
+
+(*---------------------------------------------------------------------------
+d285 1
+a285 1
+ *---------------------------------------------------------------------------*)
+d289 1
+a289 1
+  | unif (Link(ref ty1), ty2)          = unify ty1 ty2
+d291 6
+a296 4
+  | unif (ty1, Link (ref ty2))         = unify ty1 ty2
+  | unif (Tyapp{Tyop=s1, Args=args1}, Tyapp{Tyop=s2, Args=args2}) =
+        if (s1 <> s2) then raise INEQUAL_CONST_ERR
+        else rev_itlist2 (fn ty1 => K o unify ty1) args1 args2 ()
+d300 1
+a300 1
+(*---------------------------------------------------------------------------
+d303 1
+a303 1
+ *---------------------------------------------------------------------------*)
+d305 10
+d318 11
+a328 7
+fun apply f ty = 
+ let val v = f ty
+     fun appl(YUP L) = YUP((case v of NO_CHANGE => ty | CHANGED x => x)::L)
+       | appl(NOPE L) = case v of NO_CHANGE   => NOPE(ty::L)
+                                | CHANGED ty' => YUP(ty'::L)
+   in appl end   ;
+
+d330 1
+d334 2
+a335 2
+      (case (itlist (apply shrink_type) Args (NOPE[]))
+         of (YUP L) => CHANGED (Tyapp{Tyop = Tyop, Args = L})
+d337 3
+a339 2
+  | shrink_type (Stv _) = raise TYPE_ERR{function="shrink_type",
+                                         message="Unconstrained type variable"}
+d343 1
+a343 1
+(*---------------------------------------------------------------------------
+d345 25
+a369 1
+ *---------------------------------------------------------------------------*)
+d371 14
+a384 1
+local val tv_pair_list = ref ([]:(hol_type * hol_type) list)
+d386 2
+a387 15
+fun rename_tv tyvars = 
+  let val _ = tv_pair_list := []
+      fun rn (v as Utv _) = CHANGED
+                (assoc v (!tv_pair_list) handle NOT_FOUND
+                 => let val v' = Lib.state(Lib.next tyvars)
+                    in tv_pair_list := ((v,v')::(!tv_pair_list));  v'   end)
+        | rn (c as Tyc _) = NO_CHANGE
+        | rn (Tyapp{Tyop, Args}) = 
+           (case (itlist (apply rn) Args (NOPE[]))
+            of (YUP L) => CHANGED(Tyapp{Tyop = Tyop, Args = L})
+             | (NOPE _) => NO_CHANGE)
+        | rn _ = raise TYPE_ERR{function = "rename_tv",
+                                message = "type construction"}
+  in rn
+end end;
+d389 1
+d392 13
+d407 1
+a407 1
+      (case (itlist (apply (ty_sub theta)) Args (NOPE[]))
+d411 2
+a412 2
+      (case (Lib.subst_assoc (fn x => (x = v)) theta)
+         of NONE    => NO_CHANGE
+d416 1
+a416 1
+                                message  = "type construction"};
+d425 1
+a425 1
+  | polymorphic (Tyapp{Args,...}) = exists polymorphic Args
+d429 1
+a429 1
+end; (* Type *)
+@
+
+
+1.5.4.2
+log
+@Minor cosmetic modifications and deletions. The function "shrink_type" has
+moved to the Preterm structure.
+@
+text
+@a14 1
+open Lib;
+a38 3
+val table_size = 311;
+val symtab = ref (Array.array(table_size, ([]:type_record list)));
+
+d40 2
+a41 1
+ * The hash function for putting records into the symtab. 
+d43 1
+d50 2
+d56 1
+a56 1
+     Array.update(!symtab,i,(L@@[entry]))
+d300 1
+a300 1
+datatype 'a delta = SAME | DIFF of 'a;
+d305 3
+a307 3
+     fun appl(YUP L) = YUP((case v of SAME => ty | DIFF x => x)::L)
+       | appl(NOPE L) = case v of SAME   => NOPE(ty::L)
+                                | DIFF ty' => YUP(ty'::L)
+d311 11
+d330 1
+a330 1
+      fun rn (v as Utv _) = DIFF
+d334 1
+a334 1
+        | rn (c as Tyc _) = SAME
+d337 2
+a338 2
+            of (YUP L) => DIFF(Tyapp{Tyop = Tyop, Args = L})
+             | (NOPE _) => SAME)
+d346 1
+a346 1
+fun ty_sub [] ty = SAME
+d349 2
+a350 2
+         of (YUP L') => DIFF (Tyapp{Tyop = Tyop, Args = L'})
+          | (NOPE _) => SAME)
+d353 3
+a355 3
+         of NONE    => SAME
+          | SOME ty => DIFF ty)
+  | ty_sub theta (Tyc _) = SAME
+d360 2
+a361 2
+                            of SAME => ty
+                             | DIFF ty' => ty';
+@
+
+
+1.5.4.3
+log
+@These modifications are to make frags known (parse.{sig, sml}), and to
+make the hash function run properly (a change in the underlying exception
+that substring raises (from Ord to Subscript))  (type.sml, term.sml).
+@
+text
+@d47 2
+a48 3
+   let fun hsh(n,m) = hsh (((n*4) + Portable.String.ordof(s,m)) mod table_size,
+                            m+1)
+                     handle Portable.String.Ord => n
+@
+
+
+1.4
+log
+@First phase of hol90.8 development.  hol90 now compiles using NJSML-CM
+108.5, with separate compilation of libraries.  System dependencies
+have been isolated in the makefiles and "portable.sml".
+
+This involved a large number of enhancments to the source files,
+most of which are documented in the 7.changes file (or will be shortly).
+See also the correpsonding email corrspondence between RJB, KLS, TFM,
+JRH and DRS that happened during this development.
+@
+text
+@d158 1
+a158 1
+      if ((#arity(lookup_type Tyop) = length Args) 
+@
+
+
+1.3
+log
+@Check in after merging in Konrad's changes made after
+the release of hol90.7.  This involved creating a side branch
+in which to check in Konrad's changes, then merging in that
+side branch into the main development (which contains changes
+made by Elsa Gunter).
+
+Some other small modification have been made to the source code,
+as I begun to try to make this version into a working version:
+	- hol90 will now be compiled in an environment were no
+structures can be considered opn.  This means many structures
+now need "open Lib" and other such commands at their head.
+This has not yet been completed, but has been begun.
+	- "rotl" and "rotr" have been added to Lib, something
+which I just did impulsively.   Documentation files
+have also been added in help/90.
+@
+text
+@d51 2
+a52 2
+       hsh (((n*4) + Sml_system.String.ordof(s,m)) mod table_size, m+1)
+                     handle Sml_system.String.Ord => n
+d273 1
+a273 1
+   let fun occ (Tyapp{Args, ...}) = Sml_system.List.exists occ Args
+d425 1
+a425 1
+  | polymorphic (Tyapp{Args,...}) = Sml_system.List.exists polymorphic Args
+@
+
+
+1.2
+log
+@Keeping you up to date:
+
+I'm about to do a checkin of elsa's modifications to the hol90.7
+sources to create her hol90.pre8.  To recap what I've done:
+	- I checked out hol90 (in /usr/groups/hol/drs1004/hol90)
+		cvs co hol90
+	  (Well, to be honest, I only checked out those
+	  parts of hol90 I knew I'd be changing, e.g. not the
+	  Manual, and only parts of the library.  Checking out the
+	  entire source takes a while, mainly due to the enormous number
+	  of help files.  The limiting factor is files/second, which
+         runs at around 5 when CVS is working on nfs over a network, not
+         KB/second, which you might at first think it would be).
+
+	- By doing a recursive diff between Elsa's source and the
+	hol90.7 source I found all the changes Elsa had made to
+	source files.  I copied relevant files from Elsa's source
+	into my checked out version.  The only new files were
+		- the sml_system files in src/0
+		- some make scripts in src/.
+	Changed files were in:
+		src/{0,1,2,3}
+		library/arith/src/thm_convs.sml
+		library/list/src/list_conv1.sml
+		library/num/src/num_lib.sml
+		library/prog_logic/src/halts_logic.sml
+		library/prog_logic/src/translation.sml
+		library/prog_logic/theories/src/mk_halts.sml
+		library/real/theories/src/Make
+		library/real/theories/src/equiv.sml
+		library/real/theories/src/seq.sml
+		library/reduce/src/arithconv.sml
+		library/string/src/string_conv.sml
+		library/unity/theories/src/aux_definitions.sml
+		library/word/theories/src/*
+
+	- I will now commit these changes, with this email as the log message.
+		cvs commit
+
+	- Tomorrow I will get this version compiling
+	with NJSML 108 (I will probably add
+	the files to enable the NJSML compilation manager to make
+	this easier), then check those changes in.  I think it's
+	good to get things in a working state.
+@
+text
+@d15 2
+d65 1
+a65 2
+fun reset_symtab() = 
+     symtab := Array.array (table_size,([]: type_record list));
+d69 1
+a69 1
+       val _ = Lib.for_se 0 (table_size-1)
+d92 1
+a92 1
+   let fun lft [] = raise Lib.NOT_FOUND
+d94 1
+a94 1
+              if (s = name) then tr else raise Lib.NOT_FOUND
+d103 1
+a103 1
+   lookup_type x handle Lib.NOT_FOUND 
+d105 1
+a105 1
+                     message = Lib.quote x^" not found in signature"};
+d117 1
+a117 1
+   handle Lib.NOT_FOUND => add_entry entry;
+d120 1
+a120 1
+   #arity(lookup_type x) handle Lib.NOT_FOUND 
+d122 1
+a122 1
+                     message = Lib.quote x^" not found in type signature"};
+d124 1
+a124 1
+fun is_st_type_const x = (lookup_type x; true) handle Lib.NOT_FOUND => false;
+d132 1
+a132 1
+      if (Lib.mem v vlist)
+d140 1
+a140 1
+    tyvarsl L vlist = Lib.rev_itlist tyvars L vlist
+d149 1
+a149 1
+                                 message = "type "^Lib.quote s^" not defined"}
+d152 1
+a152 1
+     (case (lookup_type Tyop handle Lib.NOT_FOUND => UNDEF_ERR Tyop)
+d159 1
+a159 1
+          handle Lib.NOT_FOUND => UNDEF_ERR Tyop)
+d197 1
+a197 1
+val is_vartype = Lib.can dest_vartype;
+d201 2
+a202 2
+ * Extends a "less-than" ordering on elements of a type to a lexicographic 
+ *   ordering on lists of elements of that type. 
+d206 5
+a210 5
+              if (order t1 t2) 
+              then true
+              else if (order t2 t1)
+                   then false
+                   else ordered rst1 rst2
+d217 1
+a217 1
+(* A total ordering on types *)
+d247 1
+a247 1
+fun new_type_var() = ( Lib.inc tyv_num;  Link(ref(Stv(!tyv_num))))
+d286 3
+a288 8
+fun unify ty1 ty2 = if ty_eq(ty1,ty2) 
+                    then ()
+                    else unif(ty1,ty2)
+and
+    unif (Link(r as ref(s as Stv _)), ty) = 
+        if (occurs s ty)
+        then raise OCCUR_CHECK
+        else r := ty
+d294 1
+a294 1
+      then Lib.rev_itlist2 (fn ty1 => fn ty2 => fn _ => unify ty1 ty2)
+d319 1
+a319 1
+   Lib.itlist(fn ty => 
+d375 4
+a378 6
+      CHANGED(Lib.assoc v (!tv_pair_list)
+              handle Lib.NOT_FOUND =>
+                let val v' = new_type_var()
+                in
+                ( tv_pair_list := ((v,v')::(!tv_pair_list));  v' )
+                end)
+d397 1
+a397 1
+ *          (Lib.subst_assoc v theta handle NOT_FOUND => v)
+d411 1
+a411 1
+      (case (Lib.subst_assoc (fn x => (x = v)) theta)
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d11 2
+a12 1
+functor TYPE (Lexis : Lexis_sig): Type_sig =
+d15 8
+a22 6
+fun TYPE_ERR{function,message} = HOL_ERR{origin_structure = "Type",
+					 origin_function = function,
+					 message = message}
+fun UNIFY_ERR s = HOL_ERR{origin_structure = "Type",
+			  origin_function = "unify",
+			  message = s};
+d48 3
+a50 2
+   let fun hsh(n,m) = hsh (((n*4) + ordof(s,m)) mod table_size, m+1)
+                     handle Ord => n
+d68 1
+a68 1
+       val _ = for_se 0 (table_size-1)
+d91 1
+a91 1
+   let fun lft [] = raise NOT_FOUND
+d93 1
+a93 1
+              if (s = name) then tr else raise NOT_FOUND
+d102 1
+a102 1
+   lookup_type x handle NOT_FOUND 
+d116 1
+a116 1
+   handle NOT_FOUND => add_entry entry;
+d119 1
+a119 1
+   #arity(lookup_type x) handle NOT_FOUND 
+d123 1
+a123 1
+fun is_st_type_const x = (lookup_type x; true) handle NOT_FOUND => false;
+d131 1
+a131 1
+      if (mem v vlist)
+d139 1
+a139 1
+    tyvarsl L vlist = rev_itlist tyvars L vlist
+d151 1
+a151 1
+     (case (lookup_type Tyop handle NOT_FOUND => UNDEF_ERR Tyop)
+d158 1
+a158 1
+          handle NOT_FOUND => UNDEF_ERR Tyop)
+d196 1
+a196 1
+val is_vartype = can dest_vartype;
+d246 1
+a246 1
+fun new_type_var() = ( inc tyv_num;  Link(ref(Stv(!tyv_num))))
+d272 1
+a272 1
+   let fun occ (Tyapp{Args, ...}) = exists occ Args
+d298 1
+a298 1
+      then rev_itlist2 (fn ty1 => fn ty2 => fn _ => unify ty1 ty2)
+d323 4
+a326 4
+   itlist(fn ty => 
+          (fn (YUP L') 
+              => YUP((case (f ty)
+                        of NO_CHANGE => ty
+d328 5
+a332 5
+            | (NOPE L') 
+              => (case (f ty)
+                    of NO_CHANGE => NOPE(ty::L')
+                     | CHANGED ty' => YUP(ty'::L'))))
+         L (NOPE[]);
+d379 2
+a380 2
+      CHANGED(assoc v (!tv_pair_list)
+              handle NOT_FOUND =>
+d431 1
+a431 1
+  | polymorphic (Tyapp{Args,...}) = exists polymorphic Args
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@
+
+
+1.1.1.1.2.1
+log
+@Konrad's bug fixes up to start of serious
+hol90.8 devel;opment.  Checked into branch revision for
+later merging with trunk (elsa's work).  See
+doc/7.chages for a full description of what's been done.
+@
+text
+@d59 2
+a60 1
+fun reset_symtab() = symtab := Array.array (table_size,([]: type_record list));
+d196 2
+a197 2
+ * Extends an ordering on elements of a type to an ordering on lists of
+ * elements of that type. 
+d201 5
+a205 5
+           if (order t1 t2) 
+           then true
+           else if (order t2 t1)
+                then false
+                else ordered rst1 rst2
+d212 1
+a212 1
+(* A total ordering on types. Stv < Utv < Tyc < Link < Tyapp *)
+d281 8
+a288 3
+fun unify ty1 ty2 = if ty_eq(ty1,ty2) then () else unif(ty1,ty2)
+and unif (Link(r as ref(s as Stv _)), ty) = 
+        if (occurs s ty) then raise OCCUR_CHECK else r := ty
+d375 6
+a380 4
+      CHANGED(assoc v (!tv_pair_list) handle NOT_FOUND
+              => let val v' = new_type_var()
+                 in tv_pair_list := ((v,v')::(!tv_pair_list));  v'
+                 end)
+@

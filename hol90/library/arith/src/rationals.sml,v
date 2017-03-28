@@ -1,0 +1,268 @@
+head	1.1;
+branch	1.1.1;
+access;
+symbols
+	HOL97:1.1.1.1.4.1.0.2
+	bpHOL97:1.1.1.1.4.1
+	hol90_9_alpha:1.1.1.1.4.1
+	hol90_pre8_for_multiple_compilers:1.1.1.1.0.4
+	hol90_pre8_after_donalds_separate_compilation_changes:1.1.1.1
+	hol90_8_after_merging_Konrad_Elsa:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	95.10.16.13.31.35;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.31.35;	author rjb;	state Exp;
+branches
+	1.1.1.1.4.1;
+next	;
+
+1.1.1.1.4.1
+date	96.08.23.09.03.47;	author rjb;	state Exp;
+branches
+	1.1.1.1.4.1.2.1;
+next	;
+
+1.1.1.1.4.1.2.1
+date	97.07.11.19.28.59;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@(*****************************************************************************)
+(* FILE          : rationals.sml                                             *)
+(* DESCRIPTION   : Abstract datatype and functions for rational arithmetic   *)
+(*                 in ML.                                                    *)
+(*                                                                           *)
+(* READS FILES   : <none>                                                    *)
+(* WRITES FILES  : <none>                                                    *)
+(*                                                                           *)
+(* AUTHOR        : R.J.Boulton, University of Cambridge                      *)
+(* DATE          : 4th March 1991                                            *)
+(*                                                                           *)
+(* TRANSLATOR    : R.J.Boulton, University of Cambridge                      *)
+(* DATE          : 16th February 1993                                        *)
+(*                                                                           *)
+(* LAST MODIFIED : R.J.Boulton                                               *)
+(* DATE          : 16th February 1993                                        *)
+(*****************************************************************************)
+
+structure Rationals : Rationals_sig =
+struct
+
+open Int_extra;
+
+(*===========================================================================*)
+(* Rational arithmetic                                                       *)
+(*===========================================================================*)
+
+exception Rat_form;
+exception Rat_inv;
+exception Rat_div;
+
+(*---------------------------------------------------------------------------*)
+(* Abstract datatype for rational numbers and arithmetic                     *)
+(*                                                                           *)
+(* Rat         : (int * int) -> rat                                          *)
+(* Numerator   : rat -> int                                                  *)
+(* Denominator : rat -> int                                                  *)
+(* rat_inv     : rat -> rat                                                  *)
+(* rat_plus    : rat -> rat -> rat                                           *)
+(* rat_minus   : rat -> rat -> rat                                           *)
+(* rat_mult    : rat -> rat -> rat                                           *)
+(* rat_div     : rat -> rat -> rat                                           *)
+(* print_rat   : rat -> unit                                                 *)
+(*---------------------------------------------------------------------------*)
+
+datatype rat = rat of int * int;
+
+fun Rat (i,j) =
+   (if (i = 0) then rat (0,1)
+    else let val g = gcd (abs i,abs j)
+             val i' = i div g
+             and j' = j div g
+         in  if (j' < 0)
+             then rat ((~i'),(~j'))
+             else rat (i',j')
+         end
+   ) handle _ => raise Rat_form;
+
+fun Numerator (rat (i,_)) = i;
+
+fun Denominator (rat (_,j)) = j;
+
+fun rat_inv (rat (i,j)) =
+   if (i < 0) then rat ((~j),(~i))
+   else if (i > 0) then rat (j,i)
+   else raise Rat_inv;
+
+fun rat_plus (rat (i1,j1)) (rat (i2,j2)) =
+   let val g = gcd (j1,j2)
+       val d1 = j1 div g
+       and d2 = j2 div g
+       val (i,j) = ((i1 * d2) + (i2 * d1),(j1 * d2))
+   in  if (i = 0) then rat (0,1) else rat (i,j)
+   end;
+
+fun rat_minus (rat (i1,j1)) (rat (i2,j2)) =
+   let val g = gcd (j1,j2)
+       val d1 = j1 div g
+       and d2 = j2 div g
+       val (i,j) = ((i1 * d2) - (i2 * d1),(j1 * d2))
+   in  if (i = 0) then rat (0,1) else rat (i,j)
+   end;
+
+fun rat_mult (rat (i1,j1)) (rat (i2,j2)) =
+   if ((i1 = 0) orelse (i2 = 0))
+   then rat (0,1)
+   else let val g = gcd (abs i1,j2)
+            and h = gcd (abs i2,j1)
+            val i = (i1 div g) * (i2 div h)
+            and j = (j1 div h) * (j2 div g)
+        in  rat (i,j)
+        end;
+
+fun rat_div (rat (i1,j1)) (rat (i2,j2)) =
+   if (i2 = 0) then raise Rat_div
+   else if (i1 = 0) then rat (0,1)
+   else let val g = gcd (abs i1,abs i2)
+            and h = gcd (j1,j2)
+            val i = (i1 div g) * (j2 div h)
+            and j = (j1 div h) * (i2 div g)
+        in  if (j < 0) then rat ((~i),(~j)) else rat (i,j)
+        end;
+
+fun print_rat (rat (i,j)) =
+   if (j = 1)
+   then print i
+   else (print i; print "/"; print j);
+
+(*---------------------------------------------------------------------------*)
+(* rat_of_int : int -> rat                                                   *)
+(*                                                                           *)
+(* Conversion from integers to rationals                                     *)
+(*---------------------------------------------------------------------------*)
+
+fun rat_of_int i = Rat (i,1);
+
+(*---------------------------------------------------------------------------*)
+(* lower_int_of_rat : rat -> int                                             *)
+(*                                                                           *)
+(* Conversion from rationals to integers                                     *)
+(*                                                                           *)
+(* Computes the largest integer less than or equal to the rational.          *)
+(*---------------------------------------------------------------------------*)
+
+fun lower_int_of_rat r =
+   let val n = Numerator r
+       and d = Denominator r
+   in  if (n < 0)
+       then let val p = (n * d) in (((n - p) div d) + n) end
+       else (n div d)
+   end;
+
+(*---------------------------------------------------------------------------*)
+(* upper_int_of_rat : rat -> int                                             *)
+(*                                                                           *)
+(* Conversion from rationals to integers                                     *)
+(*                                                                           *)
+(* Computes the smallest integer greater than or equal to the rational.      *)
+(*---------------------------------------------------------------------------*)
+
+fun upper_int_of_rat r =
+   let val n = Numerator r
+       and d = Denominator r
+   in  if (n > 0)
+       then let val p = (n * d) in (((n - p) div d) + n) end
+       else (n div d)
+   end;
+
+(*---------------------------------------------------------------------------*)
+(* The rational number zero                                                  *)
+(*---------------------------------------------------------------------------*)
+
+val rat_zero = rat_of_int 0;
+
+(*---------------------------------------------------------------------------*)
+(* The rational number one                                                   *)
+(*---------------------------------------------------------------------------*)
+
+val rat_one = rat_of_int 1;
+
+(*---------------------------------------------------------------------------*)
+(* rat_less : rat -> rat -> bool                                             *)
+(*                                                                           *)
+(* Less-than for rationals                                                   *)
+(*---------------------------------------------------------------------------*)
+
+fun rat_less r1 r2 = Numerator (rat_minus r1 r2) < 0;
+
+end
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@
+
+
+1.1.1.1.4.1
+log
+@Added type annotations. Made print functions ML-independent.
+@
+text
+@d16 1
+a16 1
+(* DATE          : 7th August 1996                                           *)
+a23 3
+val print = Core.say;
+val print_int = Core.say o Core.int_to_string;
+
+d106 2
+a107 2
+   then print_int i
+   else (print_int i; print "/"; print_int j);
+@
+
+
+1.1.1.1.4.1.2.1
+log
+@Changes to accomodate CM, and also the differences between  SML'90 and SML'97.
+@
+text
+@d24 2
+a25 2
+val print = Lib.say;
+val print_int = Lib.say o Lib.int_to_string;
+@

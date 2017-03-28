@@ -1,0 +1,22 @@
+#!/bin/csh
+#
+# Usage	 make_unity <hol90>
+#
+
+if ("$1" == "") then
+    set hol90 = hol90
+else
+    set hol90    = $1
+endif
+
+set theories = ( state_logic unless ensures gen_induct leadsto comp_unity)
+
+cd theories/src
+
+foreach f ( $theories )
+    echo -n Building theory $f...
+    $hol90 < mk_$f.sml
+    echo ' done.'
+end
+
+echo "hol90 UNITY theories built."

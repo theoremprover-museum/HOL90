@@ -1,0 +1,150 @@
+
+
+          HHH                 LL
+          HHH                  LL
+          HHH                   LL
+          HHH                    LL
+          HHH          OOOO       LL
+          HHHHHHH     OO  OO       LL
+          HHHHHHH     OO  OO       LLL
+          HHH          OOOO        LLLL
+          HHH                     LL  LL
+          HHH                    LL    LL
+          HHH                   LL      LL
+          HHH                  LL        LL90.7
+
+Created on Tue Nov 15 10:19:01 GMT 1994
+using: Standard ML of New Jersey, Version 0.93, February 15, 1993
+
+
+val it = () : unit
+val it = () : unit
+- [opening parallel.sml]
+
+Declaring theory "parallel".
+
+Theory "CSP_base" already consistent with disk, hence not exported.
+val it = () : unit
+val it = () : unit
+val it = [(),(),()] : unit list
+val TRACES_DEF = |- !P. TRACES P = SND (REP_process P) : thm
+val ALPHA_DEF = |- !P. ALPHA P = FST (REP_process P) : thm
+val IS_PROCESS =
+  |- !A TR.
+       IS_PROCESS (A,TR) =
+       TR SUBSET STAR A /\ [] IN TR /\ (!s t. APPEND s t IN TR ==> s IN TR)
+  : thm
+val TRACES_IN_STAR = |- !P. TRACES P SUBSET STAR (ALPHA P) : thm
+val APPEND_IN_TRACES = |- !P s t. APPEND s t IN TRACES P ==> s IN TRACES P
+  : thm
+val NIL_IN_TRACES = |- !P. [] IN TRACES P : thm
+val PROCESS_LEMMA6 = |- !r. IS_PROCESS r = REP_process (ABS_process r) = r
+  : thm
+val APPEND_STAR = |- !s t A. APPEND s t IN STAR A = s IN STAR A /\ t IN STAR A
+  : thm
+val NIL_IN_STAR = |- !A. [] IN STAR A : thm
+val RESTRICT =
+  |- (!A. RESTRICT [] A = []) /\
+     (!x t A.
+       RESTRICT (CONS x t) A =
+       ((x IN A) => (CONS x (RESTRICT t A)) | (RESTRICT t A))) : thm
+val DISTRIB_REST =
+  |- !s t A. RESTRICT (APPEND s t) A = APPEND (RESTRICT s A) (RESTRICT t A)
+  : thm
+val it = [(),(),()] : unit list
+val IS_PROCESS_PAR =
+  |- !P Q.
+       IS_PROCESS
+         (ALPHA P UNION ALPHA Q,
+          {s |
+            s IN STAR (ALPHA P UNION ALPHA Q) /\
+            RESTRICT s (ALPHA P) IN TRACES P /\
+            RESTRICT s (ALPHA Q) IN TRACES Q}) : thm
+val PAR_LEMMA1 =
+  |- !P Q.
+       REP_process
+         (ABS_process
+           (ALPHA P UNION ALPHA Q,
+            {s |
+              s IN STAR (ALPHA P UNION ALPHA Q) /\
+              RESTRICT s (ALPHA P) IN TRACES P /\
+              RESTRICT s (ALPHA Q) IN TRACES Q})) =
+       (ALPHA P UNION ALPHA Q,
+        {s |
+          s IN STAR (ALPHA P UNION ALPHA Q) /\
+          RESTRICT s (ALPHA P) IN TRACES P /\
+          RESTRICT s (ALPHA Q) IN TRACES Q}) : thm
+val DEST_PROCESS =
+  |- ?f.
+       !P Q.
+         (ALPHA (f P Q) = ALPHA P UNION ALPHA Q) /\
+         (TRACES (f P Q) =
+          {s |
+            s IN STAR (ALPHA P UNION ALPHA Q) /\
+            RESTRICT s (ALPHA P) IN TRACES P /\
+            RESTRICT s (ALPHA Q) IN TRACES Q}) : thm
+val PAR =
+  |- !P Q.
+       (ALPHA (P PAR Q) = ALPHA P UNION ALPHA Q) /\
+       (TRACES (P PAR Q) =
+        {s |
+          s IN STAR (ALPHA P UNION ALPHA Q) /\
+          RESTRICT s (ALPHA P) IN TRACES P /\
+          RESTRICT s (ALPHA Q) IN TRACES Q}) : thm
+val it =
+  [|- !Q P. ALPHA (P PAR Q) = ALPHA P UNION ALPHA Q,
+   |- !Q P.
+        TRACES (P PAR Q) =
+        {s |
+          s IN STAR (ALPHA P UNION ALPHA Q) /\
+          RESTRICT s (ALPHA P) IN TRACES P /\
+          RESTRICT s (ALPHA Q) IN TRACES Q}] : thm list
+
+Theory "parallel" exported.
+val it = () : unit
+val it = () : unit
+Theory: parallel
+
+Parents:
+    process_ty
+    CSP_base
+
+Type constants:
+    
+
+Term constants:
+    PAR (Infix 450)   :process -> process -> process
+
+Axioms:
+    
+
+Definitions:
+    PAR
+    |- !P Q.
+         (ALPHA (P PAR Q) = ALPHA P UNION ALPHA Q) /\
+         (TRACES (P PAR Q) =
+          {s |
+            s IN STAR (ALPHA P UNION ALPHA Q) /\
+            RESTRICT s (ALPHA P) IN TRACES P /\
+            RESTRICT s (ALPHA Q) IN TRACES Q})
+
+Theorems:
+    IS_PROCESS_PAR
+    |- !P Q.
+         IS_PROCESS
+           (ALPHA P UNION ALPHA Q,
+            {s |
+              s IN STAR (ALPHA P UNION ALPHA Q) /\
+              RESTRICT s (ALPHA P) IN TRACES P /\
+              RESTRICT s (ALPHA Q) IN TRACES Q})
+    ALPHA_PAR |- !Q P. ALPHA (P PAR Q) = ALPHA P UNION ALPHA Q
+    TRACES_PAR
+    |- !Q P.
+         TRACES (P PAR Q) =
+         {s |
+           s IN STAR (ALPHA P UNION ALPHA Q) /\
+           RESTRICT s (ALPHA P) IN TRACES P /\
+           RESTRICT s (ALPHA Q) IN TRACES Q}
+
+Theory "parallel" is consistent with disk.
+val it = () : unit

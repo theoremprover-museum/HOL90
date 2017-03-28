@@ -1,0 +1,38 @@
+\DOC FILTER_COND_EQ_RULE
+
+\TYPE {FILTER_COND_EQ_RULE : (term -> bool) -> thm -> thm}
+
+\SYNOPSIS
+moves the selected right-hand terms of all equation inward through a 
+conditional.
+
+\LIBRARY cond
+
+\DESCRIBE
+moves the selected right-hand terms of all equation inward through a 
+conditional.
+
+{
+ |- (A => x|y) = z
+===================
+ |- A => x=z|y=z
+}
+
+\EXAMPLE
+
+{
+th;
+val it = |- ~((A => 5 | (((B => 5 | 6) = 5) => 7 | 8)) = 6) : thm
+- FILTER_COND_EQ_RULE (fn t => t=(--`5`--)) th;
+val it = |- ~((A => 5 | ((B => (5 = 5) | (6 = 5)) => 7 | 8)) = 6) : thm
+- FILTER_COND_EQ_RULE (fn t => t=(--`6`--)) th;
+val it = |- ~(A => (5 = 6) | (((B => 5 | 6) = 5) => (7 = 6) | (8 = 6))) : thm
+}
+
+\SEEALSO
+COND_EQ_CONV COND_EQ_RULE COND_EQ_TAC
+FILTER_COND_EQ_CONV FILTER_COND_EQ_TAC
+EQ_COND_CONV EQ_COND_RULE EQ_COND_TAC
+FILTER_EQ_COND_CONV FILTER_EQ_COND_RULE FILTER_EQ_COND_TAC
+
+\ENDDOC

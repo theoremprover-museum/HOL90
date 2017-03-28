@@ -1,0 +1,3035 @@
+thid = (List, 942752777, 698602)
+axioms = []
+definitions =
+[((REPLICATE),
+  [],
+  `((/\ ((! :('a -> bool) -> bool) (\(x :'a).
+   (((= :'a list -> 'a list -> bool)
+   (((REPLICATE :num -> 'a -> 'a list) 0) $0)) (NIL :'a list)))))
+   ((! :(num -> bool) -> bool) (\(n :num). ((! :('a -> bool) -> bool)
+   (\(x :'a). (((= :'a list -> 'a list -> bool)
+   (((REPLICATE :num -> 'a -> 'a list) (SUC $1)) $0))
+   (((CONS :'a -> 'a list -> 'a list) $0)
+   (((REPLICATE :num -> 'a -> 'a list) $1) $0))))))))`),
+ ((GENLIST),
+  [],
+  `((/\ ((! :((num -> 'a) -> bool) -> bool) (\(f :num -> 'a).
+   (((= :'a list -> 'a list -> bool)
+   (((GENLIST :(num -> 'a) -> num -> 'a list) $0) 0))
+   (NIL :'a list))))) ((! :((num -> 'a) -> bool) -> bool)
+   (\(f :num -> 'a). ((! :(num -> bool) -> bool) (\(n :num).
+   (((= :'a list -> 'a list -> bool)
+   (((GENLIST :(num -> 'a) -> num -> 'a list) $1) (SUC $0)))
+   (((SNOC :'a -> 'a list -> 'a list) ($1 $0))
+   (((GENLIST :(num -> 'a) -> num -> 'a list) $1) $0))))))))`),
+ ((UNZIP_SND_DEF),
+  [],
+  `((! :(('a # 'b) list -> bool) -> bool) (\(l :('a # 'b) list).
+   (((= :'b list -> 'b list -> bool)
+   ((UNZIP_SND :('a # 'b) list -> 'b list) $0))
+   ((SND :'a list # 'b list -> 'b list)
+   ((UNZIP :('a # 'b) list -> 'a list # 'b list) $0)))))`),
+ ((UNZIP_FST_DEF),
+  [],
+  `((! :(('a # 'b) list -> bool) -> bool) (\(l :('a # 'b) list).
+   (((= :'a list -> 'a list -> bool)
+   ((UNZIP_FST :('a # 'b) list -> 'a list) $0))
+   ((FST :'a list # 'b list -> 'a list)
+   ((UNZIP :('a # 'b) list -> 'a list # 'b list) $0)))))`),
+ ((UNZIP),
+  [],
+  `((/\ (((= :'a list # 'b list -> 'a list # 'b list -> bool)
+   ((UNZIP :('a # 'b) list -> 'a list # 'b list)
+   (NIL :('a # 'b) list)))
+   (((, :'a list -> 'b list -> 'a list # 'b list) (NIL :'a list))
+   (NIL :'b list)))) ((! :('a # 'b -> bool) -> bool) (\(x :'a # 'b).
+   ((! :(('a # 'b) list -> bool) -> bool) (\(l :('a # 'b) list).
+   (((= :'a list # 'b list -> 'a list # 'b list -> bool)
+   ((UNZIP :('a # 'b) list -> 'a list # 'b list)
+   (((CONS :'a # 'b -> ('a # 'b) list -> ('a # 'b) list) $1) $0)))
+   (((, :'a list -> 'b list -> 'a list # 'b list)
+   (((CONS :'a -> 'a list -> 'a list) ((FST :'a # 'b -> 'a) $1))
+   ((FST :'a list # 'b list -> 'a list)
+   ((UNZIP :('a # 'b) list -> 'a list # 'b list) $0))))
+   (((CONS :'b -> 'b list -> 'b list) ((SND :'a # 'b -> 'b) $1))
+   ((SND :'a list # 'b list -> 'b list)
+   ((UNZIP :('a # 'b) list -> 'a list # 'b list) $0))))))))))`),
+ ((ZIP),
+  [],
+  `((/\ (((= :('a # 'b) list -> ('a # 'b) list -> bool)
+   ((ZIP :'a list # 'b list -> ('a # 'b) list)
+   (((, :'a list -> 'b list -> 'a list # 'b list) (NIL :'a list))
+   (NIL :'b list)))) (NIL :('a # 'b) list)))
+   ((! :('a -> bool) -> bool) (\(x1 :'a).
+   ((! :('a list -> bool) -> bool) (\(l1 :'a list).
+   ((! :('b -> bool) -> bool) (\(x2 :'b).
+   ((! :('b list -> bool) -> bool) (\(l2 :'b list).
+   (((= :('a # 'b) list -> ('a # 'b) list -> bool)
+   ((ZIP :'a list # 'b list -> ('a # 'b) list)
+   (((, :'a list -> 'b list -> 'a list # 'b list)
+   (((CONS :'a -> 'a list -> 'a list) $3) $2))
+   (((CONS :'b -> 'b list -> 'b list) $1) $0))))
+   (((CONS :'a # 'b -> ('a # 'b) list -> ('a # 'b) list)
+   (((, :'a -> 'b -> 'a # 'b) $3) $1))
+   ((ZIP :'a list # 'b list -> ('a # 'b) list)
+   (((, :'a list -> 'b list -> 'a list # 'b list) $2)
+   $0)))))))))))))`),
+ ((SUFFIX_DEF),
+  [],
+  `((! :(('a -> bool) -> bool) -> bool) (\(P :'a -> bool).
+   ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :'a list -> 'a list -> bool)
+   (((SUFFIX :('a -> bool) -> 'a list -> 'a list) $1) $0))
+   ((((FOLDL :('a list -> 'a -> 'a list) -> 'a list -> 'a list ->
+              'a list) (\(l' :'a list). (\(x :'a).
+   ((((COND :bool -> 'a list -> 'a list -> 'a list) ($3 $0))
+   (((SNOC :'a -> 'a list -> 'a list) $0) $1)) (NIL :'a list)))))
+   (NIL :'a list)) $0))))))`),
+ ((PREFIX_DEF),
+  [],
+  `((! :(('a -> bool) -> bool) -> bool) (\(P :'a -> bool).
+   ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :'a list -> 'a list -> bool)
+   (((PREFIX :('a -> bool) -> 'a list -> 'a list) $1) $0))
+   ((FST :'a list # 'a list -> 'a list)
+   (((SPLITP :('a -> bool) -> 'a list -> 'a list # 'a list)
+   (((o :(bool -> bool) -> ('a -> bool) -> 'a -> bool) ~) $1))
+   $0)))))))`),
+ ((SPLITP),
+  [],
+  `((/\ ((! :(('a -> bool) -> bool) -> bool) (\(P :'a -> bool).
+   (((= :'a list # 'a list -> 'a list # 'a list -> bool)
+   (((SPLITP :('a -> bool) -> 'a list -> 'a list # 'a list) $0)
+   (NIL :'a list))) (((, :'a list -> 'a list -> 'a list # 'a list)
+   (NIL :'a list)) (NIL :'a list))))))
+   ((! :(('a -> bool) -> bool) -> bool) (\(P :'a -> bool).
+   ((! :('a -> bool) -> bool) (\(x :'a).
+   ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :'a list # 'a list -> 'a list # 'a list -> bool)
+   (((SPLITP :('a -> bool) -> 'a list -> 'a list # 'a list) $2)
+   (((CONS :'a -> 'a list -> 'a list) $1) $0)))
+   ((((COND :bool -> 'a list # 'a list -> 'a list # 'a list ->
+             'a list # 'a list) ($2 $1))
+   (((, :'a list -> 'a list -> 'a list # 'a list) (NIL :'a list))
+   (((CONS :'a -> 'a list -> 'a list) $1) $0)))
+   (((, :'a list -> 'a list -> 'a list # 'a list)
+   (((CONS :'a -> 'a list -> 'a list) $1)
+   ((FST :'a list # 'a list -> 'a list)
+   (((SPLITP :('a -> bool) -> 'a list -> 'a list # 'a list) $2) $0))))
+   ((SND :'a list # 'a list -> 'a list)
+   (((SPLITP :('a -> bool) -> 'a list -> 'a list # 'a list) $2)
+   $0))))))))))))`),
+ ((IS_SUBLIST),
+  [],
+  `((/\ ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :bool -> bool -> bool)
+   (((IS_SUBLIST :'a list -> 'a list -> bool) $0) (NIL :'a list)))
+   T)))) ((/\ ((! :('a -> bool) -> bool) (\(x :'a).
+   ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :bool -> bool -> bool)
+   (((IS_SUBLIST :'a list -> 'a list -> bool) (NIL :'a list))
+   (((CONS :'a -> 'a list -> 'a list) $1) $0))) F))))))
+   ((! :('a -> bool) -> bool) (\(x1 :'a).
+   ((! :('a list -> bool) -> bool) (\(l1 :'a list).
+   ((! :('a -> bool) -> bool) (\(x2 :'a).
+   ((! :('a list -> bool) -> bool) (\(l2 :'a list).
+   (((= :bool -> bool -> bool)
+   (((IS_SUBLIST :'a list -> 'a list -> bool)
+   (((CONS :'a -> 'a list -> 'a list) $3) $2))
+   (((CONS :'a -> 'a list -> 'a list) $1) $0))) ((\/ ((/\
+   (((= :'a -> 'a -> bool) $3) $1))
+   (((IS_PREFIX :'a list -> 'a list -> bool) $2) $0)))
+   (((IS_SUBLIST :'a list -> 'a list -> bool) $2)
+   (((CONS :'a -> 'a list -> 'a list) $1) $0))))))))))))))`),
+ ((IS_SUFFIX),
+  [],
+  `((/\ ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :bool -> bool -> bool)
+   (((IS_SUFFIX :'a list -> 'a list -> bool) $0) (NIL :'a list)))
+   T)))) ((/\ ((! :('a -> bool) -> bool) (\(x :'a).
+   ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :bool -> bool -> bool)
+   (((IS_SUFFIX :'a list -> 'a list -> bool) (NIL :'a list))
+   (((SNOC :'a -> 'a list -> 'a list) $1) $0))) F))))))
+   ((! :('a -> bool) -> bool) (\(x1 :'a).
+   ((! :('a list -> bool) -> bool) (\(l1 :'a list).
+   ((! :('a -> bool) -> bool) (\(x2 :'a).
+   ((! :('a list -> bool) -> bool) (\(l2 :'a list).
+   (((= :bool -> bool -> bool)
+   (((IS_SUFFIX :'a list -> 'a list -> bool)
+   (((SNOC :'a -> 'a list -> 'a list) $3) $2))
+   (((SNOC :'a -> 'a list -> 'a list) $1) $0))) ((/\
+   (((= :'a -> 'a -> bool) $3) $1))
+   (((IS_SUFFIX :'a list -> 'a list -> bool) $2) $0)))))))))))))`),
+ ((IS_PREFIX),
+  [],
+  `((/\ ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :bool -> bool -> bool)
+   (((IS_PREFIX :'a list -> 'a list -> bool) $0) (NIL :'a list)))
+   T)))) ((/\ ((! :('a -> bool) -> bool) (\(x :'a).
+   ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :bool -> bool -> bool)
+   (((IS_PREFIX :'a list -> 'a list -> bool) (NIL :'a list))
+   (((CONS :'a -> 'a list -> 'a list) $1) $0))) F))))))
+   ((! :('a -> bool) -> bool) (\(x1 :'a).
+   ((! :('a list -> bool) -> bool) (\(l1 :'a list).
+   ((! :('a -> bool) -> bool) (\(x2 :'a).
+   ((! :('a list -> bool) -> bool) (\(l2 :'a list).
+   (((= :bool -> bool -> bool)
+   (((IS_PREFIX :'a list -> 'a list -> bool)
+   (((CONS :'a -> 'a list -> 'a list) $3) $2))
+   (((CONS :'a -> 'a list -> 'a list) $1) $0))) ((/\
+   (((= :'a -> 'a -> bool) $3) $1))
+   (((IS_PREFIX :'a list -> 'a list -> bool) $2) $0)))))))))))))`),
+ ((ELL),
+  [],
+  `((/\ ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :'a -> 'a -> bool) (((ELL :num -> 'a list -> 'a) 0) $0))
+   ((LAST :'a list -> 'a) $0))))) ((! :(num -> bool) -> bool)
+   (\(n :num). ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :'a -> 'a -> bool) (((ELL :num -> 'a list -> 'a) (SUC $1))
+   $0)) (((ELL :num -> 'a list -> 'a) $1)
+   ((BUTLAST :'a list -> 'a list) $0))))))))`),
+ ((BUTLASTN),
+  [],
+  `((/\ ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :'a list -> 'a list -> bool)
+   (((BUTLASTN :num -> 'a list -> 'a list) 0) $0)) $0))))
+   ((! :(num -> bool) -> bool) (\(n :num). ((! :('a -> bool) -> bool)
+   (\(x :'a). ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :'a list -> 'a list -> bool)
+   (((BUTLASTN :num -> 'a list -> 'a list) (SUC $2))
+   (((SNOC :'a -> 'a list -> 'a list) $1) $0)))
+   (((BUTLASTN :num -> 'a list -> 'a list) $2) $0)))))))))`),
+ ((LASTN),
+  [],
+  `((/\ ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :'a list -> 'a list -> bool)
+   (((LASTN :num -> 'a list -> 'a list) 0) $0)) (NIL :'a list)))))
+   ((! :(num -> bool) -> bool) (\(n :num). ((! :('a -> bool) -> bool)
+   (\(x :'a). ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :'a list -> 'a list -> bool)
+   (((LASTN :num -> 'a list -> 'a list) (SUC $2))
+   (((SNOC :'a -> 'a list -> 'a list) $1) $0)))
+   (((SNOC :'a -> 'a list -> 'a list) $1)
+   (((LASTN :num -> 'a list -> 'a list) $2) $0))))))))))`),
+ ((BUTLAST_DEF),
+  [],
+  `((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :'a list -> 'a list -> bool) ((BUTLAST :'a list -> 'a list)
+   $0)) ((((SEG :num -> num -> 'a list -> 'a list) (PRE
+   ((LENGTH :'a list -> num) $0))) 0) $0))))`),
+ ((LAST_DEF),
+  [],
+  `((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :'a -> 'a -> bool) ((LAST :'a list -> 'a) $0))
+   ((HD :'a list -> 'a) ((((SEG :num -> num -> 'a list -> 'a list) 1)
+   (PRE ((LENGTH :'a list -> num) $0))) $0)))))`),
+ ((SEG),
+  [],
+  `((/\ ((! :(num -> bool) -> bool) (\(k :num).
+   ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :'a list -> 'a list -> bool)
+   ((((SEG :num -> num -> 'a list -> 'a list) 0) $1) $0))
+   (NIL :'a list))))))) ((/\ ((! :(num -> bool) -> bool) (\(m :num).
+   ((! :('a -> bool) -> bool) (\(x :'a).
+   ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :'a list -> 'a list -> bool)
+   ((((SEG :num -> num -> 'a list -> 'a list) (SUC $2)) 0)
+   (((CONS :'a -> 'a list -> 'a list) $1) $0)))
+   (((CONS :'a -> 'a list -> 'a list) $1)
+   ((((SEG :num -> num -> 'a list -> 'a list) $2) 0) $0))))))))))
+   ((! :(num -> bool) -> bool) (\(m :num). ((! :(num -> bool) -> bool)
+   (\(k :num). ((! :('a -> bool) -> bool) (\(x :'a).
+   ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :'a list -> 'a list -> bool)
+   ((((SEG :num -> num -> 'a list -> 'a list) (SUC $3)) (SUC $2))
+   (((CONS :'a -> 'a list -> 'a list) $1) $0)))
+   ((((SEG :num -> num -> 'a list -> 'a list) (SUC $3)) $2)
+   $0))))))))))))`),
+ ((BUTFIRSTN),
+  [],
+  `((/\ ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :'a list -> 'a list -> bool)
+   (((BUTFIRSTN :num -> 'a list -> 'a list) 0) $0)) $0))))
+   ((! :(num -> bool) -> bool) (\(n :num). ((! :('a -> bool) -> bool)
+   (\(x :'a). ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :'a list -> 'a list -> bool)
+   (((BUTFIRSTN :num -> 'a list -> 'a list) (SUC $2))
+   (((CONS :'a -> 'a list -> 'a list) $1) $0)))
+   (((BUTFIRSTN :num -> 'a list -> 'a list) $2) $0)))))))))`),
+ ((FIRSTN),
+  [],
+  `((/\ ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :'a list -> 'a list -> bool)
+   (((FIRSTN :num -> 'a list -> 'a list) 0) $0)) (NIL :'a list)))))
+   ((! :(num -> bool) -> bool) (\(n :num). ((! :('a -> bool) -> bool)
+   (\(x :'a). ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :'a list -> 'a list -> bool)
+   (((FIRSTN :num -> 'a list -> 'a list) (SUC $2))
+   (((CONS :'a -> 'a list -> 'a list) $1) $0)))
+   (((CONS :'a -> 'a list -> 'a list) $1)
+   (((FIRSTN :num -> 'a list -> 'a list) $2) $0))))))))))`),
+ ((OR_EL_DEF),
+  [],
+  `(((= :(bool list -> bool) -> (bool list -> bool) -> bool) OR_EL)
+   ((SOME_EL :(bool -> bool) -> bool list -> bool)
+   (I :bool -> bool)))`),
+ ((AND_EL_DEF),
+  [],
+  `(((= :(bool list -> bool) -> (bool list -> bool) -> bool) AND_EL)
+   ((ALL_EL :(bool -> bool) -> bool list -> bool)
+   (I :bool -> bool)))`),
+ ((IS_EL_DEF),
+  [],
+  `((! :('a -> bool) -> bool) (\(x :'a).
+   ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :bool -> bool -> bool) (((IS_EL :'a -> 'a list -> bool) $1)
+   $0)) (((SOME_EL :('a -> bool) -> 'a list -> bool)
+   ((= :'a -> 'a -> bool) $1)) $0))))))`),
+ ((SOME_EL),
+  [],
+  `((/\ ((! :(('a -> bool) -> bool) -> bool) (\(P :'a -> bool).
+   (((= :bool -> bool -> bool)
+   (((SOME_EL :('a -> bool) -> 'a list -> bool) $0) (NIL :'a list)))
+   F)))) ((! :(('a -> bool) -> bool) -> bool) (\(P :'a -> bool).
+   ((! :('a -> bool) -> bool) (\(x :'a).
+   ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :bool -> bool -> bool)
+   (((SOME_EL :('a -> bool) -> 'a list -> bool) $2)
+   (((CONS :'a -> 'a list -> 'a list) $1) $0))) ((\/ ($2 $1))
+   (((SOME_EL :('a -> bool) -> 'a list -> bool) $2) $0))))))))))`),
+ ((ALL_EL),
+  [],
+  `((/\ ((! :(('a -> bool) -> bool) -> bool) (\(P :'a -> bool).
+   (((= :bool -> bool -> bool)
+   (((ALL_EL :('a -> bool) -> 'a list -> bool) $0) (NIL :'a list)))
+   T)))) ((! :(('a -> bool) -> bool) -> bool) (\(P :'a -> bool).
+   ((! :('a -> bool) -> bool) (\(x :'a).
+   ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :bool -> bool -> bool)
+   (((ALL_EL :('a -> bool) -> 'a list -> bool) $2)
+   (((CONS :'a -> 'a list -> 'a list) $1) $0))) ((/\ ($2 $1))
+   (((ALL_EL :('a -> bool) -> 'a list -> bool) $2) $0))))))))))`),
+ ((REVERSE),
+  [],
+  `((/\ (((= :'a list -> 'a list -> bool)
+   ((REVERSE :'a list -> 'a list) (NIL :'a list))) (NIL :'a list)))
+   ((! :('a -> bool) -> bool) (\(x :'a).
+   ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :'a list -> 'a list -> bool) ((REVERSE :'a list -> 'a list)
+   (((CONS :'a -> 'a list -> 'a list) $1) $0)))
+   (((SNOC :'a -> 'a list -> 'a list) $1)
+   ((REVERSE :'a list -> 'a list) $0))))))))`),
+ ((SCANR),
+  [],
+  `((/\ ((! :(('a -> 'b -> 'b) -> bool) -> bool)
+   (\(f :'a -> 'b -> 'b). ((! :('b -> bool) -> bool) (\(e :'b).
+   (((= :'b list -> 'b list -> bool)
+   ((((SCANR :('a -> 'b -> 'b) -> 'b -> 'a list -> 'b list) $1) $0)
+   (NIL :'a list))) (((CONS :'b -> 'b list -> 'b list) $0)
+   (NIL :'b list)))))))) ((! :(('a -> 'b -> 'b) -> bool) -> bool)
+   (\(f :'a -> 'b -> 'b). ((! :('b -> bool) -> bool) (\(e :'b).
+   ((! :('a -> bool) -> bool) (\(x :'a).
+   ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :'b list -> 'b list -> bool)
+   ((((SCANR :('a -> 'b -> 'b) -> 'b -> 'a list -> 'b list) $3) $2)
+   (((CONS :'a -> 'a list -> 'a list) $1) $0)))
+   (((CONS :'b -> 'b list -> 'b list) (($3 $1) ((HD :'b list -> 'b)
+   ((((SCANR :('a -> 'b -> 'b) -> 'b -> 'a list -> 'b list) $3) $2)
+   $0)))) ((((SCANR :('a -> 'b -> 'b) -> 'b -> 'a list -> 'b list) $3)
+   $2) $0))))))))))))`),
+ ((SCANL),
+  [],
+  `((/\ ((! :(('b -> 'a -> 'b) -> bool) -> bool)
+   (\(f :'b -> 'a -> 'b). ((! :('b -> bool) -> bool) (\(e :'b).
+   (((= :'b list -> 'b list -> bool)
+   ((((SCANL :('b -> 'a -> 'b) -> 'b -> 'a list -> 'b list) $1) $0)
+   (NIL :'a list))) (((CONS :'b -> 'b list -> 'b list) $0)
+   (NIL :'b list)))))))) ((! :(('b -> 'a -> 'b) -> bool) -> bool)
+   (\(f :'b -> 'a -> 'b). ((! :('b -> bool) -> bool) (\(e :'b).
+   ((! :('a -> bool) -> bool) (\(x :'a).
+   ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :'b list -> 'b list -> bool)
+   ((((SCANL :('b -> 'a -> 'b) -> 'b -> 'a list -> 'b list) $3) $2)
+   (((CONS :'a -> 'a list -> 'a list) $1) $0)))
+   (((CONS :'b -> 'b list -> 'b list) $2)
+   ((((SCANL :('b -> 'a -> 'b) -> 'b -> 'a list -> 'b list) $3) (($3
+   $2) $1)) $0))))))))))))`),
+ ((FILTER),
+  [],
+  `((/\ ((! :(('a -> bool) -> bool) -> bool) (\(P :'a -> bool).
+   (((= :'a list -> 'a list -> bool)
+   (((FILTER :('a -> bool) -> 'a list -> 'a list) $0) (NIL :'a list)))
+   (NIL :'a list))))) ((! :(('a -> bool) -> bool) -> bool)
+   (\(P :'a -> bool). ((! :('a -> bool) -> bool) (\(x :'a).
+   ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :'a list -> 'a list -> bool)
+   (((FILTER :('a -> bool) -> 'a list -> 'a list) $2)
+   (((CONS :'a -> 'a list -> 'a list) $1) $0)))
+   ((((COND :bool -> 'a list -> 'a list -> 'a list) ($2 $1))
+   (((CONS :'a -> 'a list -> 'a list) $1)
+   (((FILTER :('a -> bool) -> 'a list -> 'a list) $2) $0)))
+   (((FILTER :('a -> bool) -> 'a list -> 'a list) $2) $0))))))))))`),
+ ((FOLDL),
+  [],
+  `((/\ ((! :(('b -> 'a -> 'b) -> bool) -> bool)
+   (\(f :'b -> 'a -> 'b). ((! :('b -> bool) -> bool) (\(e :'b).
+   (((= :'b -> 'b -> bool)
+   ((((FOLDL :('b -> 'a -> 'b) -> 'b -> 'a list -> 'b) $1) $0)
+   (NIL :'a list))) $0)))))) ((! :(('b -> 'a -> 'b) -> bool) -> bool)
+   (\(f :'b -> 'a -> 'b). ((! :('b -> bool) -> bool) (\(e :'b).
+   ((! :('a -> bool) -> bool) (\(x :'a).
+   ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :'b -> 'b -> bool)
+   ((((FOLDL :('b -> 'a -> 'b) -> 'b -> 'a list -> 'b) $3) $2)
+   (((CONS :'a -> 'a list -> 'a list) $1) $0)))
+   ((((FOLDL :('b -> 'a -> 'b) -> 'b -> 'a list -> 'b) $3) (($3 $2)
+   $1)) $0)))))))))))`),
+ ((FOLDR),
+  [],
+  `((/\ ((! :(('a -> 'b -> 'b) -> bool) -> bool)
+   (\(f :'a -> 'b -> 'b). ((! :('b -> bool) -> bool) (\(e :'b).
+   (((= :'b -> 'b -> bool)
+   ((((FOLDR :('a -> 'b -> 'b) -> 'b -> 'a list -> 'b) $1) $0)
+   (NIL :'a list))) $0)))))) ((! :(('a -> 'b -> 'b) -> bool) -> bool)
+   (\(f :'a -> 'b -> 'b). ((! :('b -> bool) -> bool) (\(e :'b).
+   ((! :('a -> bool) -> bool) (\(x :'a).
+   ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :'b -> 'b -> bool)
+   ((((FOLDR :('a -> 'b -> 'b) -> 'b -> 'a list -> 'b) $3) $2)
+   (((CONS :'a -> 'a list -> 'a list) $1) $0))) (($3 $1)
+   ((((FOLDR :('a -> 'b -> 'b) -> 'b -> 'a list -> 'b) $3) $2)
+   $0))))))))))))`),
+ ((SNOC),
+  [],
+  `((/\ ((! :('a -> bool) -> bool) (\(x :'a).
+   (((= :'a list -> 'a list -> bool)
+   (((SNOC :'a -> 'a list -> 'a list) $0) (NIL :'a list)))
+   (((CONS :'a -> 'a list -> 'a list) $0) (NIL :'a list))))))
+   ((! :('a -> bool) -> bool) (\(x :'a). ((! :('a -> bool) -> bool)
+   (\(x' :'a). ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :'a list -> 'a list -> bool)
+   (((SNOC :'a -> 'a list -> 'a list) $2)
+   (((CONS :'a -> 'a list -> 'a list) $1) $0)))
+   (((CONS :'a -> 'a list -> 'a list) $1)
+   (((SNOC :'a -> 'a list -> 'a list) $2) $0))))))))))`)]
+theorems =
+[((MAP2_ZIP),
+  [],
+  `((! :('a list -> bool) -> bool) (\(l1 :'a list).
+   ((! :('b list -> bool) -> bool) (\(l2 :'b list). ((==>
+   (((= :num -> num -> bool) ((LENGTH :'a list -> num) $1))
+   ((LENGTH :'b list -> num) $0)))
+   ((! :(('a -> 'b -> 'c) -> bool) -> bool) (\(f :'a -> 'b -> 'c).
+   (((= :'c list -> 'c list -> bool)
+   ((((MAP2 :('a -> 'b -> 'c) -> 'a list -> 'b list -> 'c list) $0)
+   $2) $1)) (((MAP :('a # 'b -> 'c) -> ('a # 'b) list -> 'c list)
+   ((UNCURRY :('a -> 'b -> 'c) -> 'a # 'b -> 'c) $0))
+   ((ZIP :'a list # 'b list -> ('a # 'b) list)
+   (((, :'a list -> 'b list -> 'a list # 'b list) $2) $1)))))))))))`),
+ ((OR_EL_FOLDR),
+  [],
+  `((! :(bool list -> bool) -> bool) (\(l :bool list).
+   (((= :bool -> bool -> bool) (OR_EL $0))
+   ((((FOLDR :(bool -> bool -> bool) -> bool -> bool list -> bool) \/)
+   F) $0))))`),
+ ((OR_EL_FOLDL),
+  [],
+  `((! :(bool list -> bool) -> bool) (\(l :bool list).
+   (((= :bool -> bool -> bool) (OR_EL $0))
+   ((((FOLDL :(bool -> bool -> bool) -> bool -> bool list -> bool) \/)
+   F) $0))))`),
+ ((AND_EL_FOLDR),
+  [],
+  `((! :(bool list -> bool) -> bool) (\(l :bool list).
+   (((= :bool -> bool -> bool) (AND_EL $0))
+   ((((FOLDR :(bool -> bool -> bool) -> bool -> bool list -> bool) /\)
+   T) $0))))`),
+ ((AND_EL_FOLDL),
+  [],
+  `((! :(bool list -> bool) -> bool) (\(l :bool list).
+   (((= :bool -> bool -> bool) (AND_EL $0))
+   ((((FOLDL :(bool -> bool -> bool) -> bool -> bool list -> bool) /\)
+   T) $0))))`),
+ ((ALL_EL_REPLICATE),
+  [],
+  `((! :('a -> bool) -> bool) (\(x :'a). ((! :(num -> bool) -> bool)
+   (\(n :num). (((ALL_EL :('a -> bool) -> 'a list -> bool)
+   ((= :'a -> 'a -> bool) $1)) (((REPLICATE :num -> 'a -> 'a list) $0)
+   $1))))))`),
+ ((IS_EL_REPLICATE),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num). ((==> ((< 0) $0))
+   ((! :('a -> bool) -> bool) (\(x :'a).
+   (((IS_EL :'a -> 'a list -> bool) $0)
+   (((REPLICATE :num -> 'a -> 'a list) $1) $0)))))))`),
+ ((LENGTH_REPLICATE),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num). ((! :('a -> bool) -> bool)
+   (\(x :'a). (((= :num -> num -> bool) ((LENGTH :'a list -> num)
+   (((REPLICATE :num -> 'a -> 'a list) $1) $0))) $1)))))`),
+ ((LENGTH_GENLIST),
+  [],
+  `((! :((num -> 'a) -> bool) -> bool) (\(f :num -> 'a).
+   ((! :(num -> bool) -> bool) (\(n :num). (((= :num -> num -> bool)
+   ((LENGTH :'a list -> num)
+   (((GENLIST :(num -> 'a) -> num -> 'a list) $1) $0))) $0)))))`),
+ ((SEG_REVERSE),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num). ((! :(num -> bool) -> bool)
+   (\(m :num). ((! :('a list -> bool) -> bool) (\(l :'a list). ((==>
+   ((<= ((+ $2) $1)) ((LENGTH :'a list -> num) $0)))
+   (((= :'a list -> 'a list -> bool)
+   ((((SEG :num -> num -> 'a list -> 'a list) $2) $1)
+   ((REVERSE :'a list -> 'a list) $0))) ((REVERSE :'a list -> 'a list)
+   ((((SEG :num -> num -> 'a list -> 'a list) $2) ((-
+   ((LENGTH :'a list -> num) $0)) ((+ $2) $1))) $0))))))))))`),
+ ((FIRSTN_REVERSE),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num).
+   ((! :('a list -> bool) -> bool) (\(l :'a list). ((==> ((<= $1)
+   ((LENGTH :'a list -> num) $0))) (((= :'a list -> 'a list -> bool)
+   (((FIRSTN :num -> 'a list -> 'a list) $1)
+   ((REVERSE :'a list -> 'a list) $0))) ((REVERSE :'a list -> 'a list)
+   (((LASTN :num -> 'a list -> 'a list) $1) $0))))))))`),
+ ((LASTN_REVERSE),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num).
+   ((! :('a list -> bool) -> bool) (\(l :'a list). ((==> ((<= $1)
+   ((LENGTH :'a list -> num) $0))) (((= :'a list -> 'a list -> bool)
+   (((LASTN :num -> 'a list -> 'a list) $1)
+   ((REVERSE :'a list -> 'a list) $0))) ((REVERSE :'a list -> 'a list)
+   (((FIRSTN :num -> 'a list -> 'a list) $1) $0))))))))`),
+ ((BUTLASTN_REVERSE),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num).
+   ((! :('a list -> bool) -> bool) (\(l :'a list). ((==> ((<= $1)
+   ((LENGTH :'a list -> num) $0))) (((= :'a list -> 'a list -> bool)
+   (((BUTLASTN :num -> 'a list -> 'a list) $1)
+   ((REVERSE :'a list -> 'a list) $0))) ((REVERSE :'a list -> 'a list)
+   (((BUTFIRSTN :num -> 'a list -> 'a list) $1) $0))))))))`),
+ ((BUTFIRSTN_REVERSE),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num).
+   ((! :('a list -> bool) -> bool) (\(l :'a list). ((==> ((<= $1)
+   ((LENGTH :'a list -> num) $0))) (((= :'a list -> 'a list -> bool)
+   (((BUTFIRSTN :num -> 'a list -> 'a list) $1)
+   ((REVERSE :'a list -> 'a list) $0))) ((REVERSE :'a list -> 'a list)
+   (((BUTLASTN :num -> 'a list -> 'a list) $1) $0))))))))`),
+ ((SEG_LASTN_BUTLASTN),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num). ((! :(num -> bool) -> bool)
+   (\(m :num). ((! :('a list -> bool) -> bool) (\(l :'a list). ((==>
+   ((<= ((+ $2) $1)) ((LENGTH :'a list -> num) $0)))
+   (((= :'a list -> 'a list -> bool)
+   ((((SEG :num -> num -> 'a list -> 'a list) $2) $1) $0))
+   (((LASTN :num -> 'a list -> 'a list) $2)
+   (((BUTLASTN :num -> 'a list -> 'a list) ((-
+   ((LENGTH :'a list -> num) $0)) ((+ $2) $1))) $0))))))))))`),
+ ((BUTFIRSTN_LASTN),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num).
+   ((! :('a list -> bool) -> bool) (\(l :'a list). ((==> ((<= $1)
+   ((LENGTH :'a list -> num) $0))) (((= :'a list -> 'a list -> bool)
+   (((BUTFIRSTN :num -> 'a list -> 'a list) $1) $0))
+   (((LASTN :num -> 'a list -> 'a list) ((- ((LENGTH :'a list -> num)
+   $0)) $1)) $0)))))))`),
+ ((LASTN_BUTFIRSTN),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num).
+   ((! :('a list -> bool) -> bool) (\(l :'a list). ((==> ((<= $1)
+   ((LENGTH :'a list -> num) $0))) (((= :'a list -> 'a list -> bool)
+   (((LASTN :num -> 'a list -> 'a list) $1) $0))
+   (((BUTFIRSTN :num -> 'a list -> 'a list) ((-
+   ((LENGTH :'a list -> num) $0)) $1)) $0)))))))`),
+ ((BUTLASTN_FIRSTN),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num).
+   ((! :('a list -> bool) -> bool) (\(l :'a list). ((==> ((<= $1)
+   ((LENGTH :'a list -> num) $0))) (((= :'a list -> 'a list -> bool)
+   (((BUTLASTN :num -> 'a list -> 'a list) $1) $0))
+   (((FIRSTN :num -> 'a list -> 'a list) ((- ((LENGTH :'a list -> num)
+   $0)) $1)) $0)))))))`),
+ ((FIRSTN_BUTLASTN),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num).
+   ((! :('a list -> bool) -> bool) (\(l :'a list). ((==> ((<= $1)
+   ((LENGTH :'a list -> num) $0))) (((= :'a list -> 'a list -> bool)
+   (((FIRSTN :num -> 'a list -> 'a list) $1) $0))
+   (((BUTLASTN :num -> 'a list -> 'a list) ((-
+   ((LENGTH :'a list -> num) $0)) $1)) $0)))))))`),
+ ((ELL_REVERSE_EL),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num).
+   ((! :('a list -> bool) -> bool) (\(l :'a list). ((==> ((< $1)
+   ((LENGTH :'a list -> num) $0))) (((= :'a -> 'a -> bool)
+   (((ELL :num -> 'a list -> 'a) $1) ((REVERSE :'a list -> 'a list)
+   $0))) (((EL :num -> 'a list -> 'a) $1) $0)))))))`),
+ ((ELL_REVERSE),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num).
+   ((! :('a list -> bool) -> bool) (\(l :'a list). ((==> ((< $1)
+   ((LENGTH :'a list -> num) $0))) (((= :'a -> 'a -> bool)
+   (((ELL :num -> 'a list -> 'a) $1) ((REVERSE :'a list -> 'a list)
+   $0))) (((ELL :num -> 'a list -> 'a) (PRE ((-
+   ((LENGTH :'a list -> num) $0)) $1))) $0)))))))`),
+ ((ELL_IS_EL),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num).
+   ((! :('a list -> bool) -> bool) (\(l :'a list). ((==> ((< $1)
+   ((LENGTH :'a list -> num) $0))) (((IS_EL :'a -> 'a list -> bool)
+   (((EL :num -> 'a list -> 'a) $1) $0)) $0))))))`),
+ ((ELL_LENGTH_APPEND),
+  [],
+  `((! :('a list -> bool) -> bool) (\(l1 :'a list).
+   ((! :('a list -> bool) -> bool) (\(l2 :'a list). ((==> (~
+   ((NULL :'a list -> bool) $1))) (((= :'a -> 'a -> bool)
+   (((ELL :num -> 'a list -> 'a) ((LENGTH :'a list -> num) $0))
+   (((APPEND :'a list -> 'a list -> 'a list) $1) $0)))
+   ((LAST :'a list -> 'a) $1)))))))`),
+ ((EL_REVERSE_ELL),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num).
+   ((! :('a list -> bool) -> bool) (\(l :'a list). ((==> ((< $1)
+   ((LENGTH :'a list -> num) $0))) (((= :'a -> 'a -> bool)
+   (((EL :num -> 'a list -> 'a) $1) ((REVERSE :'a list -> 'a list)
+   $0))) (((ELL :num -> 'a list -> 'a) $1) $0)))))))`),
+ ((EL_REVERSE),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num).
+   ((! :('a list -> bool) -> bool) (\(l :'a list). ((==> ((< $1)
+   ((LENGTH :'a list -> num) $0))) (((= :'a -> 'a -> bool)
+   (((EL :num -> 'a list -> 'a) $1) ((REVERSE :'a list -> 'a list)
+   $0))) (((EL :num -> 'a list -> 'a) (PRE ((-
+   ((LENGTH :'a list -> num) $0)) $1))) $0)))))))`),
+ ((TL_SNOC),
+  [],
+  `((! :('a -> bool) -> bool) (\(x :'a).
+   ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :'a list -> 'a list -> bool) ((TL :'a list -> 'a list)
+   (((SNOC :'a -> 'a list -> 'a list) $1) $0)))
+   ((((COND :bool -> 'a list -> 'a list -> 'a list)
+   ((NULL :'a list -> bool) $0)) (NIL :'a list))
+   (((SNOC :'a -> 'a list -> 'a list) $1) ((TL :'a list -> 'a list)
+   $0))))))))`),
+ ((EL_IS_EL),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num).
+   ((! :('a list -> bool) -> bool) (\(l :'a list). ((==> ((< $1)
+   ((LENGTH :'a list -> num) $0))) (((IS_EL :'a -> 'a list -> bool)
+   (((EL :num -> 'a list -> 'a) $1) $0)) $0))))))`),
+ ((EL_SEG),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num).
+   ((! :('a list -> bool) -> bool) (\(l :'a list). ((==> ((< $1)
+   ((LENGTH :'a list -> num) $0))) (((= :'a -> 'a -> bool)
+   (((EL :num -> 'a list -> 'a) $1) $0)) ((HD :'a list -> 'a)
+   ((((SEG :num -> num -> 'a list -> 'a list) 1) $1) $0))))))))`),
+ ((EL_CONS),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num). ((==> ((< 0) $0))
+   ((! :('a -> bool) -> bool) (\(x :'a).
+   ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :'a -> 'a -> bool) (((EL :num -> 'a list -> 'a) $2)
+   (((CONS :'a -> 'a list -> 'a list) $1) $0)))
+   (((EL :num -> 'a list -> 'a) (PRE $2)) $0)))))))))`),
+ ((EL_MAP),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num).
+   ((! :('a list -> bool) -> bool) (\(l :'a list). ((==> ((< $1)
+   ((LENGTH :'a list -> num) $0))) ((! :(('a -> 'b) -> bool) -> bool)
+   (\(f :'a -> 'b). (((= :'b -> 'b -> bool)
+   (((EL :num -> 'b list -> 'b) $2)
+   (((MAP :('a -> 'b) -> 'a list -> 'b list) $0) $1))) ($0
+   (((EL :num -> 'a list -> 'a) $2) $1))))))))))`),
+ ((EL_APPEND2),
+  [],
+  `((! :('a list -> bool) -> bool) (\(l1 :'a list).
+   ((! :(num -> bool) -> bool) (\(n :num). ((==> ((<=
+   ((LENGTH :'a list -> num) $1)) $0)) ((! :('a list -> bool) -> bool)
+   (\(l2 :'a list). (((= :'a -> 'a -> bool)
+   (((EL :num -> 'a list -> 'a) $1)
+   (((APPEND :'a list -> 'a list -> 'a list) $2) $0)))
+   (((EL :num -> 'a list -> 'a) ((- $1) ((LENGTH :'a list -> num)
+   $2))) $0)))))))))`),
+ ((EL_APPEND1),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num).
+   ((! :('a list -> bool) -> bool) (\(l1 :'a list).
+   ((! :('a list -> bool) -> bool) (\(l2 :'a list). ((==> ((< $2)
+   ((LENGTH :'a list -> num) $1))) (((= :'a -> 'a -> bool)
+   (((EL :num -> 'a list -> 'a) $2)
+   (((APPEND :'a list -> 'a list -> 'a list) $1) $0)))
+   (((EL :num -> 'a list -> 'a) $2) $1)))))))))`),
+ ((SUM_FLAT),
+  [],
+  `((! :(num list list -> bool) -> bool) (\(l :num list list).
+   (((= :num -> num -> bool) (SUM ((FLAT :num list list -> num list)
+   $0))) (SUM (((MAP :(num list -> num) -> num list list -> num list)
+   SUM) $0)))))`),
+ ((SUM_REVERSE),
+  [],
+  `((! :(num list -> bool) -> bool) (\(l :num list).
+   (((= :num -> num -> bool) (SUM ((REVERSE :num list -> num list)
+   $0))) (SUM $0))))`),
+ ((SUM_APPEND),
+  [],
+  `((! :(num list -> bool) -> bool) (\(l1 :num list).
+   ((! :(num list -> bool) -> bool) (\(l2 :num list).
+   (((= :num -> num -> bool) (SUM
+   (((APPEND :num list -> num list -> num list) $1) $0))) ((+ (SUM
+   $1)) (SUM $0)))))))`),
+ ((UNZIP_ZIP),
+  [],
+  `((! :('a list -> bool) -> bool) (\(l1 :'a list).
+   ((! :('b list -> bool) -> bool) (\(l2 :'b list). ((==>
+   (((= :num -> num -> bool) ((LENGTH :'a list -> num) $1))
+   ((LENGTH :'b list -> num) $0)))
+   (((= :'a list # 'b list -> 'a list # 'b list -> bool)
+   ((UNZIP :('a # 'b) list -> 'a list # 'b list)
+   ((ZIP :'a list # 'b list -> ('a # 'b) list)
+   (((, :'a list -> 'b list -> 'a list # 'b list) $1) $0))))
+   (((, :'a list -> 'b list -> 'a list # 'b list) $1) $0)))))))`),
+ ((ZIP_UNZIP),
+  [],
+  `((! :(('a # 'b) list -> bool) -> bool) (\(l :('a # 'b) list).
+   (((= :('a # 'b) list -> ('a # 'b) list -> bool)
+   ((ZIP :'a list # 'b list -> ('a # 'b) list)
+   ((UNZIP :('a # 'b) list -> 'a list # 'b list) $0))) $0)))`),
+ ((LENGTH_UNZIP_SND),
+  [],
+  `((! :(('a # 'b) list -> bool) -> bool) (\(l :('a # 'b) list).
+   (((= :num -> num -> bool) ((LENGTH :'b list -> num)
+   ((UNZIP_SND :('a # 'b) list -> 'b list) $0)))
+   ((LENGTH :('a # 'b) list -> num) $0))))`),
+ ((LENGTH_UNZIP_FST),
+  [],
+  `((! :(('a # 'b) list -> bool) -> bool) (\(l :('a # 'b) list).
+   (((= :num -> num -> bool) ((LENGTH :'a list -> num)
+   ((UNZIP_FST :('a # 'b) list -> 'a list) $0)))
+   ((LENGTH :('a # 'b) list -> num) $0))))`),
+ ((LENGTH_ZIP),
+  [],
+  `((! :('a list -> bool) -> bool) (\(l1 :'a list).
+   ((! :('b list -> bool) -> bool) (\(l2 :'b list). ((==>
+   (((= :num -> num -> bool) ((LENGTH :'a list -> num) $1))
+   ((LENGTH :'b list -> num) $0))) ((/\ (((= :num -> num -> bool)
+   ((LENGTH :('a # 'b) list -> num)
+   ((ZIP :'a list # 'b list -> ('a # 'b) list)
+   (((, :'a list -> 'b list -> 'a list # 'b list) $1) $0))))
+   ((LENGTH :'a list -> num) $1))) (((= :num -> num -> bool)
+   ((LENGTH :('a # 'b) list -> num)
+   ((ZIP :'a list # 'b list -> ('a # 'b) list)
+   (((, :'a list -> 'b list -> 'a list # 'b list) $1) $0))))
+   ((LENGTH :'b list -> num) $0))))))))`),
+ ((UNZIP_SNOC),
+  [],
+  `((! :('a # 'b -> bool) -> bool) (\(x :'a # 'b).
+   ((! :(('a # 'b) list -> bool) -> bool) (\(l :('a # 'b) list).
+   (((= :'a list # 'b list -> 'a list # 'b list -> bool)
+   ((UNZIP :('a # 'b) list -> 'a list # 'b list)
+   (((SNOC :'a # 'b -> ('a # 'b) list -> ('a # 'b) list) $1) $0)))
+   (((, :'a list -> 'b list -> 'a list # 'b list)
+   (((SNOC :'a -> 'a list -> 'a list) ((FST :'a # 'b -> 'a) $1))
+   ((FST :'a list # 'b list -> 'a list)
+   ((UNZIP :('a # 'b) list -> 'a list # 'b list) $0))))
+   (((SNOC :'b -> 'b list -> 'b list) ((SND :'a # 'b -> 'b) $1))
+   ((SND :'a list # 'b list -> 'b list)
+   ((UNZIP :('a # 'b) list -> 'a list # 'b list) $0)))))))))`),
+ ((ZIP_SNOC),
+  [],
+  `((! :('a list -> bool) -> bool) (\(l1 :'a list).
+   ((! :('b list -> bool) -> bool) (\(l2 :'b list). ((==>
+   (((= :num -> num -> bool) ((LENGTH :'a list -> num) $1))
+   ((LENGTH :'b list -> num) $0))) ((! :('a -> bool) -> bool)
+   (\(x1 :'a). ((! :('b -> bool) -> bool) (\(x2 :'b).
+   (((= :('a # 'b) list -> ('a # 'b) list -> bool)
+   ((ZIP :'a list # 'b list -> ('a # 'b) list)
+   (((, :'a list -> 'b list -> 'a list # 'b list)
+   (((SNOC :'a -> 'a list -> 'a list) $1) $3))
+   (((SNOC :'b -> 'b list -> 'b list) $0) $2))))
+   (((SNOC :'a # 'b -> ('a # 'b) list -> ('a # 'b) list)
+   (((, :'a -> 'b -> 'a # 'b) $1) $0))
+   ((ZIP :'a list # 'b list -> ('a # 'b) list)
+   (((, :'a list -> 'b list -> 'a list # 'b list) $3)
+   $2)))))))))))))`),
+ ((IS_EL_LASTN),
+  [],
+  `((! :(num -> bool) -> bool) (\(m :num).
+   ((! :('a list -> bool) -> bool) (\(l :'a list). ((==> ((<= $1)
+   ((LENGTH :'a list -> num) $0))) ((! :('a -> bool) -> bool)
+   (\(x :'a). ((==> (((IS_EL :'a -> 'a list -> bool) $0)
+   (((LASTN :num -> 'a list -> 'a list) $2) $1)))
+   (((IS_EL :'a -> 'a list -> bool) $0) $1)))))))))`),
+ ((IS_EL_BUTLASTN),
+  [],
+  `((! :(num -> bool) -> bool) (\(m :num).
+   ((! :('a list -> bool) -> bool) (\(l :'a list). ((==> ((<= $1)
+   ((LENGTH :'a list -> num) $0))) ((! :('a -> bool) -> bool)
+   (\(x :'a). ((==> (((IS_EL :'a -> 'a list -> bool) $0)
+   (((BUTLASTN :num -> 'a list -> 'a list) $2) $1)))
+   (((IS_EL :'a -> 'a list -> bool) $0) $1)))))))))`),
+ ((IS_EL_BUTFIRSTN),
+  [],
+  `((! :(num -> bool) -> bool) (\(m :num).
+   ((! :('a list -> bool) -> bool) (\(l :'a list). ((==> ((<= $1)
+   ((LENGTH :'a list -> num) $0))) ((! :('a -> bool) -> bool)
+   (\(x :'a). ((==> (((IS_EL :'a -> 'a list -> bool) $0)
+   (((BUTFIRSTN :num -> 'a list -> 'a list) $2) $1)))
+   (((IS_EL :'a -> 'a list -> bool) $0) $1)))))))))`),
+ ((IS_EL_FIRSTN),
+  [],
+  `((! :(num -> bool) -> bool) (\(m :num).
+   ((! :('a list -> bool) -> bool) (\(l :'a list). ((==> ((<= $1)
+   ((LENGTH :'a list -> num) $0))) ((! :('a -> bool) -> bool)
+   (\(x :'a). ((==> (((IS_EL :'a -> 'a list -> bool) $0)
+   (((FIRSTN :num -> 'a list -> 'a list) $2) $1)))
+   (((IS_EL :'a -> 'a list -> bool) $0) $1)))))))))`),
+ ((IS_EL_SOME_EL),
+  [],
+  `((! :('a -> bool) -> bool) (\(x :'a).
+   ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :bool -> bool -> bool) (((IS_EL :'a -> 'a list -> bool) $1)
+   $0)) (((SOME_EL :('a -> bool) -> 'a list -> bool)
+   ((= :'a -> 'a -> bool) $1)) $0))))))`),
+ ((IS_EL_SEG),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num). ((! :(num -> bool) -> bool)
+   (\(m :num). ((! :('a list -> bool) -> bool) (\(l :'a list). ((==>
+   ((<= ((+ $2) $1)) ((LENGTH :'a list -> num) $0)))
+   ((! :('a -> bool) -> bool) (\(x :'a). ((==>
+   (((IS_EL :'a -> 'a list -> bool) $0)
+   ((((SEG :num -> num -> 'a list -> 'a list) $3) $2) $1)))
+   (((IS_EL :'a -> 'a list -> bool) $0) $1)))))))))))`),
+ ((IS_EL_FILTER),
+  [],
+  `((! :(('a -> bool) -> bool) -> bool) (\(P :'a -> bool).
+   ((! :('a -> bool) -> bool) (\(x :'a). ((==> ($1 $0))
+   ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :bool -> bool -> bool) (((IS_EL :'a -> 'a list -> bool) $1)
+   (((FILTER :('a -> bool) -> 'a list -> 'a list) $2) $0)))
+   (((IS_EL :'a -> 'a list -> bool) $1) $0)))))))))`),
+ ((IS_EL_REVERSE),
+  [],
+  `((! :('a -> bool) -> bool) (\(x :'a).
+   ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :bool -> bool -> bool) (((IS_EL :'a -> 'a list -> bool) $1)
+   ((REVERSE :'a list -> 'a list) $0)))
+   (((IS_EL :'a -> 'a list -> bool) $1) $0))))))`),
+ ((SOME_EL_BUTLASTN),
+  [],
+  `((! :(num -> bool) -> bool) (\(m :num).
+   ((! :('a list -> bool) -> bool) (\(l :'a list). ((==> ((<= $1)
+   ((LENGTH :'a list -> num) $0)))
+   ((! :(('a -> bool) -> bool) -> bool) (\(P :'a -> bool). ((==>
+   (((SOME_EL :('a -> bool) -> 'a list -> bool) $0)
+   (((BUTLASTN :num -> 'a list -> 'a list) $2) $1)))
+   (((SOME_EL :('a -> bool) -> 'a list -> bool) $0) $1)))))))))`),
+ ((SOME_EL_LASTN),
+  [],
+  `((! :(num -> bool) -> bool) (\(m :num).
+   ((! :('a list -> bool) -> bool) (\(l :'a list). ((==> ((<= $1)
+   ((LENGTH :'a list -> num) $0)))
+   ((! :(('a -> bool) -> bool) -> bool) (\(P :'a -> bool). ((==>
+   (((SOME_EL :('a -> bool) -> 'a list -> bool) $0)
+   (((LASTN :num -> 'a list -> 'a list) $2) $1)))
+   (((SOME_EL :('a -> bool) -> 'a list -> bool) $0) $1)))))))))`),
+ ((SOME_EL_BUTFIRSTN),
+  [],
+  `((! :(num -> bool) -> bool) (\(m :num).
+   ((! :('a list -> bool) -> bool) (\(l :'a list). ((==> ((<= $1)
+   ((LENGTH :'a list -> num) $0)))
+   ((! :(('a -> bool) -> bool) -> bool) (\(P :'a -> bool). ((==>
+   (((SOME_EL :('a -> bool) -> 'a list -> bool) $0)
+   (((BUTFIRSTN :num -> 'a list -> 'a list) $2) $1)))
+   (((SOME_EL :('a -> bool) -> 'a list -> bool) $0) $1)))))))))`),
+ ((SOME_EL_FIRSTN),
+  [],
+  `((! :(num -> bool) -> bool) (\(m :num).
+   ((! :('a list -> bool) -> bool) (\(l :'a list). ((==> ((<= $1)
+   ((LENGTH :'a list -> num) $0)))
+   ((! :(('a -> bool) -> bool) -> bool) (\(P :'a -> bool). ((==>
+   (((SOME_EL :('a -> bool) -> 'a list -> bool) $0)
+   (((FIRSTN :num -> 'a list -> 'a list) $2) $1)))
+   (((SOME_EL :('a -> bool) -> 'a list -> bool) $0) $1)))))))))`),
+ ((SOME_EL_SEG),
+  [],
+  `((! :(num -> bool) -> bool) (\(m :num). ((! :(num -> bool) -> bool)
+   (\(k :num). ((! :('a list -> bool) -> bool) (\(l :'a list). ((==>
+   ((<= ((+ $2) $1)) ((LENGTH :'a list -> num) $0)))
+   ((! :(('a -> bool) -> bool) -> bool) (\(P :'a -> bool). ((==>
+   (((SOME_EL :('a -> bool) -> 'a list -> bool) $0)
+   ((((SEG :num -> num -> 'a list -> 'a list) $3) $2) $1)))
+   (((SOME_EL :('a -> bool) -> 'a list -> bool) $0) $1)))))))))))`),
+ ((ALL_EL_BUTFIRSTN),
+  [],
+  `((! :(('a -> bool) -> bool) -> bool) (\(P :'a -> bool).
+   ((! :('a list -> bool) -> bool) (\(l :'a list). ((==>
+   (((ALL_EL :('a -> bool) -> 'a list -> bool) $1) $0))
+   ((! :(num -> bool) -> bool) (\(m :num). ((==> ((<= $0)
+   ((LENGTH :'a list -> num) $1)))
+   (((ALL_EL :('a -> bool) -> 'a list -> bool) $2)
+   (((BUTFIRSTN :num -> 'a list -> 'a list) $0) $1))))))))))`),
+ ((ALL_EL_FIRSTN),
+  [],
+  `((! :(('a -> bool) -> bool) -> bool) (\(P :'a -> bool).
+   ((! :('a list -> bool) -> bool) (\(l :'a list). ((==>
+   (((ALL_EL :('a -> bool) -> 'a list -> bool) $1) $0))
+   ((! :(num -> bool) -> bool) (\(m :num). ((==> ((<= $0)
+   ((LENGTH :'a list -> num) $1)))
+   (((ALL_EL :('a -> bool) -> 'a list -> bool) $2)
+   (((FIRSTN :num -> 'a list -> 'a list) $0) $1))))))))))`),
+ ((ALL_EL_SEG),
+  [],
+  `((! :(('a -> bool) -> bool) -> bool) (\(P :'a -> bool).
+   ((! :('a list -> bool) -> bool) (\(l :'a list). ((==>
+   (((ALL_EL :('a -> bool) -> 'a list -> bool) $1) $0))
+   ((! :(num -> bool) -> bool) (\(m :num). ((! :(num -> bool) -> bool)
+   (\(k :num). ((==> ((<= ((+ $1) $0)) ((LENGTH :'a list -> num) $2)))
+   (((ALL_EL :('a -> bool) -> 'a list -> bool) $3)
+   ((((SEG :num -> num -> 'a list -> 'a list) $1) $0)
+   $2))))))))))))`),
+ ((SOME_EL_REVERSE),
+  [],
+  `((! :(('a -> bool) -> bool) -> bool) (\(P :'a -> bool).
+   ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :bool -> bool -> bool)
+   (((SOME_EL :('a -> bool) -> 'a list -> bool) $1)
+   ((REVERSE :'a list -> 'a list) $0)))
+   (((SOME_EL :('a -> bool) -> 'a list -> bool) $1) $0))))))`),
+ ((ALL_EL_REVERSE),
+  [],
+  `((! :(('a -> bool) -> bool) -> bool) (\(P :'a -> bool).
+   ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :bool -> bool -> bool)
+   (((ALL_EL :('a -> bool) -> 'a list -> bool) $1)
+   ((REVERSE :'a list -> 'a list) $0)))
+   (((ALL_EL :('a -> bool) -> 'a list -> bool) $1) $0))))))`),
+ ((FLAT_FLAT),
+  [],
+  `((! :('a list list list -> bool) -> bool) (\(l :'a list list list).
+   (((= :'a list -> 'a list -> bool) ((FLAT :'a list list -> 'a list)
+   ((FLAT :'a list list list -> 'a list list) $0)))
+   ((FLAT :'a list list -> 'a list)
+   (((MAP :('a list list -> 'a list) -> 'a list list list ->
+           'a list list) (FLAT :'a list list -> 'a list)) $0)))))`),
+ ((FLAT_REVERSE),
+  [],
+  `((! :('a list list -> bool) -> bool) (\(l :'a list list).
+   (((= :'a list -> 'a list -> bool) ((FLAT :'a list list -> 'a list)
+   ((REVERSE :'a list list -> 'a list list) $0)))
+   ((REVERSE :'a list -> 'a list) ((FLAT :'a list list -> 'a list)
+   (((MAP :('a list -> 'a list) -> 'a list list -> 'a list list)
+   (REVERSE :'a list -> 'a list)) $0))))))`),
+ ((FLAT_APPEND),
+  [],
+  `((! :('a list list -> bool) -> bool) (\(l1 :'a list list).
+   ((! :('a list list -> bool) -> bool) (\(l2 :'a list list).
+   (((= :'a list -> 'a list -> bool) ((FLAT :'a list list -> 'a list)
+   (((APPEND :'a list list -> 'a list list -> 'a list list) $1) $0)))
+   (((APPEND :'a list -> 'a list -> 'a list)
+   ((FLAT :'a list list -> 'a list) $1))
+   ((FLAT :'a list list -> 'a list) $0)))))))`),
+ ((MAP_FILTER),
+  [],
+  `((! :(('a -> 'a) -> bool) -> bool) (\(f :'a -> 'a).
+   ((! :(('a -> bool) -> bool) -> bool) (\(P :'a -> bool).
+   ((! :('a list -> bool) -> bool) (\(l :'a list). ((==>
+   ((! :('a -> bool) -> bool) (\(x :'a). (((= :bool -> bool -> bool)
+   ($2 ($3 $0))) ($2 $0))))) (((= :'a list -> 'a list -> bool)
+   (((MAP :('a -> 'a) -> 'a list -> 'a list) $2)
+   (((FILTER :('a -> bool) -> 'a list -> 'a list) $1) $0)))
+   (((FILTER :('a -> bool) -> 'a list -> 'a list) $1)
+   (((MAP :('a -> 'a) -> 'a list -> 'a list) $2) $0))))))))))`),
+ ((REVERSE_FLAT),
+  [],
+  `((! :('a list list -> bool) -> bool) (\(l :'a list list).
+   (((= :'a list -> 'a list -> bool) ((REVERSE :'a list -> 'a list)
+   ((FLAT :'a list list -> 'a list) $0)))
+   ((FLAT :'a list list -> 'a list)
+   ((REVERSE :'a list list -> 'a list list)
+   (((MAP :('a list -> 'a list) -> 'a list list -> 'a list list)
+   (REVERSE :'a list -> 'a list)) $0))))))`),
+ ((FIRSTN_LENGTH_APPEND),
+  [],
+  `((! :('a list -> bool) -> bool) (\(l1 :'a list).
+   ((! :('a list -> bool) -> bool) (\(l2 :'a list).
+   (((= :'a list -> 'a list -> bool)
+   (((FIRSTN :num -> 'a list -> 'a list) ((LENGTH :'a list -> num)
+   $1)) (((APPEND :'a list -> 'a list -> 'a list) $1) $0))) $1)))))`),
+ ((FIRSTN_APPEND2),
+  [],
+  `((! :('a list -> bool) -> bool) (\(l1 :'a list).
+   ((! :(num -> bool) -> bool) (\(n :num). ((==> ((<=
+   ((LENGTH :'a list -> num) $1)) $0)) ((! :('a list -> bool) -> bool)
+   (\(l2 :'a list). (((= :'a list -> 'a list -> bool)
+   (((FIRSTN :num -> 'a list -> 'a list) $1)
+   (((APPEND :'a list -> 'a list -> 'a list) $2) $0)))
+   (((APPEND :'a list -> 'a list -> 'a list) $2)
+   (((FIRSTN :num -> 'a list -> 'a list) ((- $1)
+   ((LENGTH :'a list -> num) $2))) $0))))))))))`),
+ ((FIRSTN_APPEND1),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num).
+   ((! :('a list -> bool) -> bool) (\(l1 :'a list). ((==> ((<= $1)
+   ((LENGTH :'a list -> num) $0))) ((! :('a list -> bool) -> bool)
+   (\(l2 :'a list). (((= :'a list -> 'a list -> bool)
+   (((FIRSTN :num -> 'a list -> 'a list) $2)
+   (((APPEND :'a list -> 'a list -> 'a list) $1) $0)))
+   (((FIRSTN :num -> 'a list -> 'a list) $2) $1)))))))))`),
+ ((BUTFIRSTN_LENGTH_APPEND),
+  [],
+  `((! :('a list -> bool) -> bool) (\(l1 :'a list).
+   ((! :('a list -> bool) -> bool) (\(l2 :'a list).
+   (((= :'a list -> 'a list -> bool)
+   (((BUTFIRSTN :num -> 'a list -> 'a list) ((LENGTH :'a list -> num)
+   $1)) (((APPEND :'a list -> 'a list -> 'a list) $1) $0))) $0)))))`),
+ ((LENGTH_BUTLAST),
+  [],
+  `((! :('a list -> bool) -> bool) (\(l :'a list). ((==> (~
+   (((= :'a list -> 'a list -> bool) $0) (NIL :'a list))))
+   (((= :num -> num -> bool) ((LENGTH :'a list -> num)
+   ((BUTLAST :'a list -> 'a list) $0))) (PRE ((LENGTH :'a list -> num)
+   $0))))))`),
+ ((ELL_MAP),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num).
+   ((! :('a list -> bool) -> bool) (\(l :'a list).
+   ((! :(('a -> 'b) -> bool) -> bool) (\(f :'a -> 'b). ((==> ((< $2)
+   ((LENGTH :'a list -> num) $1))) (((= :'b -> 'b -> bool)
+   (((ELL :num -> 'b list -> 'b) $2)
+   (((MAP :('a -> 'b) -> 'a list -> 'b list) $0) $1))) ($0
+   (((ELL :num -> 'a list -> 'a) $2) $1))))))))))`),
+ ((ELL_EL),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num).
+   ((! :('a list -> bool) -> bool) (\(l :'a list). ((==> ((< $1)
+   ((LENGTH :'a list -> num) $0))) (((= :'a -> 'a -> bool)
+   (((ELL :num -> 'a list -> 'a) $1) $0)) (((EL :num -> 'a list -> 'a)
+   (PRE ((- ((LENGTH :'a list -> num) $0)) $1))) $0)))))))`),
+ ((EL_LENGTH_APPEND),
+  [],
+  `((! :('a list -> bool) -> bool) (\(l2 :'a list).
+   ((! :('a list -> bool) -> bool) (\(l1 :'a list). ((==> (~
+   ((NULL :'a list -> bool) $1))) (((= :'a -> 'a -> bool)
+   (((EL :num -> 'a list -> 'a) ((LENGTH :'a list -> num) $0))
+   (((APPEND :'a list -> 'a list -> 'a list) $0) $1)))
+   ((HD :'a list -> 'a) $1)))))))`),
+ ((EL_ELL),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num).
+   ((! :('a list -> bool) -> bool) (\(l :'a list). ((==> ((< $1)
+   ((LENGTH :'a list -> num) $0))) (((= :'a -> 'a -> bool)
+   (((EL :num -> 'a list -> 'a) $1) $0)) (((ELL :num -> 'a list -> 'a)
+   (PRE ((- ((LENGTH :'a list -> num) $0)) $1))) $0)))))))`),
+ ((EL_SNOC),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num).
+   ((! :('a list -> bool) -> bool) (\(l :'a list). ((==> ((< $1)
+   ((LENGTH :'a list -> num) $0))) ((! :('a -> bool) -> bool)
+   (\(x :'a). (((= :'a -> 'a -> bool) (((EL :num -> 'a list -> 'a) $2)
+   (((SNOC :'a -> 'a list -> 'a list) $0) $1)))
+   (((EL :num -> 'a list -> 'a) $2) $1)))))))))`),
+ ((EL_PRE_LENGTH),
+  [],
+  `((! :('a list -> bool) -> bool) (\(l :'a list). ((==> (~
+   (((= :'a list -> 'a list -> bool) $0) (NIL :'a list))))
+   (((= :'a -> 'a -> bool) (((EL :num -> 'a list -> 'a) (PRE
+   ((LENGTH :'a list -> num) $0))) $0)) ((LAST :'a list -> 'a)
+   $0)))))`),
+ ((EL_LENGTH_SNOC),
+  [],
+  `((! :('a list -> bool) -> bool) (\(l :'a list).
+   ((! :('a -> bool) -> bool) (\(x :'a). (((= :'a -> 'a -> bool)
+   (((EL :num -> 'a list -> 'a) ((LENGTH :'a list -> num) $1))
+   (((SNOC :'a -> 'a list -> 'a list) $0) $1))) $0)))))`),
+ ((ELL_PRE_LENGTH),
+  [],
+  `((! :('a list -> bool) -> bool) (\(l :'a list). ((==> (~
+   (((= :'a list -> 'a list -> bool) $0) (NIL :'a list))))
+   (((= :'a -> 'a -> bool) (((ELL :num -> 'a list -> 'a) (PRE
+   ((LENGTH :'a list -> num) $0))) $0)) ((HD :'a list -> 'a)
+   $0)))))`),
+ ((ELL_APPEND1),
+  [],
+  `((! :('a list -> bool) -> bool) (\(l2 :'a list).
+   ((! :(num -> bool) -> bool) (\(n :num). ((==> ((<=
+   ((LENGTH :'a list -> num) $1)) $0)) ((! :('a list -> bool) -> bool)
+   (\(l1 :'a list). (((= :'a -> 'a -> bool)
+   (((ELL :num -> 'a list -> 'a) $1)
+   (((APPEND :'a list -> 'a list -> 'a list) $0) $2)))
+   (((ELL :num -> 'a list -> 'a) ((- $1) ((LENGTH :'a list -> num)
+   $2))) $0)))))))))`),
+ ((ELL_APPEND2),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num).
+   ((! :('a list -> bool) -> bool) (\(l2 :'a list). ((==> ((< $1)
+   ((LENGTH :'a list -> num) $0))) ((! :('a list -> bool) -> bool)
+   (\(l1 :'a list). (((= :'a -> 'a -> bool)
+   (((ELL :num -> 'a list -> 'a) $2)
+   (((APPEND :'a list -> 'a list -> 'a list) $0) $1)))
+   (((ELL :num -> 'a list -> 'a) $2) $1)))))))))`),
+ ((ELL_LENGTH_SNOC),
+  [],
+  `((! :('a list -> bool) -> bool) (\(l :'a list).
+   ((! :('a -> bool) -> bool) (\(x :'a). (((= :'a -> 'a -> bool)
+   (((ELL :num -> 'a list -> 'a) ((LENGTH :'a list -> num) $1))
+   (((SNOC :'a -> 'a list -> 'a list) $0) $1)))
+   ((((COND :bool -> 'a -> 'a -> 'a) ((NULL :'a list -> bool) $1)) $0)
+   ((HD :'a list -> 'a) $1)))))))`),
+ ((ELL_LENGTH_CONS),
+  [],
+  `((! :('a list -> bool) -> bool) (\(l :'a list).
+   ((! :('a -> bool) -> bool) (\(x :'a). (((= :'a -> 'a -> bool)
+   (((ELL :num -> 'a list -> 'a) ((LENGTH :'a list -> num) $1))
+   (((CONS :'a -> 'a list -> 'a list) $0) $1))) $0)))))`),
+ ((ELL_CONS),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num).
+   ((! :('a list -> bool) -> bool) (\(l :'a list). ((==> ((< $1)
+   ((LENGTH :'a list -> num) $0))) ((! :('a -> bool) -> bool)
+   (\(x :'a). (((= :'a -> 'a -> bool) (((ELL :num -> 'a list -> 'a)
+   $2) (((CONS :'a -> 'a list -> 'a list) $0) $1)))
+   (((ELL :num -> 'a list -> 'a) $2) $1)))))))))`),
+ ((ELL_SUC_SNOC),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num). ((! :('a -> bool) -> bool)
+   (\(x :'a). ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :'a -> 'a -> bool) (((ELL :num -> 'a list -> 'a) (SUC $2))
+   (((SNOC :'a -> 'a list -> 'a list) $1) $0)))
+   (((ELL :num -> 'a list -> 'a) $2) $0))))))))`),
+ ((ELL_SNOC),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num). ((==> ((< 0) $0))
+   ((! :('a -> bool) -> bool) (\(x :'a).
+   ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :'a -> 'a -> bool) (((ELL :num -> 'a list -> 'a) $2)
+   (((SNOC :'a -> 'a list -> 'a list) $1) $0)))
+   (((ELL :num -> 'a list -> 'a) (PRE $2)) $0)))))))))`),
+ ((ELL_0_SNOC),
+  [],
+  `((! :('a list -> bool) -> bool) (\(l :'a list).
+   ((! :('a -> bool) -> bool) (\(x :'a). (((= :'a -> 'a -> bool)
+   (((ELL :num -> 'a list -> 'a) 0) (((SNOC :'a -> 'a list -> 'a list)
+   $0) $1))) $0)))))`),
+ ((ELL_LAST),
+  [],
+  `((! :('a list -> bool) -> bool) (\(l :'a list). ((==> (~
+   ((NULL :'a list -> bool) $0))) (((= :'a -> 'a -> bool)
+   (((ELL :num -> 'a list -> 'a) 0) $0)) ((LAST :'a list -> 'a)
+   $0)))))`),
+ ((COMM_ASSOC_FOLDL_REVERSE),
+  [],
+  `((! :(('a -> 'a -> 'a) -> bool) -> bool) (\(f :'a -> 'a -> 'a).
+   ((==> ((COMM :('a -> 'a -> 'a) -> bool) $0)) ((==>
+   ((ASSOC :('a -> 'a -> 'a) -> bool) $0)) ((! :('a -> bool) -> bool)
+   (\(e :'a). ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :'a -> 'a -> bool)
+   ((((FOLDL :('a -> 'a -> 'a) -> 'a -> 'a list -> 'a) $2) $1)
+   ((REVERSE :'a list -> 'a list) $0)))
+   ((((FOLDL :('a -> 'a -> 'a) -> 'a -> 'a list -> 'a) $2) $1)
+   $0))))))))))`),
+ ((COMM_ASSOC_FOLDR_REVERSE),
+  [],
+  `((! :(('a -> 'a -> 'a) -> bool) -> bool) (\(f :'a -> 'a -> 'a).
+   ((==> ((COMM :('a -> 'a -> 'a) -> bool) $0)) ((==>
+   ((ASSOC :('a -> 'a -> 'a) -> bool) $0)) ((! :('a -> bool) -> bool)
+   (\(e :'a). ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :'a -> 'a -> bool)
+   ((((FOLDR :('a -> 'a -> 'a) -> 'a -> 'a list -> 'a) $2) $1)
+   ((REVERSE :'a list -> 'a list) $0)))
+   ((((FOLDR :('a -> 'a -> 'a) -> 'a -> 'a list -> 'a) $2) $1)
+   $0))))))))))`),
+ ((FOLDR_FILTER_REVERSE),
+  [],
+  `((! :(('a -> 'a -> 'a) -> bool) -> bool) (\(f :'a -> 'a -> 'a).
+   ((==> ((! :('a -> bool) -> bool) (\(a :'a).
+   ((! :('a -> bool) -> bool) (\(b :'a). ((! :('a -> bool) -> bool)
+   (\(c :'a). (((= :'a -> 'a -> bool) (($3 $2) (($3 $1) $0))) (($3 $1)
+   (($3 $2) $0)))))))))) ((! :('a -> bool) -> bool) (\(e :'a).
+   ((! :(('a -> bool) -> bool) -> bool) (\(P :'a -> bool).
+   ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :'a -> 'a -> bool)
+   ((((FOLDR :('a -> 'a -> 'a) -> 'a -> 'a list -> 'a) $3) $2)
+   (((FILTER :('a -> bool) -> 'a list -> 'a list) $1)
+   ((REVERSE :'a list -> 'a list) $0))))
+   ((((FOLDR :('a -> 'a -> 'a) -> 'a -> 'a list -> 'a) $3) $2)
+   (((FILTER :('a -> bool) -> 'a list -> 'a list) $1)
+   $0))))))))))))`),
+ ((FOLDR_MAP_REVERSE),
+  [],
+  `((! :(('a -> 'a -> 'a) -> bool) -> bool) (\(f :'a -> 'a -> 'a).
+   ((==> ((! :('a -> bool) -> bool) (\(a :'a).
+   ((! :('a -> bool) -> bool) (\(b :'a). ((! :('a -> bool) -> bool)
+   (\(c :'a). (((= :'a -> 'a -> bool) (($3 $2) (($3 $1) $0))) (($3 $1)
+   (($3 $2) $0)))))))))) ((! :('a -> bool) -> bool) (\(e :'a).
+   ((! :(('b -> 'a) -> bool) -> bool) (\(g :'b -> 'a).
+   ((! :('b list -> bool) -> bool) (\(l :'b list).
+   (((= :'a -> 'a -> bool)
+   ((((FOLDR :('a -> 'a -> 'a) -> 'a -> 'a list -> 'a) $3) $2)
+   (((MAP :('b -> 'a) -> 'b list -> 'a list) $1)
+   ((REVERSE :'b list -> 'b list) $0))))
+   ((((FOLDR :('a -> 'a -> 'a) -> 'a -> 'a list -> 'a) $3) $2)
+   (((MAP :('b -> 'a) -> 'b list -> 'a list) $1) $0))))))))))))`),
+ ((FCOMM_FOLDL_FLAT),
+  [],
+  `((! :(('a -> 'b -> 'a) -> bool) -> bool) (\(f :'a -> 'b -> 'a).
+   ((! :(('a -> 'a -> 'a) -> bool) -> bool) (\(g :'a -> 'a -> 'a).
+   ((==> (((FCOMM :('a -> 'b -> 'a) -> ('a -> 'a -> 'a) -> bool) $1)
+   $0)) ((! :('a -> bool) -> bool) (\(e :'a). ((==>
+   (((RIGHT_ID :('a -> 'a -> 'a) -> 'a -> bool) $1) $0))
+   ((! :('b list list -> bool) -> bool) (\(l :'b list list).
+   (((= :'a -> 'a -> bool)
+   ((((FOLDL :('a -> 'b -> 'a) -> 'a -> 'b list -> 'a) $3) $1)
+   ((FLAT :'b list list -> 'b list) $0)))
+   ((((FOLDL :('a -> 'a -> 'a) -> 'a -> 'a list -> 'a) $2) $1)
+   (((MAP :('b list -> 'a) -> 'b list list -> 'a list)
+   (((FOLDL :('a -> 'b -> 'a) -> 'a -> 'b list -> 'a) $3) $1))
+   $0)))))))))))))`),
+ ((FCOMM_FOLDR_FLAT),
+  [],
+  `((! :(('a -> 'a -> 'a) -> bool) -> bool) (\(g :'a -> 'a -> 'a).
+   ((! :(('b -> 'a -> 'a) -> bool) -> bool) (\(f :'b -> 'a -> 'a).
+   ((==> (((FCOMM :('a -> 'a -> 'a) -> ('b -> 'a -> 'a) -> bool) $1)
+   $0)) ((! :('a -> bool) -> bool) (\(e :'a). ((==>
+   (((LEFT_ID :('a -> 'a -> 'a) -> 'a -> bool) $2) $0))
+   ((! :('b list list -> bool) -> bool) (\(l :'b list list).
+   (((= :'a -> 'a -> bool)
+   ((((FOLDR :('b -> 'a -> 'a) -> 'a -> 'b list -> 'a) $2) $1)
+   ((FLAT :'b list list -> 'b list) $0)))
+   ((((FOLDR :('a -> 'a -> 'a) -> 'a -> 'a list -> 'a) $3) $1)
+   (((MAP :('b list -> 'a) -> 'b list list -> 'a list)
+   (((FOLDR :('b -> 'a -> 'a) -> 'a -> 'b list -> 'a) $2) $1))
+   $0)))))))))))))`),
+ ((FILTER_FILTER),
+  [],
+  `((! :(('a -> bool) -> bool) -> bool) (\(P :'a -> bool).
+   ((! :(('a -> bool) -> bool) -> bool) (\(Q :'a -> bool).
+   ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :'a list -> 'a list -> bool)
+   (((FILTER :('a -> bool) -> 'a list -> 'a list) $2)
+   (((FILTER :('a -> bool) -> 'a list -> 'a list) $1) $0)))
+   (((FILTER :('a -> bool) -> 'a list -> 'a list) (\(x :'a). ((/\ ($3
+   $0)) ($2 $0)))) $0))))))))`),
+ ((IS_EL_FOLDL_MAP),
+  [],
+  `((! :('a -> bool) -> bool) (\(x :'a).
+   ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :bool -> bool -> bool) (((IS_EL :'a -> 'a list -> bool) $1)
+   $0))
+   ((((FOLDL :(bool -> bool -> bool) -> bool -> bool list -> bool) \/)
+   F) (((MAP :('a -> bool) -> 'a list -> bool list)
+   ((= :'a -> 'a -> bool) $1)) $0)))))))`),
+ ((IS_EL_FOLDR_MAP),
+  [],
+  `((! :('a -> bool) -> bool) (\(x :'a).
+   ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :bool -> bool -> bool) (((IS_EL :'a -> 'a list -> bool) $1)
+   $0))
+   ((((FOLDR :(bool -> bool -> bool) -> bool -> bool list -> bool) \/)
+   F) (((MAP :('a -> bool) -> 'a list -> bool list)
+   ((= :'a -> 'a -> bool) $1)) $0)))))))`),
+ ((SNOC_FOLDR),
+  [],
+  `((! :('a -> bool) -> bool) (\(x :'a).
+   ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :'a list -> 'a list -> bool)
+   (((SNOC :'a -> 'a list -> 'a list) $1) $0))
+   ((((FOLDR :('a -> 'a list -> 'a list) -> 'a list -> 'a list ->
+              'a list) (CONS :'a -> 'a list -> 'a list))
+   (((CONS :'a -> 'a list -> 'a list) $1) (NIL :'a list))) $0))))))`),
+ ((ELL_SEG),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num).
+   ((! :('a list -> bool) -> bool) (\(l :'a list). ((==> ((< $1)
+   ((LENGTH :'a list -> num) $0))) (((= :'a -> 'a -> bool)
+   (((ELL :num -> 'a list -> 'a) $1) $0)) ((HD :'a list -> 'a)
+   ((((SEG :num -> num -> 'a list -> 'a list) 1) (PRE ((-
+   ((LENGTH :'a list -> num) $0)) $1))) $0))))))))`),
+ ((SEG_SNOC),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num). ((! :(num -> bool) -> bool)
+   (\(m :num). ((! :('a list -> bool) -> bool) (\(l :'a list). ((==>
+   ((<= ((+ $2) $1)) ((LENGTH :'a list -> num) $0)))
+   ((! :('a -> bool) -> bool) (\(x :'a).
+   (((= :'a list -> 'a list -> bool)
+   ((((SEG :num -> num -> 'a list -> 'a list) $3) $2)
+   (((SNOC :'a -> 'a list -> 'a list) $0) $1)))
+   ((((SEG :num -> num -> 'a list -> 'a list) $3) $2) $1)))))))))))`),
+ ((SEG_LENGTH_SNOC),
+  [],
+  `((! :('a list -> bool) -> bool) (\(l :'a list).
+   ((! :('a -> bool) -> bool) (\(x :'a).
+   (((= :'a list -> 'a list -> bool)
+   ((((SEG :num -> num -> 'a list -> 'a list) 1)
+   ((LENGTH :'a list -> num) $1)) (((SNOC :'a -> 'a list -> 'a list)
+   $0) $1))) (((CONS :'a -> 'a list -> 'a list) $0)
+   (NIL :'a list)))))))`),
+ ((SEG_APPEND),
+  [],
+  `((! :(num -> bool) -> bool) (\(m :num).
+   ((! :('a list -> bool) -> bool) (\(l1 :'a list).
+   ((! :(num -> bool) -> bool) (\(n :num).
+   ((! :('a list -> bool) -> bool) (\(l2 :'a list). ((==> ((/\ ((< $3)
+   ((LENGTH :'a list -> num) $2))) ((/\ ((<= ((LENGTH :'a list -> num)
+   $2)) ((+ $1) $3))) ((<= ((+ $1) $3)) ((+ ((LENGTH :'a list -> num)
+   $2)) ((LENGTH :'a list -> num) $0))))))
+   (((= :'a list -> 'a list -> bool)
+   ((((SEG :num -> num -> 'a list -> 'a list) $1) $3)
+   (((APPEND :'a list -> 'a list -> 'a list) $2) $0)))
+   (((APPEND :'a list -> 'a list -> 'a list)
+   ((((SEG :num -> num -> 'a list -> 'a list) ((-
+   ((LENGTH :'a list -> num) $2)) $3)) $3) $2))
+   ((((SEG :num -> num -> 'a list -> 'a list) ((- ((+ $1) $3))
+   ((LENGTH :'a list -> num) $2))) 0) $0))))))))))))`),
+ ((SEG_FIRSTN_BUTFISTN),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num). ((! :(num -> bool) -> bool)
+   (\(m :num). ((! :('a list -> bool) -> bool) (\(l :'a list). ((==>
+   ((<= ((+ $2) $1)) ((LENGTH :'a list -> num) $0)))
+   (((= :'a list -> 'a list -> bool)
+   ((((SEG :num -> num -> 'a list -> 'a list) $2) $1) $0))
+   (((FIRSTN :num -> 'a list -> 'a list) $2)
+   (((BUTFIRSTN :num -> 'a list -> 'a list) $1) $0))))))))))`),
+ ((SEG_APPEND2),
+  [],
+  `((! :('a list -> bool) -> bool) (\(l1 :'a list).
+   ((! :(num -> bool) -> bool) (\(m :num). ((! :(num -> bool) -> bool)
+   (\(n :num). ((! :('a list -> bool) -> bool) (\(l2 :'a list). ((==>
+   ((/\ ((<= ((LENGTH :'a list -> num) $3)) $2)) ((<= $1)
+   ((LENGTH :'a list -> num) $0)))) (((= :'a list -> 'a list -> bool)
+   ((((SEG :num -> num -> 'a list -> 'a list) $1) $2)
+   (((APPEND :'a list -> 'a list -> 'a list) $3) $0)))
+   ((((SEG :num -> num -> 'a list -> 'a list) $1) ((- $2)
+   ((LENGTH :'a list -> num) $3))) $0)))))))))))`),
+ ((SEG_APPEND1),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num). ((! :(num -> bool) -> bool)
+   (\(m :num). ((! :('a list -> bool) -> bool) (\(l1 :'a list). ((==>
+   ((<= ((+ $2) $1)) ((LENGTH :'a list -> num) $0)))
+   ((! :('a list -> bool) -> bool) (\(l2 :'a list).
+   (((= :'a list -> 'a list -> bool)
+   ((((SEG :num -> num -> 'a list -> 'a list) $3) $2)
+   (((APPEND :'a list -> 'a list -> 'a list) $1) $0)))
+   ((((SEG :num -> num -> 'a list -> 'a list) $3) $2) $1)))))))))))`),
+ ((SEG_SEG),
+  [],
+  `((! :(num -> bool) -> bool) (\(n1 :num).
+   ((! :(num -> bool) -> bool) (\(m1 :num).
+   ((! :(num -> bool) -> bool) (\(n2 :num).
+   ((! :(num -> bool) -> bool) (\(m2 :num).
+   ((! :('a list -> bool) -> bool) (\(l :'a list). ((==> ((/\ ((<= ((+
+   $4) $3)) ((LENGTH :'a list -> num) $0))) ((<= ((+ $2) $1)) $4)))
+   (((= :'a list -> 'a list -> bool)
+   ((((SEG :num -> num -> 'a list -> 'a list) $2) $1)
+   ((((SEG :num -> num -> 'a list -> 'a list) $4) $3) $0)))
+   ((((SEG :num -> num -> 'a list -> 'a list) $2) ((+ $3) $1))
+   $0)))))))))))))`),
+ ((APPEND_BUTLASTN_BUTFIRSTN),
+  [],
+  `((! :(num -> bool) -> bool) (\(m :num). ((! :(num -> bool) -> bool)
+   (\(n :num). ((! :('a list -> bool) -> bool) (\(l :'a list). ((==>
+   (((= :num -> num -> bool) ((+ $2) $1)) ((LENGTH :'a list -> num)
+   $0))) (((= :'a list -> 'a list -> bool)
+   (((APPEND :'a list -> 'a list -> 'a list)
+   (((BUTLASTN :num -> 'a list -> 'a list) $2) $0))
+   (((BUTFIRSTN :num -> 'a list -> 'a list) $1) $0))) $0))))))))`),
+ ((BUTFIRSTN_SNOC),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num).
+   ((! :('a list -> bool) -> bool) (\(l :'a list). ((==> ((<= $1)
+   ((LENGTH :'a list -> num) $0))) ((! :('a -> bool) -> bool)
+   (\(x :'a). (((= :'a list -> 'a list -> bool)
+   (((BUTFIRSTN :num -> 'a list -> 'a list) $2)
+   (((SNOC :'a -> 'a list -> 'a list) $0) $1)))
+   (((SNOC :'a -> 'a list -> 'a list) $0)
+   (((BUTFIRSTN :num -> 'a list -> 'a list) $2) $1))))))))))`),
+ ((APPEND_BUTLAST_LAST),
+  [],
+  `((! :('a list -> bool) -> bool) (\(l :'a list). ((==> (~
+   (((= :'a list -> 'a list -> bool) $0) (NIL :'a list))))
+   (((= :'a list -> 'a list -> bool)
+   (((APPEND :'a list -> 'a list -> 'a list)
+   ((BUTLAST :'a list -> 'a list) $0))
+   (((CONS :'a -> 'a list -> 'a list) ((LAST :'a list -> 'a) $0))
+   (NIL :'a list)))) $0))))`),
+ ((BUTFIRSTN_SEG),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num).
+   ((! :('a list -> bool) -> bool) (\(l :'a list). ((==> ((<= $1)
+   ((LENGTH :'a list -> num) $0))) (((= :'a list -> 'a list -> bool)
+   (((BUTFIRSTN :num -> 'a list -> 'a list) $1) $0))
+   ((((SEG :num -> num -> 'a list -> 'a list) ((-
+   ((LENGTH :'a list -> num) $0)) $1)) $1) $0)))))))`),
+ ((FIRSTN_SEG),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num).
+   ((! :('a list -> bool) -> bool) (\(l :'a list). ((==> ((<= $1)
+   ((LENGTH :'a list -> num) $0))) (((= :'a list -> 'a list -> bool)
+   (((FIRSTN :num -> 'a list -> 'a list) $1) $0))
+   ((((SEG :num -> num -> 'a list -> 'a list) $1) 0) $0)))))))`),
+ ((LASTN_SEG),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num).
+   ((! :('a list -> bool) -> bool) (\(l :'a list). ((==> ((<= $1)
+   ((LENGTH :'a list -> num) $0))) (((= :'a list -> 'a list -> bool)
+   (((LASTN :num -> 'a list -> 'a list) $1) $0))
+   ((((SEG :num -> num -> 'a list -> 'a list) $1) ((-
+   ((LENGTH :'a list -> num) $0)) $1)) $0)))))))`),
+ ((APPEND_FIRSTN_BUTFIRSTN),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num).
+   ((! :('a list -> bool) -> bool) (\(l :'a list). ((==> ((<= $1)
+   ((LENGTH :'a list -> num) $0))) (((= :'a list -> 'a list -> bool)
+   (((APPEND :'a list -> 'a list -> 'a list)
+   (((FIRSTN :num -> 'a list -> 'a list) $1) $0))
+   (((BUTFIRSTN :num -> 'a list -> 'a list) $1) $0))) $0))))))`),
+ ((BUTFIRSTN_BUTFIRSTN),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num). ((! :(num -> bool) -> bool)
+   (\(m :num). ((! :('a list -> bool) -> bool) (\(l :'a list). ((==>
+   ((<= ((+ $2) $1)) ((LENGTH :'a list -> num) $0)))
+   (((= :'a list -> 'a list -> bool)
+   (((BUTFIRSTN :num -> 'a list -> 'a list) $2)
+   (((BUTFIRSTN :num -> 'a list -> 'a list) $1) $0)))
+   (((BUTFIRSTN :num -> 'a list -> 'a list) ((+ $2) $1))
+   $0)))))))))`),
+ ((BUTFIRSTN_APPEND2),
+  [],
+  `((! :('a list -> bool) -> bool) (\(l1 :'a list).
+   ((! :(num -> bool) -> bool) (\(n :num). ((==> ((<=
+   ((LENGTH :'a list -> num) $1)) $0)) ((! :('a list -> bool) -> bool)
+   (\(l2 :'a list). (((= :'a list -> 'a list -> bool)
+   (((BUTFIRSTN :num -> 'a list -> 'a list) $1)
+   (((APPEND :'a list -> 'a list -> 'a list) $2) $0)))
+   (((BUTFIRSTN :num -> 'a list -> 'a list) ((- $1)
+   ((LENGTH :'a list -> num) $2))) $0)))))))))`),
+ ((BUTFIRSTN_APPEND1),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num).
+   ((! :('a list -> bool) -> bool) (\(l1 :'a list). ((==> ((<= $1)
+   ((LENGTH :'a list -> num) $0))) ((! :('a list -> bool) -> bool)
+   (\(l2 :'a list). (((= :'a list -> 'a list -> bool)
+   (((BUTFIRSTN :num -> 'a list -> 'a list) $2)
+   (((APPEND :'a list -> 'a list -> 'a list) $1) $0)))
+   (((APPEND :'a list -> 'a list -> 'a list)
+   (((BUTFIRSTN :num -> 'a list -> 'a list) $2) $1)) $0)))))))))`),
+ ((BUTFIRSTN_LENGTH_NIL),
+  [],
+  `((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :'a list -> 'a list -> bool)
+   (((BUTFIRSTN :num -> 'a list -> 'a list) ((LENGTH :'a list -> num)
+   $0)) $0)) (NIL :'a list))))`),
+ ((LENGTH_BUTFIRSTN),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num).
+   ((! :('a list -> bool) -> bool) (\(l :'a list). ((==> ((<= $1)
+   ((LENGTH :'a list -> num) $0))) (((= :num -> num -> bool)
+   ((LENGTH :'a list -> num) (((BUTFIRSTN :num -> 'a list -> 'a list)
+   $1) $0))) ((- ((LENGTH :'a list -> num) $0)) $1)))))))`),
+ ((FIRSTN_FIRSTN),
+  [],
+  `((! :(num -> bool) -> bool) (\(m :num).
+   ((! :('a list -> bool) -> bool) (\(l :'a list). ((==> ((<= $1)
+   ((LENGTH :'a list -> num) $0))) ((! :(num -> bool) -> bool)
+   (\(n :num). ((==> ((<= $0) $2)) (((= :'a list -> 'a list -> bool)
+   (((FIRSTN :num -> 'a list -> 'a list) $0)
+   (((FIRSTN :num -> 'a list -> 'a list) $2) $1)))
+   (((FIRSTN :num -> 'a list -> 'a list) $0) $1))))))))))`),
+ ((LENGTH_FIRSTN),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num).
+   ((! :('a list -> bool) -> bool) (\(l :'a list). ((==> ((<= $1)
+   ((LENGTH :'a list -> num) $0))) (((= :num -> num -> bool)
+   ((LENGTH :'a list -> num) (((FIRSTN :num -> 'a list -> 'a list) $1)
+   $0))) $1))))))`),
+ ((ALL_EL_BUTLASTN),
+  [],
+  `((! :(('a -> bool) -> bool) -> bool) (\(P :'a -> bool).
+   ((! :('a list -> bool) -> bool) (\(l :'a list). ((==>
+   (((ALL_EL :('a -> bool) -> 'a list -> bool) $1) $0))
+   ((! :(num -> bool) -> bool) (\(m :num). ((==> ((<= $0)
+   ((LENGTH :'a list -> num) $1)))
+   (((ALL_EL :('a -> bool) -> 'a list -> bool) $2)
+   (((BUTLASTN :num -> 'a list -> 'a list) $0) $1))))))))))`),
+ ((ALL_EL_LASTN),
+  [],
+  `((! :(('a -> bool) -> bool) -> bool) (\(P :'a -> bool).
+   ((! :('a list -> bool) -> bool) (\(l :'a list). ((==>
+   (((ALL_EL :('a -> bool) -> 'a list -> bool) $1) $0))
+   ((! :(num -> bool) -> bool) (\(m :num). ((==> ((<= $0)
+   ((LENGTH :'a list -> num) $1)))
+   (((ALL_EL :('a -> bool) -> 'a list -> bool) $2)
+   (((LASTN :num -> 'a list -> 'a list) $0) $1))))))))))`),
+ ((BUTLASTN_MAP),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num).
+   ((! :('a list -> bool) -> bool) (\(l :'a list). ((==> ((<= $1)
+   ((LENGTH :'a list -> num) $0))) ((! :(('a -> 'b) -> bool) -> bool)
+   (\(f :'a -> 'b). (((= :'b list -> 'b list -> bool)
+   (((BUTLASTN :num -> 'b list -> 'b list) $2)
+   (((MAP :('a -> 'b) -> 'a list -> 'b list) $0) $1)))
+   (((MAP :('a -> 'b) -> 'a list -> 'b list) $0)
+   (((BUTLASTN :num -> 'a list -> 'a list) $2) $1))))))))))`),
+ ((LASTN_MAP),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num).
+   ((! :('a list -> bool) -> bool) (\(l :'a list). ((==> ((<= $1)
+   ((LENGTH :'a list -> num) $0))) ((! :(('a -> 'b) -> bool) -> bool)
+   (\(f :'a -> 'b). (((= :'b list -> 'b list -> bool)
+   (((LASTN :num -> 'b list -> 'b list) $2)
+   (((MAP :('a -> 'b) -> 'a list -> 'b list) $0) $1)))
+   (((MAP :('a -> 'b) -> 'a list -> 'b list) $0)
+   (((LASTN :num -> 'a list -> 'a list) $2) $1))))))))))`),
+ ((LASTN_APPEND1),
+  [],
+  `((! :('a list -> bool) -> bool) (\(l2 :'a list).
+   ((! :(num -> bool) -> bool) (\(n :num). ((==> ((<=
+   ((LENGTH :'a list -> num) $1)) $0)) ((! :('a list -> bool) -> bool)
+   (\(l1 :'a list). (((= :'a list -> 'a list -> bool)
+   (((LASTN :num -> 'a list -> 'a list) $1)
+   (((APPEND :'a list -> 'a list -> 'a list) $0) $2)))
+   (((APPEND :'a list -> 'a list -> 'a list)
+   (((LASTN :num -> 'a list -> 'a list) ((- $1)
+   ((LENGTH :'a list -> num) $2))) $0)) $2)))))))))`),
+ ((LASTN_APPEND2),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num).
+   ((! :('a list -> bool) -> bool) (\(l2 :'a list). ((==> ((<= $1)
+   ((LENGTH :'a list -> num) $0))) ((! :('a list -> bool) -> bool)
+   (\(l1 :'a list). (((= :'a list -> 'a list -> bool)
+   (((LASTN :num -> 'a list -> 'a list) $2)
+   (((APPEND :'a list -> 'a list -> 'a list) $0) $1)))
+   (((LASTN :num -> 'a list -> 'a list) $2) $1)))))))))`),
+ ((BUTLASTN_APPEND1),
+  [],
+  `((! :('a list -> bool) -> bool) (\(l2 :'a list).
+   ((! :(num -> bool) -> bool) (\(n :num). ((==> ((<=
+   ((LENGTH :'a list -> num) $1)) $0)) ((! :('a list -> bool) -> bool)
+   (\(l1 :'a list). (((= :'a list -> 'a list -> bool)
+   (((BUTLASTN :num -> 'a list -> 'a list) $1)
+   (((APPEND :'a list -> 'a list -> 'a list) $0) $2)))
+   (((BUTLASTN :num -> 'a list -> 'a list) ((- $1)
+   ((LENGTH :'a list -> num) $2))) $0)))))))))`),
+ ((BUTLASTN_1),
+  [],
+  `((! :('a list -> bool) -> bool) (\(l :'a list). ((==> (~
+   (((= :'a list -> 'a list -> bool) $0) (NIL :'a list))))
+   (((= :'a list -> 'a list -> bool)
+   (((BUTLASTN :num -> 'a list -> 'a list) 1) $0))
+   ((BUTLAST :'a list -> 'a list) $0)))))`),
+ ((LASTN_1),
+  [],
+  `((! :('a list -> bool) -> bool) (\(l :'a list). ((==> (~
+   (((= :'a list -> 'a list -> bool) $0) (NIL :'a list))))
+   (((= :'a list -> 'a list -> bool)
+   (((LASTN :num -> 'a list -> 'a list) 1) $0))
+   (((CONS :'a -> 'a list -> 'a list) ((LAST :'a list -> 'a) $0))
+   (NIL :'a list))))))`),
+ ((BUTLASTN_LASTN),
+  [],
+  `((! :(num -> bool) -> bool) (\(m :num). ((! :(num -> bool) -> bool)
+   (\(n :num). ((! :('a list -> bool) -> bool) (\(l :'a list). ((==>
+   ((/\ ((<= $2) $1)) ((<= $1) ((LENGTH :'a list -> num) $0))))
+   (((= :'a list -> 'a list -> bool)
+   (((BUTLASTN :num -> 'a list -> 'a list) $2)
+   (((LASTN :num -> 'a list -> 'a list) $1) $0)))
+   (((LASTN :num -> 'a list -> 'a list) ((- $1) $2))
+   (((BUTLASTN :num -> 'a list -> 'a list) $2) $0))))))))))`),
+ ((LASTN_BUTLASTN),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num). ((! :(num -> bool) -> bool)
+   (\(m :num). ((! :('a list -> bool) -> bool) (\(l :'a list). ((==>
+   ((<= ((+ $2) $1)) ((LENGTH :'a list -> num) $0)))
+   (((= :'a list -> 'a list -> bool)
+   (((LASTN :num -> 'a list -> 'a list) $2)
+   (((BUTLASTN :num -> 'a list -> 'a list) $1) $0)))
+   (((BUTLASTN :num -> 'a list -> 'a list) $1)
+   (((LASTN :num -> 'a list -> 'a list) ((+ $2) $1)) $0))))))))))`),
+ ((BUTLASTN_LASTN_NIL),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num).
+   ((! :('a list -> bool) -> bool) (\(l :'a list). ((==> ((<= $1)
+   ((LENGTH :'a list -> num) $0))) (((= :'a list -> 'a list -> bool)
+   (((BUTLASTN :num -> 'a list -> 'a list) $1)
+   (((LASTN :num -> 'a list -> 'a list) $1) $0)))
+   (NIL :'a list)))))))`),
+ ((LAST_LASTN_LAST),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num).
+   ((! :('a list -> bool) -> bool) (\(l :'a list). ((==> ((<= $1)
+   ((LENGTH :'a list -> num) $0))) ((==> ((< 0) $1))
+   (((= :'a -> 'a -> bool) ((LAST :'a list -> 'a)
+   (((LASTN :num -> 'a list -> 'a list) $1) $0)))
+   ((LAST :'a list -> 'a) $0))))))))`),
+ ((BUTLASTN_LENGTH_CONS),
+  [],
+  `((! :('a list -> bool) -> bool) (\(l :'a list).
+   ((! :('a -> bool) -> bool) (\(x :'a).
+   (((= :'a list -> 'a list -> bool)
+   (((BUTLASTN :num -> 'a list -> 'a list) ((LENGTH :'a list -> num)
+   $1)) (((CONS :'a -> 'a list -> 'a list) $0) $1)))
+   (((CONS :'a -> 'a list -> 'a list) $0) (NIL :'a list)))))))`),
+ ((BUTLASTN_CONS),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num).
+   ((! :('a list -> bool) -> bool) (\(l :'a list). ((==> ((<= $1)
+   ((LENGTH :'a list -> num) $0))) ((! :('a -> bool) -> bool)
+   (\(x :'a). (((= :'a list -> 'a list -> bool)
+   (((BUTLASTN :num -> 'a list -> 'a list) $2)
+   (((CONS :'a -> 'a list -> 'a list) $0) $1)))
+   (((CONS :'a -> 'a list -> 'a list) $0)
+   (((BUTLASTN :num -> 'a list -> 'a list) $2) $1))))))))))`),
+ ((LASTN_LENGTH_APPEND),
+  [],
+  `((! :('a list -> bool) -> bool) (\(l2 :'a list).
+   ((! :('a list -> bool) -> bool) (\(l1 :'a list).
+   (((= :'a list -> 'a list -> bool)
+   (((LASTN :num -> 'a list -> 'a list) ((LENGTH :'a list -> num) $1))
+   (((APPEND :'a list -> 'a list -> 'a list) $0) $1))) $1)))))`),
+ ((BUTLASTN_LENGTH_APPEND),
+  [],
+  `((! :('a list -> bool) -> bool) (\(l2 :'a list).
+   ((! :('a list -> bool) -> bool) (\(l1 :'a list).
+   (((= :'a list -> 'a list -> bool)
+   (((BUTLASTN :num -> 'a list -> 'a list) ((LENGTH :'a list -> num)
+   $1)) (((APPEND :'a list -> 'a list -> 'a list) $0) $1))) $0)))))`),
+ ((BUTLASTN_APPEND2),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num).
+   ((! :('a list -> bool) -> bool) (\(l1 :'a list).
+   ((! :('a list -> bool) -> bool) (\(l2 :'a list). ((==> ((<= $2)
+   ((LENGTH :'a list -> num) $0))) (((= :'a list -> 'a list -> bool)
+   (((BUTLASTN :num -> 'a list -> 'a list) $2)
+   (((APPEND :'a list -> 'a list -> 'a list) $1) $0)))
+   (((APPEND :'a list -> 'a list -> 'a list) $1)
+   (((BUTLASTN :num -> 'a list -> 'a list) $2) $0))))))))))`),
+ ((APPEND_FIRSTN_LASTN),
+  [],
+  `((! :(num -> bool) -> bool) (\(m :num). ((! :(num -> bool) -> bool)
+   (\(n :num). ((! :('a list -> bool) -> bool) (\(l :'a list). ((==>
+   (((= :num -> num -> bool) ((+ $2) $1)) ((LENGTH :'a list -> num)
+   $0))) (((= :'a list -> 'a list -> bool)
+   (((APPEND :'a list -> 'a list -> 'a list)
+   (((FIRSTN :num -> 'a list -> 'a list) $1) $0))
+   (((LASTN :num -> 'a list -> 'a list) $2) $0))) $0))))))))`),
+ ((APPEND_BUTLASTN_LASTN),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num).
+   ((! :('a list -> bool) -> bool) (\(l :'a list). ((==> ((<= $1)
+   ((LENGTH :'a list -> num) $0))) (((= :'a list -> 'a list -> bool)
+   (((APPEND :'a list -> 'a list -> 'a list)
+   (((BUTLASTN :num -> 'a list -> 'a list) $1) $0))
+   (((LASTN :num -> 'a list -> 'a list) $1) $0))) $0))))))`),
+ ((BUTLASTN_BUTLASTN),
+  [],
+  `((! :(num -> bool) -> bool) (\(m :num). ((! :(num -> bool) -> bool)
+   (\(n :num). ((! :('a list -> bool) -> bool) (\(l :'a list). ((==>
+   ((<= ((+ $1) $2)) ((LENGTH :'a list -> num) $0)))
+   (((= :'a list -> 'a list -> bool)
+   (((BUTLASTN :num -> 'a list -> 'a list) $1)
+   (((BUTLASTN :num -> 'a list -> 'a list) $2) $0)))
+   (((BUTLASTN :num -> 'a list -> 'a list) ((+ $1) $2)) $0)))))))))`),
+ ((LENGTH_BUTLASTN),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num).
+   ((! :('a list -> bool) -> bool) (\(l :'a list). ((==> ((<= $1)
+   ((LENGTH :'a list -> num) $0))) (((= :num -> num -> bool)
+   ((LENGTH :'a list -> num) (((BUTLASTN :num -> 'a list -> 'a list)
+   $1) $0))) ((- ((LENGTH :'a list -> num) $0)) $1)))))))`),
+ ((BUTLASTN_BUTLAST),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num).
+   ((! :('a list -> bool) -> bool) (\(l :'a list). ((==> ((< $1)
+   ((LENGTH :'a list -> num) $0))) (((= :'a list -> 'a list -> bool)
+   (((BUTLASTN :num -> 'a list -> 'a list) $1)
+   ((BUTLAST :'a list -> 'a list) $0))) ((BUTLAST :'a list -> 'a list)
+   (((BUTLASTN :num -> 'a list -> 'a list) $1) $0))))))))`),
+ ((BUTLASTN_SUC_BUTLAST),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num).
+   ((! :('a list -> bool) -> bool) (\(l :'a list). ((==> ((< $1)
+   ((LENGTH :'a list -> num) $0))) (((= :'a list -> 'a list -> bool)
+   (((BUTLASTN :num -> 'a list -> 'a list) (SUC $1)) $0))
+   (((BUTLASTN :num -> 'a list -> 'a list) $1)
+   ((BUTLAST :'a list -> 'a list) $0))))))))`),
+ ((BUTLASTN_LENGTH_NIL),
+  [],
+  `((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :'a list -> 'a list -> bool)
+   (((BUTLASTN :num -> 'a list -> 'a list) ((LENGTH :'a list -> num)
+   $0)) $0)) (NIL :'a list))))`),
+ ((FIRSTN_SNOC),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num).
+   ((! :('a list -> bool) -> bool) (\(l :'a list). ((==> ((<= $1)
+   ((LENGTH :'a list -> num) $0))) ((! :('a -> bool) -> bool)
+   (\(x :'a). (((= :'a list -> 'a list -> bool)
+   (((FIRSTN :num -> 'a list -> 'a list) $2)
+   (((SNOC :'a -> 'a list -> 'a list) $0) $1)))
+   (((FIRSTN :num -> 'a list -> 'a list) $2) $1)))))))))`),
+ ((FIRSTN_LENGTH_ID),
+  [],
+  `((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :'a list -> 'a list -> bool)
+   (((FIRSTN :num -> 'a list -> 'a list) ((LENGTH :'a list -> num)
+   $0)) $0)) $0)))`),
+ ((LASTN_LASTN),
+  [],
+  `((! :('a list -> bool) -> bool) (\(l :'a list).
+   ((! :(num -> bool) -> bool) (\(n :num). ((! :(num -> bool) -> bool)
+   (\(m :num). ((==> ((<= $0) ((LENGTH :'a list -> num) $2))) ((==>
+   ((<= $1) $0)) (((= :'a list -> 'a list -> bool)
+   (((LASTN :num -> 'a list -> 'a list) $1)
+   (((LASTN :num -> 'a list -> 'a list) $0) $2)))
+   (((LASTN :num -> 'a list -> 'a list) $1) $2))))))))))`),
+ ((LASTN_LENGTH_ID),
+  [],
+  `((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :'a list -> 'a list -> bool)
+   (((LASTN :num -> 'a list -> 'a list) ((LENGTH :'a list -> num) $0))
+   $0)) $0)))`),
+ ((LENGTH_LASTN),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num).
+   ((! :('a list -> bool) -> bool) (\(l :'a list). ((==> ((<= $1)
+   ((LENGTH :'a list -> num) $0))) (((= :num -> num -> bool)
+   ((LENGTH :'a list -> num) (((LASTN :num -> 'a list -> 'a list) $1)
+   $0))) $1))))))`),
+ ((LASTN_CONS),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num).
+   ((! :('a list -> bool) -> bool) (\(l :'a list). ((==> ((<= $1)
+   ((LENGTH :'a list -> num) $0))) ((! :('a -> bool) -> bool)
+   (\(x :'a). (((= :'a list -> 'a list -> bool)
+   (((LASTN :num -> 'a list -> 'a list) $2)
+   (((CONS :'a -> 'a list -> 'a list) $0) $1)))
+   (((LASTN :num -> 'a list -> 'a list) $2) $1)))))))))`),
+ ((BUTLASTN_SEG),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num).
+   ((! :('a list -> bool) -> bool) (\(l :'a list). ((==> ((<= $1)
+   ((LENGTH :'a list -> num) $0))) (((= :'a list -> 'a list -> bool)
+   (((BUTLASTN :num -> 'a list -> 'a list) $1) $0))
+   ((((SEG :num -> num -> 'a list -> 'a list) ((-
+   ((LENGTH :'a list -> num) $0)) $1)) 0) $0)))))))`),
+ ((SEG_0_SNOC),
+  [],
+  `((! :(num -> bool) -> bool) (\(m :num).
+   ((! :('a list -> bool) -> bool) (\(l :'a list).
+   ((! :('a -> bool) -> bool) (\(x :'a). ((==> ((<= $2)
+   ((LENGTH :'a list -> num) $1))) (((= :'a list -> 'a list -> bool)
+   ((((SEG :num -> num -> 'a list -> 'a list) $2) 0)
+   (((SNOC :'a -> 'a list -> 'a list) $0) $1)))
+   ((((SEG :num -> num -> 'a list -> 'a list) $2) 0) $1)))))))))`),
+ ((SEG_SUC_CONS),
+  [],
+  `((! :(num -> bool) -> bool) (\(m :num). ((! :(num -> bool) -> bool)
+   (\(n :num). ((! :('a list -> bool) -> bool) (\(l :'a list).
+   ((! :('a -> bool) -> bool) (\(x :'a).
+   (((= :'a list -> 'a list -> bool)
+   ((((SEG :num -> num -> 'a list -> 'a list) $3) (SUC $2))
+   (((CONS :'a -> 'a list -> 'a list) $0) $1)))
+   ((((SEG :num -> num -> 'a list -> 'a list) $3) $2) $1))))))))))`),
+ ((SEG_LENGTH_ID),
+  [],
+  `((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :'a list -> 'a list -> bool)
+   ((((SEG :num -> num -> 'a list -> 'a list)
+   ((LENGTH :'a list -> num) $0)) 0) $0)) $0)))`),
+ ((BUTLAST),
+  [],
+  `((! :('a -> bool) -> bool) (\(x :'a).
+   ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :'a list -> 'a list -> bool) ((BUTLAST :'a list -> 'a list)
+   (((SNOC :'a -> 'a list -> 'a list) $1) $0))) $0)))))`),
+ ((LAST),
+  [],
+  `((! :('a -> bool) -> bool) (\(x :'a).
+   ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :'a -> 'a -> bool) ((LAST :'a list -> 'a)
+   (((SNOC :'a -> 'a list -> 'a list) $1) $0))) $1)))))`),
+ ((FILTER_REVERSE),
+  [],
+  `((! :(('a -> bool) -> bool) -> bool) (\(P :'a -> bool).
+   ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :'a list -> 'a list -> bool)
+   (((FILTER :('a -> bool) -> 'a list -> 'a list) $1)
+   ((REVERSE :'a list -> 'a list) $0))) ((REVERSE :'a list -> 'a list)
+   (((FILTER :('a -> bool) -> 'a list -> 'a list) $1) $0)))))))`),
+ ((MAP_REVERSE),
+  [],
+  `((! :(('a -> 'b) -> bool) -> bool) (\(f :'a -> 'b).
+   ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :'b list -> 'b list -> bool)
+   (((MAP :('a -> 'b) -> 'a list -> 'b list) $1)
+   ((REVERSE :'a list -> 'a list) $0))) ((REVERSE :'b list -> 'b list)
+   (((MAP :('a -> 'b) -> 'a list -> 'b list) $1) $0)))))))`),
+ ((NULL_FOLDL),
+  [],
+  `((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :bool -> bool -> bool) ((NULL :'a list -> bool) $0))
+   ((((FOLDL :(bool -> 'a -> bool) -> bool -> 'a list -> bool)
+   (\(x :bool). (\(l' :'a). F))) T) $0))))`),
+ ((NULL_FOLDR),
+  [],
+  `((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :bool -> bool -> bool) ((NULL :'a list -> bool) $0))
+   ((((FOLDR :('a -> bool -> bool) -> bool -> 'a list -> bool)
+   (\(x :'a). (\(l' :bool). F))) T) $0))))`),
+ ((IS_EL_FOLDL),
+  [],
+  `((! :('a -> bool) -> bool) (\(y :'a).
+   ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :bool -> bool -> bool) (((IS_EL :'a -> 'a list -> bool) $1)
+   $0)) ((((FOLDL :(bool -> 'a -> bool) -> bool -> 'a list -> bool)
+   (\(l' :bool). (\(x :'a). ((\/ $1) (((= :'a -> 'a -> bool) $3)
+   $0))))) F) $0))))))`),
+ ((IS_EL_FOLDR),
+  [],
+  `((! :('a -> bool) -> bool) (\(y :'a).
+   ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :bool -> bool -> bool) (((IS_EL :'a -> 'a list -> bool) $1)
+   $0)) ((((FOLDR :('a -> bool -> bool) -> bool -> 'a list -> bool)
+   (\(x :'a). (\(l' :bool). ((\/ (((= :'a -> 'a -> bool) $3) $1))
+   $0)))) F) $0))))))`),
+ ((IS_EL_APPEND),
+  [],
+  `((! :('a list -> bool) -> bool) (\(l1 :'a list).
+   ((! :('a list -> bool) -> bool) (\(l2 :'a list).
+   ((! :('a -> bool) -> bool) (\(x :'a). (((= :bool -> bool -> bool)
+   (((IS_EL :'a -> 'a list -> bool) $0)
+   (((APPEND :'a list -> 'a list -> 'a list) $2) $1))) ((\/
+   (((IS_EL :'a -> 'a list -> bool) $0) $2))
+   (((IS_EL :'a -> 'a list -> bool) $0) $1)))))))))`),
+ ((SOME_EL_DISJ),
+  [],
+  `((! :(('a -> bool) -> bool) -> bool) (\(P :'a -> bool).
+   ((! :(('a -> bool) -> bool) -> bool) (\(Q :'a -> bool).
+   ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :bool -> bool -> bool)
+   (((SOME_EL :('a -> bool) -> 'a list -> bool) (\(x :'a). ((\/ ($3
+   $0)) ($2 $0)))) $0)) ((\/
+   (((SOME_EL :('a -> bool) -> 'a list -> bool) $2) $0))
+   (((SOME_EL :('a -> bool) -> 'a list -> bool) $1) $0)))))))))`),
+ ((SOME_EL_APPEND),
+  [],
+  `((! :(('a -> bool) -> bool) -> bool) (\(P :'a -> bool).
+   ((! :('a list -> bool) -> bool) (\(l1 :'a list).
+   ((! :('a list -> bool) -> bool) (\(l2 :'a list).
+   (((= :bool -> bool -> bool)
+   (((SOME_EL :('a -> bool) -> 'a list -> bool) $2)
+   (((APPEND :'a list -> 'a list -> 'a list) $1) $0))) ((\/
+   (((SOME_EL :('a -> bool) -> 'a list -> bool) $2) $1))
+   (((SOME_EL :('a -> bool) -> 'a list -> bool) $2) $0)))))))))`),
+ ((SOME_EL_MAP),
+  [],
+  `((! :(('b -> bool) -> bool) -> bool) (\(P :'b -> bool).
+   ((! :(('a -> 'b) -> bool) -> bool) (\(f :'a -> 'b).
+   ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :bool -> bool -> bool)
+   (((SOME_EL :('b -> bool) -> 'b list -> bool) $2)
+   (((MAP :('a -> 'b) -> 'a list -> 'b list) $1) $0)))
+   (((SOME_EL :('a -> bool) -> 'a list -> bool)
+   (((o :('b -> bool) -> ('a -> 'b) -> 'a -> bool) $2) $1))
+   $0))))))))`),
+ ((FILTER_FLAT),
+  [],
+  `((! :(('a -> bool) -> bool) -> bool) (\(P :'a -> bool).
+   ((! :('a list list -> bool) -> bool) (\(l :'a list list).
+   (((= :'a list -> 'a list -> bool)
+   (((FILTER :('a -> bool) -> 'a list -> 'a list) $1)
+   ((FLAT :'a list list -> 'a list) $0)))
+   ((FLAT :'a list list -> 'a list)
+   (((MAP :('a list -> 'a list) -> 'a list list -> 'a list list)
+   ((FILTER :('a -> bool) -> 'a list -> 'a list) $1)) $0)))))))`),
+ ((MAP_FLAT),
+  [],
+  `((! :(('a -> 'b) -> bool) -> bool) (\(f :'a -> 'b).
+   ((! :('a list list -> bool) -> bool) (\(l :'a list list).
+   (((= :'b list -> 'b list -> bool)
+   (((MAP :('a -> 'b) -> 'a list -> 'b list) $1)
+   ((FLAT :'a list list -> 'a list) $0)))
+   ((FLAT :'b list list -> 'b list)
+   (((MAP :('a list -> 'b list) -> 'a list list -> 'b list list)
+   ((MAP :('a -> 'b) -> 'a list -> 'b list) $1)) $0)))))))`),
+ ((ASSOC_FOLDL_FLAT),
+  [],
+  `((! :(('a -> 'a -> 'a) -> bool) -> bool) (\(f :'a -> 'a -> 'a).
+   ((==> ((ASSOC :('a -> 'a -> 'a) -> bool) $0))
+   ((! :('a -> bool) -> bool) (\(e :'a). ((==>
+   (((RIGHT_ID :('a -> 'a -> 'a) -> 'a -> bool) $1) $0))
+   ((! :('a list list -> bool) -> bool) (\(l :'a list list).
+   (((= :'a -> 'a -> bool)
+   ((((FOLDL :('a -> 'a -> 'a) -> 'a -> 'a list -> 'a) $2) $1)
+   ((FLAT :'a list list -> 'a list) $0)))
+   ((((FOLDL :('a -> 'a -> 'a) -> 'a -> 'a list -> 'a) $2) $1)
+   (((MAP :('a list -> 'a) -> 'a list list -> 'a list)
+   (((FOLDL :('a -> 'a -> 'a) -> 'a -> 'a list -> 'a) $2) $1))
+   $0)))))))))))`),
+ ((ASSOC_FOLDR_FLAT),
+  [],
+  `((! :(('a -> 'a -> 'a) -> bool) -> bool) (\(f :'a -> 'a -> 'a).
+   ((==> ((ASSOC :('a -> 'a -> 'a) -> bool) $0))
+   ((! :('a -> bool) -> bool) (\(e :'a). ((==>
+   (((LEFT_ID :('a -> 'a -> 'a) -> 'a -> bool) $1) $0))
+   ((! :('a list list -> bool) -> bool) (\(l :'a list list).
+   (((= :'a -> 'a -> bool)
+   ((((FOLDR :('a -> 'a -> 'a) -> 'a -> 'a list -> 'a) $2) $1)
+   ((FLAT :'a list list -> 'a list) $0)))
+   ((((FOLDR :('a -> 'a -> 'a) -> 'a -> 'a list -> 'a) $2) $1)
+   (((MAP :('a list -> 'a) -> 'a list list -> 'a list)
+   (((FOLDR :('a -> 'a -> 'a) -> 'a -> 'a list -> 'a) $2) $1))
+   $0)))))))))))`),
+ ((FOLDL_FILTER),
+  [],
+  `((! :(('a -> 'a -> 'a) -> bool) -> bool) (\(f :'a -> 'a -> 'a).
+   ((! :('a -> bool) -> bool) (\(e :'a).
+   ((! :(('a -> bool) -> bool) -> bool) (\(P :'a -> bool).
+   ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :'a -> 'a -> bool)
+   ((((FOLDL :('a -> 'a -> 'a) -> 'a -> 'a list -> 'a) $3) $2)
+   (((FILTER :('a -> bool) -> 'a list -> 'a list) $1) $0)))
+   ((((FOLDL :('a -> 'a -> 'a) -> 'a -> 'a list -> 'a) (\(x :'a).
+   (\(y :'a). ((((COND :bool -> 'a -> 'a -> 'a) ($3 $0)) (($5 $1) $0))
+   $1)))) $2) $0))))))))))`),
+ ((FOLDR_FILTER),
+  [],
+  `((! :(('a -> 'a -> 'a) -> bool) -> bool) (\(f :'a -> 'a -> 'a).
+   ((! :('a -> bool) -> bool) (\(e :'a).
+   ((! :(('a -> bool) -> bool) -> bool) (\(P :'a -> bool).
+   ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :'a -> 'a -> bool)
+   ((((FOLDR :('a -> 'a -> 'a) -> 'a -> 'a list -> 'a) $3) $2)
+   (((FILTER :('a -> bool) -> 'a list -> 'a list) $1) $0)))
+   ((((FOLDR :('a -> 'a -> 'a) -> 'a -> 'a list -> 'a) (\(x :'a).
+   (\(y :'a). ((((COND :bool -> 'a -> 'a -> 'a) ($3 $1)) (($5 $1) $0))
+   $0)))) $2) $0))))))))))`),
+ ((SOME_EL_FOLDL_MAP),
+  [],
+  `((! :(('a -> bool) -> bool) -> bool) (\(P :'a -> bool).
+   ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :bool -> bool -> bool)
+   (((SOME_EL :('a -> bool) -> 'a list -> bool) $1) $0))
+   ((((FOLDL :(bool -> bool -> bool) -> bool -> bool list -> bool) \/)
+   F) (((MAP :('a -> bool) -> 'a list -> bool list) $1) $0)))))))`),
+ ((SOME_EL_FOLDR_MAP),
+  [],
+  `((! :(('a -> bool) -> bool) -> bool) (\(P :'a -> bool).
+   ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :bool -> bool -> bool)
+   (((SOME_EL :('a -> bool) -> 'a list -> bool) $1) $0))
+   ((((FOLDR :(bool -> bool -> bool) -> bool -> bool list -> bool) \/)
+   F) (((MAP :('a -> bool) -> 'a list -> bool list) $1) $0)))))))`),
+ ((ALL_EL_FOLDL_MAP),
+  [],
+  `((! :(('a -> bool) -> bool) -> bool) (\(P :'a -> bool).
+   ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :bool -> bool -> bool)
+   (((ALL_EL :('a -> bool) -> 'a list -> bool) $1) $0))
+   ((((FOLDL :(bool -> bool -> bool) -> bool -> bool list -> bool) /\)
+   T) (((MAP :('a -> bool) -> 'a list -> bool list) $1) $0)))))))`),
+ ((ALL_EL_FOLDR_MAP),
+  [],
+  `((! :(('a -> bool) -> bool) -> bool) (\(P :'a -> bool).
+   ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :bool -> bool -> bool)
+   (((ALL_EL :('a -> bool) -> 'a list -> bool) $1) $0))
+   ((((FOLDR :(bool -> bool -> bool) -> bool -> bool list -> bool) /\)
+   T) (((MAP :('a -> bool) -> 'a list -> bool list) $1) $0)))))))`),
+ ((SOME_EL_FOLDL),
+  [],
+  `((! :(('a -> bool) -> bool) -> bool) (\(P :'a -> bool).
+   ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :bool -> bool -> bool)
+   (((SOME_EL :('a -> bool) -> 'a list -> bool) $1) $0))
+   ((((FOLDL :(bool -> 'a -> bool) -> bool -> 'a list -> bool)
+   (\(l' :bool). (\(x :'a). ((\/ $1) ($3 $0))))) F) $0))))))`),
+ ((SOME_EL_FOLDR),
+  [],
+  `((! :(('a -> bool) -> bool) -> bool) (\(P :'a -> bool).
+   ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :bool -> bool -> bool)
+   (((SOME_EL :('a -> bool) -> 'a list -> bool) $1) $0))
+   ((((FOLDR :('a -> bool -> bool) -> bool -> 'a list -> bool)
+   (\(x :'a). (\(l' :bool). ((\/ ($3 $1)) $0)))) F) $0))))))`),
+ ((ALL_EL_FOLDL),
+  [],
+  `((! :(('a -> bool) -> bool) -> bool) (\(P :'a -> bool).
+   ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :bool -> bool -> bool)
+   (((ALL_EL :('a -> bool) -> 'a list -> bool) $1) $0))
+   ((((FOLDL :(bool -> 'a -> bool) -> bool -> 'a list -> bool)
+   (\(l' :bool). (\(x :'a). ((/\ $1) ($3 $0))))) T) $0))))))`),
+ ((ALL_EL_FOLDR),
+  [],
+  `((! :(('a -> bool) -> bool) -> bool) (\(P :'a -> bool).
+   ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :bool -> bool -> bool)
+   (((ALL_EL :('a -> bool) -> 'a list -> bool) $1) $0))
+   ((((FOLDR :('a -> bool -> bool) -> bool -> 'a list -> bool)
+   (\(x :'a). (\(l' :bool). ((/\ ($3 $1)) $0)))) T) $0))))))`),
+ ((FOLDL_MAP),
+  [],
+  `((! :(('a -> 'a -> 'a) -> bool) -> bool) (\(f :'a -> 'a -> 'a).
+   ((! :('a -> bool) -> bool) (\(e :'a).
+   ((! :(('b -> 'a) -> bool) -> bool) (\(g :'b -> 'a).
+   ((! :('b list -> bool) -> bool) (\(l :'b list).
+   (((= :'a -> 'a -> bool)
+   ((((FOLDL :('a -> 'a -> 'a) -> 'a -> 'a list -> 'a) $3) $2)
+   (((MAP :('b -> 'a) -> 'b list -> 'a list) $1) $0)))
+   ((((FOLDL :('a -> 'b -> 'a) -> 'a -> 'b list -> 'a) (\(x :'a).
+   (\(y :'b). (($5 $1) ($3 $0))))) $2) $0))))))))))`),
+ ((FOLDR_MAP),
+  [],
+  `((! :(('a -> 'a -> 'a) -> bool) -> bool) (\(f :'a -> 'a -> 'a).
+   ((! :('a -> bool) -> bool) (\(e :'a).
+   ((! :(('b -> 'a) -> bool) -> bool) (\(g :'b -> 'a).
+   ((! :('b list -> bool) -> bool) (\(l :'b list).
+   (((= :'a -> 'a -> bool)
+   ((((FOLDR :('a -> 'a -> 'a) -> 'a -> 'a list -> 'a) $3) $2)
+   (((MAP :('b -> 'a) -> 'b list -> 'a list) $1) $0)))
+   ((((FOLDR :('b -> 'a -> 'a) -> 'a -> 'b list -> 'a) (\(x :'b).
+   (\(y :'a). (($5 ($3 $1)) $0)))) $2) $0))))))))))`),
+ ((FOLDL_REVERSE),
+  [],
+  `((! :(('a -> 'b -> 'a) -> bool) -> bool) (\(f :'a -> 'b -> 'a).
+   ((! :('a -> bool) -> bool) (\(e :'a).
+   ((! :('b list -> bool) -> bool) (\(l :'b list).
+   (((= :'a -> 'a -> bool)
+   ((((FOLDL :('a -> 'b -> 'a) -> 'a -> 'b list -> 'a) $2) $1)
+   ((REVERSE :'b list -> 'b list) $0)))
+   ((((FOLDR :('b -> 'a -> 'a) -> 'a -> 'b list -> 'a) (\(x :'b).
+   (\(y :'a). (($4 $0) $1)))) $1) $0))))))))`),
+ ((FOLDR_REVERSE),
+  [],
+  `((! :(('a -> 'b -> 'b) -> bool) -> bool) (\(f :'a -> 'b -> 'b).
+   ((! :('b -> bool) -> bool) (\(e :'b).
+   ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :'b -> 'b -> bool)
+   ((((FOLDR :('a -> 'b -> 'b) -> 'b -> 'a list -> 'b) $2) $1)
+   ((REVERSE :'a list -> 'a list) $0)))
+   ((((FOLDL :('b -> 'a -> 'b) -> 'b -> 'a list -> 'b) (\(x :'b).
+   (\(y :'a). (($4 $0) $1)))) $1) $0))))))))`),
+ ((FOLDL_FOLDR_REVERSE),
+  [],
+  `((! :(('a -> 'b -> 'a) -> bool) -> bool) (\(f :'a -> 'b -> 'a).
+   ((! :('a -> bool) -> bool) (\(e :'a).
+   ((! :('b list -> bool) -> bool) (\(l :'b list).
+   (((= :'a -> 'a -> bool)
+   ((((FOLDL :('a -> 'b -> 'a) -> 'a -> 'b list -> 'a) $2) $1) $0))
+   ((((FOLDR :('b -> 'a -> 'a) -> 'a -> 'b list -> 'a) (\(x :'b).
+   (\(y :'a). (($4 $0) $1)))) $1) ((REVERSE :'b list -> 'b list)
+   $0)))))))))`),
+ ((FOLDR_FOLDL_REVERSE),
+  [],
+  `((! :(('a -> 'b -> 'b) -> bool) -> bool) (\(f :'a -> 'b -> 'b).
+   ((! :('b -> bool) -> bool) (\(e :'b).
+   ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :'b -> 'b -> bool)
+   ((((FOLDR :('a -> 'b -> 'b) -> 'b -> 'a list -> 'b) $2) $1) $0))
+   ((((FOLDL :('b -> 'a -> 'b) -> 'b -> 'a list -> 'b) (\(x :'b).
+   (\(y :'a). (($4 $0) $1)))) $1) ((REVERSE :'a list -> 'a list)
+   $0)))))))))`),
+ ((FOLDL_SNOC_NIL),
+  [],
+  `((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :'a list -> 'a list -> bool)
+   ((((FOLDL :('a list -> 'a -> 'a list) -> 'a list -> 'a list ->
+              'a list) (\(xs :'a list). (\(x :'a).
+   (((SNOC :'a -> 'a list -> 'a list) $0) $1)))) (NIL :'a list)) $0))
+   $0)))`),
+ ((FOLDR_CONS_NIL),
+  [],
+  `((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :'a list -> 'a list -> bool)
+   ((((FOLDR :('a -> 'a list -> 'a list) -> 'a list -> 'a list ->
+              'a list) (CONS :'a -> 'a list -> 'a list))
+   (NIL :'a list)) $0)) $0)))`),
+ ((FOLDR_SINGLE),
+  [],
+  `((! :(('a -> 'b -> 'b) -> bool) -> bool) (\(f :'a -> 'b -> 'b).
+   ((! :('b -> bool) -> bool) (\(e :'b). ((! :('a -> bool) -> bool)
+   (\(x :'a). (((= :'b -> 'b -> bool)
+   ((((FOLDR :('a -> 'b -> 'b) -> 'b -> 'a list -> 'b) $2) $1)
+   (((CONS :'a -> 'a list -> 'a list) $0) (NIL :'a list)))) (($2 $0)
+   $1))))))))`),
+ ((FOLDL_SINGLE),
+  [],
+  `((! :(('a -> 'b -> 'a) -> bool) -> bool) (\(f :'a -> 'b -> 'a).
+   ((! :('a -> bool) -> bool) (\(e :'a). ((! :('b -> bool) -> bool)
+   (\(x :'b). (((= :'a -> 'a -> bool)
+   ((((FOLDL :('a -> 'b -> 'a) -> 'a -> 'b list -> 'a) $2) $1)
+   (((CONS :'b -> 'b list -> 'b list) $0) (NIL :'b list)))) (($2 $1)
+   $0))))))))`),
+ ((FCOMM_FOLDL_APPEND),
+  [],
+  `((! :(('a -> 'b -> 'a) -> bool) -> bool) (\(f :'a -> 'b -> 'a).
+   ((! :(('a -> 'a -> 'a) -> bool) -> bool) (\(g :'a -> 'a -> 'a).
+   ((==> (((FCOMM :('a -> 'b -> 'a) -> ('a -> 'a -> 'a) -> bool) $1)
+   $0)) ((! :('a -> bool) -> bool) (\(e :'a). ((==>
+   (((RIGHT_ID :('a -> 'a -> 'a) -> 'a -> bool) $1) $0))
+   ((! :('b list -> bool) -> bool) (\(l1 :'b list).
+   ((! :('b list -> bool) -> bool) (\(l2 :'b list).
+   (((= :'a -> 'a -> bool)
+   ((((FOLDL :('a -> 'b -> 'a) -> 'a -> 'b list -> 'a) $4) $2)
+   (((APPEND :'b list -> 'b list -> 'b list) $1) $0))) (($3
+   ((((FOLDL :('a -> 'b -> 'a) -> 'a -> 'b list -> 'a) $4) $2) $1))
+   ((((FOLDL :('a -> 'b -> 'a) -> 'a -> 'b list -> 'a) $4) $2)
+   $0)))))))))))))))`),
+ ((FCOMM_FOLDR_APPEND),
+  [],
+  `((! :(('a -> 'a -> 'a) -> bool) -> bool) (\(g :'a -> 'a -> 'a).
+   ((! :(('b -> 'a -> 'a) -> bool) -> bool) (\(f :'b -> 'a -> 'a).
+   ((==> (((FCOMM :('a -> 'a -> 'a) -> ('b -> 'a -> 'a) -> bool) $1)
+   $0)) ((! :('a -> bool) -> bool) (\(e :'a). ((==>
+   (((LEFT_ID :('a -> 'a -> 'a) -> 'a -> bool) $2) $0))
+   ((! :('b list -> bool) -> bool) (\(l1 :'b list).
+   ((! :('b list -> bool) -> bool) (\(l2 :'b list).
+   (((= :'a -> 'a -> bool)
+   ((((FOLDR :('b -> 'a -> 'a) -> 'a -> 'b list -> 'a) $3) $2)
+   (((APPEND :'b list -> 'b list -> 'b list) $1) $0))) (($4
+   ((((FOLDR :('b -> 'a -> 'a) -> 'a -> 'b list -> 'a) $3) $2) $1))
+   ((((FOLDR :('b -> 'a -> 'a) -> 'a -> 'b list -> 'a) $3) $2)
+   $0)))))))))))))))`),
+ ((COMM_MONOID_FOLDR),
+  [],
+  `((! :(('a -> 'a -> 'a) -> bool) -> bool) (\(f :'a -> 'a -> 'a).
+   ((==> ((COMM :('a -> 'a -> 'a) -> bool) $0))
+   ((! :('a -> bool) -> bool) (\(e' :'a). ((==>
+   (((MONOID :('a -> 'a -> 'a) -> 'a -> bool) $1) $0))
+   ((! :('a -> bool) -> bool) (\(e :'a).
+   ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :'a -> 'a -> bool)
+   ((((FOLDR :('a -> 'a -> 'a) -> 'a -> 'a list -> 'a) $3) $1) $0))
+   (($3 $1) ((((FOLDR :('a -> 'a -> 'a) -> 'a -> 'a list -> 'a) $3)
+   $2) $0)))))))))))))`),
+ ((COMM_MONOID_FOLDL),
+  [],
+  `((! :(('a -> 'a -> 'a) -> bool) -> bool) (\(f :'a -> 'a -> 'a).
+   ((==> ((COMM :('a -> 'a -> 'a) -> bool) $0))
+   ((! :('a -> bool) -> bool) (\(e' :'a). ((==>
+   (((MONOID :('a -> 'a -> 'a) -> 'a -> bool) $1) $0))
+   ((! :('a -> bool) -> bool) (\(e :'a).
+   ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :'a -> 'a -> bool)
+   ((((FOLDL :('a -> 'a -> 'a) -> 'a -> 'a list -> 'a) $3) $1) $0))
+   (($3 $1) ((((FOLDL :('a -> 'a -> 'a) -> 'a -> 'a list -> 'a) $3)
+   $2) $0)))))))))))))`),
+ ((LENGTH_SCANR),
+  [],
+  `((! :(('a -> 'b -> 'b) -> bool) -> bool) (\(f :'a -> 'b -> 'b).
+   ((! :('b -> bool) -> bool) (\(e :'b).
+   ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :num -> num -> bool) ((LENGTH :'b list -> num)
+   ((((SCANR :('a -> 'b -> 'b) -> 'b -> 'a list -> 'b list) $2) $1)
+   $0))) (SUC ((LENGTH :'a list -> num) $0)))))))))`),
+ ((LENGTH_SCANL),
+  [],
+  `((! :(('b -> 'a -> 'b) -> bool) -> bool) (\(f :'b -> 'a -> 'b).
+   ((! :('b -> bool) -> bool) (\(e :'b).
+   ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :num -> num -> bool) ((LENGTH :'b list -> num)
+   ((((SCANL :('b -> 'a -> 'b) -> 'b -> 'a list -> 'b list) $2) $1)
+   $0))) (SUC ((LENGTH :'a list -> num) $0)))))))))`),
+ ((IS_PREFIX_PREFIX),
+  [],
+  `((! :(('a -> bool) -> bool) -> bool) (\(P :'a -> bool).
+   ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((IS_PREFIX :'a list -> 'a list -> bool) $0)
+   (((PREFIX :('a -> bool) -> 'a list -> 'a list) $1) $0))))))`),
+ ((PREFIX),
+  [],
+  `((/\ ((! :(('a -> bool) -> bool) -> bool) (\(P :'a -> bool).
+   (((= :'a list -> 'a list -> bool)
+   (((PREFIX :('a -> bool) -> 'a list -> 'a list) $0) (NIL :'a list)))
+   (NIL :'a list))))) ((! :(('a -> bool) -> bool) -> bool)
+   (\(P :'a -> bool). ((! :('a -> bool) -> bool) (\(x :'a).
+   ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :'a list -> 'a list -> bool)
+   (((PREFIX :('a -> bool) -> 'a list -> 'a list) $2)
+   (((CONS :'a -> 'a list -> 'a list) $1) $0)))
+   ((((COND :bool -> 'a list -> 'a list -> 'a list) ($2 $1))
+   (((CONS :'a -> 'a list -> 'a list) $1)
+   (((PREFIX :('a -> bool) -> 'a list -> 'a list) $2) $0)))
+   (NIL :'a list))))))))))`),
+ ((PREFIX_FOLDR),
+  [],
+  `((! :(('a -> bool) -> bool) -> bool) (\(P :'a -> bool).
+   ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :'a list -> 'a list -> bool)
+   (((PREFIX :('a -> bool) -> 'a list -> 'a list) $1) $0))
+   ((((FOLDR :('a -> 'a list -> 'a list) -> 'a list -> 'a list ->
+              'a list) (\(x :'a). (\(l' :'a list).
+   ((((COND :bool -> 'a list -> 'a list -> 'a list) ($3 $1))
+   (((CONS :'a -> 'a list -> 'a list) $1) $0)) (NIL :'a list)))))
+   (NIL :'a list)) $0))))))`),
+ ((IS_SUBLIST_REVERSE),
+  [],
+  `((! :('a list -> bool) -> bool) (\(l1 :'a list).
+   ((! :('a list -> bool) -> bool) (\(l2 :'a list).
+   (((= :bool -> bool -> bool)
+   (((IS_SUBLIST :'a list -> 'a list -> bool)
+   ((REVERSE :'a list -> 'a list) $1)) ((REVERSE :'a list -> 'a list)
+   $0))) (((IS_SUBLIST :'a list -> 'a list -> bool) $1) $0))))))`),
+ ((IS_SUFFIX_REVERSE),
+  [],
+  `((! :('a list -> bool) -> bool) (\(l2 :'a list).
+   ((! :('a list -> bool) -> bool) (\(l1 :'a list).
+   (((= :bool -> bool -> bool)
+   (((IS_SUFFIX :'a list -> 'a list -> bool)
+   ((REVERSE :'a list -> 'a list) $0)) ((REVERSE :'a list -> 'a list)
+   $1))) (((IS_PREFIX :'a list -> 'a list -> bool) $0) $1))))))`),
+ ((IS_PREFIX_REVERSE),
+  [],
+  `((! :('a list -> bool) -> bool) (\(l1 :'a list).
+   ((! :('a list -> bool) -> bool) (\(l2 :'a list).
+   (((= :bool -> bool -> bool)
+   (((IS_PREFIX :'a list -> 'a list -> bool)
+   ((REVERSE :'a list -> 'a list) $1)) ((REVERSE :'a list -> 'a list)
+   $0))) (((IS_SUFFIX :'a list -> 'a list -> bool) $1) $0))))))`),
+ ((IS_SUFFIX_IS_SUBLIST),
+  [],
+  `((! :('a list -> bool) -> bool) (\(l1 :'a list).
+   ((! :('a list -> bool) -> bool) (\(l2 :'a list). ((==>
+   (((IS_SUFFIX :'a list -> 'a list -> bool) $1) $0))
+   (((IS_SUBLIST :'a list -> 'a list -> bool) $1) $0))))))`),
+ ((IS_PREFIX_IS_SUBLIST),
+  [],
+  `((! :('a list -> bool) -> bool) (\(l1 :'a list).
+   ((! :('a list -> bool) -> bool) (\(l2 :'a list). ((==>
+   (((IS_PREFIX :'a list -> 'a list -> bool) $1) $0))
+   (((IS_SUBLIST :'a list -> 'a list -> bool) $1) $0))))))`),
+ ((IS_SUBLIST_APPEND),
+  [],
+  `((! :('a list -> bool) -> bool) (\(l1 :'a list).
+   ((! :('a list -> bool) -> bool) (\(l2 :'a list).
+   (((= :bool -> bool -> bool)
+   (((IS_SUBLIST :'a list -> 'a list -> bool) $1) $0))
+   ((? :('a list -> bool) -> bool) (\(l :'a list).
+   ((? :('a list -> bool) -> bool) (\(l' :'a list).
+   (((= :'a list -> 'a list -> bool) $3)
+   (((APPEND :'a list -> 'a list -> 'a list) $1)
+   (((APPEND :'a list -> 'a list -> 'a list) $2) $0))))))))))))`),
+ ((IS_SUFFIX_APPEND),
+  [],
+  `((! :('a list -> bool) -> bool) (\(l1 :'a list).
+   ((! :('a list -> bool) -> bool) (\(l2 :'a list).
+   (((= :bool -> bool -> bool)
+   (((IS_SUFFIX :'a list -> 'a list -> bool) $1) $0))
+   ((? :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :'a list -> 'a list -> bool) $2)
+   (((APPEND :'a list -> 'a list -> 'a list) $0) $1)))))))))`),
+ ((IS_PREFIX_APPEND),
+  [],
+  `((! :('a list -> bool) -> bool) (\(l1 :'a list).
+   ((! :('a list -> bool) -> bool) (\(l2 :'a list).
+   (((= :bool -> bool -> bool)
+   (((IS_PREFIX :'a list -> 'a list -> bool) $1) $0))
+   ((? :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :'a list -> 'a list -> bool) $2)
+   (((APPEND :'a list -> 'a list -> 'a list) $1) $0)))))))))`),
+ ((SUM_FOLDL),
+  [],
+  `((! :(num list -> bool) -> bool) (\(l :num list).
+   (((= :num -> num -> bool) (SUM $0))
+   ((((FOLDL :(num -> num -> num) -> num -> num list -> num) +) 0)
+   $0))))`),
+ ((SUM_FOLDR),
+  [],
+  `((! :(num list -> bool) -> bool) (\(l :num list).
+   (((= :num -> num -> bool) (SUM $0))
+   ((((FOLDR :(num -> num -> num) -> num -> num list -> num) +) 0)
+   $0))))`),
+ ((SUM_SNOC),
+  [],
+  `((! :(num -> bool) -> bool) (\(x :num).
+   ((! :(num list -> bool) -> bool) (\(l :num list).
+   (((= :num -> num -> bool) (SUM
+   (((SNOC :num -> num list -> num list) $1) $0))) ((+ (SUM $0))
+   $1))))))`),
+ ((IS_EL_SNOC),
+  [],
+  `((! :('a -> bool) -> bool) (\(y :'a). ((! :('a -> bool) -> bool)
+   (\(x :'a). ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :bool -> bool -> bool) (((IS_EL :'a -> 'a list -> bool) $2)
+   (((SNOC :'a -> 'a list -> 'a list) $1) $0))) ((\/
+   (((= :'a -> 'a -> bool) $2) $1)) (((IS_EL :'a -> 'a list -> bool)
+   $2) $0)))))))))`),
+ ((IS_EL),
+  [],
+  `((/\ ((! :('a -> bool) -> bool) (\(x :'a).
+   (((= :bool -> bool -> bool) (((IS_EL :'a -> 'a list -> bool) $0)
+   (NIL :'a list))) F)))) ((! :('a -> bool) -> bool) (\(y :'a).
+   ((! :('a -> bool) -> bool) (\(x :'a).
+   ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :bool -> bool -> bool) (((IS_EL :'a -> 'a list -> bool) $2)
+   (((CONS :'a -> 'a list -> 'a list) $1) $0))) ((\/
+   (((= :'a -> 'a -> bool) $2) $1)) (((IS_EL :'a -> 'a list -> bool)
+   $2) $0))))))))))`),
+ ((NOT_SOME_EL_ALL_EL),
+  [],
+  `((! :(('a -> bool) -> bool) -> bool) (\(P :'a -> bool).
+   ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :bool -> bool -> bool) (~
+   (((SOME_EL :('a -> bool) -> 'a list -> bool) $1) $0)))
+   (((ALL_EL :('a -> bool) -> 'a list -> bool)
+   (((o :(bool -> bool) -> ('a -> bool) -> 'a -> bool) ~) $1))
+   $0))))))`),
+ ((NOT_ALL_EL_SOME_EL),
+  [],
+  `((! :(('a -> bool) -> bool) -> bool) (\(P :'a -> bool).
+   ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :bool -> bool -> bool) (~
+   (((ALL_EL :('a -> bool) -> 'a list -> bool) $1) $0)))
+   (((SOME_EL :('a -> bool) -> 'a list -> bool)
+   (((o :(bool -> bool) -> ('a -> bool) -> 'a -> bool) ~) $1))
+   $0))))))`),
+ ((SOME_EL_SNOC),
+  [],
+  `((! :(('a -> bool) -> bool) -> bool) (\(P :'a -> bool).
+   ((! :('a -> bool) -> bool) (\(x :'a).
+   ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :bool -> bool -> bool)
+   (((SOME_EL :('a -> bool) -> 'a list -> bool) $2)
+   (((SNOC :'a -> 'a list -> 'a list) $1) $0))) ((\/ ($2 $1))
+   (((SOME_EL :('a -> bool) -> 'a list -> bool) $2) $0)))))))))`),
+ ((ALL_EL_APPEND),
+  [],
+  `((! :(('a -> bool) -> bool) -> bool) (\(P :'a -> bool).
+   ((! :('a list -> bool) -> bool) (\(l1 :'a list).
+   ((! :('a list -> bool) -> bool) (\(l2 :'a list).
+   (((= :bool -> bool -> bool)
+   (((ALL_EL :('a -> bool) -> 'a list -> bool) $2)
+   (((APPEND :'a list -> 'a list -> 'a list) $1) $0))) ((/\
+   (((ALL_EL :('a -> bool) -> 'a list -> bool) $2) $1))
+   (((ALL_EL :('a -> bool) -> 'a list -> bool) $2) $0)))))))))`),
+ ((ALL_EL_MAP),
+  [],
+  `((! :(('b -> bool) -> bool) -> bool) (\(P :'b -> bool).
+   ((! :(('a -> 'b) -> bool) -> bool) (\(f :'a -> 'b).
+   ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :bool -> bool -> bool)
+   (((ALL_EL :('b -> bool) -> 'b list -> bool) $2)
+   (((MAP :('a -> 'b) -> 'a list -> 'b list) $1) $0)))
+   (((ALL_EL :('a -> bool) -> 'a list -> bool)
+   (((o :('b -> bool) -> ('a -> 'b) -> 'a -> bool) $2) $1))
+   $0))))))))`),
+ ((ALL_EL_CONJ),
+  [],
+  `((! :(('a -> bool) -> bool) -> bool) (\(P :'a -> bool).
+   ((! :(('a -> bool) -> bool) -> bool) (\(Q :'a -> bool).
+   ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :bool -> bool -> bool)
+   (((ALL_EL :('a -> bool) -> 'a list -> bool) (\(x :'a). ((/\ ($3
+   $0)) ($2 $0)))) $0)) ((/\
+   (((ALL_EL :('a -> bool) -> 'a list -> bool) $2) $0))
+   (((ALL_EL :('a -> bool) -> 'a list -> bool) $1) $0)))))))))`),
+ ((ALL_EL_SNOC),
+  [],
+  `((! :(('a -> bool) -> bool) -> bool) (\(P :'a -> bool).
+   ((! :('a -> bool) -> bool) (\(x :'a).
+   ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :bool -> bool -> bool)
+   (((ALL_EL :('a -> bool) -> 'a list -> bool) $2)
+   (((SNOC :'a -> 'a list -> 'a list) $1) $0))) ((/\
+   (((ALL_EL :('a -> bool) -> 'a list -> bool) $2) $0)) ($2
+   $1)))))))))`),
+ ((REVERSE_EQ_NIL),
+  [],
+  `((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :bool -> bool -> bool) (((= :'a list -> 'a list -> bool)
+   ((REVERSE :'a list -> 'a list) $0)) (NIL :'a list)))
+   (((= :'a list -> 'a list -> bool) $0) (NIL :'a list)))))`),
+ ((LENGTH_REVERSE),
+  [],
+  `((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :num -> num -> bool) ((LENGTH :'a list -> num)
+   ((REVERSE :'a list -> 'a list) $0))) ((LENGTH :'a list -> num)
+   $0))))`),
+ ((REVERSE_FOLDL),
+  [],
+  `((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :'a list -> 'a list -> bool) ((REVERSE :'a list -> 'a list)
+   $0))
+   ((((FOLDL :('a list -> 'a -> 'a list) -> 'a list -> 'a list ->
+              'a list) (\(l' :'a list). (\(x :'a).
+   (((CONS :'a -> 'a list -> 'a list) $0) $1)))) (NIL :'a list))
+   $0))))`),
+ ((REVERSE_FOLDR),
+  [],
+  `((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :'a list -> 'a list -> bool) ((REVERSE :'a list -> 'a list)
+   $0))
+   ((((FOLDR :('a -> 'a list -> 'a list) -> 'a list -> 'a list ->
+              'a list) (SNOC :'a -> 'a list -> 'a list))
+   (NIL :'a list)) $0))))`),
+ ((LENGTH_FLAT),
+  [],
+  `((! :('a list list -> bool) -> bool) (\(l :'a list list).
+   (((= :num -> num -> bool) ((LENGTH :'a list -> num)
+   ((FLAT :'a list list -> 'a list) $0))) (SUM
+   (((MAP :('a list -> num) -> 'a list list -> num list)
+   (LENGTH :'a list -> num)) $0)))))`),
+ ((FLAT_FOLDL),
+  [],
+  `((! :('a list list -> bool) -> bool) (\(l :'a list list).
+   (((= :'a list -> 'a list -> bool) ((FLAT :'a list list -> 'a list)
+   $0))
+   ((((FOLDL :('a list -> 'a list -> 'a list) -> 'a list ->
+              'a list list -> 'a list)
+   (APPEND :'a list -> 'a list -> 'a list)) (NIL :'a list)) $0))))`),
+ ((FLAT_FOLDR),
+  [],
+  `((! :('a list list -> bool) -> bool) (\(l :'a list list).
+   (((= :'a list -> 'a list -> bool) ((FLAT :'a list list -> 'a list)
+   $0))
+   ((((FOLDR :('a list -> 'a list -> 'a list) -> 'a list ->
+              'a list list -> 'a list)
+   (APPEND :'a list -> 'a list -> 'a list)) (NIL :'a list)) $0))))`),
+ ((FLAT_SNOC),
+  [],
+  `((! :('a list -> bool) -> bool) (\(x :'a list).
+   ((! :('a list list -> bool) -> bool) (\(l :'a list list).
+   (((= :'a list -> 'a list -> bool) ((FLAT :'a list list -> 'a list)
+   (((SNOC :'a list -> 'a list list -> 'a list list) $1) $0)))
+   (((APPEND :'a list -> 'a list -> 'a list)
+   ((FLAT :'a list list -> 'a list) $0)) $1))))))`),
+ ((FILTER_APPEND),
+  [],
+  `((! :(('a -> bool) -> bool) -> bool) (\(f :'a -> bool).
+   ((! :('a list -> bool) -> bool) (\(l1 :'a list).
+   ((! :('a list -> bool) -> bool) (\(l2 :'a list).
+   (((= :'a list -> 'a list -> bool)
+   (((FILTER :('a -> bool) -> 'a list -> 'a list) $2)
+   (((APPEND :'a list -> 'a list -> 'a list) $1) $0)))
+   (((APPEND :'a list -> 'a list -> 'a list)
+   (((FILTER :('a -> bool) -> 'a list -> 'a list) $2) $1))
+   (((FILTER :('a -> bool) -> 'a list -> 'a list) $2) $0)))))))))`),
+ ((APPEND_LENGTH_EQ),
+  [],
+  `((! :('a list -> bool) -> bool) (\(l1 :'a list).
+   ((! :('a list -> bool) -> bool) (\(l1' :'a list). ((==>
+   (((= :num -> num -> bool) ((LENGTH :'a list -> num) $1))
+   ((LENGTH :'a list -> num) $0))) ((! :('a list -> bool) -> bool)
+   (\(l2 :'a list). ((! :('a list -> bool) -> bool) (\(l2' :'a list).
+   ((==> (((= :num -> num -> bool) ((LENGTH :'a list -> num) $1))
+   ((LENGTH :'a list -> num) $0))) (((= :bool -> bool -> bool)
+   (((= :'a list -> 'a list -> bool)
+   (((APPEND :'a list -> 'a list -> 'a list) $3) $1))
+   (((APPEND :'a list -> 'a list -> 'a list) $2) $0))) ((/\
+   (((= :'a list -> 'a list -> bool) $3) $2))
+   (((= :'a list -> 'a list -> bool) $1) $0)))))))))))))`),
+ ((MONOID_APPEND_NIL),
+  [],
+  `(((MONOID :('a list -> 'a list -> 'a list) -> 'a list -> bool)
+   (APPEND :'a list -> 'a list -> 'a list)) (NIL :'a list))`),
+ ((ASSOC_APPEND),
+  [],
+  `((ASSOC :('a list -> 'a list -> 'a list) -> bool)
+   (APPEND :'a list -> 'a list -> 'a list))`),
+ ((CONS_APPEND),
+  [],
+  `((! :('a -> bool) -> bool) (\(x :'a).
+   ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :'a list -> 'a list -> bool)
+   (((CONS :'a -> 'a list -> 'a list) $1) $0))
+   (((APPEND :'a list -> 'a list -> 'a list)
+   (((CONS :'a -> 'a list -> 'a list) $1) (NIL :'a list))) $0))))))`),
+ ((FOLDL_APPEND),
+  [],
+  `((! :(('a -> 'b -> 'a) -> bool) -> bool) (\(f :'a -> 'b -> 'a).
+   ((! :('a -> bool) -> bool) (\(e :'a).
+   ((! :('b list -> bool) -> bool) (\(l1 :'b list).
+   ((! :('b list -> bool) -> bool) (\(l2 :'b list).
+   (((= :'a -> 'a -> bool)
+   ((((FOLDL :('a -> 'b -> 'a) -> 'a -> 'b list -> 'a) $3) $2)
+   (((APPEND :'b list -> 'b list -> 'b list) $1) $0)))
+   ((((FOLDL :('a -> 'b -> 'a) -> 'a -> 'b list -> 'a) $3)
+   ((((FOLDL :('a -> 'b -> 'a) -> 'a -> 'b list -> 'a) $3) $2) $1))
+   $0))))))))))`),
+ ((FOLDR_APPEND),
+  [],
+  `((! :(('a -> 'b -> 'b) -> bool) -> bool) (\(f :'a -> 'b -> 'b).
+   ((! :('b -> bool) -> bool) (\(e :'b).
+   ((! :('a list -> bool) -> bool) (\(l1 :'a list).
+   ((! :('a list -> bool) -> bool) (\(l2 :'a list).
+   (((= :'b -> 'b -> bool)
+   ((((FOLDR :('a -> 'b -> 'b) -> 'b -> 'a list -> 'b) $3) $2)
+   (((APPEND :'a list -> 'a list -> 'a list) $1) $0)))
+   ((((FOLDR :('a -> 'b -> 'b) -> 'b -> 'a list -> 'b) $3)
+   ((((FOLDR :('a -> 'b -> 'b) -> 'b -> 'a list -> 'b) $3) $2) $0))
+   $1))))))))))`),
+ ((APPEND_FOLDL),
+  [],
+  `((! :('a list -> bool) -> bool) (\(l1 :'a list).
+   ((! :('a list -> bool) -> bool) (\(l2 :'a list).
+   (((= :'a list -> 'a list -> bool)
+   (((APPEND :'a list -> 'a list -> 'a list) $1) $0))
+   ((((FOLDL :('a list -> 'a -> 'a list) -> 'a list -> 'a list ->
+              'a list) (\(l' :'a list). (\(x :'a).
+   (((SNOC :'a -> 'a list -> 'a list) $0) $1)))) $1) $0))))))`),
+ ((APPEND_FOLDR),
+  [],
+  `((! :('a list -> bool) -> bool) (\(l1 :'a list).
+   ((! :('a list -> bool) -> bool) (\(l2 :'a list).
+   (((= :'a list -> 'a list -> bool)
+   (((APPEND :'a list -> 'a list -> 'a list) $1) $0))
+   ((((FOLDR :('a -> 'a list -> 'a list) -> 'a list -> 'a list ->
+              'a list) (CONS :'a -> 'a list -> 'a list)) $0)
+   $1))))))`),
+ ((REVERSE_APPEND),
+  [],
+  `((! :('a list -> bool) -> bool) (\(l1 :'a list).
+   ((! :('a list -> bool) -> bool) (\(l2 :'a list).
+   (((= :'a list -> 'a list -> bool) ((REVERSE :'a list -> 'a list)
+   (((APPEND :'a list -> 'a list -> 'a list) $1) $0)))
+   (((APPEND :'a list -> 'a list -> 'a list)
+   ((REVERSE :'a list -> 'a list) $0)) ((REVERSE :'a list -> 'a list)
+   $1)))))))`),
+ ((APPEND_SNOC),
+  [],
+  `((! :('a list -> bool) -> bool) (\(l1 :'a list).
+   ((! :('a -> bool) -> bool) (\(x :'a).
+   ((! :('a list -> bool) -> bool) (\(l2 :'a list).
+   (((= :'a list -> 'a list -> bool)
+   (((APPEND :'a list -> 'a list -> 'a list) $2)
+   (((SNOC :'a -> 'a list -> 'a list) $1) $0)))
+   (((SNOC :'a -> 'a list -> 'a list) $1)
+   (((APPEND :'a list -> 'a list -> 'a list) $2) $0)))))))))`),
+ ((APPEND_NIL),
+  [],
+  `((/\ ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :'a list -> 'a list -> bool)
+   (((APPEND :'a list -> 'a list -> 'a list) $0) (NIL :'a list)))
+   $0)))) ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :'a list -> 'a list -> bool)
+   (((APPEND :'a list -> 'a list -> 'a list) (NIL :'a list)) $0))
+   $0))))`),
+ ((LENGTH_SEG),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num). ((! :(num -> bool) -> bool)
+   (\(k :num). ((! :('a list -> bool) -> bool) (\(l :'a list). ((==>
+   ((<= ((+ $2) $1)) ((LENGTH :'a list -> num) $0)))
+   (((= :num -> num -> bool) ((LENGTH :'a list -> num)
+   ((((SEG :num -> num -> 'a list -> 'a list) $2) $1) $0)))
+   $2))))))))`),
+ ((FILTER_MAP),
+  [],
+  `((! :(('b -> bool) -> bool) -> bool) (\(f1 :'b -> bool).
+   ((! :(('a -> 'b) -> bool) -> bool) (\(f2 :'a -> 'b).
+   ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :'b list -> 'b list -> bool)
+   (((FILTER :('b -> bool) -> 'b list -> 'b list) $2)
+   (((MAP :('a -> 'b) -> 'a list -> 'b list) $1) $0)))
+   (((MAP :('a -> 'b) -> 'a list -> 'b list) $1)
+   (((FILTER :('a -> bool) -> 'a list -> 'a list)
+   (((o :('b -> bool) -> ('a -> 'b) -> 'a -> bool) $2) $1))
+   $0)))))))))`),
+ ((FILTER_IDEM),
+  [],
+  `((! :(('a -> bool) -> bool) -> bool) (\(f :'a -> bool).
+   ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :'a list -> 'a list -> bool)
+   (((FILTER :('a -> bool) -> 'a list -> 'a list) $1)
+   (((FILTER :('a -> bool) -> 'a list -> 'a list) $1) $0)))
+   (((FILTER :('a -> bool) -> 'a list -> 'a list) $1) $0))))))`),
+ ((FILTER_COMM),
+  [],
+  `((! :(('a -> bool) -> bool) -> bool) (\(f1 :'a -> bool).
+   ((! :(('a -> bool) -> bool) -> bool) (\(f2 :'a -> bool).
+   ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :'a list -> 'a list -> bool)
+   (((FILTER :('a -> bool) -> 'a list -> 'a list) $2)
+   (((FILTER :('a -> bool) -> 'a list -> 'a list) $1) $0)))
+   (((FILTER :('a -> bool) -> 'a list -> 'a list) $1)
+   (((FILTER :('a -> bool) -> 'a list -> 'a list) $2) $0)))))))))`),
+ ((FILTER_FOLDL),
+  [],
+  `((! :(('a -> bool) -> bool) -> bool) (\(P :'a -> bool).
+   ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :'a list -> 'a list -> bool)
+   (((FILTER :('a -> bool) -> 'a list -> 'a list) $1) $0))
+   ((((FOLDL :('a list -> 'a -> 'a list) -> 'a list -> 'a list ->
+              'a list) (\(l' :'a list). (\(x :'a).
+   ((((COND :bool -> 'a list -> 'a list -> 'a list) ($3 $0))
+   (((SNOC :'a -> 'a list -> 'a list) $0) $1)) $1)))) (NIL :'a list))
+   $0))))))`),
+ ((FILTER_SNOC),
+  [],
+  `((! :(('a -> bool) -> bool) -> bool) (\(P :'a -> bool).
+   ((! :('a -> bool) -> bool) (\(x :'a).
+   ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :'a list -> 'a list -> bool)
+   (((FILTER :('a -> bool) -> 'a list -> 'a list) $2)
+   (((SNOC :'a -> 'a list -> 'a list) $1) $0)))
+   ((((COND :bool -> 'a list -> 'a list -> 'a list) ($2 $1))
+   (((SNOC :'a -> 'a list -> 'a list) $1)
+   (((FILTER :('a -> bool) -> 'a list -> 'a list) $2) $0)))
+   (((FILTER :('a -> bool) -> 'a list -> 'a list) $2) $0)))))))))`),
+ ((FILTER_FOLDR),
+  [],
+  `((! :(('a -> bool) -> bool) -> bool) (\(P :'a -> bool).
+   ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :'a list -> 'a list -> bool)
+   (((FILTER :('a -> bool) -> 'a list -> 'a list) $1) $0))
+   ((((FOLDR :('a -> 'a list -> 'a list) -> 'a list -> 'a list ->
+              'a list) (\(x :'a). (\(l' :'a list).
+   ((((COND :bool -> 'a list -> 'a list -> 'a list) ($3 $1))
+   (((CONS :'a -> 'a list -> 'a list) $1) $0)) $0)))) (NIL :'a list))
+   $0))))))`),
+ ((MAP_MAP_o),
+  [],
+  `((! :(('b -> 'c) -> bool) -> bool) (\(f :'b -> 'c).
+   ((! :(('a -> 'b) -> bool) -> bool) (\(g :'a -> 'b).
+   ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :'c list -> 'c list -> bool)
+   (((MAP :('b -> 'c) -> 'b list -> 'c list) $2)
+   (((MAP :('a -> 'b) -> 'a list -> 'b list) $1) $0)))
+   (((MAP :('a -> 'c) -> 'a list -> 'c list)
+   (((o :('b -> 'c) -> ('a -> 'b) -> 'a -> 'c) $2) $1)) $0))))))))`),
+ ((MAP_o),
+  [],
+  `((! :(('b -> 'c) -> bool) -> bool) (\(f :'b -> 'c).
+   ((! :(('a -> 'b) -> bool) -> bool) (\(g :'a -> 'b).
+   (((= :('a list -> 'c list) -> ('a list -> 'c list) -> bool)
+   ((MAP :('a -> 'c) -> 'a list -> 'c list)
+   (((o :('b -> 'c) -> ('a -> 'b) -> 'a -> 'c) $1) $0)))
+   (((o :('b list -> 'c list) -> ('a list -> 'b list) -> 'a list ->
+         'c list) ((MAP :('b -> 'c) -> 'b list -> 'c list) $1))
+   ((MAP :('a -> 'b) -> 'a list -> 'b list) $0)))))))`),
+ ((MAP_FOLDL),
+  [],
+  `((! :(('a -> 'b) -> bool) -> bool) (\(f :'a -> 'b).
+   ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :'b list -> 'b list -> bool)
+   (((MAP :('a -> 'b) -> 'a list -> 'b list) $1) $0))
+   ((((FOLDL :('b list -> 'a -> 'b list) -> 'b list -> 'a list ->
+              'b list) (\(l' :'b list). (\(x :'a).
+   (((SNOC :'b -> 'b list -> 'b list) ($3 $0)) $1)))) (NIL :'b list))
+   $0))))))`),
+ ((MAP_FOLDR),
+  [],
+  `((! :(('a -> 'b) -> bool) -> bool) (\(f :'a -> 'b).
+   ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :'b list -> 'b list -> bool)
+   (((MAP :('a -> 'b) -> 'a list -> 'b list) $1) $0))
+   ((((FOLDR :('a -> 'b list -> 'b list) -> 'b list -> 'a list ->
+              'b list) (\(x :'a). (\(l' :'b list).
+   (((CONS :'b -> 'b list -> 'b list) ($3 $1)) $0)))) (NIL :'b list))
+   $0))))))`),
+ ((LENGTH_FOLDL),
+  [],
+  `((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :num -> num -> bool) ((LENGTH :'a list -> num) $0))
+   ((((FOLDL :(num -> 'a -> num) -> num -> 'a list -> num)
+   (\(l' :num). (\(x :'a). (SUC $1)))) 0) $0))))`),
+ ((LENGTH_FOLDR),
+  [],
+  `((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :num -> num -> bool) ((LENGTH :'a list -> num) $0))
+   ((((FOLDR :('a -> num -> num) -> num -> 'a list -> num) (\(x :'a).
+   (\(l' :num). (SUC $0)))) 0) $0))))`),
+ ((FOLDR_FOLDL),
+  [],
+  `((! :(('a -> 'a -> 'a) -> bool) -> bool) (\(f :'a -> 'a -> 'a).
+   ((! :('a -> bool) -> bool) (\(e :'a). ((==>
+   (((MONOID :('a -> 'a -> 'a) -> 'a -> bool) $1) $0))
+   ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :'a -> 'a -> bool)
+   ((((FOLDR :('a -> 'a -> 'a) -> 'a -> 'a list -> 'a) $2) $1) $0))
+   ((((FOLDL :('a -> 'a -> 'a) -> 'a -> 'a list -> 'a) $2) $1)
+   $0)))))))))`),
+ ((FOLDL_SNOC),
+  [],
+  `((! :(('b -> 'a -> 'b) -> bool) -> bool) (\(f :'b -> 'a -> 'b).
+   ((! :('b -> bool) -> bool) (\(e :'b). ((! :('a -> bool) -> bool)
+   (\(x :'a). ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :'b -> 'b -> bool)
+   ((((FOLDL :('b -> 'a -> 'b) -> 'b -> 'a list -> 'b) $3) $2)
+   (((SNOC :'a -> 'a list -> 'a list) $1) $0))) (($3
+   ((((FOLDL :('b -> 'a -> 'b) -> 'b -> 'a list -> 'b) $3) $2) $0))
+   $1))))))))))`),
+ ((FOLDR_SNOC),
+  [],
+  `((! :(('a -> 'b -> 'b) -> bool) -> bool) (\(f :'a -> 'b -> 'b).
+   ((! :('b -> bool) -> bool) (\(e :'b). ((! :('a -> bool) -> bool)
+   (\(x :'a). ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :'b -> 'b -> bool)
+   ((((FOLDR :('a -> 'b -> 'b) -> 'b -> 'a list -> 'b) $3) $2)
+   (((SNOC :'a -> 'a list -> 'a list) $1) $0)))
+   ((((FOLDR :('a -> 'b -> 'b) -> 'b -> 'a list -> 'b) $3) (($3 $1)
+   $2)) $0))))))))))`),
+ ((MAP_SNOC),
+  [],
+  `((! :(('a -> 'b) -> bool) -> bool) (\(f :'a -> 'b).
+   ((! :('a -> bool) -> bool) (\(x :'a).
+   ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :'b list -> 'b list -> bool)
+   (((MAP :('a -> 'b) -> 'a list -> 'b list) $2)
+   (((SNOC :'a -> 'a list -> 'a list) $1) $0)))
+   (((SNOC :'b -> 'b list -> 'b list) ($2 $1))
+   (((MAP :('a -> 'b) -> 'a list -> 'b list) $2) $0)))))))))`),
+ ((SNOC_APPEND),
+  [],
+  `((! :('a -> bool) -> bool) (\(x :'a).
+   ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :'a list -> 'a list -> bool)
+   (((SNOC :'a -> 'a list -> 'a list) $1) $0))
+   (((APPEND :'a list -> 'a list -> 'a list) $0)
+   (((CONS :'a -> 'a list -> 'a list) $1) (NIL :'a list))))))))`),
+ ((SNOC_REVERSE_CONS),
+  [],
+  `((! :('a -> bool) -> bool) (\(x :'a).
+   ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :'a list -> 'a list -> bool)
+   (((SNOC :'a -> 'a list -> 'a list) $1) $0))
+   ((REVERSE :'a list -> 'a list) (((CONS :'a -> 'a list -> 'a list)
+   $1) ((REVERSE :'a list -> 'a list) $0))))))))`),
+ ((SNOC_EQ_LENGTH_EQ),
+  [],
+  `((! :('a -> bool) -> bool) (\(x1 :'a).
+   ((! :('a list -> bool) -> bool) (\(l1 :'a list).
+   ((! :('a -> bool) -> bool) (\(x2 :'a).
+   ((! :('a list -> bool) -> bool) (\(l2 :'a list). ((==>
+   (((= :'a list -> 'a list -> bool)
+   (((SNOC :'a -> 'a list -> 'a list) $3) $2))
+   (((SNOC :'a -> 'a list -> 'a list) $1) $0)))
+   (((= :num -> num -> bool) ((LENGTH :'a list -> num) $2))
+   ((LENGTH :'a list -> num) $0)))))))))))`),
+ ((SNOC_11),
+  [],
+  `((! :('a -> bool) -> bool) (\(x :'a).
+   ((! :('a list -> bool) -> bool) (\(l :'a list).
+   ((! :('a -> bool) -> bool) (\(x' :'a).
+   ((! :('a list -> bool) -> bool) (\(l' :'a list).
+   (((= :bool -> bool -> bool) (((= :'a list -> 'a list -> bool)
+   (((SNOC :'a -> 'a list -> 'a list) $3) $2))
+   (((SNOC :'a -> 'a list -> 'a list) $1) $0))) ((/\
+   (((= :'a -> 'a -> bool) $3) $1)) (((= :'a list -> 'a list -> bool)
+   $2) $0)))))))))))`),
+ ((NOT_SNOC_NIL),
+  [],
+  `((! :('a -> bool) -> bool) (\(x :'a).
+   ((! :('a list -> bool) -> bool) (\(l :'a list). (~
+   (((= :'a list -> 'a list -> bool)
+   (((SNOC :'a -> 'a list -> 'a list) $1) $0)) (NIL :'a list)))))))`),
+ ((NOT_NIL_SNOC),
+  [],
+  `((! :('a -> bool) -> bool) (\(x :'a).
+   ((! :('a list -> bool) -> bool) (\(l :'a list). (~
+   (((= :'a list -> 'a list -> bool) (NIL :'a list))
+   (((SNOC :'a -> 'a list -> 'a list) $1) $0)))))))`),
+ ((LENGTH_SNOC),
+  [],
+  `((! :('a -> bool) -> bool) (\(x :'a).
+   ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :num -> num -> bool) ((LENGTH :'a list -> num)
+   (((SNOC :'a -> 'a list -> 'a list) $1) $0))) (SUC
+   ((LENGTH :'a list -> num) $0)))))))`),
+ ((SNOC_CASES),
+  [],
+  `((! :('a list -> bool) -> bool) (\(l :'a list). ((\/
+   (((= :'a list -> 'a list -> bool) $0) (NIL :'a list)))
+   ((? :('a list -> bool) -> bool) (\(l' :'a list).
+   ((? :('a -> bool) -> bool) (\(x :'a).
+   (((= :'a list -> 'a list -> bool) $2)
+   (((SNOC :'a -> 'a list -> 'a list) $0) $1)))))))))`),
+ ((SNOC_INDUCT),
+  [],
+  `((! :(('a list -> bool) -> bool) -> bool) (\(P :'a list -> bool).
+   ((==> ((/\ ($0 (NIL :'a list))) ((! :('a list -> bool) -> bool)
+   (\(l :'a list). ((==> ($1 $0)) ((! :('a -> bool) -> bool)
+   (\(x :'a). ($2 (((SNOC :'a -> 'a list -> 'a list) $0) $1)))))))))
+   ((! :('a list -> bool) -> bool) (\(l :'a list). ($1 $0))))))`),
+ ((SNOC_Axiom),
+  [],
+  `((! :('b -> bool) -> bool) (\(e :'b).
+   ((! :(('b -> 'a -> 'a list -> 'b) -> bool) -> bool)
+   (\(f :'b -> 'a -> 'a list -> 'b).
+   ((?! :(('a list -> 'b) -> bool) -> bool) (\(fn1 :'a list -> 'b).
+   ((/\ (((= :'b -> 'b -> bool) ($0 (NIL :'a list))) $2))
+   ((! :('a -> bool) -> bool) (\(x :'a).
+   ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :'b -> 'b -> bool) ($2 (((SNOC :'a -> 'a list -> 'a list) $1)
+   $0))) ((($3 ($2 $0)) $1) $0)))))))))))))`),
+ ((REVERSE_REVERSE),
+  [],
+  `((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :'a list -> 'a list -> bool) ((REVERSE :'a list -> 'a list)
+   ((REVERSE :'a list -> 'a list) $0))) $0)))`),
+ ((REVERSE_SNOC),
+  [],
+  `((! :('a -> bool) -> bool) (\(x :'a).
+   ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :'a list -> 'a list -> bool) ((REVERSE :'a list -> 'a list)
+   (((SNOC :'a -> 'a list -> 'a list) $1) $0)))
+   (((CONS :'a -> 'a list -> 'a list) $1)
+   ((REVERSE :'a list -> 'a list) $0)))))))`),
+ ((LENGTH_NOT_NULL),
+  [],
+  `((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :bool -> bool -> bool) ((< 0) ((LENGTH :'a list -> num) $0)))
+   (~ ((NULL :'a list -> bool) $0)))))`),
+ ((LENGTH_EQ),
+  [],
+  `((! :('a list -> bool) -> bool) (\(x :'a list).
+   ((! :('a list -> bool) -> bool) (\(y :'a list). ((==>
+   (((= :'a list -> 'a list -> bool) $1) $0))
+   (((= :num -> num -> bool) ((LENGTH :'a list -> num) $1))
+   ((LENGTH :'a list -> num) $0)))))))`),
+ ((NULL_EQ_NIL),
+  [],
+  `((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :bool -> bool -> bool) ((NULL :'a list -> bool) $0))
+   (((= :'a list -> 'a list -> bool) $0) (NIL :'a list)))))`),
+ ((LENGTH_MAP2),
+  [],
+  `((! :('a list -> bool) -> bool) (\(l1 :'a list).
+   ((! :('b list -> bool) -> bool) (\(l2 :'b list). ((==>
+   (((= :num -> num -> bool) ((LENGTH :'a list -> num) $1))
+   ((LENGTH :'b list -> num) $0)))
+   ((! :(('a -> 'b -> 'c) -> bool) -> bool) (\(f :'a -> 'b -> 'c).
+   ((/\ (((= :num -> num -> bool) ((LENGTH :'c list -> num)
+   ((((MAP2 :('a -> 'b -> 'c) -> 'a list -> 'b list -> 'c list) $0)
+   $2) $1))) ((LENGTH :'a list -> num) $2))) (((= :num -> num -> bool)
+   ((LENGTH :'c list -> num)
+   ((((MAP2 :('a -> 'b -> 'c) -> 'a list -> 'b list -> 'c list) $0)
+   $2) $1))) ((LENGTH :'b list -> num) $1))))))))))`),
+ ((LENGTH_EQ_NIL),
+  [],
+  `((! :(('a list -> bool) -> bool) -> bool) (\(P :'a list -> bool).
+   (((= :bool -> bool -> bool) ((! :('a list -> bool) -> bool)
+   (\(l :'a list). ((==> (((= :num -> num -> bool)
+   ((LENGTH :'a list -> num) $0)) 0)) ($1 $0))))) ($0
+   (NIL :'a list)))))`),
+ ((LENGTH_CONS),
+  [],
+  `((! :('a list -> bool) -> bool) (\(l :'a list).
+   ((! :(num -> bool) -> bool) (\(n :num). (((= :bool -> bool -> bool)
+   (((= :num -> num -> bool) ((LENGTH :'a list -> num) $1)) (SUC $0)))
+   ((? :('a -> bool) -> bool) (\(x :'a).
+   ((? :('a list -> bool) -> bool) (\(l' :'a list). ((/\
+   (((= :num -> num -> bool) ((LENGTH :'a list -> num) $0)) $2))
+   (((= :'a list -> 'a list -> bool) $3)
+   (((CONS :'a -> 'a list -> 'a list) $1) $0))))))))))))`),
+ ((LENGTH_NIL),
+  [],
+  `((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :bool -> bool -> bool) (((= :num -> num -> bool)
+   ((LENGTH :'a list -> num) $0)) 0))
+   (((= :'a list -> 'a list -> bool) $0) (NIL :'a list)))))`),
+ ((LENGTH_MAP),
+  [],
+  `((! :('a list -> bool) -> bool) (\(l :'a list).
+   ((! :(('a -> 'b) -> bool) -> bool) (\(f :'a -> 'b).
+   (((= :num -> num -> bool) ((LENGTH :'b list -> num)
+   (((MAP :('a -> 'b) -> 'a list -> 'b list) $0) $1)))
+   ((LENGTH :'a list -> num) $1))))))`),
+ ((MAP_APPEND),
+  [],
+  `((! :(('a -> 'b) -> bool) -> bool) (\(f :'a -> 'b).
+   ((! :('a list -> bool) -> bool) (\(l1 :'a list).
+   ((! :('a list -> bool) -> bool) (\(l2 :'a list).
+   (((= :'b list -> 'b list -> bool)
+   (((MAP :('a -> 'b) -> 'a list -> 'b list) $2)
+   (((APPEND :'a list -> 'a list -> 'a list) $1) $0)))
+   (((APPEND :'b list -> 'b list -> 'b list)
+   (((MAP :('a -> 'b) -> 'a list -> 'b list) $2) $1))
+   (((MAP :('a -> 'b) -> 'a list -> 'b list) $2) $0)))))))))`),
+ ((LENGTH_APPEND),
+  [],
+  `((! :('a list -> bool) -> bool) (\(l1 :'a list).
+   ((! :('a list -> bool) -> bool) (\(l2 :'a list).
+   (((= :num -> num -> bool) ((LENGTH :'a list -> num)
+   (((APPEND :'a list -> 'a list -> 'a list) $1) $0))) ((+
+   ((LENGTH :'a list -> num) $1)) ((LENGTH :'a list -> num)
+   $0)))))))`),
+ ((APPEND_ASSOC),
+  [],
+  `((! :('a list -> bool) -> bool) (\(l1 :'a list).
+   ((! :('a list -> bool) -> bool) (\(l2 :'a list).
+   ((! :('a list -> bool) -> bool) (\(l3 :'a list).
+   (((= :'a list -> 'a list -> bool)
+   (((APPEND :'a list -> 'a list -> 'a list) $2)
+   (((APPEND :'a list -> 'a list -> 'a list) $1) $0)))
+   (((APPEND :'a list -> 'a list -> 'a list)
+   (((APPEND :'a list -> 'a list -> 'a list) $2) $1)) $0))))))))`),
+ ((CONS),
+  [],
+  `((! :('a list -> bool) -> bool) (\(l :'a list). ((==> (~
+   ((NULL :'a list -> bool) $0))) (((= :'a list -> 'a list -> bool)
+   (((CONS :'a -> 'a list -> 'a list) ((HD :'a list -> 'a) $0))
+   ((TL :'a list -> 'a list) $0))) $0))))`),
+ ((EQ_LIST),
+  [],
+  `((! :('a -> bool) -> bool) (\(x1 :'a). ((! :('a -> bool) -> bool)
+   (\(x2 :'a). ((==> (((= :'a -> 'a -> bool) $1) $0))
+   ((! :('a list -> bool) -> bool) (\(l1 :'a list).
+   ((! :('a list -> bool) -> bool) (\(l2 :'a list). ((==>
+   (((= :'a list -> 'a list -> bool) $1) $0))
+   (((= :'a list -> 'a list -> bool)
+   (((CONS :'a -> 'a list -> 'a list) $3) $1))
+   (((CONS :'a -> 'a list -> 'a list) $2) $0))))))))))))`),
+ ((NOT_EQ_LIST),
+  [],
+  `((! :('a -> bool) -> bool) (\(x1 :'a). ((! :('a -> bool) -> bool)
+   (\(x2 :'a). ((==> (~ (((= :'a -> 'a -> bool) $1) $0)))
+   ((! :('a list -> bool) -> bool) (\(l1 :'a list).
+   ((! :('a list -> bool) -> bool) (\(l2 :'a list). (~
+   (((= :'a list -> 'a list -> bool)
+   (((CONS :'a -> 'a list -> 'a list) $3) $1))
+   (((CONS :'a -> 'a list -> 'a list) $2) $0))))))))))))`),
+ ((LIST_NOT_EQ),
+  [],
+  `((! :('a list -> bool) -> bool) (\(l1 :'a list).
+   ((! :('a list -> bool) -> bool) (\(l2 :'a list). ((==> (~
+   (((= :'a list -> 'a list -> bool) $1) $0)))
+   ((! :('a -> bool) -> bool) (\(x1 :'a). ((! :('a -> bool) -> bool)
+   (\(x2 :'a). (~ (((= :'a list -> 'a list -> bool)
+   (((CONS :'a -> 'a list -> 'a list) $1) $3))
+   (((CONS :'a -> 'a list -> 'a list) $0) $2))))))))))))`),
+ ((NOT_CONS_NIL),
+  [],
+  `((! :('a -> bool) -> bool) (\(x :'a).
+   ((! :('a list -> bool) -> bool) (\(l :'a list). (~
+   (((= :'a list -> 'a list -> bool)
+   (((CONS :'a -> 'a list -> 'a list) $1) $0)) (NIL :'a list)))))))`),
+ ((NOT_NIL_CONS),
+  [],
+  `((! :('a -> bool) -> bool) (\(x :'a).
+   ((! :('a list -> bool) -> bool) (\(l :'a list). (~
+   (((= :'a list -> 'a list -> bool) (NIL :'a list))
+   (((CONS :'a -> 'a list -> 'a list) $1) $0)))))))`),
+ ((CONS_11),
+  [],
+  `((! :('a -> bool) -> bool) (\(x :'a).
+   ((! :('a list -> bool) -> bool) (\(l :'a list).
+   ((! :('a -> bool) -> bool) (\(x' :'a).
+   ((! :('a list -> bool) -> bool) (\(l' :'a list).
+   (((= :bool -> bool -> bool) (((= :'a list -> 'a list -> bool)
+   (((CONS :'a -> 'a list -> 'a list) $3) $2))
+   (((CONS :'a -> 'a list -> 'a list) $1) $0))) ((/\
+   (((= :'a -> 'a -> bool) $3) $1)) (((= :'a list -> 'a list -> bool)
+   $2) $0)))))))))))`),
+ ((list_CASES),
+  [],
+  `((! :('a list -> bool) -> bool) (\(l :'a list). ((\/
+   (((= :'a list -> 'a list -> bool) $0) (NIL :'a list)))
+   ((? :('a list -> bool) -> bool) (\(l' :'a list).
+   ((? :('a -> bool) -> bool) (\(x :'a).
+   (((= :'a list -> 'a list -> bool) $2)
+   (((CONS :'a -> 'a list -> 'a list) $0) $1)))))))))`),
+ ((NULL),
+  [],
+  `((/\ ((NULL :'a list -> bool) (NIL :'a list)))
+   ((! :('a -> bool) -> bool) (\(x :'a).
+   ((! :('a list -> bool) -> bool) (\(l :'a list). (~
+   ((NULL :'a list -> bool) (((CONS :'a -> 'a list -> 'a list) $1)
+   $0))))))))`),
+ ((SUM),
+  [],
+  `((/\ (((= :num -> num -> bool) (SUM (NIL :num list))) 0))
+   ((! :(num -> bool) -> bool) (\(x :num).
+   ((! :(num list -> bool) -> bool) (\(l :num list).
+   (((= :num -> num -> bool) (SUM
+   (((CONS :num -> num list -> num list) $1) $0))) ((+ $1) (SUM
+   $0))))))))`),
+ ((EL),
+  [],
+  `((/\ ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :'a -> 'a -> bool) (((EL :num -> 'a list -> 'a) 0) $0))
+   ((HD :'a list -> 'a) $0))))) ((! :(num -> bool) -> bool)
+   (\(n :num). ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :'a -> 'a -> bool) (((EL :num -> 'a list -> 'a) (SUC $1)) $0))
+   (((EL :num -> 'a list -> 'a) $1) ((TL :'a list -> 'a list)
+   $0))))))))`),
+ ((MAP2),
+  [],
+  `((/\ ((! :(('a -> 'b -> 'c) -> bool) -> bool)
+   (\(f :'a -> 'b -> 'c). (((= :'c list -> 'c list -> bool)
+   ((((MAP2 :('a -> 'b -> 'c) -> 'a list -> 'b list -> 'c list) $0)
+   (NIL :'a list)) (NIL :'b list))) (NIL :'c list)))))
+   ((! :(('a -> 'b -> 'c) -> bool) -> bool) (\(f :'a -> 'b -> 'c).
+   ((! :('a -> bool) -> bool) (\(x1 :'a).
+   ((! :('a list -> bool) -> bool) (\(l1 :'a list).
+   ((! :('b -> bool) -> bool) (\(x2 :'b).
+   ((! :('b list -> bool) -> bool) (\(l2 :'b list).
+   (((= :'c list -> 'c list -> bool)
+   ((((MAP2 :('a -> 'b -> 'c) -> 'a list -> 'b list -> 'c list) $4)
+   (((CONS :'a -> 'a list -> 'a list) $3) $2))
+   (((CONS :'b -> 'b list -> 'b list) $1) $0)))
+   (((CONS :'c -> 'c list -> 'c list) (($4 $3) $1))
+   ((((MAP2 :('a -> 'b -> 'c) -> 'a list -> 'b list -> 'c list) $4)
+   $2) $0))))))))))))))`),
+ ((MAP),
+  [],
+  `((/\ ((! :(('a -> 'b) -> bool) -> bool) (\(f :'a -> 'b).
+   (((= :'b list -> 'b list -> bool)
+   (((MAP :('a -> 'b) -> 'a list -> 'b list) $0) (NIL :'a list)))
+   (NIL :'b list))))) ((! :(('a -> 'b) -> bool) -> bool)
+   (\(f :'a -> 'b). ((! :('a -> bool) -> bool) (\(x :'a).
+   ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :'b list -> 'b list -> bool)
+   (((MAP :('a -> 'b) -> 'a list -> 'b list) $2)
+   (((CONS :'a -> 'a list -> 'a list) $1) $0)))
+   (((CONS :'b -> 'b list -> 'b list) ($2 $1))
+   (((MAP :('a -> 'b) -> 'a list -> 'b list) $2) $0))))))))))`),
+ ((LENGTH),
+  [],
+  `((/\ (((= :num -> num -> bool) ((LENGTH :'a list -> num)
+   (NIL :'a list))) 0)) ((! :('a -> bool) -> bool) (\(x :'a).
+   ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :num -> num -> bool) ((LENGTH :'a list -> num)
+   (((CONS :'a -> 'a list -> 'a list) $1) $0))) (SUC
+   ((LENGTH :'a list -> num) $0))))))))`),
+ ((FLAT),
+  [],
+  `((/\ (((= :'a list -> 'a list -> bool)
+   ((FLAT :'a list list -> 'a list) (NIL :'a list list)))
+   (NIL :'a list))) ((! :('a list -> bool) -> bool) (\(x :'a list).
+   ((! :('a list list -> bool) -> bool) (\(l :'a list list).
+   (((= :'a list -> 'a list -> bool) ((FLAT :'a list list -> 'a list)
+   (((CONS :'a list -> 'a list list -> 'a list list) $1) $0)))
+   (((APPEND :'a list -> 'a list -> 'a list) $1)
+   ((FLAT :'a list list -> 'a list) $0))))))))`),
+ ((APPEND),
+  [],
+  `((/\ ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :'a list -> 'a list -> bool)
+   (((APPEND :'a list -> 'a list -> 'a list) (NIL :'a list)) $0))
+   $0)))) ((! :('a list -> bool) -> bool) (\(l1 :'a list).
+   ((! :('a list -> bool) -> bool) (\(l2 :'a list).
+   ((! :('a -> bool) -> bool) (\(x :'a).
+   (((= :'a list -> 'a list -> bool)
+   (((APPEND :'a list -> 'a list -> 'a list)
+   (((CONS :'a -> 'a list -> 'a list) $0) $2)) $1))
+   (((CONS :'a -> 'a list -> 'a list) $0)
+   (((APPEND :'a list -> 'a list -> 'a list) $2) $1))))))))))`),
+ ((TL),
+  [],
+  `((! :('a -> bool) -> bool) (\(x :'a).
+   ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :'a list -> 'a list -> bool) ((TL :'a list -> 'a list)
+   (((CONS :'a -> 'a list -> 'a list) $1) $0))) $0)))))`),
+ ((HD),
+  [],
+  `((! :('a -> bool) -> bool) (\(x :'a).
+   ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :'a -> 'a -> bool) ((HD :'a list -> 'a)
+   (((CONS :'a -> 'a list -> 'a list) $1) $0))) $1)))))`),
+ ((NULL_DEF),
+  [],
+  `((/\ (((= :bool -> bool -> bool) ((NULL :'a list -> bool)
+   (NIL :'a list))) T)) ((! :('a -> bool) -> bool) (\(x :'a).
+   ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :bool -> bool -> bool) ((NULL :'a list -> bool)
+   (((CONS :'a -> 'a list -> 'a list) $1) $0))) F))))))`),
+ ((list_INDUCT),
+  [],
+  `((! :(('a list -> bool) -> bool) -> bool) (\(P :'a list -> bool).
+   ((==> ((/\ ($0 (NIL :'a list))) ((! :('a list -> bool) -> bool)
+   (\(l :'a list). ((==> ($1 $0)) ((! :('a -> bool) -> bool)
+   (\(x :'a). ($2 (((CONS :'a -> 'a list -> 'a list) $0) $1)))))))))
+   ((! :('a list -> bool) -> bool) (\(l :'a list). ($1 $0))))))`)]

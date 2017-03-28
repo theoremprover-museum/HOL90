@@ -1,0 +1,207 @@
+head	1.1;
+branch	1.1.1;
+access;
+symbols
+	HOL97:1.1.1.1.0.6
+	bpHOL97:1.1.1.1
+	hol90_9_alpha:1.1.1.1
+	hol90_pre8_for_multiple_compilers:1.1.1.1.0.4
+	hol90_pre8_after_donalds_separate_compilation_changes:1.1.1.1
+	hol90_8_after_merging_Konrad_Elsa:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	95.10.16.13.30.49;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.30.49;	author rjb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@% =====================================================================
+% LaTeX style file for HUG91 paper (ieee format)
+% =====================================================================
+
+% ---------------------------------------------------------------------
+% PAPER SIZE  (latex overrides these anyway)
+%
+%   * TeX expects 1 inch margins all around.
+%   * 8.5x11 (american paper) is exactly 279.4mm high by 215.9mm wide
+%   * 1 inch = 25.4 mm
+% ---------------------------------------------------------------------
+
+\hsize=165.1truemm
+\vsize=228.6truemm
+
+% ---------------------------------------------------------------------
+% PAGE LAYOUT  
+% ---------------------------------------------------------------------
+
+\textwidth 174truemm
+\textheight 228truemm
+
+% ---------------------------------------------------------------------
+% POSITION ON PAPER  
+%
+%   * left margin = 19 mm
+%   * top margin = 25.4 mm (one inch)
+% ---------------------------------------------------------------------
+
+\evensidemargin=-7.4truemm 
+\oddsidemargin=-7.4truemm 
+\topmargin 0truemm 
+
+% ---------------------------------------------------------------------
+% Column separation
+% ---------------------------------------------------------------------
+\columnsep 8mm
+
+% ---------------------------------------------------------------------
+% MATH INDENTATION.  = 5mm
+% ---------------------------------------------------------------------
+\setlength{\mathindent}{1pc}
+
+% ---------------------------------------------------------------------
+% HEAD: no head
+% ---------------------------------------------------------------------
+\headheight 0mm
+\headsep 0mm
+
+% ---------------------------------------------------------------------
+% FOOT: page number
+% ---------------------------------------------------------------------
+\footheight 12pt
+\footskip 10mm
+
+% ---------------------------------------------------------------------
+% INDENTATION: 1pc indentation
+% --------------------------------------------------------------------- 
+\parindent 1pc
+
+% ---------------------------------------------------------------------
+% Sizes of sections, etc.
+% ---------------------------------------------------------------------
+
+\makeatletter
+
+%need an 11 pt font size for subsection and abstract headings
+\def\subsize{\@@setsize\subsize{12pt}\xipt\@@xipt}
+
+%make section titles bold and 12 point, 1 blank lines before, 1 after
+\def\section{\@@startsection{section}{1}{\z@@}{12pt plus 2pt minus 2pt}
+{12pt plus 2pt minus 2pt}{\large\bf}}
+
+%make subsection titles bold and 11 point, 1 blank line before, 1 after
+\def\subsection{\@@startsection{subsection}{2}{\z@@}{12pt plus 2pt minus 2pt}
+{12pt plus 2pt minus 2pt}{\subsize\bf}}
+
+%make subsubsection titles bold and 10 point, 1 blank line before, run-in
+%and with a `:' after the title.
+\def\@@mystartsection#1#2#3#4#5#6{\if@@noskipsec \leavevmode \fi
+   \par \@@tempskipa #4\relax
+   \@@afterindenttrue
+   \ifdim \@@tempskipa <\z@@ \@@tempskipa -\@@tempskipa \@@afterindentfalse\fi
+   \if@@nobreak \everypar{}\else
+     \addpenalty{\@@secpenalty}\addvspace{\@@tempskipa}\fi \@@ifstar
+     {\@@ssect{#3}{#4}{#5}{#6}}{\@@dblarg{\@@mysect{#1}{#2}{#3}{#4}{#5}{#6}}}}
+\def\@@mysect#1#2#3#4#5#6[#7]#8{\ifnum #2>\c@@secnumdepth
+     \def\@@svsec{}\else
+     \refstepcounter{#1}\edef\@@svsec{\csname the#1\endcsname\hskip 1em }\fi
+     \@@tempskipa #5\relax
+      \ifdim \@@tempskipa>\z@@
+        \begingroup #6\relax
+          \@@hangfrom{\hskip #3\relax\@@svsec}{\interlinepenalty \@@M #8:\par}%
+        \endgroup
+       \csname #1mark\endcsname{#7}\addcontentsline
+         {toc}{#1}{\ifnum #2>\c@@secnumdepth \else
+                      \protect\numberline{\csname the#1\endcsname}\fi
+                    #7}\else
+        \def\@@svsechd{#6\hskip #3\@@svsec #8:\csname #1mark\endcsname
+                      {#7}\addcontentsline
+                           {toc}{#1}{\ifnum #2>\c@@secnumdepth \else
+                             \protect\numberline{\csname the#1\endcsname}\fi
+                       #7}}\fi
+     \@@xsect{#5}}
+\def\subsubsection{\@@mystartsection{subsubsection}{3}{\z@@}
+    {12pt plus 2pt minus 2pt}{-1em}{\bf}}
+
+% ---------------------------------------------------------------------
+% footnote hacks
+% ---------------------------------------------------------------------
+
+% No rule above footnotes like in the IEEE transations
+\renewcommand{\footnoterule}{}
+
+% thanks makes no footnote make like in the IEEE transactions
+\newcommand{\blanknote}[1]
+{
+    \renewcommand{\thefootnote}{}
+    \footnotetext{#1}
+    \renewcommand{\thefootnote}{\arabic{footnote}}
+}
+\def\thanks#1{\begingroup
+\def\protect{\noexpand\protect\noexpand}\xdef\@@thanks{\@@thanks
+  \protect\blanknote{#1}}\endgroup}
+
+% Set footnote text style to that in guidelines
+\def\footnotesize{\@@setsize\footnotesize{10pt}\viiipt\@@viiipt
+\abovedisplayskip 6pt plus 2pt minus 4pt\belowdisplayskip \abovedisplayskip
+\abovedisplayshortskip \z@@ plus 1pt\belowdisplayshortskip 3pt plus 1pt minus
+2pt
+\def\@@listi{\leftmargin\leftmargini \topsep 3pt plus 1pt minus 1pt\parsep 2pt
+plus 1pt minus 1pt
+\itemsep \parsep}}
+
+
+\makeatother
+
+% ---------------------------------------------------------------------
+% Preliminary settings etc.
+% ---------------------------------------------------------------------
+
+\renewcommand{\topfraction}{0.8}	  % 0.8 of the top page can be fig.
+\renewcommand{\bottomfraction}{0.8}	  % 0.8 of the bottom page can be fig.
+\renewcommand{\textfraction}{0.1}	  % 0.1 of the page must contain text
+\setcounter{totalnumber}{4}	 	  % max of 4 figures per page
+\setcounter{secnumdepth}{3}		  % number sections down to level 3
+\setcounter{tocdepth}{3}		  % toc contains numbers to level 3
+\flushbottom				  % text extends right to the bottom
+\twocolumn				  % two columns
+
+
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

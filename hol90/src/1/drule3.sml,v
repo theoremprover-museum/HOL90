@@ -1,0 +1,565 @@
+head	1.2;
+access;
+symbols;
+locks; strict;
+comment	@# @;
+
+
+1.2
+date	96.02.08.00.35.33;	author drs1004;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	96.01.04.13.48.37;	author drs1004;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.2
+log
+@New theory mechanism, code reorganisation and other enhancements by Don Syme.
+@
+text
+@
+structure Drule3 : Drule3_sig =
+struct
+open Lib Parse Rterms;
+open Thm Drule2;
+
+infix 3 ##
+
+val ERR = Exception.ERR "Drule";
+
+(* ---------------------------------------------------------------------
+ * ISPEC: specialization, with type instantation if necessary.		
+ *									
+ *     A |- !x:ty.tm							
+ *  -----------------------   ISPEC "t:ty'" 				
+ *      A |- tm[t/x]							
+ *									
+ * (where t is free for x in tm, and ty' is an instance of ty)		
+ * ---------------------------------------------------------------------*)
+
+fun ISPEC t th = 
+    let val {Bvar,...} = 
+	dest_forall(concl th)
+	handle _ => ERR("ISPEC",": input theorem not universally quantified")
+	val(_,inst) = 
+	    Match.match_term Bvar t
+	    handle _ => ERR("ISPEC", ": can't type-instantiate input theorem")
+    in SPEC t (INST_TYPE inst th)
+	handle _ => ERR("ISPEC", ": type variable free in assumptions")
+    end;
+	 
+(* --------------------------------------------------------------------- *)
+(* ISPECL: iterated specialization, with type instantation if necessary.*)
+(*									*)
+(*        A |- !x1...xn.tm						*)
+(*  ---------------------------------   ISPECL ["t1",...,"tn"]		*)
+(*      A |- tm[t1/x1,...,tn/xn]					*)
+(*									*)
+(* (where ti is free for xi in tm)					*)
+(* --------------------------------------------------------------------- *)
+local
+fun curried_mk_pair t1 t2 = mk_pair{fst = t1, snd = t2}
+val tup = end_itlist curried_mk_pair
+fun strip [] = (fn _ => [])
+  | strip (ts as (h::t)) = 
+        let val f = strip (tl ts) 
+        in fn tm => let val{Bvar,Body} = dest_forall tm 
+                    in (Bvar::f Body) 
+                    end
+        end
+in
+fun ISPECL [] = I
+  | ISPECL [tm] = ISPEC tm
+  | ISPECL ts = 
+    let val stripfn = strip ts 
+        and tst = tup ts 
+    in fn th => 
+       let val xs = stripfn (concl th) handle _ 
+                    => ERR("ISPECL", "list of terms too long for theorem")
+           val (_,inst) = Match.match_term (tup xs) tst handle _
+                          => ERR("ISPECL","can't type-instantiate input theorem")
+       in SPECL ts (INST_TYPE inst th) handle _ 
+          => ERR("ISPECL", "type variable free in assumptions")
+       end
+    end
+end;
+
+
+(* ---------------------------------------------------------------------
+ * Generalise a theorem over all variables free in conclusion but not in hyps
+ *         A |- t[x1,...,xn]
+ *     ----------------------------
+ *      A |- !x1...xn.t[x1,...,xn]
+ *------------------------------------------------------------------------*)
+
+fun GEN_ALL th = 
+   itlist GEN (set_diff (free_vars(concl th)) 
+                        (free_varsl (hyp th)))
+          th;
+
+
+(* ---------------------------------------------------------------------
+ * Discharge all hypotheses 
+ * 
+ *       A, t1, ... , tn |- t
+ *  -------------------------------
+ *   A  |- t1 ==> ... ==> tn ==> t
+ * 
+ * You can write a simpler version using "itlist DISCH (hyp th) th", but this
+ * may discharge two equivalent (alpha-convertible) assumptions.
+ *------------------------------------------------------------------------*)
+
+fun DISCH_ALL th = DISCH_ALL (DISCH (hd (hyp th)) th) handle _ => th;
+
+
+(* ---------------------------------------------------------------------
+ *       A |- t1 ==> ... ==> tn ==> t
+ *     -------------------------------
+ * 	 A, t1, ..., tn |- t
+ * 
+ *------------------------------------------------------------------------*)
+
+fun UNDISCH_ALL th =
+   if (is_imp (concl th))
+   then UNDISCH_ALL (UNDISCH th)
+   else th;
+
+(* ---------------------------------------------------------------------*)
+(* SPEC_ALL : thm -> thm						*)
+(*									*)
+(*     A |- !x1 ... xn. t[xi]						*)
+(*    ------------------------   where the xi' are distinct 		*)
+(*        A |- t[xi'/xi]	 and not free in the input theorem	*)
+(*									*)
+(* BUGFIX: added the "distinct" part and code to make the xi's not free *)
+(* in the conclusion !x1...xn.t[xi].		        [TFM 90.10.04]	*)
+(*									*)
+(* OLD CODE:								*)
+(* 									*)
+(* let SPEC_ALL th =							*)
+(*     let vars,() = strip_forall(concl th) in				*)
+(*     SPECL (map (variant (freesl (hyp th))) vars) th;;		*)
+(* ---------------------------------------------------------------------*)
+
+local
+fun f v (vs,l) = 
+   let val v' = variant vs v 
+   in (v'::vs, v'::l)
+   end
+in
+fun SPEC_ALL th =
+   let val (hvs,con) = (free_varsl ## I) (dest_thm th)
+       val fvs = free_vars con 
+       and vars = fst(strip_forall con) 
+   in
+   SPECL (snd(itlist f vars (hvs@@fvs,[]))) th
+   end
+end;
+
+
+(*--------------------------------------------------------------------
+ * Use the conclusion of the first theorem to delete a hypothesis of
+ *    the second theorem.
+ * 
+ *     A |- t1 	B, t1 |- t2
+ *     -----------------------
+ *          A u B |- t2
+ * 
+ *-------------------------------------------------------------------*)
+
+fun PROVE_HYP ath bth =  MP (DISCH (concl ath) bth) ath;
+
+
+(*--------------------------------------------------------------------
+ * A |- t1/\t2  ---> A |- t1, A |- t2 
+ *-------------------------------------------------------------------*)
+
+fun CONJ_PAIR th = (CONJUNCT1 th, CONJUNCT2 th) handle _ 
+                   => ERR("CONJ_PAIR","");
+
+
+(*--------------------------------------------------------------------
+ * ["A1|-t1"; ...; "An|-tn"]  ---> "A1u...uAn|-t1 /\ ... /\ tn", where n>0 
+ *-------------------------------------------------------------------*)
+
+val LIST_CONJ = end_itlist CONJ ;
+
+
+(*--------------------------------------------------------------------
+ * "A |- t1 /\ (...(... /\ tn)...)"   
+ *    --->  
+ *    [ "A|-t1"; ...; "A|-tn"],  where n>0 
+ * 
+ * Inverse of LIST_CONJ : flattens only right conjuncts.
+ * You must specify n, since tn could itself be a conjunction
+ * 
+ *-------------------------------------------------------------------*)
+
+fun CONJ_LIST 1 th = [th] |
+    CONJ_LIST n th =  (CONJUNCT1 th) :: (CONJ_LIST (n-1) (CONJUNCT2 th))
+                      handle _ => ERR("CONJ_LIST",
+						  "");
+
+
+(*--------------------------------------------------------------------
+ * "A |- t1 /\ ... /\ tn"   --->  [ "A|-t1"; ...; "A|-tn"],  where n>0
+ *
+ * Flattens out all conjuncts, regardless of grouping
+ *-------------------------------------------------------------------*)
+
+fun CONJUNCTS th = ((CONJUNCTS (CONJUNCT1 th))@@(CONJUNCTS(CONJUNCT2 th)))
+                   handle _ => [th];
+
+(*--------------------------------------------------------------------
+ * "|- !x. (t1 /\ ...) /\ ... (!y. ... /\ tn)" 
+ *    --->  [ "|-t1"; ...; "|-tn"],  where n>0 
+ * 
+ * Flattens out conjuncts even in bodies of forall's
+ *
+ *-------------------------------------------------------------------*)
+
+fun BODY_CONJUNCTS th =
+   if (is_forall (concl th))
+   then  BODY_CONJUNCTS (SPEC_ALL th)
+   else if (is_conj (concl th))
+        then ((BODY_CONJUNCTS (CONJUNCT1 th))@@(BODY_CONJUNCTS (CONJUNCT2 th)))
+        else [th];
+
+(*--------------------------------------------------------------------
+ * Put a theorem 
+ * 
+ * 	 |- !x. t1 ==> !y. t2 ==> ... ==> tm ==>  t 
+ * 
+ * into canonical form by stripping out quantifiers and splitting
+ * conjunctions apart.
+ * 
+ * 	t1 /\ t2	--->		t1,   t2
+ * 	(t1/\t2)==>t	--->		t1==> (t2==>t)
+ * 	(t1\/t2)==>t	--->		t1==>t, t2==>t
+ * 	(?x.t1)==>t2	--->		t1[x'/x] ==> t2
+ * 	!x.t1		--->		t1[x'/x]
+ *         (?x.t1)==>t2    --->            t1[x'/x] ==> t2)
+ *
+ *-------------------------------------------------------------------*)
+
+fun IMP_CANON th =
+   let val w = concl th
+   in
+   if (is_conj w)
+   then ((IMP_CANON (CONJUNCT1 th))@@(IMP_CANON (CONJUNCT2 th)))
+   else if (is_imp w)
+        then let val {ant,...} = dest_imp w 
+             in
+             if (is_conj ant)
+             then let val {conj1,conj2} = dest_conj ant
+                  in
+	          IMP_CANON (DISCH conj1
+                               (DISCH conj2 (MP th (CONJ (ASSUME conj1) 
+                                                         (ASSUME conj2)))))
+                  end
+	     else if (is_disj ant)
+                  then let val {disj1,disj2} = dest_disj ant
+                       in
+                       ((IMP_CANON (DISCH disj1 
+                                          (MP th (DISJ1 (ASSUME disj1)
+                                                        disj2)))) @@
+                        (IMP_CANON (DISCH disj2
+                                          (MP th (DISJ2 disj1
+                                                        (ASSUME disj2))))))
+                       end
+	          else if (is_exists ant)
+                       then let val {Bvar,Body} = dest_exists ant 
+	                        val bv' = variant (thm_free_vars th) Bvar
+                                val body' = subst [Bvar |-> bv'] Body
+                            in
+	                    IMP_CANON (DISCH body'(MP th(EXISTS(ant, bv')
+                                                              (ASSUME body'))))
+                            end
+                        else map (DISCH ant) (IMP_CANON (UNDISCH th))
+             end
+        else if (is_forall w)
+             then IMP_CANON (SPEC_ALL th)
+             else [th]
+   end;
+
+
+(*--------------------------------------------------------------------
+ *  A1 |- t1   ...   An |- tn      A |- t1==>...==>tn==>t
+ *     -----------------------------------------------------
+ *             A u A1 u ... u An |- t
+ * 
+ *-------------------------------------------------------------------*)
+
+val LIST_MP  = rev_itlist (fn x => fn y => MP y x) ;
+
+
+(*--------------------------------------------------------------------
+ * 
+ *       A |-t1 ==> t2
+ *     -----------------
+ *     A |-  ~t2 ==> ~t1
+ * 
+ * (Rewritten by MJCG to return "~t2 ==> ~t1" rather than "~t2 ==> t1 ==>F")
+ *
+ *-------------------------------------------------------------------*)
+
+local
+val imp_th =
+    let val th1 = SPEC (--`t:bool`--) IMP_F
+        and th2 = SPEC (--`t:bool`--) F_IMP
+    in
+    GEN_ALL (IMP_ANTISYM_RULE th1 th2)
+    end;
+
+in
+fun CONTRAPOS impth =
+   let val {ant,conseq} = dest_imp (concl impth) 
+       val notb = mk_neg conseq
+   in
+   DISCH notb (EQ_MP (SPEC ant imp_th)
+                     (DISCH ant (MP (ASSUME notb)
+                                    (MP impth (ASSUME ant)))))
+   end
+   handle _ => ERR("CONTRAPOS","")
+end;
+
+
+(*--------------------------------------------------------------------
+ *       A |- t1 \/ t2
+ *    --------------------
+ *     A |-  ~ t1 ==> t2
+ *-------------------------------------------------------------------*)
+
+fun DISJ_IMP dth =
+   let val {disj1,disj2} = dest_disj (concl dth)
+       val nota = mk_neg disj1
+   in
+   DISCH nota
+        (DISJ_CASES dth (CONTR disj2 (MP (ASSUME nota) (ASSUME disj1)))
+                        (ASSUME disj2))
+   end
+   handle _ => ERR("DISJ_IMP","");
+
+
+(*--------------------------------------------------------------------
+ *    A |- t1 ==> t2
+ *   ---------------
+ *    A |- ~t1 \/ t2
+ *-------------------------------------------------------------------*)
+
+fun IMP_ELIM th =
+   let val {ant,conseq} = dest_imp (concl th)
+       val not_t1 = mk_neg ant
+   in
+   DISJ_CASES (SPEC ant EXCLUDED_MIDDLE)
+              (DISJ2 not_t1 (MP th (ASSUME ant)))
+              (DISJ1 (ASSUME not_t1) conseq)
+   end
+   handle _ => ERR("IMP_ELIM","");
+
+
+(*--------------------------------------------------------------------
+ *    A |- t1 \/ t2     A1, t1 |- t3      A2, t2 |- t4
+ *    ------------------------------------------------
+ *                 A u A1 u A2 |- t3 \/ t4
+ *-------------------------------------------------------------------*)
+
+fun DISJ_CASES_UNION dth ath bth =
+    DISJ_CASES dth (DISJ1 ath (concl bth)) (DISJ2 (concl ath) bth);
+
+end; (* Drule3 *)
+
+
+@
+
+
+1.1
+log
+@Added simplifier components, added drule files, added MK_ABS_CONV, better error messages
+@
+text
+@d4 2
+a5 8
+open Exception
+(* open Base_logic - no longer needed DRS *)
+open Lib
+open Parse;
+open Thm;
+open Dsyntax;
+open Term;
+open Drule2;
+d59 1
+a59 2
+                    => ERR("ISPECL",
+                              ": list of terms too long for theorem")
+d61 1
+a61 2
+                          => ERR("ISPECL",
+                            ": can't type-instantiate input theorem")
+d63 1
+a63 1
+          => ERR("ISPECL", ": type variable free in assumptions")
+a68 37
+(* ---------------------------------------------------------------------*)
+(* SELECT_REFL = |- !x. (@@y. y = x) = x                                 *)
+(*                                                                      *)
+(* changed ISPECL to nested ISPEC since ISPECL requires tupling in the  *)
+(* logic, but at this stage we don't have the theory of pairs.  (KLS)   *)
+(* ---------------------------------------------------------------------*)
+
+val SELECT_REFL =
+  let val th1 = ISPEC (--`x:'a`--) (ISPEC (--`\y:'a. y = x`--) Boolean.SELECT_AX)
+      val ths = map BETA_CONV [--`(\y:'a. y = x) x`--, 
+                               --`(\y:'a. y = x)(@@y. y = x)`--]
+      val th2 = SUBST[{var= --`u:bool`--, thm=el 1 ths},
+                      {var= --`v:bool`--, thm=el 2 ths}]
+                     (--`u ==> v`--) th1 
+  in
+  optimize_thm(GEN (--`x:'a`--) (MP th2 (REFL (--`x:'a`--))))
+  end;
+
+(*---------------------------------------------------------------------------*)
+(* SELECT_UNIQUE = |- !P x. (!y. P y = (y = x)) ==> ($@@ P = x)               *)
+(*---------------------------------------------------------------------------*)
+
+val SELECT_UNIQUE =
+  let fun mksym tm = DISCH tm (SYM(ASSUME tm))
+      val th0 = IMP_ANTISYM_RULE (mksym (--`y:'a = x`--))
+                                 (mksym (--`x:'a = y`--))
+      val th1 = SPEC (--`y:'a`--) (ASSUME (--`!y:'a. P y = (y = x)`--))
+      val th2 = EXT(GEN (--`y:'a`--) (TRANS th1 th0))
+      val th3 = AP_TERM (--`$@@ :('a->bool)->'a`--) th2
+      val th4 = TRANS (BETA_CONV (--`(\y:'a. y = x) y`--)) th0
+      val th5 = AP_TERM (--`$@@ :('a->bool)->'a`--) (EXT(GEN (--`y:'a`--) th4))
+      val th6 = TRANS (TRANS th3 (SYM th5)) (SPEC (--`x:'a`--) SELECT_REFL) 
+  in
+  optimize_thm(GENL [(--`P:'a->bool`--), (--`x:'a`--)] 
+       (DISCH (--`!y:'a. P y = (y = x)`--) th6))
+  end;
+
+d96 7
+a102 5
+(*
+      A |- t1 ==> ... ==> tn ==> t
+    -------------------------------
+	 A, t1, ..., tn |- t
+*)
+d141 9
+a149 2
+(* Use the conclusion of the first theorem to delete a hypothesis of
+   the second theorem.
+a150 4
+    A |- t1 	B, t1 |- t2
+    -----------------------
+         A u B |- t2
+*)
+d154 4
+a157 1
+(* A |- t1/\t2  ---> A |- t1, A |- t2 *)
+d162 4
+a165 1
+(* ["A1|-t1"; ...; "An|-tn"]  ---> "A1u...uAn|-t1 /\ ... /\ tn", where n>0   *)
+d169 10
+a178 7
+(* "A |- t1 /\ (...(... /\ tn)...)"   
+   --->  
+   [ "A|-t1"; ...; "A|-tn"],  where n>0 
+
+Inverse of LIST_CONJ : flattens only right conjuncts.
+You must specify n, since tn could itself be a conjunction
+*)
+d185 5
+a189 1
+(* "A |- t1 /\ ... /\ tn"   --->  [ "A|-t1"; ...; "A|-tn"],  where n>0
+a190 2
+Flattens out all conjuncts, regardless of grouping
+*)
+d194 7
+a200 2
+(* "|- !x. (t1 /\ ...) /\ ... (!y. ... /\ tn)" 
+   --->  [ "|-t1"; ...; "|-tn"],  where n>0 
+a201 2
+Flattens out conjuncts even in bodies of forall's
+*)
+d209 16
+a224 1
+(* Put a theorem 
+a225 12
+	 |- !x. t1 ==> !y. t2 ==> ... ==> tm ==>  t 
+
+into canonical form by stripping out quantifiers and splitting
+conjunctions apart.
+
+	t1 /\ t2	--->		t1,   t2
+	(t1/\t2)==>t	--->		t1==> (t2==>t)
+	(t1\/t2)==>t	--->		t1==>t, t2==>t
+	(?x.t1)==>t2	--->		t1[x'/x] ==> t2
+	!x.t1		--->		t1[x'/x]
+        (?x.t1)==>t2    --->            t1[x'/x] ==> t2)
+*)
+d267 7
+a273 4
+(*  A1 |- t1   ...   An |- tn      A |- t1==>...==>tn==>t
+    -----------------------------------------------------
+            A u A1 u ... u An |- t
+*)
+d277 9
+a285 4
+(*
+      A |-t1 ==> t2
+    -----------------
+    A |-  ~t2 ==> ~t1
+a286 2
+(Rewritten by MJCG to return "~t2 ==> ~t1" rather than "~t2 ==> t1 ==>F")
+*)
+d288 7
+a294 1
+val imp_th = GEN_ALL(el 5 (CONJUNCTS(SPEC_ALL IMP_CLAUSES)))
+d308 5
+a312 4
+(*
+       A |- t1 \/ t2
+    --------------------
+     A |-  ~ t1 ==> t2
+a313 1
+*)
+d325 6
+a330 5
+(*
+   A |- t1 ==> t2
+  ---------------
+   A |- ~t1 \/ t2
+*)
+d342 6
+a347 22
+(* |- (~~t = t) /\ (~T = F) /\ (~F = T) *)
+val NOT_CLAUSES =
+ optimize_thm(CONJ
+  (GEN (--`t:bool`--)
+    (IMP_ANTISYM_RULE
+      (DISJ_IMP(IMP_ELIM(DISCH (--`t:bool`--) (ASSUME (--`t:bool`--)))))
+      (DISCH (--`t:bool`--)
+       (NOT_INTRO(DISCH (--`~t`--) (UNDISCH (NOT_ELIM(ASSUME (--`~t`--)))))))))
+  (CONJ (IMP_ANTISYM_RULE
+          (DISCH (--`~T`--) 
+                 (MP (MP (SPEC truth F_IMP) (ASSUME (--`~T`--))) TRUTH))
+          (SPEC (--`~T`--) FALSITY))
+        (IMP_ANTISYM_RULE (DISCH (--`~F`--) TRUTH)
+                          (DISCH truth (MP (SPEC falsity IMP_F)
+                                               (SPEC falsity FALSITY))))));
+
+
+(*
+   A |- t1 \/ t2     A1, t1 |- t3      A2, t2 |- t4
+   ------------------------------------------------
+                A u A1 u A2 |- t3 \/ t4
+*)
+@

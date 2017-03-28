@@ -1,0 +1,106 @@
+head	1.1;
+access;
+symbols;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	96.02.08.00.31.28;	author drs1004;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@New theory mechanism, by Donald Syme, and many other enhancements.
+@
+text
+@(*========================================================================
+ * Fully hol90.7 compatible session manager (for level 0 functionality)
+ *=======================================================================*)
+
+signature Manager0_sig =
+sig
+
+    val current_context : unit -> string
+    val new_context : string -> unit
+    val switch_context : string -> unit
+    val show_context : string -> unit
+    val load_context : string -> unit
+    val save : unit -> unit  (* saves all contexts *)
+    val import : string -> unit
+
+    val theorems : string -> (string * Thm.thm) list
+    val axioms : string -> (string * Thm.thm) list 
+    val definitions : string -> (string * Thm.thm) list 
+    val definition : string -> string -> Thm.thm
+    val theorem : string -> string -> Thm.thm
+    val axiom : string -> string -> Thm.thm
+    val THM : string -> Thm.thm
+    val parents : string -> string list
+    val ancestry : string -> string list
+    val types : string -> (string * int) list
+    val constants : string -> (string * Type.typ) list
+
+    (* implicitly theory side effecting operations: Syntax *)
+    val hol_infix : int -> string -> unit
+    val hol_prefix : string -> unit
+    val hol_binder : string -> unit
+    val associate_restriction :(string*string) -> unit
+    val overloaded : Parse.quotation -> Parse.quotation -> unit
+
+    (* implicitly theory side effecting operations: Extensions *)
+    val new_open_axiom: (string * Term.term) -> Thm.thm
+    val new_constant: {Name:string,Ty:Type.typ} -> unit
+    val new_type: {Name:string,Arity:int} -> unit
+    val new_definition : (string * Term.term) -> Thm.thm
+    val new_simple_definition : (string * Term.term) -> Thm.thm
+    val new_type_definition : {name: string, 
+			       pred: Thm.Term.term,
+			       inhab_thm : Thm.thm} -> Thm.thm
+    val new_infix : {Name: string, Ty: Type.typ, Prec: int} -> unit
+    val new_binder : {Name : string, Ty : Type.typ} -> unit
+    val new_specification : {name :string,
+			     consts : {fixity : Fixity.fixity,
+				       const_name : string} list,
+			     sat_thm : Thm.thm} -> Thm.thm
+
+
+    (* implicitly theory side effecting operations: Theorems *)
+    val save_thm : (string * Thm.thm) -> Thm.thm
+    val save_definition : (string * Thm.thm) -> Thm.thm
+
+    (* new *)
+    type context
+    val pp_context : PP.ppstream -> string -> unit
+    val contexts : unit -> (string * context) list
+
+   (* compatibility/obsolete *)
+    val current_theory : unit -> string
+    val new_theory : string -> unit
+    val empty_theory : string -> unit
+    val export_theory : unit -> unit
+    val load_theory : string -> unit
+    val new_parent : string -> unit
+
+    val extend_theory : string -> unit
+    val close_theory : unit -> unit
+    val draft_mode : unit -> bool
+    val infixes : string -> Term.term list
+    val binders : string -> Term.term list 
+    val new_infix_definition :(string * Term.term * int) -> Thm.thm
+    val new_binder_definition : (string *  Term.term) -> Thm.thm
+
+    (* for use when extending the manager *)
+    val atomic_manager_op : ('a -> 'b) -> 'a -> 'b
+
+    val tmc_variant : string -> string (* nb. adds to hidden termmap *)
+    val tyc_variant : string -> string (* nb. adds to hidden termmap *)
+end;
+    
+@

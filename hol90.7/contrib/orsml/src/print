@@ -1,0 +1,289 @@
+(*************************************************)
+(*             PRINTING                          *)
+(*************************************************)
+
+
+signature ppsig = 
+  sig
+    structure Common : commonsig
+    structure Type : typesig
+    sharing Common = Type.Common
+    val printco : Common.co -> unit
+    val printer : int -> unit
+    val printer_type : int -> unit
+    val printtype : Common.co_type -> unit
+    val show : Common.co -> unit
+    val string_of_co : Common.co -> string
+    val pp_co_type : System.PrettyPrint.ppstream -> Common.co_type -> unit
+    val pp_co : System.PrettyPrint.ppstream -> Common.co -> unit
+  end
+
+
+
+functor PPRINT (Type : typesig) : ppsig  =
+struct 
+
+structure Type = Type
+
+open Type 
+
+local open Type.Common in 
+
+(*
+fun isempty Empty = true | isempty _ = false 
+fun isemptyo Emptyo = true | isemptyo _ = false 
+*)
+
+
+fun string_of_co (Unit) = "()" |
+    string_of_co (Base b) = BTS.string_of_base b |
+    string_of_co (Num i) = makestring(i) |
+    string_of_co (Str s) = "'"^s^"'" |
+    string_of_co (Bool b) = if b then "T" else "F" | 
+    string_of_co (Prod(x,y)) = "("^string_of_co(x)^","^
+                                       string_of_co(y)^")" |
+    string_of_co (Set x) = let fun tmp1 [] = "" |
+                              tmp1 (a::nil) = string_of_co(a) |
+                              tmp1 ((a::(b::y))) = 
+                                   string_of_co(a)^","^tmp1(b::y)
+                      in if isnil(x) then "{}" else "{"^tmp1(x)^"}" end |
+    string_of_co (Orset x) = let fun tmp1 [] = "" |
+                                     tmp1 (a::nil) = string_of_co(a) |
+                                     tmp1 ((a::(b::y))) = 
+                                string_of_co(a)^","^tmp1(b::y)
+                      in if isnil(x) then "<>" else "<"^tmp1(x)^">" end 
+
+fun printco x = (print(string_of_co(x)); print "\n\n");
+
+fun fpco_internal(x) = string_of_co(x)^" :: "^
+                       tp_print(typeof(x)) 
+
+fun show x = (print(fpco_internal(x)); print "\n\n");
+
+(* pretty-printing *)
+
+open System.PrettyPrint;
+
+fun with_ppstream ppstrm = 
+    {add_string     = add_string ppstrm, 
+     add_break      = add_break  ppstrm,
+     begin_block    = begin_block ppstrm,
+     end_block      = fn () => end_block ppstrm,
+     flush_ppstream = fn () => flush_ppstream ppstrm};
+
+
+local
+
+(* STYLE = 0 - no parentheses, STYLE = 1 = print parentheses *)
+
+fun collect_labels (Vart i) = [i] |
+    collect_labels (Prodt(t1,t2)) = collect_labels(t1)@collect_labels(t2) |
+    collect_labels (Sett t) = collect_labels(t) |
+    collect_labels (Orsett t) = collect_labels(t) |
+    collect_labels _ = []
+fun rass x = let fun lessthanz ([]:int list,z) = 0 |
+                     lessthanz ((a::x),z) = if a <= z then 1+lessthanz(x,z)
+                                    else lessthanz(x,z)
+     in map (fn z => {fst = z, snd = lessthanz(x,z)}) x end
+fun getindex ([],n) = chr(96) |
+    getindex (({fst = a1, snd = a2}::x),n) = 
+            if a1 = n then chr(a2+96) else getindex(x,n)
+fun pr_t STYLE ppstrm t =
+    let val {add_string, 
+             add_break, 
+             begin_block,
+             end_block,
+             flush_ppstream} = with_ppstream ppstrm 
+    fun pr (Unitt) = add_string "unit"   |
+        pr (Baset) = add_string (BTS.name_base) |
+        pr (Numt)  = add_string "int"    |
+        pr (Strt)  = add_string "string" |
+        pr (Boolt) = add_string "bool"   |
+        pr (Vart i) = add_string ("'"^getindex(rass(
+                                      collect_labels(t)),i)) |
+        pr (Prodt(typ1,typ2)) = if STYLE = 0 then
+                                  (begin_block CONSISTENT 0;
+                                   pr typ1;
+                                   add_string " * ";
+                                   add_break (0,1);
+                                   pr typ2;
+                                   end_block () ) 
+                                else
+                                  (begin_block CONSISTENT 0;
+                                   add_string "(";
+                                   pr typ1;
+                                   add_string " * ";
+                                   add_break (0,1);
+                                   pr typ2;
+                                   add_string ")";
+                                   end_block () ) |
+        pr (Sett typ) = (begin_block INCONSISTENT 0;
+                         add_string "{";
+                         pr typ;
+                         add_string "}";
+                         end_block () ) |
+        pr (Orsett typ) = (begin_block INCONSISTENT 0;
+                         add_string "<";
+                         pr typ;
+                         add_string ">";
+                         end_block () ) 
+in 
+  begin_block CONSISTENT 0;
+  pr t;
+  end_block ()
+end
+
+fun pr_co PARAM ppstrm (obj:co) = 
+    let val {add_string, 
+             add_break, 
+             begin_block,
+             end_block,
+             flush_ppstream} = with_ppstream ppstrm
+         fun pr Unit     = add_string "()" |
+             pr (Base b) = (add_string (!Base_symb);
+                            add_string "(";
+                            BTS.pp_base ppstrm b;
+                            add_string ")"  ) |
+             pr (Num i) = add_string (makestring i) |
+             pr (Bool b) = add_string (if b then "T" else "F") |
+             pr (Str s)  = add_string ("'"^s^"'") |
+             pr (Prod(obj1,obj2)) = 
+                    (begin_block CONSISTENT 0;
+                     add_string "(";
+                     pr obj1;
+                     add_string ",";
+                     add_break (1,1);
+                     pr obj2;
+                     add_string ")";
+                     end_block () ) |
+             pr (Set co_set) = 
+                  let val is_small = (length(co_set) = 1) 
+                      val is_null = (length(co_set) = 0)
+                  in
+                if is_null then add_string "{}" 
+                else if is_small then
+                     (begin_block INCONSISTENT 0;
+                      add_string "{";
+                      pr (hd(co_set));
+                      add_string "}";
+                      end_block () )
+                else let fun pplist [] = () |
+                             pplist (x::nil) = (pr x;
+                                                add_break(0,1)) |
+                             pplist (x::y) = (pr x;
+                                              add_string ",";
+                                              add_break (1,1);
+                                              pplist y)
+                     in (begin_block INCONSISTENT 0;
+                         add_string "{";
+                         pplist co_set;
+                         add_string "}";
+                         end_block () )
+                     end 
+                 end       |
+              pr (Orset co_orset) = 
+                  let val is_small = (length(co_orset) = 1) 
+                      val is_null = (length(co_orset) = 0)
+                  in
+                if is_null then add_string "<>" 
+                else if is_small then
+                     (begin_block PARAM 0;
+                      add_string "<";
+                      pr (hd(co_orset));
+                      add_string ">";
+                      end_block () )
+                else let fun pplist [] = () |
+                             pplist (x::nil) = (pr x;
+                                                add_break(0,1)) |
+                             pplist (x::y) = (pr x;
+                                              add_string ",";
+                                              add_break (1,1);
+                                              pplist y)
+                     in (begin_block PARAM 0;
+                         add_string "<";
+                         pplist co_orset;
+                         add_string ">";
+                         end_block () )
+                     end 
+                 end
+in 
+    begin_block CONSISTENT 0;
+    pr obj;
+    end_block () 
+end
+
+fun pp_nothing ppstrm x = 
+    (begin_block ppstrm CONSISTENT 0;
+     add_string ppstrm " - ";
+     end_block ppstrm)
+
+in 
+
+val pp_co_type0 = pr_t 0 
+val pp_co_type1 = pr_t 1
+val pp_co21 = pr_co CONSISTENT (* this is 21 *)
+val pp_co31 = pr_co INCONSISTENT
+fun pp_co22 ppstrm obj = (begin_block ppstrm CONSISTENT 0;
+                              pr_co CONSISTENT ppstrm obj;
+                              add_string ppstrm " :: ";
+                              pr_t 0 ppstrm (typeof obj);
+                              end_block ppstrm)
+fun pp_co23 ppstrm obj = (begin_block ppstrm CONSISTENT 0;
+                              pr_co CONSISTENT ppstrm obj;
+                              add_string ppstrm " :: ";
+                              pr_t 1 ppstrm (typeof obj);
+                              end_block ppstrm)
+fun pp_co32 ppstrm obj = (begin_block ppstrm CONSISTENT 0;
+                              pr_co INCONSISTENT ppstrm obj;
+                              add_string ppstrm " :: ";
+                              pr_t 0 ppstrm (typeof obj);
+                              end_block ppstrm)
+fun pp_co33 ppstrm obj = (begin_block ppstrm CONSISTENT 0;
+                              pr_co INCONSISTENT ppstrm obj;
+                              add_string ppstrm " :: ";
+                              pr_t 1 ppstrm (typeof obj);
+                              end_block ppstrm)
+fun pp_co11 ppstrm (obj:co) = pp_nothing ppstrm obj 
+val pp_set = pp_nothing
+val pp_orset = pp_nothing 
+val pp_co = pp_co33
+val pp_co_type = pp_co_type1
+end;
+
+
+
+(* changing pretty printers *)
+
+fun printer i = if i = 11 then (print "Printer #1 installed\n";
+                              install_pp ["Orsml","co"] pp_co11)
+                else if i = 21 then (print "Printer #21 installed\n"; 
+                              install_pp ["Orsml","co"] pp_co21)
+                else if i = 22 then (print "Printer #22 installed\n"; 
+                              install_pp ["Orsml","co"] pp_co22)
+                else if i = 23 then (print "Printer #23 installed\n"; 
+                              install_pp ["Orsml","co"] pp_co23)
+                else if i = 31 then (print "Printer #31 installed\n"; 
+                              install_pp ["Orsml","co"] pp_co31)
+                else if i = 32 then (print "Printer #32 installed\n"; 
+                              install_pp ["Orsml","co"] pp_co32)
+                else if i = 33 then (print "Printer #33 installed\n"; 
+                              install_pp ["Orsml","co"] pp_co33)
+                else (print 
+                      ("printer #"^makestring(i)^" is not available\n");
+                     () );
+
+
+fun printer_type i = if i = 1 then 
+           (print "Printer #1 for complex object types  installed\n";   
+            install_pp ["Orsml","co_type"] pp_co_type0)
+           else if i = 2 then 
+           (print "Printer #2 for complex object types  installed\n";   
+            install_pp ["Orsml","co_type"] pp_co_type1)
+           else (print 
+  ("printer #"^makestring(i)^"for complex object types is not available\n");
+            () );
+
+end
+
+end (* Functor PPRINT *)
+

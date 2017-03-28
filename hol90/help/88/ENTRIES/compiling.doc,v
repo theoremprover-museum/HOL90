@@ -1,0 +1,93 @@
+head	1.1;
+branch	1.1.1;
+access;
+symbols
+	HOL97:1.1.1.1.0.6
+	bpHOL97:1.1.1.1
+	hol90_9_alpha:1.1.1.1
+	hol90_pre8_for_multiple_compilers:1.1.1.1.0.4
+	hol90_pre8_after_donalds_separate_compilation_changes:1.1.1.1
+	hol90_8_after_merging_Konrad_Elsa:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	95.10.16.13.34.35;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.34.35;	author rjb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@\DOC compiling
+
+\TYPE {compiling : bool}
+
+\SYNOPSIS
+Assignable variable: true when compiling, false when loading.
+
+\DESCRIBE
+The identifier {compiling} is an assignable ML variable of type {bool} which
+used to indicate whether the expressions currently being evaluated by ML are
+being compiled or loaded.  At the start of the evaluation of a call to
+{compile} or its variants, the variable {compiling} is set to {true}; and at
+the start of the evaluation of a call to {load} or its variants, {compiling} is
+set to {false}.  In both cases, the previous value of {compiling} is restored
+at the end of evaluation.  The initial value of {compiling} when HOL is run is
+{false}.
+
+\FAILURE
+Evaluation of the variable {compiling} never fails.
+
+\USES
+The main function of {compiling} is to provide a mechanism by which expressions
+may be conditionally evaluated, depending on whether they are being compiled or
+not.  In particular, the main purpose of {compiling} is to allow conditional
+loading of files in ML. For example, suppose that the line
+{
+   if compiling then load(`foo`,false);;
+}
+\noindent appears at the start of an ML file {bar.ml}.  Then whenever the file
+{bar.ml} is compiled, the file {foo.ml} will be loaded.  But whenever the file
+{bar.ml} is merely loaded (whether in compiled form or not) the file {bar.ml}
+will not be loaded.
+
+\SEEALSO
+compiling_stack.
+
+\ENDDOC
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

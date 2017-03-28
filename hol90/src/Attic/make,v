@@ -1,0 +1,107 @@
+head	1.1;
+access;
+symbols
+	hol90_9_alpha:1.1.2.2
+	hol90_pre8_for_multiple_compilers:1.1.0.2;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	96.06.25.15.40.44;	author rjb;	state dead;
+branches
+	1.1.2.1;
+next	;
+
+1.1.2.1
+date	96.06.25.15.40.45;	author rjb;	state Exp;
+branches;
+next	1.1.2.2;
+
+1.1.2.2
+date	96.08.23.16.10.49;	author rjb;	state Exp;
+branches;
+next	1.1.2.3;
+
+1.1.2.3
+date	96.12.18.12.14.18;	author rjb;	state dead;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@file make was initially added on branch hol90_pre8_for_multiple_compilers.
+@
+text
+@@
+
+
+1.1.2.1
+log
+@The core of hol90.9.alpha now builds successfully with SML/NJ 109,
+SML/NJ 108.5 (using CM), SML/NJ 0.93, and Poly/ML 3.0.
+I have not yet tried rebuilding the theory files.
+@
+text
+@a0 34
+#!/bin/sh
+#
+# Script to provide parameters to `make' that appear not to be computable in
+# the Makefile (at least not in a way that works for all architectures).
+
+# Default parameters
+#
+HOL_DIR=`(cd ..; /bin/pwd)`
+ARCH=`/bin/arch`
+case $ARCH in
+     sun4*) case `/bin/uname -sr` in
+                 "SunOS "4*) ARCH="sparc-sunos";;
+                 "SunOS "5*) ARCH="sparc-solaris";;
+                 *) ARCH="sparc";;
+            esac;;
+     *) ;;
+esac
+
+# Process the command-line options
+#
+ARGS=$*
+ARCH_TEXT="ARCH="$ARCH
+HOL_DIR_TEXT="HOL_DIR="$HOL_DIR
+while test "$#" != "0"
+do
+   case $1 in
+      ARCH=*) ARCH_TEXT="";;
+      HOL_DIR=*) HOL_DIR_TEXT="";;
+   esac
+   shift
+done
+
+# Run /bin/make
+/bin/make $ARGS $ARCH_TEXT $HOL_DIR_TEXT
+@
+
+
+1.1.2.2
+log
+@Modified to pass on the parameters correctly, in particular quoted parameters
+containing spaces.
+@
+text
+@d19 14
+d34 1
+a34 1
+/bin/make ARCH=$ARCH HOL_DIR=$HOL_DIR "$@@"
+@
+
+
+1.1.2.3
+log
+@See doc/8/8.changes for a description of the changes.
+@
+text
+@@

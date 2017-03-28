@@ -1,0 +1,172 @@
+head	1.1;
+access;
+symbols
+	HOL97:1.1.0.2;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	97.06.11.17.08.18;	author kxs;	state dead;
+branches
+	1.1.2.1;
+next	;
+
+1.1.2.1
+date	97.06.11.17.08.19;	author kxs;	state Exp;
+branches;
+next	1.1.2.2;
+
+1.1.2.2
+date	97.07.11.15.02.37;	author kxs;	state Exp;
+branches;
+next	1.1.2.3;
+
+1.1.2.3
+date	97.10.05.21.11.53;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@file lib.yak was initially added on branch HOL97.
+@
+text
+@@
+
+
+1.1.2.1
+log
+@Directory for all HOL grammars.
+@
+text
+@a0 83
+fun LIB_PARSE_ERR(s1,s2) = 
+ Exception.HOL_ERR{origin_structure = "Library_parse",
+                   origin_function = s1, message = s2};
+
+%%
+%term lbrace | rbrace
+    | lbracket | rbracket
+    | lparen | rparen
+    | eq
+    | comma
+    | lib_id
+    | doc
+    | path
+    | parents
+    | theories
+    | code
+    | help
+    | loaded
+    | id of string
+    | num of string
+    | string_constant of string
+    | EOLEX
+    | EOF 
+
+
+%nonterm START of Lib_data.lib_data
+       | LIB of Lib_data.lib_data
+       | LIB_ID of Lib_data.lib_id
+       | ID of string
+       | ID_LIST of string list
+       | LIB_ID_LIST of Lib_data.lib_id list 
+
+%start START
+%eop EOF EOLEX
+%pos int
+%header (functor libLrValsFun (structure Token : TOKEN
+                               structure Lib_data : Lib_data_sig))
+
+%name lib
+%noshift EOF
+%pure
+%%
+
+START : LIB (LIB)
+
+LIB : lib_id eq LIB_ID 
+      doc eq string_constant
+      path eq id
+      parents eq lbracket LIB_ID_LIST rbracket 
+      theories eq lbracket ID_LIST rbracket 
+      code eq lbracket ID_LIST rbracket
+      help eq lbracket ID_LIST rbracket
+      loaded eq string_constant
+      (Lib_data.mk_lib_data{lib_id = LIB_ID,
+                            doc = string_constant1,
+                            path = id,
+                            parents = LIB_ID_LIST,
+                            theories = ID_LIST1,
+                            code = ID_LIST2,
+                            help = ID_LIST3,
+                            loaded = string_constant2})
+
+LIB_ID : lparen id comma num comma num rparen
+         (Lib_data.mk_lib_id{name = id, 
+                             timestamp = Portable.Time.mk_time
+                                          {sec = string_to_int num1,
+                                           usec = string_to_int num2}})
+ID : id (id)
+   | lib_id ("lib_id")
+   | doc ("doc")
+   | path ("path")
+   | parents ("parents")
+   | theories ("theories")
+   | code ("code")
+   | help ("help")
+   | loaded ("loaded")
+
+
+ID_LIST : ([]) | ID ([ID]) | ID comma ID_LIST(ID::ID_LIST)
+
+LIB_ID_LIST : ([]) | LIB_ID ([LIB_ID])
+            | LIB_ID comma LIB_ID_LIST(LIB_ID::LIB_ID_LIST)
+
+@
+
+
+1.1.2.2
+log
+@Minor editions for CM-friendliness.
+@
+text
+@d6 1
+a6 1
+%term lbrace   | rbrace
+d8 1
+a8 1
+    | lparen   | rparen
+d65 8
+a72 8
+                    timestamp = Portable.Time.mk_time
+                                       {sec = Lib.string_to_int num1,
+                                        usec = Lib.string_to_int num2}})
+ID : id       (id)
+   | lib_id   ("lib_id")
+   | doc      ("doc")
+   | path     ("path")
+   | parents  ("parents")
+d74 3
+a76 3
+   | code     ("code")
+   | help     ("help")
+   | loaded   ("loaded")
+@
+
+
+1.1.2.3
+log
+@Changes to reflect the changes in the Portable.Time structure
+@
+text
+@d65 3
+a67 1
+                  timestamp = Portable.Time.mk_time{sec = num1,usec = num2}})
+@

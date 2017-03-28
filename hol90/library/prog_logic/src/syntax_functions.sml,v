@@ -1,0 +1,428 @@
+head	1.2;
+access;
+symbols
+	HOL97:1.2.0.4
+	bpHOL97:1.2
+	hol90_9_alpha:1.2
+	hol90_pre8_for_multiple_compilers:1.2.0.2
+	hol90_pre8_after_donalds_separate_compilation_changes:1.2
+	hol90_8_after_merging_Konrad_Elsa:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.2
+date	95.10.31.15.31.16;	author drs1004;	state Exp;
+branches
+	1.2.4.1;
+next	1.1;
+
+1.1
+date	95.10.16.13.31.52;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.31.52;	author rjb;	state Exp;
+branches;
+next	;
+
+1.2.4.1
+date	97.07.14.17.34.35;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.2
+log
+@Changes by DRS for separate compilation using NJSML 108.5/CM
+@
+text
+@signature SYNTAX = 
+    sig
+
+	val dest_LIST    : Term.term -> Term.term list
+    
+	val dest_spec    : Term.term -> Term.term * Term.term * Term.term
+	
+	val dest_t_spec  : Term.term -> Term.term * Term.term * Term.term
+	
+	val dest_assign  : Term.term -> Term.term * Term.term 
+	
+	val dest_seq     : Term.term -> Term.term * Term.term
+	
+        val dest_seql    : Term.term -> Term.term list
+
+        val mk_seql      : Term.term list -> Term.term
+
+	val dest_if1     : Term.term -> Term.term * Term.term
+	
+	val dest_if2     : Term.term -> Term.term * Term.term * Term.term
+	
+        val dest_while   : Term.term -> Term.term * Term.term
+
+        val dest_assert  : Term.term -> Term.term
+
+        val dest_variant : Term.term -> Term.term
+
+        val dest_invariant  : Term.term -> Term.term
+
+    end;
+
+(* ========================================================================= *)
+(*  FILE          : syntax.sml                                               *)
+(*  DESCRIPTION   : Code for generating the semantic representation of a     *)
+(*                  partial correctness spec. from terms representing the    *)
+(*                  concrete syntax.                                         *)
+(*                                                                           *)
+(*  AUTHOR        : Matthew Morley, University of Edinburgh                  *)
+(*  DATE          : January 1993                                             *)
+(*  HISTORY       : Specialised to HOL90 from HOL88 prog_lib library.        *)
+(* ========================================================================= *)
+
+
+functor Syntax() : SYNTAX =
+  struct
+
+open Core; (* open up all of the HOL 0/1 Core - could be replaced by more *)
+           (* explicit opens to avoid endless recompilation of libraries  *)
+           (* during system development                                   *)
+
+  fun SYNTAX_ERR {function,message} = 
+      HOL_ERR{origin_structure = "Syntax",
+	      origin_function = function,
+	      message = message}
+
+  open Rsyntax;
+
+  exception FAIL;
+
+  (* dest_list "[C1; ... ;Cn]"   --->   ["C1"; ... ;"Cn"] *)
+
+  val dest_LIST = (#els o dest_list)
+
+  (* dest_tuple "(t1,...,tn)"    --->   ["t1";...;"tn"] *)
+
+  fun dest_tuple t =
+      (let val {fst,snd} = dest_pair t
+       in
+	   fst::(dest_tuple snd)
+       end) handle _ => [t]
+
+(* ========================================================================= *)
+(*   Destructors for terms representing internal syntax                      *)
+(* ========================================================================= *)
+
+  (* dest_spec "MK_SPEC(p,c,q)"  --> ("p","c","q") *)
+
+  local val mk_spec = --`MK_SPEC`--
+  in
+      fun dest_spec tm =
+	  let val {Rator,Rand} = dest_comb tm
+	      val [p,c,q] = dest_tuple Rand
+	  in
+	      if (Rator = mk_spec)
+		  then (p,c,q)
+	      else raise FAIL
+	  end 
+      handle _ => raise SYNTAX_ERR{function = "dest_spec",
+				   message = "Term not a valid specification"}
+  end
+
+  (* dest_assign "MK_ASSIGN(x,e)"    ---> ("x","e") *)
+
+  local val mk_ass = --`MK_ASSIGN`--
+  in
+      fun dest_assign tm =
+	  (let val {Rator,Rand} = dest_comb tm
+	       val [x,e] = dest_tuple Rand
+	   in
+	       if (Rator = mk_ass)
+		   then (x,e)
+	       else raise FAIL
+	   end) 
+	       handle _ => raise SYNTAX_ERR{function = "dest_assign",
+					    message = "Term not an assignment"}
+  end
+
+  (* dest_seq "MK_SEQ(c1,c2)"    --->  ("c1","c2") *)
+
+  local val mk_seq = --`MK_SEQ`--
+  in
+      fun dest_seq tm =
+	  let val {Rator,Rand} = dest_comb tm
+	      val [c,c'] = dest_tuple Rand
+	  in
+	      if (Rator = mk_seq)
+		  then (c,c')
+	      else raise FAIL
+	  end 
+      handle _ => raise SYNTAX_ERR{function = "dest_seq",
+				   message = "Term not a command sequence"}
+  end
+
+  (* dest_seql "c1;c2; ... ;cn"  --->  ["c1";"c2"; ... ;"cn"] *)
+
+  fun dest_seql t =
+      (let val (c,rest) = dest_seq t
+       in
+	   (dest_seql c) @@ (dest_seql rest)
+       end) handle _ => [t];
+
+  (* mk_seql ["c1";... ;"cn"]    --->  "c1;(c2; ... ;cn)"  *)
+
+  fun mk_seql l =
+      if null l 
+	  then raise FAIL
+      else if null(tl l)
+	       then hd l
+	   else (--`MK_SEQ(^(hd l),^(mk_seql(tl l)))`--)
+
+  (* dest_if1 "MK_IF1(b,c)"        --->  ("b","c") *)
+
+  local val mk_if1 = --`MK_IF1`--
+  in
+      fun dest_if1 tm =
+	  let val {Rator,Rand} = dest_comb tm
+	      val [b,c] = dest_tuple Rand
+	  in
+	      if (Rator = mk_if1)
+		  then (b,c)
+	      else raise FAIL
+	  end 
+      handle _ => raise SYNTAX_ERR{function = "dest_if1",
+				   message = "Term not a guarded command"}
+  end
+
+  (* dest_ife "MK_IF2(b,c,c')"   --->  ("b","c","c'") *)
+
+  local val mk_if2 = --`MK_IF2`--
+  in
+      fun dest_if2 tm =
+	  let val {Rator,Rand} = dest_comb tm
+	      val [b,c,c'] = dest_tuple Rand
+	  in
+	      if (Rator = mk_if2)
+		  then (b,c,c')
+	      else raise FAIL
+	  end 
+      handle _ => raise SYNTAX_ERR{function = "dest_if2",
+				   message = "Term not a conditional"}
+  end
+
+
+(* dest_assert "MK_ASSERT p"  -->  "p" *)
+
+  local val mk_ass = --`MK_ASSERT`--
+  in
+      fun dest_assert tm =
+	  let val {Rator,Rand} = dest_comb tm
+	  in
+	      if (Rator = mk_ass)
+		  then Rand
+	      else raise FAIL
+	  end 
+      handle _ => raise SYNTAX_ERR{function = "dest_assert",
+				   message = "Term not an assertion"}
+  end
+
+  (* dest_invariant "MK_INVARIANT p"  -->  "p" *)
+
+  local val mk_inv = --`MK_INVARIANT`--
+  in
+      fun dest_invariant tm =
+	  let val {Rator,Rand} = dest_comb tm
+	  in
+	      if (Rator = mk_inv)
+		  then Rand
+	      else raise FAIL
+	  end 
+      handle _ => raise SYNTAX_ERR{function = "dest_invariant",
+				   message = "Term not an invariant"}
+  end
+
+  (* dest_variant "MK_VARIANT p"  -->  "p" *)
+
+  local val mk_var = --`MK_VARIANT`--
+  in
+      fun dest_variant tm =
+	  let val {Rator,Rand} = dest_comb tm
+	  in
+	      if (Rator = mk_var)
+		  then Rand
+	      else raise FAIL
+	  end 
+      handle _ => raise SYNTAX_ERR{function = "dest_variant",
+				   message = "Term not a variant"}
+  end
+
+  (* dest_while "MK_WHILE(b,c)"  -->  ("b","c") *)
+
+  local val mk_while = --`MK_WHILE`--
+  in
+      fun dest_while tm =
+	  let val {Rator,Rand} = dest_comb tm
+	      val [b,c] = dest_tuple Rand
+	  in
+	      if (Rator = mk_while)
+		  then (b,c)
+	      else raise FAIL
+	  end 
+      handle _ => raise SYNTAX_ERR{function = "dest_while",
+				   message = "Term not a while loop"}
+  end
+
+(* dest_t_spec "T_SPEC(p,c,q)" --> ("p","c","q") *)
+
+  local val mk_spec = --`T_SPEC`--
+  in
+      fun dest_t_spec tm =
+	  let val {Rator,Rand} = dest_comb tm
+	      val [p,c,q] = dest_tuple Rand
+	  in
+	      if (Rator = mk_spec)
+		  then (p,c,q)
+	      else raise FAIL
+	  end 
+      handle _ => raise SYNTAX_ERR{function = "dest_t_spec",
+				   message = "Term not a valid specification"}
+  end
+
+  end; (* Functor Syntax() *)
+@
+
+
+1.2.4.1
+log
+@The prog_logic library now loads under CM. The entrypoint is the
+structure prog_logicLib. The removed files are target files of hol_lex and
+hol_yak.
+@
+text
+@d2 1
+a2 1
+sig
+d4 1
+a4 1
+val dest_LIST : CoreHol.Term.term -> CoreHol.Term.term list
+d6 3
+a8 5
+val dest_spec : CoreHol.Term.term 
+                -> CoreHol.Term.term * CoreHol.Term.term * CoreHol.Term.term
+
+val dest_t_spec  : CoreHol.Term.term 
+                   -> CoreHol.Term.term * CoreHol.Term.term * CoreHol.Term.term
+d10 1
+a10 1
+val dest_assign  : CoreHol.Term.term -> CoreHol.Term.term * CoreHol.Term.term 
+d12 1
+a12 1
+val dest_seq     : CoreHol.Term.term -> CoreHol.Term.term * CoreHol.Term.term
+d14 1
+a14 1
+val dest_seql    : CoreHol.Term.term -> CoreHol.Term.term list
+d16 1
+a16 1
+val mk_seql      : CoreHol.Term.term list -> CoreHol.Term.term
+d18 1
+a18 1
+val dest_if1     : CoreHol.Term.term -> CoreHol.Term.term * CoreHol.Term.term
+d20 1
+a20 2
+val dest_if2     : CoreHol.Term.term 
+                   -> CoreHol.Term.term * CoreHol.Term.term * CoreHol.Term.term
+d22 1
+a22 1
+val dest_while   : CoreHol.Term.term -> CoreHol.Term.term * CoreHol.Term.term
+d24 1
+a24 1
+val dest_assert  : CoreHol.Term.term -> CoreHol.Term.term
+d26 1
+a26 1
+val dest_variant : CoreHol.Term.term -> CoreHol.Term.term
+d28 1
+a28 1
+val dest_invariant  : CoreHol.Term.term -> CoreHol.Term.term
+d30 1
+a30 1
+end;
+d47 3
+a49 4
+type term = CoreHol.Term.term;
+
+open Lib Exception CoreHol;
+open Term Dsyntax Parse;
+d55 2
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d4 1
+a4 1
+	val dest_LIST    : term -> term list
+d6 1
+a6 1
+	val dest_spec    : term -> term * term * term
+d8 1
+a8 1
+	val dest_t_spec  : term -> term * term * term
+d10 1
+a10 1
+	val dest_assign  : term -> term * term 
+d12 1
+a12 1
+	val dest_seq     : term -> term * term
+d14 1
+a14 1
+        val dest_seql    : term -> term list
+d16 1
+a16 1
+        val mk_seql      : term list -> term
+d18 1
+a18 1
+	val dest_if1     : term -> term * term
+d20 1
+a20 1
+	val dest_if2     : term -> term * term * term
+d22 1
+a22 1
+        val dest_while   : term -> term * term
+d24 1
+a24 1
+        val dest_assert  : term -> term
+d26 1
+a26 1
+        val dest_variant : term -> term
+d28 1
+a28 1
+        val dest_invariant  : term -> term
+d47 4
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

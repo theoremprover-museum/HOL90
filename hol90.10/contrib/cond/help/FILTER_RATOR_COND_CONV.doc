@@ -1,0 +1,53 @@
+\DOC FILTER_RATOR_COND_CONV
+
+\TYPE {FILTER_RATOR_COND_CONV: (term -> bool) -> conv}
+
+\SYNOPSIS
+moves a selected rator inward through a conditonal.
+
+\LIBRARY cond
+
+\DESCRIBE 
+moves a selected rator inward through a conditonal.
+
+{
+   |- f (A => x|y)
+  ================== 
+   |- A => f x|f y
+}
+
+\EXAMPLE
+
+an example which fulfills the supplied filter:
+
+{
+- FILTER_RATOR_COND_CONV 
+  (fn t => #Name(dest_const t) = "SUC")
+  (--`SUC (A => 5|6)`--);
+val it = |- SUC (A => 5 | 6) = (A => (SUC 5) | (SUC 6)) : thm
+}
+
+an example which does not fulfill the supplied filter:
+
+{
+- (FILTER_RATOR_COND_CONV 
+  (fn t => #Name(dest_const t) = "PRE")
+  (--`SUC (A => 5|6)`--);()) handle e => print_HOL_ERR e;
+Exception raised at cond.RATOR_COND_CONV:
+the supplied filter is not true for:
+SUC
+}
+
+\FAILURE
+
+if the term has not the form f (A => x|y) or the supplied filter is
+not true for f
+
+\SEEALSO
+
+RATOR_COND_CONV RATOR_COND_RULE RATOR_COND_TAC FILTER_RATOR_COND_RULE
+FILTER_RATOR_COND_TAC COND_RATOR_CONV COND_RATOR_RULE COND_RATOR_TAC
+FILTER_COND_RATOR_CONV FILTER_COND_RATOR_RULE FILTER_COND_RATOR_TAC
+
+\ENDDOC
+

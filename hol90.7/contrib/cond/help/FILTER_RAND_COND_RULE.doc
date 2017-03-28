@@ -1,0 +1,44 @@
+\DOC FILTER_COND_RAND_RULE
+
+\TYPE {FILTER_COND_RAND_RULE: (term -> bool) -> thm -> thm}
+
+\SYNOPSIS
+moves all selected rands outward through conditonals.
+
+\LIBRARY cond
+
+\DESCRIBE 
+moves all selected rands outward through conditonals.
+
+{
+      |- A => f x|g x
+     ================== 
+      |- (A => f|g) x
+}
+
+\EXAMPLE
+
+an example which does not completely fulfill the supplied filter:
+
+{
+th;
+val it = |- ~((A => SUC 3| (\x. x + 2) 3) = (A => SUC 5 | (\x. x + 2) 5))
+ : thm
+- FILTER_COND_RAND_RULE (fn t => (--`5`--) = t) it;
+val it = |- ~((A => (SUC 3) | ((\x. x + 2) 3)) = (A => SUC | (\x. x + 2)) 5)
+  : thm
+}
+
+\FAILURE
+
+if the term has not the form A => f x|g x or the supplied filter is
+not true for x
+
+\SEEALSO
+
+COND_RAND_CONV COND_RAND_RULE COND_RAND_TAC FILTER_COND_RAND_RULE
+FILTER_COND_RAND_TAC COND_RAND_CONV COND_RAND_RULE COND_RAND_TAC
+FILTER_COND_RAND_CONV FILTER_COND_RAND_RULE FILTER_COND_RAND_TAC
+
+\ENDDOC
+

@@ -1,0 +1,259 @@
+(****************************************************************************)
+(* FILE          : num.sml                                                  *)
+(* DESCRIPTION   : Decision procedure for linear natural arithmetic.        *)
+(*                                                                          *)
+(* AUTHOR        : R.J.Boulton, University of Cambridge                     *)
+(* DATE          : 22nd February 1995                                       *)
+(*                                                                          *)
+(* LAST MODIFIED : R.J.Boulton                                              *)
+(* DATE          : 21st August 1996                                         *)
+(****************************************************************************)
+
+local
+
+(*==========================================================================*)
+(* Build structure for the HOL type of natural numbers                      *)
+(*==========================================================================*)
+
+structure NumHOLType : NUMBER_HOL_TYPE =
+struct
+
+open Exception;
+
+fun failwith function = raise HOL_ERR{origin_structure = "NumHOLType",
+                                      origin_function = function,
+                                      message = ""};
+
+structure Int = Portable.Int;
+
+local
+   open Lib Psyntax
+in
+
+type num = Int.int;
+
+val num_ty = mk_type ("num",[]);
+
+fun term_of_num i =
+   mk_const (int_to_string i,num_ty) handle _ => failwith "term_of_num";
+
+fun num_of_term tm =
+   string_to_int (#Name (Rsyntax.dest_const tm))
+   handle _ => failwith "num_of_term";
+
+val plus = "+"
+and minus = "-"
+and mult = "*"
+and less = "<"
+and leq = "<="
+and great = ">"
+and geq = ">="
+and suc = "SUC"
+and pre = "PRE"
+and zero = "0"
+and one = "1";
+
+end;
+
+end; (* NumHOLType *)
+
+(*==========================================================================*)
+(* Build structure for the ML type of natural numbers                       *)
+(*==========================================================================*)
+
+structure NumType : NUMBER_TYPE =
+struct
+
+open Exception
+
+fun failwith function = raise HOL_ERR{origin_structure = "NumType",
+                                      origin_function = function,
+                                      message = ""};
+
+local
+
+structure Int = Portable.Int;
+
+(*--------------------------------------------------------------------------*)
+(* Function to compute the Greatest Common Divisor of two integers.         *)
+(*--------------------------------------------------------------------------*)
+
+fun gcd (i,j) =
+   let exception non_neg
+       fun gcd' (i,j) =
+          let val r = (i mod j)
+          in  if (r = 0)
+              then j
+              else gcd' (j,r)
+          end
+   in  (if ((i < 0) orelse (j < 0))
+        then raise non_neg
+        else if (i < j) then gcd' (j,i) else gcd' (i,j)
+       ) handle non_neg => failwith "gcd"
+              | Int.Mod => failwith "gcd"
+   end;
+
+(*--------------------------------------------------------------------------*)
+(* Function to compute the Lowest Common Multiple of two integers.          *)
+(*--------------------------------------------------------------------------*)
+
+fun lcm (i,j) = (i * j) div (gcd (i,j)) handle HOL_ERR _ => failwith "lcm"
+                                               | Int.Div => failwith "lcm";
+
+in
+
+(*--------------------------------------------------------------------------*)
+(* Make the definitions                                                     *)
+(*--------------------------------------------------------------------------*)
+
+type num = Int.int;
+
+val num0 = 0
+and num1 = 1
+and op + = Int.+
+and op - = Int.-
+and op * = Int.*
+and op div = Int.div
+and lcm = lcm
+and op < = Int.<
+
+
+(*---------------------------------------------------------------------------
+ * I am not sure why this is needed in the move to 109.26 - kls.
+ *---------------------------------------------------------------------------*)
+fun eek n1 n2 = (n1=n2)
+end;
+
+end; (* NumType *)
+
+(*==========================================================================*)
+(* Instantiate the generic procedure                                        *)
+(*==========================================================================*)
+
+structure NumArithCons = ArithConsFun (structure NumberHOLType = NumHOLType);
+
+structure NumInequalityCoeffs =
+   InequalityCoeffsFun (structure NumberType = NumType
+                        structure ArithCons = NumArithCons);
+
+in
+
+structure NumArith =
+   ArithFun (structure ArithCons = NumArithCons
+             structure InequalityCoeffs = NumInequalityCoeffs);
+
+end;
+
+
+(*==========================================================================*)
+(*==========================================================================*)
+
+structure DecideNum =
+struct
+
+local
+
+open CoreHol.Term CoreHol.Dsyntax CoreHol.Theory Rewrite
+     Psyntax Conv DecisionConv DecisionSupport NumArith;
+infix THENC;
+infix ORELSEC;
+
+local
+   open NumArith.ArithCons.NumberHOLType
+in
+   val unops = [suc,pre]
+   and binops = [plus,minus,mult,less,leq,great,geq]
+end;
+
+fun num_discrim tm =
+   let val (f,args) = strip_comb tm
+   in  case (length args)
+       of 0 => if (NumArith.ArithCons.is_num_var f) orelse
+                  (NumArith.ArithCons.is_num_const f)
+               then (fn _ => tm,[])
+               else Decide.failwith "num_discrim"
+        | 1 => if (is_const f) andalso
+                  (member (#Name (Rsyntax.dest_const f)) unops)
+               then (fn args' => list_mk_comb (f,args'),args)
+               else Decide.failwith "num_discrim"
+        | 2 => if (is_const f) andalso
+                  (member (#Name (Rsyntax.dest_const f)) binops)
+               then (fn args' => list_mk_comb (f,args'),args)
+               else Decide.failwith "num_discrim"
+        | _ => Decide.failwith "num_discrim"
+   end;
+
+in
+
+val SUB_NORM_CONV =
+ ((GEN_REWRITE_CONV Lib.I Rewrite.empty_rewrites) o
+   (map (theorem "arithmetic")))
+ ["SUB_LEFT_ADD",          "SUB_RIGHT_ADD",
+  "SUB_LEFT_SUB",          "SUB_RIGHT_SUB",
+  "LEFT_SUB_DISTRIB",      "RIGHT_SUB_DISTRIB",
+  "SUB_LEFT_SUC",
+  "SUB_LEFT_LESS_EQ",      "SUB_RIGHT_LESS_EQ",
+  "SUB_LEFT_LESS",         "SUB_RIGHT_LESS",
+  "SUB_LEFT_GREATER_EQ",   "SUB_RIGHT_GREATER_EQ",
+  "SUB_LEFT_GREATER",      "SUB_RIGHT_GREATER",
+  "SUB_LEFT_EQ",           "SUB_RIGHT_EQ",
+  "PRE_SUB1"
+ ];
+
+(*--------------------------------------------------------------------------*)
+(* REDEPTH_CONV is more efficient than TOP_DEPTH_CONV. Also, with           *)
+(* TOP_DEPTH_CONV special measures are required to avoid looping, and       *)
+(* conditional expression elimination has to be included.                   *)
+(*--------------------------------------------------------------------------*)
+
+val SUB_ELIM_CONV =
+   REDEPTH_CONV
+      (SUB_NORM_CONV ORELSEC
+       Arith_thm_convs.NUM_COND_RATOR_CONV ORELSEC
+       Arith_thm_convs.NUM_COND_RAND_CONV ORELSEC
+       NormalizeBool.COND_ABS_CONV);
+
+val ARITH_NORM_CONV = RULE_OF_CONV ARITH_LITERAL_NORM_CONV;
+
+local
+
+open NumArith.ArithCons LazyThm;
+
+val mk_one = mk_const (NumberHOLType.one,NumberHOLType.num_ty);
+
+in
+
+fun ARITH_FALSE_CONV tm =
+   if ((is_eq o dest_neg o #1 o dest_conj) tm handle _ => false)
+   then
+   let val (diseq,conj) = dest_conj tm
+       val (l,r) = dest_eq (dest_neg diseq)
+       val disjl = mk_conj (mk_leq (mk_plus (mk_one,l),r),conj)
+       and disjr = mk_conj (mk_leq (mk_plus (mk_one,r),l),conj)
+       fun rule thl thr =
+          RIGHT_CONV_RULE
+             (LEFT_CONV (fn _ => thl) THENC RIGHT_CONV (fn _ => thr) THENC
+              DecisionNormConvs.OR_F_CONV)
+             ((LEFT_CONV (Arith_thm_convs.NOT_NUM_EQ_NORM_CONV) THENC
+               DecisionNormConvs.RIGHT_DISJ_NORM_CONV) tm)
+   in  apply_rule2 (fn _ => fn _ => ([],mk_eq (tm,F)),rule)
+          (INEQS_FALSE_CONV disjl) (INEQS_FALSE_CONV disjr)
+   end
+   else INEQS_FALSE_CONV tm;
+
+end;
+
+val num_proc =
+   {Name = "num",
+    Description = "Linear arithmetic over natural numbers",
+    Author = "Richard J. Boulton",
+    Discriminator = num_discrim,
+    Normalizer = SUB_ELIM_CONV THENC
+                 NormalizeBool.EXPAND_BOOL_CONV NormalizeBool.Disjunctive
+                    ARITH_NORM_CONV,
+    Procedure = Decide.make_incremental_procedure LazyRules.CONJ
+                   ARITH_FALSE_CONV}
+
+end;
+
+end; (* DecideNum *)

@@ -1,0 +1,162 @@
+<TITLE>Theory: lift</TITLE>
+<H1>Theory: lift</H1>
+<H1>Parents</H1>
+    <UL>
+    <LI><A HREF = "HOL.html"><STRONG>HOL</STRONG></A>
+    </UL>
+
+
+<HR>
+<H1>Type constants</H1>
+    <UL>
+    <LI><STRONG>lift</STRONG>(Arity = 1)
+    </UL>
+
+
+<HR>
+<H1>Term constants</H1>
+    <UL>
+    <LI><STRONG>lift_REP</STRONG><EM>:'a lift -> 'a + one</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>lift_ABS</STRONG><EM>:'a + one -> 'a lift</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>lift</STRONG><EM>:'a -> 'a lift</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>undefined</STRONG><EM>:'a lift</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>is_defined</STRONG><EM>:'a lift -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>lower</STRONG><EM>:'a lift -> 'a</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    </UL>
+
+
+<HR>
+<H1>Axioms</H1>
+<DL>
+
+</DL>
+
+
+<HR>
+<H1>Definitions</H1>
+<DL>
+<DT><STRONG>lift_TY_DEF</STRONG>
+<DD>
+<PRE>
+|- ?rep. TYPE_DEFINITION (\x. T) rep
+</PRE>
+
+<DT><STRONG>lift_REP_ABS_DEF</STRONG>
+<DD>
+<PRE>
+|- (!a. lift_ABS (lift_REP a) = a) /\
+   (!r. (\x. T) r = lift_REP (lift_ABS r) = r)
+</PRE>
+
+<DT><STRONG>lift_DEF</STRONG>
+<DD>
+<PRE>
+|- !x. lift x = lift_ABS (INL x)
+</PRE>
+
+<DT><STRONG>undefined_DEF</STRONG>
+<DD>
+<PRE>
+|- undefined = lift_ABS (INR one)
+</PRE>
+
+<DT><STRONG>is_defined_DEF</STRONG>
+<DD>
+<PRE>
+|- !x. is_defined x = (?y. x = lift y)
+</PRE>
+
+<DT><STRONG>lower_DEF</STRONG>
+<DD>
+<PRE>
+|- !x. lower (lift x) = x
+</PRE>
+
+</DL>
+
+
+<HR>
+<H1>Theorems</H1>
+<DL>
+<DT><STRONG>lift_CASES</STRONG>
+<DD>
+<PRE>
+|- !l. (?x. l = lift x) \/ (l = undefined)
+</PRE>
+
+<DT><STRONG>lift_INDUCTION</STRONG>
+<DD>
+<PRE>
+|- !P. (!x. P (lift x)) /\ P undefined ==> (!l. P l)
+</PRE>
+
+<DT><STRONG>lift_ONE_ONE</STRONG>
+<DD>
+<PRE>
+|- !x x'. (lift x = lift x') = x = x'
+</PRE>
+
+<DT><STRONG>lift_constructors_distinct</STRONG>
+<DD>
+<PRE>
+|- !x. ~(lift x = undefined)
+</PRE>
+
+<DT><STRONG>lift_Axiom</STRONG>
+<DD>
+<PRE>
+|- !f e. ?!fn. (!x. fn (lift x) = f x) /\ (fn undefined = e)
+</PRE>
+
+<DT><STRONG>undef_not_lift</STRONG>
+<DD>
+<PRE>
+|- !x. ~(undefined = lift x)
+</PRE>
+
+<DT><STRONG>undefined_not_exists_THM</STRONG>
+<DD>
+<PRE>
+|- !y. (y = undefined) = ~(?x. y = lift x)
+</PRE>
+
+<DT><STRONG>exists_not_undefined_THM</STRONG>
+<DD>
+<PRE>
+|- !y. (?x. y = lift x) = ~(y = undefined)
+</PRE>
+
+<DT><STRONG>is_defined_lemma</STRONG>
+<DD>
+<PRE>
+|- (!x. is_defined (lift x)) /\ ~(is_defined undefined)
+</PRE>
+
+<DT><STRONG>is_defined_is_not_undefined</STRONG>
+<DD>
+<PRE>
+|- !x. is_defined x = ~(x = undefined)
+</PRE>
+
+<DT><STRONG>lift_lower_THM</STRONG>
+<DD>
+<PRE>
+|- !y. (lift (lower y) = y) = is_defined y
+</PRE>
+
+<DT><STRONG>lower_ONE_ONE</STRONG>
+<DD>
+<PRE>
+|- !x y. is_defined x /\ is_defined y ==> ((lower x = lower y) = x = y)
+</PRE>
+
+</DL>
+
+
+<HR>

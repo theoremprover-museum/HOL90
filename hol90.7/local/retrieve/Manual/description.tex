@@ -1,0 +1,234 @@
+\chapter{The retrieve Library}
+
+\section{Introduction}
+
+This document describes the facilities provided by the \ml{retrieve} library
+for the \HOL\ system~\cite{HOLbook,ImplHOL}. In {\HOL}88 the library was
+called \ml{trs}.
+
+One of the most time-consuming activities when using the \HOL\ System,
+particularly for people new to the system, is discovering the names of
+built-in theorems required for a proof. Typically this involves manually
+searching for the theorem in the documentation.
+
+If the user can guess roughly what the name of the theorem is, then it may be
+possible to use the operating system to search for strings within theory
+files, and hence locate the theorem. It would be better to search for the
+theorem by specifying its structure, since the user should have a fairly good
+idea of what this is. The Theorem Retrieval System provides such searching by
+structure. It does this from within a \HOL\ session.
+
+The system uses \HOL\ terms as a means of specifying the structure of the
+required theorem. The terms given are interpreted as templates or patterns
+for the theorem. Variables in the template term can match subterms in the
+theorem. The user may only know the form of some subterm of the theorem, so
+it is not sufficient just to be able to match a template against the whole of
+the conclusion of a theorem. The retrieval system allows searches for theorems
+containing subterms which match a pattern. Logical connectives are also
+available to build up more sophisticated search specifications.
+
+It is not just the names of built-in theorems that may not be known. A user
+may have forgotten the name under which he/she stored a personal theorem.
+For this reason, the retrieval system allows user theories to be searched
+as well as the built-in theories.
+
+
+\section{Using the library}
+
+The \ml{retrieve} library can be loaded into a \HOL\ session using
+\ml{load\_library\_in\_place}\index{load\_library\_in\_place@{\ptt load\_library\_in\_place}}
+(see the \HOL\ documentation for a general description of library loading).
+This causes the \ML\ identifiers in the library to be loaded into \HOL. In
+addition, the \HOL\ help\index{help!updating search path} search path is
+updated with pathnames to online help files for the \ML\ identifiers in the
+library. 
+
+The following session shows how the \ml{retrieve} library may be loaded using
+the function \ml{load\_library\_in\_place}:
+
+\setcounter{sessioncount}{1}
+
+\begin{session}\begin{verbatim}
+- load_library_in_place (find_library "retrieve");
+
+Loading the library "retrieve".
+
+The library "HOL" is already loaded.
+
+  The parent libraries of library "retrieve" have been loaded.
+.
+.
+.
+  The code of library "retrieve" has been loaded.
+
+  The help path for library "retrieve" has been adjusted.
+
+The library "retrieve" is loaded.
+val it = () : unit
+- 
+\end{verbatim}\end{session}
+
+\noindent
+This causes a number of \ML\ signatures and structures to be defined. The most
+important of these is \ml{Retrieve} which contains identifiers that are useful
+to the user. Opening this structure will cause the identifiers to be made
+available at the top level of the \ML\ session, and a few are given infix
+status:
+
+\begin{session}\begin{verbatim}
+- open Retrieve;
+open Retrieve
+val BigAnd = fn : thmpattern list -> thmpattern
+.
+.
+.
+val List = fn : foundthm list -> source
+- \end{verbatim}\end{session}
+
+Below are some examples of the kind of searches that can be performed using
+the \ml{retrieve} library.
+
+Search for axioms in the theory {\small\verb%theory1%}:
+
+\begin{boxed}\begin{verbatim}
+- FT (kind Axiom)
+=    (Paths [Theory "theory1"]);
+\end{verbatim}\end{boxed}
+
+Search for theorems whose name contains the string {\small\verb%"CONJ"%}.
+{\small\verb%theory1%} and all its ancestors are searched, excluding
+{\small\verb%theory2%} and its ancestors:
+
+\begin{boxed}\begin{verbatim}
+- FT (thmname "*CONJ*")
+=    (Paths [Ancestors (["theory1"],["theory2"])]);
+\end{verbatim}\end{boxed}
+
+Search the theory {\small\verb%theory1%} and all of its ancestors for theorems
+with a conclusion matching the pattern
+{\small\verb%(--`!x y. x /\ y = y /\ x`--)%}. The hypotheses of the theorem
+can be anything:
+
+\begin{boxed}\begin{verbatim}
+- FT (conc (--`!x y. x /\ y = y /\ x`--))
+=    (Paths [Ancestors (["theory1"],[])]);
+\end{verbatim}\end{boxed}
+
+Search for theorems which contain a term of the form
+{\small\verb%(--`a /\ b`--)%} (where {\small\verb%a%} and {\small\verb%b%} are
+arbitrary Boolean-valued terms) somewhere within the structure of the
+conclusion. This is done by matching any conclusion using the pattern
+{\small\verb%(--`x:bool`--)%} and then performing a side-condition test on
+{\small\verb%(--`x:bool`--)%} to see if it contains a term of the required
+form. The theory {\small\verb%theory1%} is searched first, followed by
+{\small\verb%theory2%} and all of its ancestors. Note that:
+
+\begin{small}\begin{verbatim}
+   (conc (--`x:bool`--)) Where ((--`x:bool`--) contains (--`a /\ b`--))
+\end{verbatim}\end{small}
+
+\noindent
+can be abbreviated to:
+
+\begin{small}\begin{verbatim}
+   (--`conc:bool`--) contains (--`a /\ b`--)
+\end{verbatim}\end{small}
+
+\begin{boxed}\begin{verbatim}
+- FT ((conc (--`x:bool`--)) Where ((--`x:bool`--) contains (--`a /\ b`--)))
+=    (Paths [Theory "theory1",Ancestors (["theory2"],[])]);
+\end{verbatim}\end{boxed}
+
+Search the list of theorems \ml{fthml} for theorems with at least one
+hypothesis:
+
+\begin{boxed}\begin{verbatim}
+- FT (hypP [(--`x:bool`--)])
+=    (List fthml);
+\end{verbatim}\end{boxed}
+
+Search for theorems with exactly one hypothesis. The source for the search is
+extracted from the search step \ml{s}, which was obtained from a previous
+search:
+
+\begin{boxed}\begin{verbatim}
+- FT (hypF [(--`x:bool`--)])
+=    (List_from s);
+\end{verbatim}\end{boxed}
+
+Search {\small\verb%theory1%} for theorems with exactly two hypotheses, both
+of which are equations, and where the right-hand side of one of the equations
+is either the number {\small\verb%1%} or a variable:
+
+\begin{boxed}\begin{verbatim}
+- FT ((hypF [(--`(a:'a) = b`--),(--`(c:'b) = d`--)])
+=        Where (((--`b:'a`--) matches (--`1`--)) Orelse
+=               (test1term is_var (--`b:'a`--))))
+=    (Paths [Theory "theory1"]);
+\end{verbatim}\end{boxed}
+
+Search {\small\verb%theory1%} for theorems whose conclusions contain exactly
+two conjunctions:
+
+\begin{boxed}\begin{verbatim}
+- FT (test1term (fn t => (cnt_conj t) = 2) (--`conc:bool`--))
+=    (Paths [Theory "theory1"]);
+\end{verbatim}\end{boxed}
+
+\noindent
+The function \ml{cnt\_conj} is defined by:
+
+\begin{small}\begin{verbatim}
+   fun cnt_conj t =
+      let val n = if (is_conj t) then 1 else 0
+      in  (n + (cnt_conj (body t))) handle HOL_ERR _ =>
+          (n + (cnt_conj (rator t)) + (cnt_conj (rand t))) handle HOL_ERR _ =>
+          n
+      end;
+\end{verbatim}\end{small}
+
+\noindent
+Given a term, it returns an integer. The value of the integer is the number of
+conjunctions in the term.
+
+
+\chapter{Example Sessions}
+
+This chapter consists of several \HOL\ sessions. These are intended to provide
+a tutorial introduction to the Theorem Retrieval System. At the beginning of
+each session the Theorem Retrieval System is loaded into \HOL. The material
+displayed within boxes is part of the session. The other text is a commentary
+on what is happening within the session.
+
+
+\input{simple}
+\input{patterns}
+\input{paths}
+\input{sidecond}
+\input{errors}
+
+
+\chapter{New ML Types in the retrieve Library}
+
+{\def\_{{\char'137}}                     % \tt style `_' character
+
+\begin{center}
+\begin{tabular}{|l|l|}
+\hline
+{\it ML type}                 & {\it Description}\\
+\hline
+{\small\tt thmkind}           & The `kind' of a theorem: axiom, definition or
+derived theorem \\
+{\small\tt foundthm}          & A theorem, its name, its theory segment and its
+`kind' \\
+{\small\tt thmpattern}        & Patterns for theorems \\
+{\small\tt searchpath}        & Paths through theory hierarchies \\
+{\small\tt source}            & Sources for a search: either a list of theorems
+or a search path \\
+{\small\tt searchstep}        & Steps within a search: one step for each theory
+segment \\
+\hline
+\end{tabular}
+\end{center}
+
+}

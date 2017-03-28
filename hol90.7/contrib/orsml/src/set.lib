@@ -1,0 +1,151 @@
+(**************************************************)
+(*                                                *)
+(* library of derived functions to work with sets *)
+(*                                                *)
+(**************************************************)
+
+signature setsig = 
+  sig
+    exception Cannotcompare
+    val FALSE : Orsml.co
+    val TRUE : Orsml.co
+    val andco : Orsml.co * Orsml.co -> Orsml.co
+    val card : Orsml.co -> Orsml.co
+    val cartprod : Orsml.co * Orsml.co -> Orsml.co
+    val diff : Orsml.co * Orsml.co -> Orsml.co
+    val leq : Orsml.co * Orsml.co -> Orsml.co
+    val member : Orsml.co * Orsml.co -> Orsml.co
+    val orcartprod : Orsml.co * Orsml.co -> Orsml.co
+    val orco : Orsml.co * Orsml.co -> Orsml.co
+    val ordiff : Orsml.co * Orsml.co -> Orsml.co
+    val ormember : Orsml.co * Orsml.co -> Orsml.co
+    val orrhoone : Orsml.co * Orsml.co -> Orsml.co
+    val orsubset : Orsml.co * Orsml.co -> Orsml.co
+    val powerset : Orsml.co -> Orsml.co
+    val rhoone : Orsml.co * Orsml.co -> Orsml.co
+    val select : (Orsml.co -> Orsml.co) -> Orsml.co -> Orsml.co
+    val orselect : (Orsml.co -> Orsml.co) -> Orsml.co -> Orsml.co
+    val sort : Orsml.co -> Orsml.co
+    val subset : Orsml.co * Orsml.co -> Orsml.co
+  end
+
+
+structure Set : setsig  =
+struct 
+
+open Orsml
+
+val FALSE = mkboolco(false);
+val TRUE  = mkboolco(true);
+
+fun andco(x,y) = cond(eq(x,TRUE), 
+                      (fn v => eq(v,TRUE)),
+                      (fn v => FALSE))(y);
+
+fun orco(x,y) = neg(andco(neg(x),neg(y)));
+
+(* now we need all functions on sets: difference, *)
+(* membership  and subset *)
+
+fun member(x,y) = let val boolset = smap (fn z => eq(z,x)) y 
+  in neg(eq(union(boolset,sng(FALSE)), sng(FALSE))) end;
+
+fun ormember(x,y) = let val boolset = orsmap (fn z => eq(z,x)) y 
+  in neg(eq(orunion(boolset,orsng(FALSE)), 
+                            orsng(FALSE))) end;
+
+(* difference *) 
+fun diff(x,y) = flat (smap (fn z => cond(member(z,y),
+                                         (fn v => empty),
+                                          sng)(z)) x); 
+
+fun ordiff(x,y) = orflat (orsmap (fn z => cond(ormember(z,y),
+                                          (fn v => orempty),
+                                          orsng)(z)) x); 
+
+fun subset(x,y) = let val membset = smap (fn z => member(z,y)) x 
+  in neg(member(FALSE,membset)) end;
+
+fun orsubset(x,y) = let val membset = orsmap (fn z => ormember(z,y)) x 
+  in neg(ormember(FALSE,membset)) end;
+
+
+fun card x = sum (fn _ => (mkintco(1))) x;
+
+fun powerset(x) = orsmap flat (alpha
+                                 ((smap 
+                                    (fn y => orunion(orsng(sng(y)),
+                                                     orsng(empty)))
+                                    x)));
+
+
+fun rhoone(x,y) = smap (pair(p2,p1)) (pairwith(y,x));
+fun orrhoone(x,y) = orsmap (pair(p2,p1)) (orpairwith(y,x));  
+
+(* fun rhoone(x,y) = smap (p2 pair p1) (pairwith(y,x));
+fun orrhoone(x,y) = orsmap (p2 pair p1) (orpairwith(y,x)); *)
+
+fun cartprod(x,y) = flat(smap (fn z => rhoone(p1(z),p2(z))) (pairwith(x,y)));
+
+fun orcartprod(x,y) = orflat(orsmap 
+                               (fn z => orrhoone(p1(z),p2(z))) 
+                               (orpairwith(x,y)));
+
+fun select p X = flat(smap (fn z => cond(p(z),sng,(fn v => empty))(z)) X);
+
+fun orselect p X = orflat(orsmap (fn z => 
+                           cond(p(z),orsng,(fn v => orempty))(z)) X);
+
+exception Cannotcompare;
+
+fun leq(x,y) = 
+  let fun leqint(x,y) = eq(monus(x,y),mkintco(0))
+      fun leqbool (x,y) = cond(eq(x,FALSE),
+                               (fn v => TRUE),
+                               (fn v => eq(v,TRUE)))(y)
+      fun leqprod(x,y) = orco(andco(leq(p1(x),p1(y)), neg(eq(p1(x),p1(y)))),
+                              andco(eq(p1(x),p1(y)), leq(p2(x),p2(y))))
+      fun leqset(x,y) = let fun maxelts w = 
+                          let val badset = 
+                              smap (fn z => 
+                                       cond(andco(leq(p1(z),p2(z)),
+                                                  neg(eq(p1(z),p2(z)))),
+                                            sng,
+                                            (fn v => 
+                                                empty))(p1(z)))
+                                   (cartprod(w,w))
+                        in diff(w, flat(badset)) end
+                      val symdif = union(diff(x,y),diff(y,x))
+      in subset(maxelts(symdif),y) end
+      fun leqors(x,y) = let fun maxelts w = 
+                            let val badset = 
+                                orsmap (fn z => 
+                                       cond(andco(leq(p1(z),p2(z)),
+                                                  neg(eq(p1(z),p2(z)))),
+                                            orsng,
+                                            (fn v => 
+                                                orempty))(p1(z)))
+                                   (orcartprod(w,w))
+                        in ordiff(w, orflat(badset)) end
+                      val symdif = orunion(ordiff(x,y),ordiff(y,x))
+      in orsubset(maxelts(symdif),y) end
+in 
+   leqbase(x,y) handle _ => 
+     (leqint(x,y) handle _ => 
+        (leqbool(x,y) handle _ =>
+           (leqstring(x,y) handle _ => 
+              (leqprod(x,y) handle _ => 
+                 (leqset(x,y) handle _ =>
+                    (leqors(x,y) handle _ => 
+                       (raise Cannotcompare)))))))
+end;
+
+
+fun sort (x) = let fun howmany(y) = 
+                   sum (fn z => cond(leq(z,y),
+                                     (fn t => mkintco(1)),
+                                     (fn t => mkintco(0)))(z)) x
+               in smap (fn v => mkprodco(v,howmany(v))) x end;
+
+end (* structure Set *)
+

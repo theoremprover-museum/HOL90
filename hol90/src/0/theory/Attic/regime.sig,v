@@ -1,0 +1,143 @@
+head	1.4;
+access;
+symbols
+	HOL97:1.1.1.1.0.6
+	bpHOL97:1.1.1.1
+	hol90_9_alpha:1.1.1.1
+	hol90_pre8_for_multiple_compilers:1.1.1.1.0.4
+	last_edition:1.3
+	hol90_pre8_after_donalds_separate_compilation_changes:1.1.1.1
+	hol90_8_after_merging_Konrad_Elsa:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.4
+date	96.02.08.00.24.05;	author drs1004;	state dead;
+branches;
+next	1.3;
+
+1.3
+date	96.01.04.14.07.40;	author drs1004;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	95.12.18.11.22.34;	author drs1004;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	95.10.16.13.30.12;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.30.12;	author rjb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.4
+log
+@New theory mechanism, by Donald Syme
+@
+text
+@signature Regime_sig =
+sig
+structure Theory_data : Theory_data_sig
+type hol_sig
+type hol_thms
+val dest_hol_sig : hol_sig 
+ -> { thid : Theory_data.theory_id,
+      parents : Theory_data.theory_id list,
+      type_constants : {name:string,arity :int, theory:string} list,
+      term_constants : {const:Theory_data.Thm.Term.term, theory:string (*, 
+                        place:Theory_data.Thm.Term.fixity *) } list }
+val mk_hol_sig 
+   : { thid : Theory_data.theory_id,
+       parents : Theory_data.theory_id list,
+       type_constants : {name:string, 
+                         arity :int, theory:string} list,
+       term_constants : {const:Theory_data.Thm.Term.term, theory:string (*, 
+                         place:Theory_data.Thm.Term.fixity *)} list }  -> hol_sig
+
+val dest_hol_thms : hol_thms -> 
+                   { thid : Theory_data.theory_id,
+                     axioms : (string * Theory_data.Thm.thm) list,
+                     definitions : (string * Theory_data.Thm.thm) list,
+                     theorems : (string * Theory_data.Thm.thm) list }
+val mk_hol_thms : {  thid : Theory_data.theory_id,
+                     axioms : (string * Theory_data.Thm.thm) list,
+                     definitions : (string * Theory_data.Thm.thm) list,
+                     theorems : (string * Theory_data.Thm.thm) list }
+                  -> hol_thms
+                   
+val split_theory : Theory_data.theory -> (hol_sig * hol_thms)
+val mk_theory_from_parts : hol_sig -> hol_thms -> Theory_data.theory
+val theory_to_hol_sig : Theory_data.theory -> hol_sig
+end;
+@
+
+
+1.3
+log
+@Added simplifier components, added drule files, added MK_ABS_CONV, better error messages
+@
+text
+@@
+
+
+1.2
+log
+@Preterm and other changes, see 7.changes
+@
+text
+@d10 2
+a11 2
+      term_constants : {const:Theory_data.Thm.Term.term, theory:string, 
+                        place:Theory_data.Thm.Term.fixity} list }
+d17 2
+a18 2
+       term_constants : {const:Theory_data.Thm.Term.term, theory:string, 
+                         place:Theory_data.Thm.Term.fixity} list }  -> hol_sig
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d9 1
+a9 2
+      type_constants : {tyc:Theory_data.Thm.Term.Type.hol_type, 
+                        arity :int, theory:string} list,
+d15 1
+a15 1
+       type_constants : {tyc:Theory_data.Thm.Term.Type.hol_type, 
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

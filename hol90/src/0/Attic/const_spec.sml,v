@@ -1,0 +1,528 @@
+head	1.5;
+access;
+symbols
+	HOL97:1.3.2.1.0.2
+	bpHOL97:1.3.2.1
+	hol90_9_alpha:1.3.2.1
+	hol90_pre8_for_multiple_compilers:1.3.0.2
+	hol90_pre8_after_donalds_separate_compilation_changes:1.2
+	hol90_8_after_merging_Konrad_Elsa:1.2
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.5
+date	96.02.08.00.30.36;	author drs1004;	state dead;
+branches;
+next	1.4;
+
+1.4
+date	96.01.04.13.44.59;	author drs1004;	state Exp;
+branches;
+next	1.3;
+
+1.3
+date	95.11.15.13.24.14;	author rjb;	state Exp;
+branches
+	1.3.2.1;
+next	1.2;
+
+1.2
+date	95.10.17.17.06.42;	author drs1004;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	95.10.16.13.29.50;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.29.50;	author rjb;	state Exp;
+branches;
+next	;
+
+1.3.2.1
+date	96.08.23.14.14.43;	author rjb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.5
+log
+@New theory mechanism, by Donald Syme, and many other enhancements.
+@
+text
+@(* ===================================================================== *)
+(* FILE          : const_spec.sml                                        *)
+(* DESCRIPTION   : Implements the principle of constant specification.   *)
+(*                 Translated from hol88.                                *)
+(*                                                                       *)
+(* AUTHOR        : (c) Mike Gordon, University of Cambridge              *)
+(* TRANSLATOR    : Konrad Slind, University of Calgary                   *)
+(* DATE          : September 11, 1991                                    *)
+(* ===================================================================== *)
+
+
+functor CONST_SPEC (structure Theory : Theory_sig
+                    structure Dsyntax : Dsyntax_sig
+                    structure Lexis : Lexis_sig
+                    sharing
+                      Dsyntax.Term = Theory.Thm.Term) : Const_spec_sig =
+struct
+structure Theory = Theory;
+
+open Theory;
+open Dsyntax;
+open Thm.Term;
+open Thm;
+open Lib;
+open Type;
+    
+
+infix 5 |->
+
+fun ERR s = Exception.ERR "Const_spec" ("new_gen_specification",s);
+
+(*---------------------------------------------------------------------
+ * 
+ * 
+ *  Added on 25/11/1988 for HOL88:
+ *   new_specification "flag" "name" "C" |- ?x. ... x ...
+ *   declares C as a new constant and then does
+ *   new_axiom("name", `... C ...`)  "flag" must be one of "constant",
+ *   "infix" or "binder" and determines the syntactic status of C.
+ *   To avoid Roger Jones type problems, it is required that there be
+ *   no type variables in types of subterms of
+ * 
+ *      `... C ...`
+ *   that do not occur in the type of C. This rules out, for example,
+ *  
+ *      new_specification(tok, "Wonk", |- ?b:bool. b = !x y:*. x=y)
+ * 
+ *   The specification above was amended on 8/2/89 to the following:
+ * 
+ *      new_specification
+ *       name 
+ *       ["flag1","C1"; ... ; "flagn,Cn"] 
+ *       |- ?x1 ... xn. ... x1 ... xn ...
+ *   declares C1, ... ,Cn as a new constants and then does
+ *   new_axiom("name", `... C1 ... Cn ...`);  "flagi" must be one of "constant",
+ *   "infix" or "binder" and determines the syntactic status of Ci.
+ *   To avoid Roger Jones type problems, it is required that there be no 
+ *   type variables in types of subterms of  `... C1 ... Cn ...` that do not 
+ *   occ	ur in the types of any Ci (1 <= i <= n). This rules out, for example,
+ *   
+ *      new_specification
+ *       ("Wonk_DEF", ["constant","Wonk"], |- ?b:bool. b = !x y:*. x=y)
+ * 
+ *   which would define a constant `Wonk` of type `:bool` by
+ *   the inconsistent axiom:
+ * 
+ *      |- Wonk = !x y:*. x=y
+ * 
+ * Actually, it doesn't do an "new_axiom", but a "store_definition" -KLS
+ *-----------------------------------------------------------------------*)
+
+fun n_strip_quant dest_fn 0 t = ([],t) |
+    n_strip_quant dest_fn n t =
+     let val {Bvar, Body} = dest_fn t
+         val (l,t'') = n_strip_quant dest_fn (n-1) Body
+     in
+     (Bvar::l, t'')
+     end;
+
+
+fun check_specification (th,consts) =
+ let val _ = if not(Theory.draft_mode()) then
+	         ERR "not in draft mode"
+	     else ()
+     val _ = if not(null(hyp th)) then 
+	         ERR "no assumptions to theorem allowed in specifications"
+	     else ()
+     val _ = if not(null(free_vars(concl th))) then 
+		 ERR (itlist (fn t => fn s => "\""^(#Name(dest_var t))^"\" "^s)
+		      (free_vars(concl th))
+		      "is (are) unbound variable(s) in specification")
+	     else ()
+     val (vars,body) = n_strip_quant dest_exists
+	 (length consts) 
+	 (Thm.concl th)
+	 handle _ => 
+	     ERR "too few existentially quantified variables"
+	     
+     fun check var =
+	 if not(null(set_diff (type_vars_in_term body) (type_vars_in_term var)))
+	     then (ERR(itlist (fn vty => fn s => 
+			       ((dest_vartype vty)^" "^s))
+		       (set_diff (type_vars_in_term body) 
+			(type_vars_in_term var))
+		       ("should occur in the type of "^(#Name(dest_var var)))))
+         else ()
+     val _ = map check vars
+ in (vars,body)
+ end;
+
+
+fun new_specification (name, consts, sat_thm) =
+   let val (vars,body) = check_specification (sat_thm,consts)
+       fun mk_def_thm () = 
+	   let val tmsubst = map2 (fn v => fn c => (v |-> mk_const {Name=c, Ty=type_of v})) vars consts
+	   in mk_definition_thm([],subst tmsubst body)
+	   end
+   in
+     Theory.store_definition(name, [], map2 (fn v => fn c => {Name=c,Ty=type_of v}) vars consts, mk_def_thm)
+   end;
+
+end; (* CONST_SPEC *)
+
+
+@
+
+
+1.4
+log
+@Fixed types, pretypes, fixities, parsing.
+@
+text
+@@
+
+
+1.3
+log
+@The HOL90 sources have been changed to allow for the use of different
+Standard ML compilers (possibly simultaneously).
+
+ * Many files in "src/0" changed to make them more portable across different
+   ML compilers. Various additions have been made to the Portable structure
+   and files changed to access identifiers in the Portable structure rather
+   than from the global environment. Worthy of special note are:
+
+   - The pointer equality used in "src/0/term.sml" has been made into a
+     function in the Portable structure.
+
+   - The ML-Lex and ML-Yacc files for the various parsers have been changed
+     to access the Portable structure. Both the source files and the SML
+     produced from them have been changed but I have not verified that the
+     source files would reproduce the new SML versions if ML-Lex and ML-Yacc
+     were to be rerun on them. The changes involve some hacks that exploit the
+     way ML-Lex and ML-Yacc work. See the sources for details.
+
+R.J.Boulton, 15th November 1995.
+@
+text
+@d12 1
+a12 2
+functor CONST_SPEC ((* structure Lib : Lib_sig *)
+		    structure Theory : Theory_sig
+d23 4
+d28 1
+d30 1
+a30 2
+val |-> = Lib.|->
+infix 5 |->
+d32 39
+a70 57
+fun CONST_SPEC_ERR s =
+    Exception.HOL_ERR{origin_structure = "Const_spec",
+		      origin_function = "check_specification",
+		      message = s};
+
+(* Added on 25/11/1988 for HOL88:
+  new_specification "flag" "name" "C" |- ?x. ... x ...
+  declares C as a new constant and then does
+  new_axiom("name", `... C ...`)  "flag" must be one of "constant",
+  "infix" or "binder" and determines the syntactic status of C.
+  To avoid Roger Jones type problems, it is required that there be
+  no type variables in types of subterms of
+
+     `... C ...`
+  that do not occur in the type of C. This rules out, for example,
+ 
+     new_specification(tok, "Wonk", |- ?b:bool. b = !x y:*. x=y)
+
+  The specification above was amended on 8/2/89 to the following:
+
+     new_specification
+      name 
+      ["flag1","C1"; ... ; "flagn,Cn"] 
+      |- ?x1 ... xn. ... x1 ... xn ...
+  declares C1, ... ,Cn as a new constants and then does
+  new_axiom("name", `... C1 ... Cn ...`);  "flagi" must be one of "constant",
+  "infix" or "binder" and determines the syntactic status of Ci.
+  To avoid Roger Jones type problems, it is required that there be no 
+  type variables in types of subterms of  `... C1 ... Cn ...` that do not 
+  occ	ur in the types of any Ci (1 <= i <= n). This rules out, for example,
+  
+     new_specification
+      ("Wonk_DEF", ["constant","Wonk"], |- ?b:bool. b = !x y:*. x=y)
+
+  which would define a constant `Wonk` of type `:bool` by
+  the inconsistent axiom:
+
+     |- Wonk = !x y:*. x=y
+
+(Actually, it doesn't do an "new_axiom", but a "store_definition" -KLS)
+*)
+
+fun is_infix_type ty =
+   let val {Tyop = "fun",Args = [_,ty2]} = Type.dest_type ty
+       val {Tyop = "fun", Args = [_,_]} = Type.dest_type ty2
+   in
+   true
+   end
+   handle _ => false;
+
+fun is_binder_type ty =
+   let val {Tyop = "fun", Args = [ty1,_]} = Type.dest_type ty
+       val {Tyop = "fun", Args = [_,_]} = Type.dest_type ty1
+   in
+   true
+   end
+   handle _ => false;
+a71 1
+(* Auxiliary function to strip off n quantifiers *)
+a79 63
+(* Auxiliary function to check the arguments to new_specification;
+  fails (with useful message) or returns 
+  ([`x1`;...;`xn`], `... x1 ... xn ...`)
+
+deleted "defname" from arguments, as it is not used -- KLS
+*)
+fun check_specification flag_name_prec_list th =
+(if not(Theory.draft_mode())
+ then raise(CONST_SPEC_ERR "not in draft mode")
+ else
+ if not(Portable.List.null(Thm.hyp th))
+ then raise CONST_SPEC_ERR"no assumptions to theorem allowed in specifications"
+ else 
+ if not(Portable.List.null(Term.free_vars(Thm.concl th)))
+ then raise(CONST_SPEC_ERR 
+               (Lib.itlist (fn t => fn s => "\""^(#Name(dest_var t))^"\" "^s)
+                       (Term.free_vars(Thm.concl th))
+                       "is (are) unbound variable(s) in specification"))
+ else map (fn {const_name,...} =>
+             if (Theory.is_constant const_name)
+             then raise CONST_SPEC_ERR 
+                       ("attempt to specify an existing constant: "^const_name)
+             else 
+             if not(Lexis.allowed_term_constant const_name)
+             then raise CONST_SPEC_ERR 
+                             (const_name^ " is not an allowable constant name")
+             else ())
+          (flag_name_prec_list :{fixity:Term.fixity,const_name:string} list);
+
+ let val (vars,body) = n_strip_quant dest_exists
+                          (Portable.List.length flag_name_prec_list) 
+			  (Thm.concl th)
+                       handle _ => 
+                       raise CONST_SPEC_ERR
+                                   "too few existentially quantified variables"
+ in
+ (map (fn var =>
+         if not(Portable.List.null(Lib.set_diff (Term.type_vars_in_term body) 
+                                                (Term.type_vars_in_term var)))
+         then raise(CONST_SPEC_ERR
+                       (Lib.itlist (fn vty => fn s => 
+                                 ((Term.Type.dest_vartype vty)^" "^s))
+                              (Lib.set_diff (Term.type_vars_in_term body) 
+                                            (Term.type_vars_in_term var))
+                              ("should occur in the type of "^
+                                (#Name(dest_var var)))))
+         else ())
+      vars;
+  Lib.map2 (fn {fixity = Term.Infix _,...} => (fn var =>
+             if (not(is_infix_type(Term.type_of var)))
+             then raise CONST_SPEC_ERR (#Name(dest_var var)^
+                                        " doesn't have infix type")
+             else ())
+         | {fixity = Term.Binder, ...} => (fn var =>
+             if (not(is_binder_type(Term.type_of var)))
+             then raise CONST_SPEC_ERR (#Name(dest_var var)^
+                                        " doesn't have binder type")
+             else ())
+         | _ => fn _ => ())
+       flag_name_prec_list vars;
+  (vars,body)
+ )
+ end);
+d81 37
+a117 3
+
+fun new_specification{name, consts, sat_thm} =
+   let val (vars,body) = check_specification consts sat_thm
+d119 1
+a119 15
+   ( Lib.map2 (fn {fixity = Term.Prefix,const_name} => (fn var => 
+                 Theory.new_constant{Name=const_name,Ty=Term.type_of var})
+            | {fixity = Term.Infix prec,const_name} => (fn var =>
+                 Theory.new_infix{Name=const_name,Ty = Term.type_of var,
+                                  Prec= prec})
+            | {fixity = Term.Binder,const_name,...} => (fn var => 
+                 Theory.new_binder{Name=const_name,Ty=Term.type_of var}))
+          consts vars;
+     Theory.store_definition
+        (name, Term.subst (Lib.map2 (fn{const_name,...} => fn var => 
+                               (var |-> mk_const{Name = const_name,
+                                                 Ty = Term.type_of var}))
+                           consts vars)
+                     body)
+   )
+d121 1
+d123 2
+@
+
+
+1.3.2.1
+log
+@Bugfix.
+@
+text
+@d164 7
+a170 9
+   Theory.perform_atomic_theory_op
+    (fn () =>
+       ( Lib.map2 (fn {fixity = Term.Prefix,const_name} => (fn var => 
+                     Theory.new_constant{Name=const_name,Ty=Term.type_of var})
+                    | {fixity = Term.Infix prec,const_name} => (fn var =>
+                     Theory.new_infix{Name=const_name,Ty = Term.type_of var,
+                                      Prec= prec})
+                    | {fixity = Term.Binder,const_name,...} => (fn var => 
+                     Theory.new_binder{Name=const_name,Ty=Term.type_of var}))
+d177 2
+a178 1
+                     body)))
+a179 1
+
+@
+
+
+1.2
+log
+@Keeping you up to date:
+
+I'm about to do a checkin of elsa's modifications to the hol90.7
+sources to create her hol90.pre8.  To recap what I've done:
+	- I checked out hol90 (in /usr/groups/hol/drs1004/hol90)
+		cvs co hol90
+	  (Well, to be honest, I only checked out those
+	  parts of hol90 I knew I'd be changing, e.g. not the
+	  Manual, and only parts of the library.  Checking out the
+	  entire source takes a while, mainly due to the enormous number
+	  of help files.  The limiting factor is files/second, which
+         runs at around 5 when CVS is working on nfs over a network, not
+         KB/second, which you might at first think it would be).
+
+	- By doing a recursive diff between Elsa's source and the
+	hol90.7 source I found all the changes Elsa had made to
+	source files.  I copied relevant files from Elsa's source
+	into my checked out version.  The only new files were
+		- the sml_system files in src/0
+		- some make scripts in src/.
+	Changed files were in:
+		src/{0,1,2,3}
+		library/arith/src/thm_convs.sml
+		library/list/src/list_conv1.sml
+		library/num/src/num_lib.sml
+		library/prog_logic/src/halts_logic.sml
+		library/prog_logic/src/translation.sml
+		library/prog_logic/theories/src/mk_halts.sml
+		library/real/theories/src/Make
+		library/real/theories/src/equiv.sml
+		library/real/theories/src/seq.sml
+		library/reduce/src/arithconv.sml
+		library/string/src/string_conv.sml
+		library/unity/theories/src/aux_definitions.sml
+		library/word/theories/src/*
+
+	- I will now commit these changes, with this email as the log message.
+		cvs commit
+
+	- Tomorrow I will get this version compiling
+	with NJSML 108 (I will probably add
+	the files to enable the NJSML compilation manager to make
+	this easier), then check those changes in.  I think it's
+	good to get things in a working state.
+@
+text
+@d106 1
+a106 1
+ if not(null(Thm.hyp th))
+d109 1
+a109 1
+ if not(null(Term.free_vars(Thm.concl th)))
+d125 3
+a127 3
+ let val (vars,body) = n_strip_quant dest_exists 
+                                     (length flag_name_prec_list) 
+                                     (Thm.concl th)
+d132 3
+a134 3
+ (map (fn var => 
+         if not(null(Lib.set_diff (Term.type_vars_in_term body) 
+                                  (Term.type_vars_in_term var)))
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d12 2
+a13 1
+functor CONST_SPEC (structure Theory : Theory_sig
+d26 2
+a27 3
+fun CONST_SPEC_ERR s = HOL_ERR{origin_structure = "Const_spec",
+			       origin_function = "check_specification",
+			       message = s};
+d29 5
+d111 1
+a111 1
+               (itlist (fn t => fn s => "\""^(#Name(dest_var t))^"\" "^s)
+d133 2
+a134 2
+         if not(null(set_diff (Term.type_vars_in_term body) 
+                              (Term.type_vars_in_term var)))
+d136 1
+a136 1
+                       (itlist (fn vty => fn s => 
+d138 2
+a139 2
+                              (set_diff (Term.type_vars_in_term body) 
+                                        (Term.type_vars_in_term var))
+d144 1
+a144 1
+  map2 (fn {fixity = Term.Infix _,...} => (fn var =>
+d164 1
+a164 1
+   ( map2 (fn {fixity = Term.Prefix,const_name} => (fn var => 
+d173 1
+a173 1
+        (name, Term.subst (map2 (fn{const_name,...} => fn var => 
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

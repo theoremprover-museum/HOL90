@@ -1,0 +1,219 @@
+head	1.1;
+access;
+symbols;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	96.01.04.15.59.38;	author drs1004;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@io transformers moved to 0/
+@
+text
+@
+(*------------------------------------------------------------------------
+ * TRANS_ss
+ * CONG_ss
+ * 
+ * val LESS_TRANS = theorem "arithmetic" "LESS_TRANS";
+ * val t1 = ASSUME(--`x < y`--);
+ * val t2 = ASSUME(--`y < z`--);
+ * close t1 t2;
+ * extras [t1,t2];
+ * profile (TRANS_CLOSURE LESS_TRANS) [t1,t2];
+ * 
+ * val t3 = ASSUME(--`x < z`--);
+ * extras [t1,t2,t3];
+ * extras [t1,t1,t2,t2];
+ * 
+ * fun f asms = CONG_CLOSURE (EQ_SYM,EQ_TRANS) (map ASSUME asms);
+  profile f [(--`x = y`--),(--`y = z`--)];
+f [(--`(x = x + y)`--),(--`(x + y = (x + y) + z)`--)];
+set_goal ([(--`(x = x + y)`--),(--`(x + y = (x + y) + z)`--)],(--`x = (x + y) + z`--));
+
+e (ASM_SIMP_TAC EQ_CONG_ss);
+
+ * fun f asms = TRANS_CLOSURE LESS_TRANS (map ASSUME asms);
+ * profile f [(--`x < y`--),(--`w < x`--),(--`y < z`--)];
+ * profile f [(--`x < y`--),(--`w < x`--),(--`y < z`--),(--`z < a`--), (--`a < b`--)];
+ * profile f [(--`x < y`--),(--`w < x`--),(--`y < z`--),(--`z < a`--), (--`a < b`--),(--`b < c`--),(--`c < d`--)];
+ * profile f [(--`x < y`--),(--`w < x`--),(--`y < z`--),(--`z < a`--), (--`a < b`--),(--`b < c`--),(--`c < d`--),(--`d < e`--),(--`e <f`--),(--`f < g`--)];
+ * profile f [(--`x < y`--),(--`w < x`--),(--`y < z`--),(--`z < a`--), (--`a < b`--),(--`b < c`--),(--`c < d`--),(--`d < e`--),(--`e <f`--),(--`f < g`--),(--`g < h`--)];
+ * profile f [(--`x < y`--),(--`w < x`--),(--`y < z`--),(--`z < a`--), (--`a < b`--),(--`b < c`--),(--`c < d`--),(--`d < e`--),(--`e <f`--),(--`f < g`--),(--`g < h`--),(--`h < i`--),(--`i<j`--),(--`j<k`--)];
+ * 
+ * set_goal ([(--`x < y`--),(--`y < z`--),(--`z < w`--)],(--`x < w`--));
+ * e (ASM_SIMP_TAC (TRANS_ss LESS_TRANS));
+
+ * fun f asms = TRANS_CLOSURE LESS_TRANS (map ASSUME asms);
+ * profile f [(--`x < y`--),(--`w < x`--),(--`y < z`--)];
+
+ *
+ *-----------------------------------------------------------------------*)
+
+val ERR = Exception.ERR "Trans_closure";
+
+fun TRANS_CLOSURE TRANS_THM =
+let
+ fun dest_binop tm = (rand(rator tm),rand tm)
+ fun concl_eq t1 t2 = (concl t1 = concl t2)
+ fun extras thms =
+   let val previous = map (dest_binop o concl) thms
+       fun close1 thm1 =
+        let val (x,y1) = dest_binop (concl thm1)
+            fun f thm2 =
+               let val (y2,z) = dest_binop (concl thm2)
+               in if (y2 = y1 andalso not (mem (x,z) previous)) then 
+                     MP (ISPECL [x,y1,z] TRANS_THM) (CONJ thm1 thm2)
+                  else raise Fail ""
+               end
+            val thms' = mapfilter f thms
+        in thms'
+        end
+   in op_U concl_eq (map close1 thms)
+   end;
+   fun close thms =
+      case (extras thms) of 
+         [] => thms 
+       | x => close (x@@thms)
+in close
+end;
+
+(*------------------------------------------------------------------------
+ * nb. not polymorphic!!
+ * 
+ * 
+ *-----------------------------------------------------------------------*)
+
+fun TRANS_REDUCER TRANS_THM =
+   let val oper = rator(rator(snd(dest_imp(snd(strip_forall(concl TRANS_THM))))))
+       fun is_op tm = (rator(rator tm) = oper)
+       fun is_op_thm thm = (rator(rator(concl thm)) = oper)
+       val closure' = TRANS_CLOSURE TRANS_THM
+       fun concl_eq t1 t2 = (concl t1 = concl t2)
+       fun addcontext (context as THMLIST thms,newthms) =
+           let val newthms' = filter is_op_thm (flatten (map CONJUNCTS newthms))
+           in if (null newthms') then context
+              else THMLIST (closure' (newthms'@@thms))
+           end
+       fun apply {context=THMLIST thms,solver} tm =
+           if (is_op tm)
+           then EQT_INTRO (first (fn x => concl x = tm) thms)
+           else ERR("TRANS_REDUCER","not relevant") 
+   in
+     mk_reducer {
+           addcontext= addcontext,
+           apply=apply,
+           initial=THMLIST [],
+           name="TRANSITIVE CLOSURE for "^Hol_pp.term_to_string oper,
+           relation = #const (const_decl "=")
+     }
+   end;
+
+
+fun TRANS_ss TRANS_THM = 
+     pure_ss |> extend_ts (Traverse.adddproc (TRANS_REDUCER TRANS_THM));
+
+
+(* A bad idea:
+
+fun RESOLVE impth =
+   let val ths = RES_CANON impth handle e => WRAP("RESOLVE",e)
+   in fn thms => itlist(fn th => Lib.append(mapfilter(MATCH_MP th) thms)) ths [] 
+   end;
+
+RESOLVE LESS_TRANS (map ASSUME [(--`x < y`--),(--`y < z`--),(--`z < w`--)]);
+*)
+
+
+
+
+(*------------------------------------------------------------------------
+ * 
+ *-----------------------------------------------------------------------*)
+
+structure Trans_closure =
+
+struct
+
+structure TransDag = 
+    HASH_DAG(struct
+		 type node_key = term
+		 val hashVal = hash_term
+		 val sameKey = (op =) : (term * term) -> bool
+	     end);
+type transdag = (unit, thm) TransDag.dag;
+    
+fun TRANS_REDUCER  =
+   let exception TRANSDATA of transdag;
+       fun addcontext (context as ANYCONTEXT exn,newthms) =
+           let val dag = raise exn handle TRANSDATA dag => dag
+               val newthms' = filter (is_eq o concl) (flatten (map CONJUNCTS newthms))
+           in if (null newthms') then context
+              else let val dag' = TransDag.copy dag
+		       fun connect1 thm = TransDag.connect_and_close TRANS (dag',(lhs (concl thm), rhs(concl thm), thm))
+		       val _ = app connect1 newthms'
+		   in ANYCONTEXT (TRANSDATA dag')
+		   end
+           end
+       fun apply {context=ANYCONTEXT exn,solver} tm =
+           if (is_eq tm)
+	       let val dag = raise exn handle TRANSDATA dag => dag
+	       in EQT_INTRO (TransDag.find_edge (dag,(lhs tm, rhs tm)))
+	          handle TransDag.NOT_FOUND =>
+		      EQT_INTRO (TransDag.find_edge (dag,(rhs tm, lhs tm)))
+	       end
+           else ERR("TRANS_REDUCER","not relevant") 
+   in
+     mk_reducer {
+           addcontext= addcontext,
+           apply=apply,
+           initial=ANYCONTEXT (TRANSDATA (TransDag.mk_dag()),
+           name="TRANSRUENCE CLOSURE",
+           relation = #const (const_decl "=")
+     }
+   end;
+
+
+val CONG_ss  = pure_ss |> adddprocs [congruence_closure];
+
+val bool_travrules =
+    equality_travrules 
+    |> trav_addcongs [imp_congrule, cond_congrule]
+    |> trav_addcongs [and_congrule, or_congrule];
+   
+
+fun ASM_TRAVERSE_EQ_TAC (travrules,rewriters,dprocs) =
+    ASM_TRAVERSE_TAC {finder=I,
+                  rule=TAUT(--`(P = P') ==> (P' ==> P)`--),
+           	  relation= #const (const_decl "="), 
+                  travrules=travrules,
+		  dprocs=dprocs,
+		  rewriters=rewriters};
+    
+
+val TRANS_CLOSURE_TAC = 
+    ASM_TRAVERSE_EQ_TAC (bool_travrules,[congruence_closure],[]) THEN SIMP_TAC BOOL_SIMPS_ss;
+    
+fun TRANS_ss TRANS_THM = 
+     pure_ss |> extend_ts (Traverse.adddproc (TRANS_REDUCER TRANS_THM));
+
+val EQ_TRANS_ss = TRANS_ss (EQ_SYM,EQ_TRANS);
+
+
+end;
+
+
+
+
+
+@

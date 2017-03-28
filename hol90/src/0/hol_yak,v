@@ -1,0 +1,556 @@
+head	1.6;
+access;
+symbols
+	HOL97:1.3.0.4
+	bpHOL97:1.3
+	hol90_9_alpha:1.3
+	hol90_pre8_for_multiple_compilers:1.3.0.2
+	hol90_pre8_after_donalds_separate_compilation_changes:1.2
+	hol90_8_after_merging_Konrad_Elsa:1.2
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.6
+date	96.02.08.00.31.13;	author drs1004;	state Exp;
+branches;
+next	1.5;
+
+1.5
+date	96.01.04.13.45.20;	author drs1004;	state Exp;
+branches;
+next	1.4;
+
+1.4
+date	95.12.18.11.34.37;	author drs1004;	state Exp;
+branches;
+next	1.3;
+
+1.3
+date	95.11.15.13.24.27;	author rjb;	state Exp;
+branches
+	1.3.4.1;
+next	1.2;
+
+1.2
+date	95.10.17.17.07.02;	author drs1004;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	95.10.16.13.29.53;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.29.53;	author rjb;	state Exp;
+branches;
+next	;
+
+1.3.4.1
+date	97.06.11.17.24.06;	author kxs;	state dead;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.6
+log
+@New theory mechanism, by Donald Syme, and many other enhancements.
+@
+text
+@structure Parse_support = Parse_support;
+
+val ERR = Exception.ERR "hol grammar file (hol_yak)";
+
+type term = Parse_support.Preterm.Term.term
+type pretype = Parse_support.Preterm.pretype
+type preterm = Parse_support.Preterm.preterm
+type binding = Parse_support.binding
+
+(* The next "end" closes the Header structure in the compiled file so that
+   the declarations below are available in the rest of the compiled code.
+   The Empty structure then matches with the "end" that should have closed
+   the Header structure.
+*)
+end
+
+open Portable;
+open General;
+
+structure Empty =
+struct
+%%
+%term ident of string
+    | symbolic_ident of string
+    | qualified_ident of (string*string)
+    | type_ident of string
+    | qualified_type_ident of (string*string)
+    | type_var_ident of string
+    | binder of string
+    | qualified_binder of (string*string)
+    | aq of Parse_support.Preterm.Term.term
+    | lparen
+    | rparen
+    | type_lparen 
+    | type_rparen
+    | lbracket 
+    | rbracket
+    | lbrace
+    | rbrace
+    | type_comma
+    | colon
+    | dcolon
+    | dot
+    | semi_colon
+    | type_right_arrow
+    | eq_gt
+    | eq
+    | type_hash
+    | type_plus
+    | bar
+    | let_ 
+    | and_
+    | in_ 
+    | of_
+    | string_ of string
+    | EOLEX
+    | EOF 
+
+%nonterm START of Parse_support.parse
+       | PTRM of preterm
+       | APP_EXP of preterm list
+       | AEXP of preterm
+       | SUFFIX of preterm
+       | BV_LIST of binding list
+       | BV of binding
+       | VSTRUCT of binding list
+       | BINDING_LIST of (binding list * preterm) list
+       | COMMA of unit
+       | LIST of preterm list
+       | TYPE of pretype
+       | HASH_TYPE of pretype
+       | PLUS_TYPE of pretype
+       | APP_TYPE of pretype
+       | TYPE_ARG of pretype list
+       | BASIC_TYPE_ARG of pretype list
+       | TYPE_LIST of pretype list
+       | BASIC of pretype
+       | TYPE_SPEC of {ty_name:string,
+                       clauses : {constructor:string,
+                                  args:Parse_support.arg list} list}
+       | TYI of string
+       | TYPE_CLAUSES of {constructor:string, 
+                          args:Parse_support.arg list} list
+       | TYPE_CLAUSE of {constructor:string, args: pretype list}
+       | C_ARG_LIST of pretype list
+
+
+%start START
+%eop EOF EOLEX
+%pos int
+%header (functor holLrValsFun (structure Token : TOKEN
+                               structure Parse_support : Parse_support_sig))
+%name hol
+%noshift EOF
+%pure
+%verbose
+%%
+
+START : PTRM (Parse_support.PTM PTRM)
+        |
+        colon TYPE (Parse_support.PTY TYPE)
+        |
+        colon TYPE_SPEC (Parse_support.TY_SPEC TYPE_SPEC)
+
+PTRM : SUFFIX (SUFFIX)
+       |
+       APP_EXP SUFFIX (Parse_support.prec_parse (rev(APP_EXP)@@[SUFFIX]))
+       | 
+       APP_EXP eq_gt PTRM bar PTRM
+         (Parse_support.list_make_comb
+                [Parse_support.make_atom "COND",
+                 Parse_support.prec_parse (rev APP_EXP), 
+                 PTRM1,PTRM2])
+       |
+       APP_EXP (Parse_support.prec_parse (rev APP_EXP))
+
+APP_EXP : APP_EXP AEXP colon TYPE
+          ([Parse_support.make_constrained
+               (Parse_support.prec_parse(rev (AEXP::APP_EXP))) TYPE])
+          |
+          APP_EXP AEXP (AEXP::APP_EXP)
+          |
+          AEXP colon TYPE ([Parse_support.make_constrained AEXP TYPE])
+          |
+          AEXP ([AEXP])
+
+AEXP : ident (Parse_support.make_atom ident)
+       |
+       symbolic_ident (Parse_support.make_atom symbolic_ident)
+       (* |
+        * qualified_ident(Parse_support.make_qualified qualified_ident)
+        ***)
+       |
+       aq (Parse_support.make_aq aq)
+       |
+       string_ (Parse_support.make_string string_)
+       |
+       eq (Parse_support.make_atom "=")
+       |
+       dcolon (Parse_support.make_atom "::")
+       |
+       lparen PTRM rparen (PTRM)
+       |
+       lbracket LIST rbracket (Parse_support.make_list LIST)
+       |
+       lbrace LIST rbrace (Parse_support.make_set LIST)
+       |
+       lbrace PTRM bar PTRM rbrace (Parse_support.make_set_abs (PTRM1,PTRM2))
+
+LIST : ([])
+       |
+       PTRM ([PTRM])
+       |
+       PTRM semi_colon LIST (PTRM::LIST)
+
+SUFFIX : binder BV_LIST dcolon PTRM dot PTRM 
+              (Parse_support.bind_restr_term binder BV_LIST PTRM1 PTRM2)
+         |
+         binder BV_LIST dot PTRM (Parse_support.bind_term binder BV_LIST PTRM)
+         (* |
+          * qualified_binder BV_LIST dot PTRM 
+          * (Parse_support.bind_qualified_term qualified_binder BV_LIST PTRM)
+          ***)
+         |
+         let_ BINDING_LIST in_ PTRM (Parse_support.make_let BINDING_LIST PTRM)
+
+BV_LIST : BV BV_LIST (BV::BV_LIST)
+          |
+          BV ([BV])
+
+BV : lparen BV rparen (BV)
+     |
+     ident (Parse_support.make_binding ident)
+     (* Could also bind over symbolic identifiers, but then would have to
+      * be able to prime them for renaming. Could do that, but it's too
+      * involved for the payoff.
+      ***)
+     |
+     aq (Parse_support.make_aq_binding aq)
+     |
+     BV colon TYPE (Parse_support.make_constrained_vstruct BV TYPE)
+     |
+     lparen BV COMMA VSTRUCT rparen (Parse_support.make_vstruct (BV::VSTRUCT))
+
+VSTRUCT : BV ([BV])
+          |
+          BV COMMA VSTRUCT (BV::VSTRUCT)
+
+BINDING_LIST : BV_LIST eq PTRM ([(BV_LIST,PTRM)])
+               | 
+               BV_LIST eq PTRM and_ BINDING_LIST ((BV_LIST,PTRM)::BINDING_LIST)
+
+COMMA : symbolic_ident (if (symbolic_ident = ",")
+                        then ()
+                        else ERR("","expecting a \",\" in varstruct"))
+
+
+
+TYPE : PLUS_TYPE type_right_arrow TYPE (Parse_support.make_type_app
+                                        ("fun",[PLUS_TYPE, TYPE]))
+       |
+       PLUS_TYPE (PLUS_TYPE)
+
+PLUS_TYPE : HASH_TYPE type_plus PLUS_TYPE (Parse_support.make_type_app
+                                           ("sum",[HASH_TYPE,PLUS_TYPE]))
+            |
+            HASH_TYPE (HASH_TYPE)
+
+HASH_TYPE : APP_TYPE type_hash HASH_TYPE (Parse_support.make_type_app
+                                          ("prod",[APP_TYPE,HASH_TYPE]))
+            |
+            APP_TYPE (APP_TYPE)
+
+APP_TYPE : TYPE_ARG type_ident (Parse_support.make_type_app
+                                    (type_ident, TYPE_ARG))
+           | 
+           BASIC (BASIC)
+
+TYPE_ARG : TYPE_ARG type_ident ([Parse_support.make_type_app
+                                         (type_ident,TYPE_ARG)])
+           |
+           BASIC_TYPE_ARG (BASIC_TYPE_ARG)
+
+BASIC_TYPE_ARG : type_lparen TYPE type_comma TYPE_LIST type_rparen 
+                     (TYPE::TYPE_LIST)
+                 |
+                 BASIC ([BASIC])
+
+TYPE_LIST : TYPE type_comma TYPE_LIST (TYPE::TYPE_LIST)
+            |
+            TYPE ([TYPE])
+
+BASIC: type_var_ident 
+       (Parse_support.Preterm.Utv type_var_ident)
+       |
+       type_ident 
+       (case (!Globals.in_type_spec)
+          of NONE => Parse_support.make_atomic_type type_ident
+           | (SOME s)
+              => if (type_ident = s)
+                 then Parse_support.rec_occ
+                 else Parse_support.make_atomic_type type_ident)
+
+       (* |
+       qualified_type_ident 
+         (Parse_support.make_qualified_atomic_type qualified_type_ident)
+       *)
+       |
+       aq (Parse_support.extract_type_antiq aq)
+       |
+       type_lparen TYPE type_rparen (TYPE)
+
+
+TYPE_SPEC : TYI eq TYPE_CLAUSES ({ty_name=TYI,clauses=TYPE_CLAUSES})
+
+TYI : ident (Globals.in_type_spec := SOME ident; ident)
+
+TYPE_CLAUSES : TYPE_CLAUSE ([Parse_support.make_type_clause TYPE_CLAUSE])
+               |
+               TYPE_CLAUSE bar TYPE_CLAUSES
+               (Parse_support.make_type_clause TYPE_CLAUSE::TYPE_CLAUSES)
+
+TYPE_CLAUSE : string_ ({constructor=string_ , args=[]})
+              |
+              ident ({constructor=ident, args=[]})
+              |
+              symbolic_ident ({constructor=symbolic_ident, args=[]})
+              |
+              ident of_ C_ARG_LIST ({constructor=ident,args = C_ARG_LIST})
+              |
+              symbolic_ident of_ C_ARG_LIST
+              ({constructor=symbolic_ident,args=C_ARG_LIST})
+
+C_ARG_LIST : TYPE eq_gt C_ARG_LIST (TYPE::C_ARG_LIST)
+             |
+             TYPE ([TYPE])
+@
+
+
+1.5
+log
+@Fixed types, pretypes, fixities, parsing.
+@
+text
+@d3 1
+a3 4
+fun HOL_PARSE_ERR{function,message} = 
+    Exception.HOL_ERR{origin_structure = "hol grammar file (hol_yak)",
+                      origin_function = function,
+                      message = message};
+d7 2
+a8 2
+type preterm_in_env = Parse_support.preterm_in_env
+type binder_in_env = Parse_support.binder_in_env
+a21 1
+end
+d60 8
+a67 8
+       | PTRM of preterm_in_env
+       | APP_EXP of preterm_in_env list
+       | AEXP of preterm_in_env
+       | SUFFIX of preterm_in_env
+       | BV_LIST of binder_in_env list
+       | BV of binder_in_env
+       | VSTRUCT of binder_in_env list
+       | BINDING_LIST of (binder_in_env list * preterm_in_env) list
+d69 1
+a69 1
+       | LIST of preterm_in_env list
+d91 1
+a91 2
+%header (functor holLrValsFun (structure Lib : Lib_sig
+                               structure Token : TOKEN
+d99 1
+a99 1
+START : PTRM (Parse_support.make_preterm PTRM)
+d173 1
+a173 1
+     ident (Parse_support.make_binding_occ ident)
+d179 1
+a179 1
+     aq (Parse_support.make_aq_binding_occ aq)
+d195 1
+a195 2
+                        else raise HOL_PARSE_ERR{function = "",
+                                   message = "expecting a \",\" in varstruct"})
+@
+
+
+1.4
+log
+@Preterm and other changes, see 7.changes
+@
+text
+@d247 1
+a247 4
+                 then if (Lib.can Parse_support.make_atomic_type type_ident)
+                      then raise HOL_PARSE_ERR{function="",
+                           message=(Lib.quote type_ident^" is already a type")}
+                      else (Parse_support.rec_occ)
+@
+
+
+1.3
+log
+@The HOL90 sources have been changed to allow for the use of different
+Standard ML compilers (possibly simultaneously).
+
+ * Many files in "src/0" changed to make them more portable across different
+   ML compilers. Various additions have been made to the Portable structure
+   and files changed to access identifiers in the Portable structure rather
+   than from the global environment. Worthy of special note are:
+
+   - The pointer equality used in "src/0/term.sml" has been made into a
+     function in the Portable structure.
+
+   - The ML-Lex and ML-Yacc files for the various parsers have been changed
+     to access the Portable structure. Both the source files and the SML
+     produced from them have been changed but I have not verified that the
+     source files would reproduce the new SML versions if ML-Lex and ML-Yacc
+     were to be rerun on them. The changes involve some hacks that exploit the
+     way ML-Lex and ML-Yacc work. See the sources for details.
+
+R.J.Boulton, 15th November 1995.
+@
+text
+@d9 1
+a9 1
+type hol_type = Parse_support.Preterm.Term.Type.hol_type
+d74 8
+a81 8
+       | TYPE of hol_type
+       | HASH_TYPE of hol_type
+       | PLUS_TYPE of hol_type
+       | APP_TYPE of hol_type
+       | TYPE_ARG of hol_type list
+       | BASIC_TYPE_ARG of hol_type list
+       | TYPE_LIST of hol_type list
+       | BASIC of hol_type
+d88 2
+a89 2
+       | TYPE_CLAUSE of {constructor:string, args: hol_type list}
+       | C_ARG_LIST of hol_type list
+d106 1
+a106 1
+        colon TYPE (Parse_support.TY TYPE)
+d240 1
+a240 1
+       (Parse_support.Preterm.Term.Type.mk_vartype type_var_ident)
+@
+
+
+1.3.4.1
+log
+@Removed files are parse files and portability files that have
+effectively been moved elsewhere.
+
+Modified files are up to date for ML 109.26.
+@
+text
+@@
+
+
+1.2
+log
+@Keeping you up to date:
+
+I'm about to do a checkin of elsa's modifications to the hol90.7
+sources to create her hol90.pre8.  To recap what I've done:
+	- I checked out hol90 (in /usr/groups/hol/drs1004/hol90)
+		cvs co hol90
+	  (Well, to be honest, I only checked out those
+	  parts of hol90 I knew I'd be changing, e.g. not the
+	  Manual, and only parts of the library.  Checking out the
+	  entire source takes a while, mainly due to the enormous number
+	  of help files.  The limiting factor is files/second, which
+         runs at around 5 when CVS is working on nfs over a network, not
+         KB/second, which you might at first think it would be).
+
+	- By doing a recursive diff between Elsa's source and the
+	hol90.7 source I found all the changes Elsa had made to
+	source files.  I copied relevant files from Elsa's source
+	into my checked out version.  The only new files were
+		- the sml_system files in src/0
+		- some make scripts in src/.
+	Changed files were in:
+		src/{0,1,2,3}
+		library/arith/src/thm_convs.sml
+		library/list/src/list_conv1.sml
+		library/num/src/num_lib.sml
+		library/prog_logic/src/halts_logic.sml
+		library/prog_logic/src/translation.sml
+		library/prog_logic/theories/src/mk_halts.sml
+		library/real/theories/src/Make
+		library/real/theories/src/equiv.sml
+		library/real/theories/src/seq.sml
+		library/reduce/src/arithconv.sml
+		library/string/src/string_conv.sml
+		library/unity/theories/src/aux_definitions.sml
+		library/word/theories/src/*
+
+	- I will now commit these changes, with this email as the log message.
+		cvs commit
+
+	- Tomorrow I will get this version compiling
+	with NJSML 108 (I will probably add
+	the files to enable the NJSML compilation manager to make
+	this easier), then check those changes in.  I think it's
+	good to get things in a working state.
+@
+text
+@d13 13
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d4 3
+a6 3
+     HOL_ERR{origin_structure = "hol grammar file (hol_yak)",
+             origin_function = function,
+             message = message};
+d82 2
+a83 1
+%header (functor holLrValsFun (structure Token : TOKEN
+d234 1
+a234 1
+                 then if (can Parse_support.make_atomic_type type_ident)
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

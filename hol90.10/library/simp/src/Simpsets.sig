@@ -1,0 +1,20 @@
+signature Simpsets_sig =
+sig
+     val bool_ss : Simplifier.simpset
+     val BOOL_ss : Simplifier.ssdata
+     val CONG_ss : Simplifier.ssdata
+     val PAIR_ss : Simplifier.ssdata
+     val UNWIND_ss : Simplifier.ssdata
+     val NOT_ss : Simplifier.ssdata
+     val COMBIN_ss : Simplifier.ssdata
+     val LIST_ss : Simplifier.ssdata
+     val SUM_ss : Simplifier.ssdata
+
+(* depth-1 prolog unification for finding existential variables. *)
+(* Still needs a little more work *)
+    val SATISFY_REDUCER : Traverse.reducer;
+    val SATISFY_ss : Simplifier.ssdata
+
+end (* sig *)
+
+

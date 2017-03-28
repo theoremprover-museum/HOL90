@@ -1,0 +1,95 @@
+head	1.1;
+branch	1.1.1;
+access;
+symbols
+	HOL97:1.1.1.1.0.6
+	bpHOL97:1.1.1.1
+	hol90_9_alpha:1.1.1.1
+	hol90_pre8_for_multiple_compilers:1.1.1.1.0.4
+	hol90_pre8_after_donalds_separate_compilation_changes:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	95.10.16.13.33.25;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.33.25;	author rjb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@\DOC RESQ_REWRITE1_TAC
+
+\TYPE {RESQ_REWRITE1_TAC : thm_tactic}
+
+\SYNOPSIS
+Rewriting with a restricted universally quantified theorem.
+
+\KEYWORDS
+tactic, rewriting, restricted quantifier.
+
+\DESCRIBE
+{RESQ_REWRITE1_TAC} takes an equational theorem which is restricted universally
+quantified at the outer level. It calls {RESQ_REWR_CANON} to convert
+the theorem to the form accepted by {COND_REWR_TAC} and passes the
+resulting theorem to this tactic which carries out conditional
+rewriting.
+
+Suppose that {th} is the following theorem
+{
+   A |- !x::P. Q[x] = R[x])
+}
+\noindent Applying the tactic {RESQ_REWRITE1_TAC th} to a goal {(asml,gl)}
+will return a main subgoal {(asml',gl')} where {gl'} is obtained by
+substituting instances of {R[x'/x]} for corresponding instances of
+{Q[x'/x]} in the original goal {gl}. All instances of {P x'} which
+do not appear in the original assumption {asml} are added to it to
+form {asml'}, and they also become new subgoals {(asml,P x')}.
+
+\FAILURE
+{RESQ_REWRITE1_TAC th}  fails if {th} cannot be transformed into the
+required form by the function {RESQ_REWR_CANON}. Otherwise, it fails if no 
+match is found or the theorem cannot be instantiated.
+
+
+\SEEALSO
+RESQ_REWRITE1_CONV, RESQ_REWR_CANON, COND_REWR_TAC,
+COND_REWRITE1_CONV, COND_REWR_CONV, COND_REWR_CANON, search_top_down.
+
+\ENDDOC
+
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

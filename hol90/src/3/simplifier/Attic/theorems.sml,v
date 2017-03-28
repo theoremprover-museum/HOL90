@@ -1,0 +1,323 @@
+head	1.2;
+access;
+symbols;
+locks; strict;
+comment	@# @;
+
+
+1.2
+date	96.02.08.00.49.00;	author drs1004;	state dead;
+branches;
+next	1.1;
+
+1.1
+date	96.01.04.14.14.30;	author drs1004;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.2
+log
+@New theory mechanism, code reorganisation and other enhancements by Don Syme.
+@
+text
+@(* ========================================================================= 
+ * Additional theorems, mainly about quantifiers.                            
+ *
+ * use "3/simplifier/src/theorems.sml";
+ * ========================================================================= *)
+
+
+
+structure Quant_thms = struct
+
+local
+open Core;
+   infix |>
+   infix ++
+open Bool_ss;
+open Simplifier;
+in 
+
+(* ------------------------------------------------------------------------- *)
+(* Universal quantifier and conjunction.                                     *)
+(* ------------------------------------------------------------------------- *)
+
+val FORALL_AND_THM = prove
+ (--`!P Q. (!x:'a. P x /\ Q x) = (!x. P x) /\ (!x. Q x)`--,
+  REPEAT(STRIP_TAC ORELSE EQ_TAC) THEN
+  TRY(POP_ASSUM(CONJUNCTS_THEN (ASSUME_TAC o GEN_ALL) o SPEC_ALL)) THEN
+  FIRST_ASSUM MATCH_ACCEPT_TAC);
+
+val AND_FORALL_THM = prove
+ (--`!P Q. (!x. P x) /\ (!x. Q x) = (!x:'a. P x /\ Q x)`--,
+  MATCH_ACCEPT_TAC(GSYM FORALL_AND_THM));
+
+val LEFT_AND_FORALL_THM = prove
+ (--`!P Q. (!x:'a. P x) /\ Q = (!x:'a. P x /\ Q)`--,
+  SIMP_TAC (bool_ss ++ [FORALL_AND_THM]));
+
+val RIGHT_AND_FORALL_THM = prove
+ (--`!P Q. P /\ (!x:'a. Q x) = (!x. P /\ Q x)`--,
+  SIMP_TAC (bool_ss ++ [FORALL_AND_THM]));
+
+(* ------------------------------------------------------------------------- *)
+(* Existential quantifier and disjunction.                                   *)
+(* ------------------------------------------------------------------------- *)
+
+val EXISTS_OR_THM = prove
+ (--`!P Q. (?x:'a. P x \/ Q x) = (?x. P x) \/ (?x. Q x)`--,
+  REPEAT(STRIP_TAC ORELSE EQ_TAC) THENL
+   [DISJ1_TAC, DISJ2_TAC, ALL_TAC, ALL_TAC] THEN
+  EXISTS_TAC(--`x:'a`--) THEN ASM_SIMP_TAC bool_ss);
+
+val OR_EXISTS_THM = prove
+ (--`!P Q. (?x. P x) \/ (?x. Q x) = (?x:'a. P x \/ Q x)`--,
+  MATCH_ACCEPT_TAC(GSYM EXISTS_OR_THM));
+
+val LEFT_OR_EXISTS_THM = prove
+ (--`!P Q. (?x. P x) \/ Q = (?x:'a. P x \/ Q)`--,
+  SIMP_TAC (bool_ss ++[EXISTS_OR_THM, EXISTS_SIMP]));
+
+val RIGHT_OR_EXISTS_THM = prove
+ (--`!P Q. P \/ (?x. Q x) = (?x:'a. P \/ Q x)`--,
+  SIMP_TAC (bool_ss ++[EXISTS_OR_THM, EXISTS_SIMP]));
+
+(* ------------------------------------------------------------------------- *)
+(* Existential quantifier and conjunction.                                   *)
+(* ------------------------------------------------------------------------- *)
+
+val LEFT_EXISTS_AND_THM = prove
+ (--`!P Q. (?x:'a. P x /\ Q) = (?x:'a. P x) /\ Q`--,
+  REPEAT(STRIP_TAC ORELSE EQ_TAC ORELSE EXISTS_TAC(--`x:'a`--)) THEN
+  FIRST_ASSUM MATCH_ACCEPT_TAC);
+
+val RIGHT_EXISTS_AND_THM = prove
+ (--`!P Q. (?x:'a. P /\ Q x) = P /\ (?x:'a. Q x)`--,
+  PURE_ONCE_REWRITE_TAC [CONJ_SYM] THEN 
+  MATCH_ACCEPT_TAC LEFT_EXISTS_AND_THM);
+
+val TRIV_EXISTS_AND_THM = prove
+ (--`!P Q. (?x:'a. P /\ Q) = (?x:'a. P) /\ (?x:'a. Q)`--,
+  SIMP_TAC (bool_ss ++[LEFT_EXISTS_AND_THM, EXISTS_SIMP]));
+
+val LEFT_AND_EXISTS_THM = prove
+ (--`!P Q. (?x:'a. P x) /\ Q = (?x:'a. P x /\ Q)`--,
+  MATCH_ACCEPT_TAC(GSYM LEFT_EXISTS_AND_THM));
+
+val RIGHT_AND_EXISTS_THM = prove
+ (--`!P Q. P /\ (?x:'a. Q x) = (?x:'a. P /\ Q x)`--,
+  MATCH_ACCEPT_TAC(GSYM RIGHT_EXISTS_AND_THM));
+
+val TRIV_AND_EXISTS_THM = prove
+ (--`!P Q. (?x:'a. P) /\ (?x:'a. Q) = (?x:'a. P /\ Q)`--,
+  MATCH_ACCEPT_TAC(GSYM TRIV_EXISTS_AND_THM));
+
+(* ------------------------------------------------------------------------- *)
+(* Only trivial instances of universal quantifier and disjunction.           *)
+(* ------------------------------------------------------------------------- *)
+
+val TRIV_FORALL_OR_THM = prove
+ (--`!P Q. (!x:'a. P \/ Q) = (!x:'a. P) \/ (!x:'a. Q)`--,
+  SIMP_TAC (bool_ss ++[FORALL_SIMP]));
+
+val TRIV_OR_FORALL_THM = prove
+ (--`!P Q. (!x:'a. P) \/ (!x:'a. Q) = (!x:'a. P \/ Q)`--,
+  MATCH_ACCEPT_TAC(GSYM TRIV_FORALL_OR_THM));
+
+(* ------------------------------------------------------------------------- *)
+(* Implication and quantifiers.                                              *)
+(* ------------------------------------------------------------------------- *)
+
+val RIGHT_IMP_FORALL_THM = prove
+ (--`!P Q. (P ==> !x:'a. Q x) = (!x. P ==> Q x)`--,
+  REPEAT(STRIP_TAC ORELSE EQ_TAC) THENL
+   [SPEC_TAC(--`x:'a`--, --`x:'a`--), ALL_TAC] THEN
+  FIRST_ASSUM MATCH_MP_TAC THEN
+  FIRST_ASSUM ACCEPT_TAC);
+
+val RIGHT_FORALL_IMP_THM = prove
+ (--`!P Q. (!x. P ==> Q x) = (P ==> !x:'a. Q x)`--,
+  MATCH_ACCEPT_TAC(GSYM RIGHT_IMP_FORALL_THM));
+
+val LEFT_IMP_EXISTS_THM = prove
+ (--`!P Q. ((?x:'a. P x) ==> Q) = (!x. P x ==> Q)`--,
+  REPEAT(STRIP_TAC ORELSE EQ_TAC) THEN
+  FIRST_ASSUM MATCH_MP_TAC THEN
+  TRY(EXISTS_TAC(--`x:'a`--)) THEN FIRST_ASSUM ACCEPT_TAC);
+
+val LEFT_FORALL_IMP_THM = prove
+ (--`!P Q. (!x. P x ==> Q) = ((?x:'a. P x) ==> Q)`--,
+  MATCH_ACCEPT_TAC(GSYM LEFT_IMP_EXISTS_THM));
+
+val TRIV_FORALL_IMP_THM = prove
+ (--`!P Q. (!x:'a. P ==> Q) = ((?x:'a. P) ==> (!x:'a. Q))`--,
+  SIMP_TAC (bool_ss ++[FORALL_SIMP, EXISTS_SIMP]));
+
+val TRIV_EXISTS_IMP_THM = prove
+ (--`!P Q. (?x:'a. P ==> Q) = ((!x:'a. P) ==> (?x:'a. Q))`--,
+  SIMP_TAC (bool_ss ++[FORALL_SIMP, EXISTS_SIMP]));
+
+
+(* ------------------------------------------------------------------------- *)
+(* Infinite de Morgan laws.                                                  *)
+(* ------------------------------------------------------------------------- *)
+
+val NOT_EXISTS_THM = prove
+ ((--`!P. ~(?x:'a. P x) = (!x. ~(P x))`--),
+  GEN_TAC THEN EQ_TAC THEN DISCH_TAC THENL
+   [GEN_TAC THEN DISCH_TAC THEN UNDISCH_TAC(--`~(?x:'a. P x)`--) THEN
+    SIMP_TAC bool_ss THEN EXISTS_TAC(--`x:'a`--) THEN POP_ASSUM ACCEPT_TAC,
+    DISCH_THEN(CHOOSE_THEN MP_TAC) THEN ASM_SIMP_TAC bool_ss]);
+
+fun TAUT tm = prove(tm,MAP_EVERY BOOL_CASES_TAC (free_vars tm) THEN SIMP_TAC bool_ss);
+val EXISTS_NOT_THM = prove
+ ((--`!P. (?x:'a. ~(P x)) = ~(!x. P x)`--),
+  PURE_ONCE_REWRITE_TAC[TAUT(--`(a = ~b) = (~a = b)`--)] THEN
+  SIMP_TAC (bool_ss ++ [NOT_EXISTS_THM]));
+
+val NOT_FORALL_THM = prove
+ ((--`!P. ~(!x. P x) = (?x:'a. ~(P x))`--),
+  MATCH_ACCEPT_TAC(GSYM EXISTS_NOT_THM));
+
+val FORALL_NOT_THM = prove
+ ((--`!P. (!x. ~(P x)) = ~(?x:'a. P x)`--),
+  MATCH_ACCEPT_TAC(GSYM NOT_EXISTS_THM));
+
+(* ------------------------------------------------------------------------- *)
+(* Universal quantifier and disjunction                                      *)
+(* ------------------------------------------------------------------------- *)
+
+val LEFT_FORALL_OR_THM = prove
+ ((--`!P Q. (!x:'a. P x \/ Q) = (!x. P x) \/ Q`--),
+  REPEAT GEN_TAC THEN 
+  PURE_ONCE_REWRITE_TAC[TAUT(--`(a = b) = (~a = ~b)`--)] THEN
+  SIMP_TAC (bool_ss ++ [NOT_FORALL_THM,DE_MORGAN_THM,LEFT_EXISTS_AND_THM]));
+
+val RIGHT_FORALL_OR_THM = prove
+ ((--`!P Q. (!x:'a. P \/ Q x) = P \/ (!x. Q x)`--),
+  REPEAT GEN_TAC THEN 
+  PURE_ONCE_REWRITE_TAC[TAUT(--`(a = b) = (~a = ~b)`--)] THEN
+  SIMP_TAC (bool_ss ++ [NOT_FORALL_THM,DE_MORGAN_THM,RIGHT_EXISTS_AND_THM]));
+
+val LEFT_OR_FORALL_THM = prove
+ ((--`!P Q. (!x:'a. P x) \/ Q = (!x. P x \/ Q)`--),
+  MATCH_ACCEPT_TAC(GSYM LEFT_FORALL_OR_THM));
+
+val RIGHT_OR_FORALL_THM = prove
+ ((--`!P Q. P \/ (!x:'a. Q x) = (!x. P \/ Q x)`--),
+  MATCH_ACCEPT_TAC(GSYM RIGHT_FORALL_OR_THM));
+
+
+(* ------------------------------------------------------------------------- *)
+(* Implication and quantifiers.                                              *)
+(* ------------------------------------------------------------------------- *)
+
+val LEFT_IMP_FORALL_THM = prove
+ ((--`!P Q. ((!x:'a. P x) ==> Q) = (?x. P x ==> Q)`--),
+  REPEAT GEN_TAC THEN 
+  PURE_ONCE_REWRITE_TAC[TAUT(--`(a = b) = (~a = ~b)`--)] THEN
+  SIMP_TAC (bool_ss ++ [NOT_EXISTS_THM,NOT_IMP,LEFT_AND_FORALL_THM]));
+
+val LEFT_EXISTS_IMP_THM = prove
+ ((--`!P Q. (?x. P x ==> Q) = ((!x:'a. P x) ==> Q)`--),
+  MATCH_ACCEPT_TAC(GSYM LEFT_IMP_FORALL_THM));
+
+val RIGHT_IMP_EXISTS_THM = prove
+ ((--`!P Q. (P ==> ?x:'a. Q x) = (?x:'a. P ==> Q x)`--),
+  REPEAT GEN_TAC THEN 
+  PURE_ONCE_REWRITE_TAC[TAUT(--`(a = b) = (~a = ~b)`--)] THEN
+  SIMP_TAC (bool_ss ++ [NOT_EXISTS_THM,NOT_IMP,RIGHT_AND_FORALL_THM]));
+
+val RIGHT_EXISTS_IMP_THM = prove
+ ((--`!P Q. (?x:'a. P ==> Q x) = (P ==> ?x:'a. Q x)`--),
+  MATCH_ACCEPT_TAC(GSYM RIGHT_IMP_EXISTS_THM));
+
+
+(* ------------------------------------------------------------------------- *)
+(* for splitting over an arbitrarily chosen conditional.                     *)
+(* ------------------------------------------------------------------------- *)
+
+val COND_ELIM_THM = prove
+ ((--`(P:'a->bool) (c => x | y) = (c ==> P x) /\ (~c ==> P y)`--),
+  BOOL_CASES_TAC(--`c:bool`--) THEN SIMP_TAC bool_ss);
+
+(* ------------------------------------------------------------------------- *)
+(* Skolemization.                                                            *)
+(* ------------------------------------------------------------------------- *)
+
+val SKOLEM_THM = prove
+ ((--`!P. (!x:'a. ?y:'b. P x y) = (?y. !x. P x (y x))`--),
+  REPEAT(STRIP_TAC ORELSE EQ_TAC) THENL
+   [EXISTS_TAC(--`\x:'a. @@y:'b. P x y`--) THEN GEN_TAC THEN
+    BETA_TAC THEN CONV_TAC SELECT_CONV,
+    EXISTS_TAC(--`(y:'a->'b) x`--)] THEN
+  POP_ASSUM MATCH_ACCEPT_TAC);
+
+
+val quant_thms = 
+    [("RIGHT_OR_EXISTS_THM", RIGHT_OR_EXISTS_THM),
+     ("SKOLEM_THM", SKOLEM_THM),
+     ("TRIV_FORALL_IMP_THM", TRIV_FORALL_IMP_THM),
+     ("EXISTS_OR_THM", EXISTS_OR_THM),
+     ("TRIV_EXISTS_AND_THM", TRIV_EXISTS_AND_THM),
+     ("LEFT_AND_FORALL_THM", LEFT_AND_FORALL_THM),
+     ("RIGHT_EXISTS_AND_THM", RIGHT_EXISTS_AND_THM),
+     ("RIGHT_IMP_FORALL_THM", RIGHT_IMP_FORALL_THM),
+     ("LEFT_IMP_EXISTS_THM", LEFT_IMP_EXISTS_THM),
+     ("NOT_EXISTS_THM", NOT_EXISTS_THM),
+     ("LEFT_FORALL_IMP_THM", LEFT_FORALL_IMP_THM),
+     ("OR_EXISTS_THM", OR_EXISTS_THM),
+     ("RIGHT_FORALL_IMP_THM", RIGHT_FORALL_IMP_THM),
+     ("TRIV_FORALL_OR_THM", TRIV_FORALL_OR_THM),
+     ("TRIV_AND_EXISTS_THM", TRIV_AND_EXISTS_THM),
+     ("COND_ELIM_THM", COND_ELIM_THM),
+     ("TRIV_OR_FORALL_THM", TRIV_OR_FORALL_THM),
+     ("FORALL_NOT_THM", FORALL_NOT_THM),
+     ("RIGHT_OR_FORALL_THM", RIGHT_OR_FORALL_THM),
+     ("LEFT_IMP_FORALL_THM", LEFT_IMP_FORALL_THM),
+     ("RIGHT_IMP_EXISTS_THM", RIGHT_IMP_EXISTS_THM),
+     ("RIGHT_AND_FORALL_THM", RIGHT_AND_FORALL_THM),
+     ("LEFT_OR_EXISTS_THM", LEFT_OR_EXISTS_THM),
+     ("TRIV_EXISTS_IMP_THM", TRIV_EXISTS_IMP_THM),
+     ("RIGHT_FORALL_OR_THM", RIGHT_FORALL_OR_THM),
+     ("RIGHT_AND_EXISTS_THM", RIGHT_AND_EXISTS_THM),
+     ("LEFT_FORALL_OR_THM", LEFT_FORALL_OR_THM),
+     ("LEFT_EXISTS_AND_THM", LEFT_EXISTS_AND_THM),
+     ("LEFT_OR_FORALL_THM", LEFT_OR_FORALL_THM),
+     ("FORALL_AND_THM", FORALL_AND_THM),
+     ("AND_FORALL_THM", AND_FORALL_THM),
+     ("RIGHT_EXISTS_IMP_THM", RIGHT_EXISTS_IMP_THM),
+     ("LEFT_EXISTS_IMP_THM", LEFT_EXISTS_IMP_THM),
+     ("NOT_FORALL_THM", NOT_FORALL_THM),
+     ("LEFT_AND_EXISTS_THM", LEFT_AND_EXISTS_THM),
+     ("EXISTS_NOT_THM", EXISTS_NOT_THM)];
+    
+
+end; (* local *)
+end; (* structure *)
+
+
+
+
+
+
+
+
+
+
+
+
+@
+
+
+1.1
+log
+@Added simplifier components, added drule files, added MK_ABS_CONV, better error messages
+@
+text
+@@

@@ -1,0 +1,407 @@
+head	1.2;
+access;
+symbols;
+locks; strict;
+comment	@# @;
+
+
+1.2
+date	96.02.08.00.35.38;	author drs1004;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	96.01.04.13.48.41;	author drs1004;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.2
+log
+@New theory mechanism, code reorganisation and other enhancements by Don Syme.
+@
+text
+@(*========================================================================
+ *  Higher Order Matching as a derived rule.
+ *
+ * Code ported from GTT to hol90 by DRS.
+ *=======================================================================*)
+
+structure Ho_match : Ho_match_sig = 
+struct 
+
+open Lib Pterms;
+open Drule Thm Conv;
+   infix THENC
+    
+
+val ERR = Exception.ERR "Ho_match";
+val WRAP_ERR = Exception.WRAP_ERR "Ho_match";
+(* ------------------------------------------------------------------------- 
+ * ho_match_term (--`x`--) (--`x`--);
+ * ho_match_term (--`I x`--) (--`I y`--);
+ * ho_match_term (--`I x`--) (--`I (I y)`--);
+ * ho_match_term (--`I x`--) (--`I (I x)`--);
+ * ho_match_term (--`\x. x`--) (--`\y. y`--);
+ * ho_match_term (--`\x. t`--) (--`\y. y`--);
+ * ho_match_term (--`\x. P x`--) (--`\y. y + 1`--);
+ * ho_match_term (--`!x. t`--) (--`!x. x + 1 = 2`--);
+ * ho_match_term (--`!x. t`--) (--`!x. t + 1 = 2`--);
+ * ho_match_term (--`!x. t`--) (--`!x. x + 1 = 2`--);
+ *
+ * This code is due to John Harrison's GTT.  The only change is the
+ * check to encure bound variables don't match free variables (DRS).
+ * ------------------------------------------------------------------------- *)
+
+val ho_match_term = let
+
+  exception Find;
+  fun rev_assoc x [] = raise Find
+    | rev_assoc x ((h1,h2)::t) = if (x = h2) then h1 else rev_assoc x t;
+  exception Itlist2;
+  fun itlist2 f L1 L2 base_value =
+   let fun it ([],[]) = base_value
+         | it ((a::rst1),(b::rst2)) = f a b (it (rst1,rst2))
+         | it _ = raise Itlist2
+   in  it (L1,L2)
+   end;
+
+  fun safe_insert (n as (y,x)) l =
+    let val z = rev_assoc x l
+    in if y = z then l else ERR("match","safe_insert")
+    end handle Find => n::l;
+
+  fun safe_inserta (n as (y,x)) l =
+    let val z = rev_assoc x l
+    in if aconv y z then l else ERR("match","safe_inserta")
+    end handle Find => n::l;
+
+  fun type_match' vty cty sofar =
+    if is_vartype vty then
+       if vty = cty then sofar else safe_insert (cty,vty) sofar
+    else
+       let val (vop,vargs) = dest_type vty 
+           and (cop,cargs) = dest_type cty
+       in if vop = cop 
+          then itlist2 type_match' vargs cargs sofar
+          else ERR("match","type_match")
+       end;
+
+  val mk_dummy =
+    let val name = fst(dest_var(genvar(mk_vartype "'a")))
+    in fn tm => mk_var(name,type_of tm)
+    end;
+
+  fun ho_match_term' env vtm ctm sofar =
+    if is_var vtm then
+      let val ctm' = rev_assoc vtm env
+      in if ctm' = ctm then sofar else ERR("match","ho_match_term")
+      end handle Find => (* vtm is a free var *)
+          if exists (can (fn x => assoc x env)) (free_vars ctm) then ERR("match","free vars don't match terms containing bound vars")
+          else if (vtm = ctm) then sofar 
+	  else safe_inserta (ctm,vtm) sofar
+    else if is_const vtm then
+      let val (vname,vty) = dest_const vtm
+          and (cname,cty) = dest_const ctm
+      in if vname = cname then
+           safe_inserta (mk_dummy ctm,mk_dummy vtm) sofar
+         else ERR("match","ho_match_term")
+      end
+    else if is_abs vtm then
+      let val (vv,vbod) = dest_abs vtm
+          and (cv,cbod) = dest_abs ctm
+          val sofar' = safe_inserta (mk_dummy cv,mk_dummy vv) sofar
+      in ho_match_term' (insert (cv,vv) env) vbod cbod sofar' 
+      end
+    else
+      let val (vhop,vargs) = strip_comb vtm
+          and (chop,cargs) = strip_comb ctm
+      in (if not (is_var vhop) orelse can (C rev_assoc env) vhop then raise Fail "" 
+          else
+           let val vargs' = map (C rev_assoc env) vargs
+           in if vargs' = cargs then safe_inserta (chop,vhop) sofar
+             else safe_inserta (list_mk_abs(vargs',ctm),vhop) sofar
+           end)
+         handle _ =>  
+          (itlist2 (ho_match_term' env) vargs cargs 
+                         (ho_match_term' env vhop chop sofar)
+           handle Itlist2 => 
+             let val (lv,rv) = dest_comb vtm
+                 and (lc,rc) = dest_comb ctm
+                 val insts1 = ho_match_term' env lv lc sofar
+             in ho_match_term' env rv rc insts1
+             end)
+       end
+in
+   fn vtm => fn ctm =>
+     let val rawins = ho_match_term' [] vtm ctm []
+         val (cins,vins) = unzip rawins
+         val tyins = itlist2 type_match' (map type_of vins) (map type_of cins) []
+	 fun mk_subst (x,y) = {residue=x,redex=y}
+	 val tysubst = map mk_subst tyins
+         val vins' = map (inst tysubst) vins
+         val tmins = filter (fn (x,y) =>  not (x = y)) (zip cins vins')
+     in (map mk_subst tmins,tysubst)
+     end
+     handle e => WRAP_ERR("ho_match_term",e)
+end;
+
+
+(* ------------------------------------------------------------------------- 
+ * Set up beta-conversion for head instances of free variable v in tm.       
+ * ------------------------------------------------------------------------- *)
+
+fun COMB_CONV2 lconv rconv tm =
+    let val (l,r) = dest_comb tm 
+    in MK_COMB(lconv l,rconv r)
+    end;
+
+(* ------------------------------------------------------------------------- *)
+(* Attempt alpha conversion.                                                 *)
+(* ------------------------------------------------------------------------- *)
+fun alpha v tm =
+  let val (v0,bod) = dest_abs tm
+                     handle _ => ERR ("alpha","Not an abstraction")
+  in
+      if v = v0 then tm
+      else if is_var v andalso 
+	      type_of v = type_of v0 andalso  
+              not (free_in v bod) then
+	  mk_abs(v,subst[v0 |-> v]bod)
+      else ERR("alpha","Invalid new variable")
+  end;
+
+fun tryalpha v tm =
+  alpha v tm
+  handle _ => 
+  alpha (variant (free_vars tm) v) tm
+  handle _ => tm;
+
+(* ------------------------------------------------------------------------- *)
+(* Match up bound variables names.                                           *)
+(* ------------------------------------------------------------------------- *)
+
+fun match_bvs t1 t2 acc =
+ let val (v1,b1) = dest_abs t1
+     and (v2,b2) = dest_abs t2
+     val n1 = fst(dest_var v1) and n2 = fst(dest_var v2)
+     val newacc = if n1 = n2 then acc else insert (n1,n2) acc
+ in
+     match_bvs b1 b2 newacc
+ end
+ handle _ =>
+ let val (l1,r1) = dest_comb t1
+     and (l2,r2) = dest_comb t2
+ in 
+     match_bvs l1 l2 (match_bvs r1 r2 acc)
+ end
+ handle _ => acc;
+
+(* ------------------------------------------------------------------------- *)
+(* Modify bound variable names at depth. (Not very efficient...)             *)
+(* ------------------------------------------------------------------------- *)
+fun remove p [] = ERR("remove","")
+  | remove p (h::t) = 
+    if p h then (h,t)
+    else let val (y,n) = remove p t in (y,(h::n)) end;;
+
+fun deep_alpha env tm =
+  if env = [] then tm else
+  let val (v,bod) = dest_abs tm
+      val (vn,vty) = dest_var v
+  in let val ((vn',_),newenv) = remove (fn (_,x) => x = vn) env 
+      val pp = (vn',vn)
+      val v' = mk_var(vn',vty)
+      val tm' = tryalpha v' tm
+      val (iv,ib) = dest_abs tm' 
+     in
+	 mk_abs(iv,deep_alpha newenv ib)
+     end
+     handle _ => mk_abs(v,deep_alpha env bod)
+  end
+  handle _ =>
+    let val (l,r) = dest_comb tm 
+    in  mk_comb(deep_alpha env l,deep_alpha env r)
+    end
+  handle _ => tm;;
+
+(* ------------------------------------------------------------------------- 
+ * BETA_VAR
+ *
+ * Set up beta-conversion for head instances of free variable v in tm.       
+ *
+ * EXAMPLES
+ *
+ *   BETA_VAR (--`x:num`--) (--`(P:num->num->bool) x x`--);
+ *   BETA_VAR (--`x:num`--) (--`x + 1`--);
+ * ------------------------------------------------------------------------- *)
+
+val BETA_VAR = let 
+  fun BETA_CONVS n =
+    if n = 1 then TRY_CONV BETA_CONV else
+    RATOR_CONV (BETA_CONVS (n - 1)) THENC TRY_CONV BETA_CONV
+  fun free_beta v tm =
+    if is_abs tm then
+      let val (bv,bod) = dest_abs tm
+      in if v = bv then raise UNCHANGED
+         else ABS_CONV(free_beta v bod)
+      end
+    else 
+      let val (oper,args) = strip_comb tm
+      in if (args = []) then raise UNCHANGED
+         else if oper = v then BETA_CONVS (length args)
+         else let val (l,r) = dest_comb tm
+              in let val lconv = free_beta v l
+                 in let val rconv = free_beta v r
+                    in COMB_CONV2 lconv rconv
+                    end handle _ => RATOR_CONV lconv
+                 end handle _ => RAND_CONV (free_beta v r)
+              end
+      end
+  in free_beta end;;
+
+(* ------------------------------------------------------------------------- 
+ * Match (higher-order) part of a theorem to a term.                         
+ *
+ * HO_PART_MATCH (snd o strip_forall) BOOL_CASES_AX (--`(P = T) \/ (P = F)`--);
+ * val NOT_FORALL_THM = mk_thm([],(--`~(!x:'a. P x) = (?x. ~P x)`--));
+ * val NOT_EXISTS_THM = mk_thm([],(--`(?x. ~P x) = ~(!x:'a. P x)`--));
+ * val LEFT_AND_EXISTS_THM = mk_thm([],(--`((?x:'a. P x) /\ Q) = (?x. P x /\ Q)`--));
+ * val f = HO_PART_MATCH lhs;
+ * profile2 f NOT_FORALL_THM (--`~!x. (P:num->num->bool) x y`--);
+ * profile2 f NOT_EXISTS_THM (--`?x. ~(P:num->num->bool) x y`--);
+ * profile2 f NOT_EXISTS_THM (--`?x. ~(P:num->num->bool) x x`--);
+ * profile2 f LEFT_AND_EXISTS_THM (--`(?x. (P:num->num->bool) x x) /\ Q (y:num)`--);
+ * profile LEFT_AND_EXISTS_CONV (--`(?x. (P:num->num->bool) x x) /\ Q (x:num)`--);
+ * profile2 f NOT_FORALL_THM (--`~!x. (P:num->num->bool) y x`--);
+ * profile NOT_FORALL_CONV (--`~!x. (P:num->num->bool) y x`--);
+ * val f = HO_PART_MATCH (lhs o snd o strip_imp);
+ * val CRW_THM = mk_thm([],(--`P x ==> Q x (y:num) ==> (x + 0 = x)`--));
+ * f CRW_THM (--`y + 0`--);
+ *
+ * val beta_thm = prove(--`(\x:'a. P x) b = (P b:'b)`--, BETA_TAC THEN REFL_TAC);
+ * val f = profile HO_PART_MATCH lhs beta_thm;
+ * profile f (--`(\x. I x) 1`--);
+ * profile f (--`(\x. x) 1`--);
+ * profile f (--`(\x. P x x:num) 1`--);
+ *
+ * The current version attempts to keep variable names constant.  This
+ * is courtesy of JRH.
+ *
+ * Non renaming version (also courtesy of JRH!!)
+ *
+ * fun HO_PART_MATCH partfn th =
+ *   let val sth = SPEC_ALL th
+ *       val bod = concl sth
+ *       val possbetas = mapfilter (fn v => (v,BETA_VAR v bod)) (free_vars bod)
+ *       fun finish_fn tyin bvs =
+ *         let val npossbetas = map (inst tyin ## I) possbetas
+ *         in CONV_RULE (EVERY_CONV (mapfilter (C assoc npossbetas) bvs))
+ *         end
+ *       val pbod = partfn bod
+ *   in fn tm =>
+ *     let val (tmin,tyin) = ho_match_term pbod tm
+ *         val th0 = INST tmin (INST_TYPE tyin sth)
+ *     in finish_fn tyin (map #redex tmin) th0
+ *     end
+ *   end;
+ * 
+ * EXAMPLES:
+ * HO_PART_MATCH (lhs o snd o strip_forall) SKOLEM_THM (--`!p. ?GI. Q GI p`--);
+ * Before renaming this produced: |- (!x. ?y. Q y x) = (?y. !x. Q (y x) x)
+ * After renaming this produced: |- (!p. ?GI. Q GI p) = (?GI. !p. Q (GI p) p)
+ *
+* HO_PART_MATCH lhs FORALL_SIMP (--`!x. y + 1 = 2`--);
+* HO_PART_MATCH lhs FORALL_SIMP (--`!x. x + 1 = 2`--); (* fails *)
+
+ * ------------------------------------------------------------------------- *)
+
+
+fun HO_PART_MATCH partfn th =
+  let val sth = SPEC_ALL th
+      val bod = concl sth
+      val pbod = partfn bod 
+      val possbetas = mapfilter (fn v => (v,BETA_VAR v bod)) (free_vars bod)
+      fun finish_fn tyin ivs =
+         let val npossbetas =
+           if tyin = [] then possbetas else map (inst tyin ## I) possbetas 
+         in
+	     if null npossbetas then (fn th => th)
+	     else CONV_RULE (EVERY_CONV (mapfilter (C assoc npossbetas) ivs))
+	 end
+  in  fn tm =>
+    let val (tmin,tyin) = ho_match_term pbod tm
+	val th0 = INST tmin (INST_TYPE tyin sth)
+	val bvms = match_bvs tm (inst tyin pbod) []
+    in 
+	if bvms = [] then finish_fn tyin (map #redex tmin) th0
+	else let val tm0 = concl th0
+		 val tm1 = deep_alpha bvms tm0
+		 val th1 = EQ_MP (ALPHA tm0 tm1) th0
+	     in finish_fn tyin (map #redex tmin) th1
+	     end
+    end
+  end;
+
+
+
+end; (* struct *)
+
+
+
+
+@
+
+
+1.1
+log
+@Added simplifier components, added drule files, added MK_ABS_CONV, better error messages
+@
+text
+@d1 5
+a5 13
+(*
+use "3/simplifier/src/ho_match.sml";
+*)
+
+signature Ho_match_sig = sig
+
+   val ho_match_term : Term.term -> Term.term -> 
+           Term.term Lib.subst * Type.typ Lib.subst
+   val HO_PART_MATCH : 
+           (Term.term -> Term.term) -> Thm.thm -> Term.term -> Thm.thm
+   val BETA_VAR : Term.term -> Term.term -> Abbrev.conv
+
+end;
+d10 2
+a11 7
+open Term;
+open Type;
+open Dsyntax;
+open Pterms;
+open Drule;
+open Thm;
+open Conv;
+a12 1
+open Lib;
+d16 1
+d28 3
+d33 1
+a33 1
+val (type_match,ho_match_term) = let
+a112 1
+  (fn vty => fn cty => type_match' vty cty [],
+d122 2
+a123 1
+     end)
+d127 4
+a130 3
+(* ------------------------------------------------------------------------- *)
+(* Set up beta-conversion for head instances of free variable v in tm.       *)
+(* ------------------------------------------------------------------------- *)
+d326 4
+@

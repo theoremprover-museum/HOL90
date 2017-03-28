@@ -1,0 +1,753 @@
+head	1.7;
+access;
+symbols
+	HOL97:1.2.2.2.0.2
+	bpHOL97:1.2.2.2
+	hol90_9_alpha:1.2.2.2
+	hol90_pre8_for_multiple_compilers:1.2.0.2
+	hol90_pre8_after_donalds_separate_compilation_changes:1.1;
+locks; strict;
+comment	@# @;
+
+
+1.7
+date	96.02.08.00.31.41;	author drs1004;	state Exp;
+branches;
+next	1.6;
+
+1.6
+date	96.01.04.21.49.39;	author drs1004;	state Exp;
+branches;
+next	1.5;
+
+1.5
+date	96.01.04.15.58.29;	author drs1004;	state Exp;
+branches;
+next	1.4;
+
+1.4
+date	96.01.04.13.45.35;	author drs1004;	state Exp;
+branches;
+next	1.3;
+
+1.3
+date	95.12.18.11.34.58;	author drs1004;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	95.11.15.13.24.37;	author rjb;	state Exp;
+branches
+	1.2.2.1;
+next	1.1;
+
+1.1
+date	95.10.31.13.56.21;	author drs1004;	state Exp;
+branches;
+next	;
+
+1.2.2.1
+date	96.06.25.15.41.35;	author rjb;	state Exp;
+branches;
+next	1.2.2.2;
+
+1.2.2.2
+date	96.08.23.14.53.53;	author rjb;	state Exp;
+branches
+	1.2.2.2.2.1;
+next	;
+
+1.2.2.2.2.1
+date	97.06.11.17.24.25;	author kxs;	state dead;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.7
+log
+@New theory mechanism, by Donald Syme, and many other enhancements.
+@
+text
+@(* ===================================================================== *)
+(* FILE          : sml_system.sml                                        *)
+(* DESCRIPTION   : Structure for SML System dependent functions.         *)
+(*                                                                       *)
+(* AUTHOR        : Elsa L. Gunter, AT&T Bell Laboratories                *)
+(* DATE          : 7 October, 1993                                       *)
+(* ===================================================================== *)
+
+(* Copyright 1993 by AT&T Bell Laboratories *)
+
+(* Share and Enjoy *)
+
+structure Portable : Portable_sig =
+struct
+
+(* Set system variables relavent to the interactive mode of hol90 *)
+
+val _ = (Compiler.Control.Print.printLength := 1000;
+         Compiler.Control.Print.printDepth := 350;
+         Compiler.Control.Print.stringDepth := 250;
+         Compiler.Control.Print.signatures := 2;
+         Compiler.Control.quotation := true);
+
+
+(*--------------------------------------------------------------------
+ *
+ *-------------------------------------------------------------------*)
+
+structure General = General
+
+(*--------------------------------------------------------------------
+ *
+ *-------------------------------------------------------------------*)
+
+structure List = List
+
+(*--------------------------------------------------------------------
+ *
+ *-------------------------------------------------------------------*)
+
+structure Vector = Vector
+
+(*--------------------------------------------------------------------
+ *
+ *-------------------------------------------------------------------*)
+
+structure Array = Array
+
+(*--------------------------------------------------------------------
+ *
+ *-------------------------------------------------------------------*)
+
+structure ByteArray = 
+    struct open Array
+	type bytearray = int array
+	exception Range = Subscript
+    end;
+    
+(* structure ByteArray = ByteArray *)
+
+(*--------------------------------------------------------------------
+ *
+ *-------------------------------------------------------------------*)
+
+structure Ref =
+    struct
+	fun inc cell = cell := !cell + 1
+	fun dec cell = cell := !cell - 1
+    end
+
+(*--------------------------------------------------------------------
+ *
+ *-------------------------------------------------------------------*)
+
+structure Char = Char
+
+(*--------------------------------------------------------------------
+ *
+ *-------------------------------------------------------------------*)
+
+structure String =
+    struct
+	exception Ord = General.Subscript
+	open String
+	fun ordof (string,place) = Char.ord(String.sub(string,place))
+    end
+
+
+(*--------------------------------------------------------------------
+ *
+ *-------------------------------------------------------------------*)
+
+structure PrettyPrint =
+struct
+val install_pp = Compiler.PPTable.install_pp;
+
+open Compiler.PrettyPrint
+
+fun with_ppstream ppstrm = 
+   {add_string=add_string ppstrm, 
+    add_break=add_break ppstrm, 
+    begin_block=begin_block ppstrm, 
+    end_block=fn () => end_block ppstrm, 
+    add_newline=fn () => add_newline ppstrm, 
+    clear_ppstream=fn () => clear_ppstream ppstrm, 
+    flush_ppstream=fn () => flush_ppstream ppstrm}
+
+fun defaultConsumer () =
+      {consumer = Compiler.Control.Print.say,
+       linewidth = !Compiler.Control.Print.linewidth,
+       flush = Compiler.Control.Print.flush}
+
+fun pr_list pfun dfun bfun =
+   let fun pr [] = ()
+         | pr [i] = pfun i
+         | pr (i::rst) = ( pfun i; dfun() ; bfun() ; pr rst )
+   in  pr 
+   end;
+end
+
+(*--------------------------------------------------------------------
+ *
+ *-------------------------------------------------------------------*)
+
+structure Time =
+    struct
+	open Time
+	val timestamp : unit -> time = now
+	val time_to_string : time -> String.string = toString
+	fun dest_time t =
+	    let val sec = toSeconds t
+		val usec = toMicroseconds (t - fromSeconds sec)
+	    in
+		{sec = sec, usec = usec}
+	    end
+	fun mk_time {sec,usec} = fromSeconds sec + fromMicroseconds usec
+	fun time_eq (t1:time) t2 = (t1 = t2)
+	fun time_lt (t1:time) t2 = Time.<(t1,t2)
+    end
+
+(*--------------------------------------------------------------------
+ *
+ *-------------------------------------------------------------------*)
+
+structure Timer = Timer;
+
+
+(*--------------------------------------------------------------------
+ * String conversions.
+ *-------------------------------------------------------------------*)
+
+val int_to_string = Integer.toString;
+    
+val real_to_string = Real.toString;
+    
+
+(*--------------------------------------------------------------------
+ * Misc. - IO/Interaction with OS
+ *-------------------------------------------------------------------*)
+
+val say = Compiler.Control.Print.say
+val linewidth = Compiler.Control.Print.linewidth
+
+val getEnv = OS.Process.getEnv
+val cd = OS.FileSys.chDir
+val pwd = OS.FileSys.getDir
+fun listDir dir_name =
+    let val dirstream = OS.FileSys.openDir dir_name
+	fun read_all {dirstream, dir_listing} =
+	    let val entry = OS.FileSys.readDir dirstream
+	    in
+		if entry = "" then List.rev dir_listing
+		else read_all {dirstream = dirstream,
+			       dir_listing = entry :: dir_listing}
+	    end
+	val listing = read_all {dirstream = dirstream, dir_listing = []}
+	val _ = OS.FileSys.closeDir dirstream
+    in listing
+    end;
+fun system s = OS.Process.system s
+fun ls() = system "ls"
+val getArgs = SMLofNJ.getArgs
+
+fun file_exists_for_reading s =
+    OS.FileSys.access(s,[OS.FileSys.A_READ])
+
+fun mkdir d =
+   case system ("/bin/mkdir "^d)
+     of 0 => ()
+        | _ => raise Fail "mkdir - can't make directory";
+
+val clean_directory  =
+  let fun all_dot_files [] = true
+        | all_dot_files (file::files) =
+          (hd (explode file) = #".") andalso all_dot_files files
+  in fn dir => 
+   if all_dot_files (listDir dir) 
+   then ()
+   else (case system ("/bin/rm "^dir^"/*")
+           of 0 => ()
+            | _ => raise Fail "clean_directory - can't remove files")
+  end;
+
+fun exit() = OS.Process.exit OS.Process.success
+
+(*--------------------------------------------------------------------
+ * Misc. - interactions which manipulate the ML environment
+ *
+ * load attempts to load a binary version of the file if it exists.
+ * It does this by setting the current pervasive environment to
+ * the current top level environment (layered over the old
+ * pervasive environment), then calling CM's "make", which will
+ * compile the file in that (current) environment.  The results
+ * of executing the compilation unit are added to the
+ * top level environment.  We then pick up these results,
+ * add them to the (old) top level environment and the pervasive
+ * environment is returned to its old value.
+ *
+ * This seems to work - a miracle.  There is an annoying pause
+ * after CM begins its work, as it analyses the pervasive environment.
+ * It would be great if the dependency analysis could be skipped
+ * altogether
+ * 
+ * Possible problems: The files (which are normally precompiled
+ * library source code modules) got compiled by CM when CM knew about
+ * all the modules in the system.  When we are loading them back in 
+ * CM only knows about one file at a time.  The above technique will 
+ * surely fail if the modules get loaded in the wrong order, but will
+ * hopefully work with any acceptable load order.   DRS
+ *
+ * NOTE: "load" has been disabled as I couldn't get it to work;
+ *-------------------------------------------------------------------*)
+
+(* val execute = IO.execute *)
+
+val interp = Compiler.Control.interp
+val use = Compiler.Interact.use_file
+val use_stream = Compiler.Interact.use_stream
+
+fun compile file =
+   let val old_interp = !interp
+   in interp := false;
+      use file handle e => (interp := old_interp; raise e);
+      interp := old_interp
+   end
+ 
+fun interpret file =
+   let val old_interp = !interp
+   in interp := true;
+      use file handle e => (interp := old_interp; raise e);
+      interp := old_interp
+   end
+ 
+
+fun use_string s = use_stream (open_string s);
+
+
+(*------------------------------------------------
+ * Version for precompiled libraries:
+
+local 
+  open Compiler.Environment 
+in
+
+fun load files = 
+  let val os = open_out "./.load.cm"
+      val _ = output (os,"Group is ")
+      val _ = map (fn s => output(os,"\n"^s)) files
+      val _ = close_out os
+      val _ = CM.make' (CM.cmfile "./.load.cm")
+      val new_toplevel = #get topLevelEnvRef ()
+      val old_pervasive = #get pervasiveEnvRef ()
+      val _ = #set pervasiveEnvRef (layerEnv (new_toplevel,old_pervasive));
+      val _ = #set topLevelEnvRef emptyEnv
+  in ()
+  end 
+end; (* local *)
+ *------------------------------------------------*)
+
+fun load files = (map compile files; ());
+
+(*--------------------------------------------------------------------
+ * Some parameters.
+ *-------------------------------------------------------------------*)
+
+val sml_version = ["njsml"]@@(map int_to_string (#version_id Compiler.version))@@["cm"];
+val sml_banner = Compiler.banner 
+val arch = Compiler.architecture;
+
+(*--------------------------------------------------------------------
+ * Exporting the executable.
+ *-------------------------------------------------------------------*)
+
+fun export x = CM.export(x,NONE);
+    
+(*---------------------------------------------------------------------
+ * Misc file I/O
+ *--------------------------------------------------------------------*)
+
+val flush_out = IO.flush_out
+val input_line = IO.input_line
+val open_string = IO.open_string
+
+    
+(*---------------------------------------------------------------------
+ * Pointer/Lisp-EQ Equality (god forbid).
+ *--------------------------------------------------------------------*)
+
+fun pointer_eq (x,y) =
+    ((System.Unsafe.cast x : int) = (System.Unsafe.cast y : int))
+
+
+end (* structure Portable *)
+
+
+
+
+
+
+
+
+@
+
+
+1.6
+log
+@*** empty log message ***
+@
+text
+@d236 1
+a236 1
+val interp = ref false
+@
+
+
+1.5
+log
+@io transformers moved here
+@
+text
+@d53 7
+a59 1
+structure ByteArray = ByteArray
+d152 4
+a155 2
+val int_to_string = Makestring.int
+val real_to_string = Makestring.real
+d234 1
+a234 1
+val execute = IO.execute
+@
+
+
+1.4
+log
+@Fixed types, pretypes, fixities, parsing.
+@
+text
+@a295 2
+fun set_print_depth n = Compiler.Control.Print.printDepth := n;
+fun print_depth () = (!Compiler.Control.Print.printDepth);
+a296 1
+    
+@
+
+
+1.3
+log
+@Preterm and other changes, see 7.changes
+@
+text
+@d278 1
+a278 1
+val sml_version = ["njsml","cm"]@@(map int_to_string (#version_id Compiler.version));
+d296 4
+@
+
+
+1.2
+log
+@The HOL90 sources have been changed to allow for the use of different
+Standard ML compilers (possibly simultaneously).
+
+ * Many files in "src/0" changed to make them more portable across different
+   ML compilers. Various additions have been made to the Portable structure
+   and files changed to access identifiers in the Portable structure rather
+   than from the global environment. Worthy of special note are:
+
+   - The pointer equality used in "src/0/term.sml" has been made into a
+     function in the Portable structure.
+
+   - The ML-Lex and ML-Yacc files for the various parsers have been changed
+     to access the Portable structure. Both the source files and the SML
+     produced from them have been changed but I have not verified that the
+     source files would reproduce the new SML versions if ML-Lex and ML-Yacc
+     were to be rerun on them. The changes involve some hacks that exploit the
+     way ML-Lex and ML-Yacc work. See the sources for details.
+
+R.J.Boulton, 15th November 1995.
+@
+text
+@d107 6
+d179 17
+d221 1
+a221 1
+ * hopefully work with any acceptable load order.
+d223 1
+a223 1
+ * 
+d228 1
+d232 17
+a248 1
+val interp = ref false
+d250 2
+a268 1
+
+d270 1
+d272 1
+d275 1
+a275 1
+ * Some paramaters.
+d278 1
+a278 1
+val version = Compiler.version
+d286 5
+a290 21
+fun export _ = raise Fail "export - not implemented";
+
+(*
+val sml = List.last (getArgs ())
+
+fun export {dir,file} = 
+    let val exec_file = IO.open_out str
+        val _ = case Portable.system ("/bin/mkdir "^dir)
+                  of 0 => ()
+                   | _ => raise Fail ("can't make directory."^dir)
+	val _ = IO.output (exec_file,
+			   String.concat
+			   ["#!/bin/sh \n\n",
+			    sml, " @@SMLload=", dir, "/.heap/",file,".",arch,"\n"])
+	val _ = IO.close_out exec_file;
+	val _ = system ("chmod a+x " ^ file)
+	val _ = Compiler.exportML (str^".heap")
+    in
+       ()
+    end
+*)
+d296 4
+@
+
+
+1.2.2.1
+log
+@The core of hol90.9.alpha now builds successfully with SML/NJ 109,
+SML/NJ 108.5 (using CM), SML/NJ 0.93, and Poly/ML 3.0.
+I have not yet tried rebuilding the theory files.
+@
+text
+@d2 1
+a2 1
+(* FILE          : portable.njsml.108-cm.sml                             *)
+d16 1
+a16 1
+(* Set system variables relevant to the interactive mode of hol90 *)
+d21 2
+a22 1
+         Compiler.Control.Print.signatures := 2);
+d24 1
+d29 1
+a29 5
+structure General =
+    struct
+        open General
+	datatype order = LESS | EQUAL | GREATER
+    end
+d41 1
+a41 10
+structure Vector =
+    struct
+        open Vector
+        fun extract (v,i,nopt) =
+            let val l = Vector.length v
+                val n =
+                    case nopt of General.SOME n => n | General.NONE => l - i
+            in  Vector.extract (v,i,n)
+            end
+    end
+d47 1
+a47 10
+structure Array =
+    struct
+        open Array
+        fun extract (a,i,nopt) =
+            let val l = Array.length a
+                val n =
+                    case nopt of General.SOME n => n | General.NONE => l - i
+            in  Array.extract (a,i,n)
+            end
+    end
+d53 1
+a53 10
+structure ByteArray =
+    struct
+        open ByteArray
+        fun extract (a,i,nopt) =
+            let val l = ByteArray.length a
+                val n =
+                    case nopt of General.SOME n => n | General.NONE => l - i
+            in  ByteArray.extract (a,i,n)
+            end
+    end
+d89 1
+a89 1
+fun install_pp path s = Compiler.PPTable.install_pp path;
+a175 14
+ * Some parameters.
+ *-------------------------------------------------------------------*)
+
+val version = Compiler.version
+val sml_banner = Compiler.banner 
+(* Built-in that doesn't distinguish SunOs from Solaris
+val arch = Compiler.architecture;
+*)
+val arch =
+   case getEnv "ARCH"
+   of General.SOME s => s
+    | General.NONE => Compiler.architecture;
+
+(*--------------------------------------------------------------------
+d177 1
+a177 69
+ *-------------------------------------------------------------------*)
+
+val execute = IO.execute
+
+(* The contents of the following declarations are *)
+(* Copyright 1996 by University of Cambridge      *)
+
+local
+
+val unix_pid = 0 (* Should be the Unix process number *)
+
+val hol_dir =
+   case getEnv "HOL_DIR"
+   of General.SOME s => s
+    | General.NONE => raise General.Fail "HOL_DIR variable not bound"
+
+val pipe = hol_dir ^ "/bin/pipe"
+
+val quote_filter = hol_dir ^ "/bin/quote-filter." ^ arch
+
+fun connect_streams (is,os) =
+   if (end_of_stream is)
+   then IO.flush_out os
+   else (output (os,input (is,1)); connect_streams (is,os))
+
+fun restore_filename filename s =
+   if (String.substring (s,0,10) = "<instream>"
+       handle General.Subscript => false)
+   then filename ^ String.substring (s,10,String.size s - 10)
+   else s
+
+in
+
+(* Resorted to using a tmp file! Sigh ... *)
+fun use_stream str =
+   let val tmp_file = "/tmp/hol90_use_file." ^ Integer.toString unix_pid ^
+                      "." ^ Time.toString (Time.now ())
+       val tmp = open_out tmp_file
+       val _ = (connect_streams (str,tmp); close_out tmp)
+       val (is,os) = execute (pipe,[tmp_file,quote_filter])
+   in  close_out os;
+       (Compiler.Interact.use_stream is handle e => (close_in is; raise e));
+       close_in is;
+       OS.Process.system ("/bin/rm " ^ tmp_file);
+       ()
+   end
+
+fun use filename =
+   let val out = !Compiler.Control.Print.out
+       val is = (#say out ("[opening " ^ filename ^ "]\n");
+                 open_in filename handle e as Io s =>
+                 (#say out ("[use failed: " ^ s ^ "]\n"); raise e))
+       val _ = close_in is
+       val (is,os) = execute (pipe,[filename,quote_filter])
+       fun tidy_up () = (Compiler.Control.Print.out := out; close_in is)
+   in  close_out os;
+       Compiler.Control.Print.out :=
+          {flush = #flush out,say = #say out o restore_filename filename};
+       (Compiler.Interact.use_stream is handle e => (tidy_up (); raise e));
+       tidy_up ()
+   end
+
+end;
+
+(* End of University of Cambridge copyright *)
+
+val interp = Compiler.Control.interp;
+
+(*--------------------------------------------------------------------
+d203 8
+d230 1
+d232 8
+d243 1
+a243 1
+fun export s = CM.export (s,NONE);
+d274 8
+@
+
+
+1.2.2.2
+log
+@Added a structure Int.
+Defined and exported HOL_base_directory.
+Added an unfiltered version of use_stream.
+Added a function for batch processing (exits after using a file).
+@
+text
+@a36 11
+structure Int =
+    struct
+        open Integer
+        exception Div = General.Div
+        exception Mod = General.Div
+    end
+
+(*--------------------------------------------------------------------
+ *
+ *-------------------------------------------------------------------*)
+
+d227 5
+a231 1
+val HOL_base_directory =
+d236 1
+a236 5
+local
+
+val unix_pid = 0 (* Should be the Unix process number *)
+
+val pipe = HOL_base_directory ^ "/bin/pipe"
+d238 1
+a238 1
+val quote_filter = HOL_base_directory ^ "/bin/quote-filter." ^ arch
+a285 6
+val unfiltered_use_stream = Compiler.Interact.use_stream;
+
+fun use_and_exit print_err filename =
+   (use filename; exit ())
+   handle e => (print_err e; OS.Process.exit OS.Process.failure);
+
+@
+
+
+1.2.2.2.2.1
+log
+@Removed files are parse files and portability files that have
+effectively been moved elsewhere.
+
+Modified files are up to date for ML 109.26.
+@
+text
+@@
+
+
+1.1
+log
+@First phase of hol90.8 development.  hol90 now compiles using NJSML-CM
+108.5, with separate compilation of libraries.  System dependencies
+have been isolated in the makefiles and "portable.sml".
+
+This involved a large number of enhancments to the source files,
+most of which are documented in the 7.changes file (or will be shortly).
+See also the correpsonding email corrspondence between RJB, KLS, TFM,
+JRH and DRS that happened during this development.
+@
+text
+@d53 6
+d265 6
+@

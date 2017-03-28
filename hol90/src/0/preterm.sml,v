@@ -1,0 +1,1431 @@
+head	1.8;
+access;
+symbols
+	HOL97:1.5.0.4
+	bpHOL97:1.5
+	hol90_9_alpha:1.5
+	hol90_pre8_for_multiple_compilers:1.5.0.2
+	hol90_pre8_after_donalds_separate_compilation_changes:1.4
+	hol90_8_after_merging_Konrad_Elsa:1.3
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.8
+date	96.02.08.00.31.51;	author drs1004;	state Exp;
+branches;
+next	1.7;
+
+1.7
+date	96.01.04.13.45.44;	author drs1004;	state Exp;
+branches;
+next	1.6;
+
+1.6
+date	95.12.18.11.35.09;	author drs1004;	state Exp;
+branches;
+next	1.5;
+
+1.5
+date	95.11.15.13.24.40;	author rjb;	state Exp;
+branches
+	1.5.4.1;
+next	1.4;
+
+1.4
+date	95.10.31.13.56.30;	author drs1004;	state Exp;
+branches;
+next	1.3;
+
+1.3
+date	95.10.18.16.37.13;	author drs1004;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	95.10.17.17.07.20;	author drs1004;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	95.10.16.13.29.56;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.29.56;	author rjb;	state Exp;
+branches
+	1.1.1.1.2.1;
+next	;
+
+1.1.1.1.2.1
+date	95.10.17.18.43.05;	author drs1004;	state Exp;
+branches;
+next	;
+
+1.5.4.1
+date	97.06.11.17.24.34;	author kxs;	state Exp;
+branches;
+next	1.5.4.2;
+
+1.5.4.2
+date	97.07.10.20.04.21;	author kxs;	state Exp;
+branches;
+next	1.5.4.3;
+
+1.5.4.3
+date	98.01.06.14.44.45;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.8
+log
+@New theory mechanism, by Donald Syme, and many other enhancements.
+@
+text
+@functor PRETERM (structure Term : Private_term_sig
+                 structure Hol_pp : Hol_pp_sig
+                 sharing 
+                  Hol_pp.Term = Term) : Preterm_sig =
+struct
+structure Term = Term;
+structure Type = Term.Type;
+
+open Lib;
+    
+val ERR = Exception.ERR "Preterm";
+val WRAP_ERR = Exception.WRAP_ERR "Preterm";
+    
+
+(*-----------------------------------------------------------------
+ * pretypes
+ *-----------------------------------------------------------------*)
+
+datatype pretype = 
+      Stv of int     (* System generated type variables *)
+    | Utv of string  (* User-given type variables *)
+    | Link of pretype ref (* Modifiable pointers *)
+    | Tyapp of (string * pretype list)
+
+
+(*-------------------------------------------------------------------------
+ * Operations on pretypes
+ *
+ * Unification of types by pointer redirection.
+ *
+ * The order of the first three clauses of unif is delicate. They ensure 
+ * that the typ in the first argument, if it is an assignable variable, 
+ * gets assigned. 
+ *------------------------------------------------------------------------*)
+
+
+(* An "all" function defined for uncurried predicates.   *)
+fun pr_all2 f =
+   let fun trav (a1::rst1) (a2::rst2) = f(a1,a2) andalso trav rst1 rst2
+         | trav [] [] = true
+   in trav
+   end;
+
+(* Are two types equal? Slower than the more clearly written version. *)
+fun pretype_eq pr = 
+   (op =) pr
+   orelse 
+   (case pr
+     of (Tyapp(s1, A1),Tyapp(s2, A2)) =>
+            ((s1=s2) andalso pr_all2 pretype_eq A1 A2)
+      | (Link(ref ty1), Link(ref ty2)) => pretype_eq(ty1,ty2)
+      | (Link(ref ty1),ty2) => pretype_eq(ty1,ty2)
+      | (ty1, Link(ref ty2)) => pretype_eq(ty1,ty2)
+      | _ => false);
+
+(* The occurs check. We know that the first argument is an Stv. *)
+fun occurs v =
+   let fun occ (Tyapp(_,Args)) = exists occ Args
+         | occ (Link (ref ty)) = occ ty
+         | occ ty = (v = ty)
+   in occ
+   end;
+
+exception UNIFY of string
+fun unify ty1 ty2 = if pretype_eq(ty1,ty2) then () else unif(ty1,ty2)
+and unif (Link(r as ref(s as Stv _)), ty) = 
+        if (occurs s ty) then raise UNIFY "occurs check" else r := ty
+  | unif (Link(ref ty1), ty2) = unify ty1 ty2
+  | unif (ty, v as Link (ref (Stv _))) = unify v ty
+  | unif (ty1, Link (ref ty2)) = unify ty1 ty2
+  | unif (Tyapp(s1,args1),Tyapp(s2,args2)) =
+      if (s1 = s2)
+      then rev_itlist2 (fn ty1 => fn ty2 => fn _ => unify ty1 ty2)
+                       args1 args2 ()
+      else raise UNIFY "inequal constants"
+  | unif _ = raise UNIFY "structural difference in types";
+
+
+exception SHRINK_PRETYPE;
+
+fun shrink_pretype (Link(ref ty)) = shrink_pretype ty
+  | shrink_pretype (Tyapp(Tyop, Args)) =  
+    Tyapp(Tyop, map shrink_pretype Args)
+  | shrink_pretype (Stv _) = raise SHRINK_PRETYPE
+  | shrink_pretype (Utv ty) = Utv ty;
+
+fun pretype_to_type x = 
+    let fun p (Utv ty) = Type.mk_vartype ty
+          | p (Tyapp (Tyop,Args)) =
+	     Type.mk_type {Tyop=Tyop,Args=map p Args}
+          | p _ = ERR("pretype_to_type","type contains links and/or system type variables")
+    in p x
+    end
+    handle e => WRAP_ERR("pretype_to_type",e);
+    
+
+fun any_pretype_to_type (Link(ref ty)) = any_pretype_to_type ty
+  | any_pretype_to_type (Tyapp(Tyop, Args)) =  
+    Type.Tyapp{Tyop = Tyop, Args = map any_pretype_to_type Args}
+  | any_pretype_to_type (Stv n) = Type.Utv ("?"^int_to_string n)
+  | any_pretype_to_type (Utv ty) = Type.Utv ty;
+
+fun type_to_pretype (Type.Tyapp {Tyop,Args}) = 
+    Tyapp(Tyop,map type_to_pretype Args)
+  | type_to_pretype (Type.Utv x) = Utv x;
+
+
+infix -->
+fun a --> b = Tyapp("fun", [a,b])
+
+
+
+(*-----------------------------------------------------------------
+ * preterms
+ *-----------------------------------------------------------------*)
+
+    
+datatype preterm = 
+    Var of   string
+  | Const of (string * pretype)
+  | Comb of  (preterm * preterm)
+  | Abs of   (preterm * preterm)
+  | Constrained of (preterm * pretype)
+  | Antiq of Term.term;
+    
+
+(*-----------------------------------------------------------------
+ * Operations on preterms
+ *
+ * any_preterm_to_term
+ * 
+ * Make a term for any preterm.  Used for preterm printing.  
+ * Note that the terms constructed may be invalid, hence this is not
+ * exported!
+ *-----------------------------------------------------------------*)
+
+
+fun any_preterm_to_term (Var Name) = 
+    Term.Fv {Name=Name,Ty=Type.Utv "??"}
+  | any_preterm_to_term (Const (Name,Ty)) = 
+    Term.Const {Name=Name,Ty=any_pretype_to_type Ty}
+  | any_preterm_to_term (Constrained (Var Name,Ty)) = 
+    Term.Fv {Name=Name,Ty=any_pretype_to_type Ty}
+  | any_preterm_to_term (Comb(Rator,Rand)) = 
+    Term.Comb{Rator = any_preterm_to_term Rator,
+	      Rand = any_preterm_to_term Rand}
+  | any_preterm_to_term (Abs(Bvar,Body)) = 
+    Term.mk_abs{Bvar = any_preterm_to_term Bvar,
+		Body = any_preterm_to_term Body}
+  | any_preterm_to_term (Antiq tm) = tm
+  | any_preterm_to_term (Constrained(tm,_)) = any_preterm_to_term tm;
+
+fun is_atom (Var _) = true
+  | is_atom (Const _) = true
+  | is_atom _ = false;
+
+(*-----------------------------------------------------------------
+ * pretype_of_preterm
+ *-----------------------------------------------------------------*)
+
+fun chase (Tyapp("fun", [_,ty])) = ty
+  | chase (Link(ref ty)) = chase ty
+  | chase _ = ERR("infer_types.type_of.chase", "wierd type")
+
+fun pretype_of_preterm (Comb(Rator, _)) = chase (pretype_of_preterm Rator)
+  | pretype_of_preterm (Abs(Bvar,Body)) = (pretype_of_preterm Bvar --> pretype_of_preterm Body)
+  | pretype_of_preterm (Const(_,ty)) = ty
+  | pretype_of_preterm (Constrained(_,ty)) = ty
+  | pretype_of_preterm (Antiq tm) = type_to_pretype (Term.type_of tm)
+  | pretype_of_preterm _ = ERR("pretype_of_preterm","failed since it was used on a non-type attributed preterm");
+    
+
+(*------------------------------------------------------------------------
+ * Printing of preterms/pretypes.  Convert to dummy terms and print.
+ * Utilises the term/type pretty printer.  The terms/types created
+ * may have invalid construction but are immediately thrown away
+ * in any case.
+ *
+ * To do this really properly, the printing should probably work the other
+ * way around - i.e. terms get converted to preterms/pretypes before
+ * printing.
+ * --------------------------------------------------------------------*)
+
+val preterm_to_string = Hol_pp.term_to_string o any_preterm_to_term
+val print_preterm = say o preterm_to_string
+val pretype_to_string = Hol_pp.type_to_string o any_pretype_to_type
+val print_pretype = say o pretype_to_string;
+fun pp_preterm pps p = Hol_pp.pp_term pps (any_preterm_to_term p);
+fun pp_pretype pps p n = Hol_pp.pp_type pps (any_pretype_to_type p) n;
+    
+    
+(*-----------------------------------------------------------------
+ * Type inference.
+ *-----------------------------------------------------------------*)
+
+val tyv_num = ref 0
+
+fun new_type_var() = ( inc tyv_num;  Link(ref(Stv(!tyv_num))))
+fun reset_type_num() = (tyv_num := 0)
+
+
+(*----------------------------------------------------------------------------
+ * rename_tv
+ *
+ * Maps from pretype to pretype, with type variables consistently renamed.
+ * Also deletes intermediate Links. Could be more careful: ground Tyapps 
+ * get rebuilt unnecessarily.
+ *
+ * Sharing version from type.sml 
+ *
+ * local
+ * val tv_pair_list = ref ([]:(typ * typ) list)
+ * fun rn (v as Utv _) = 
+ *       CHANGED(assoc v (!tv_pair_list) handle NOT_FOUND
+ *               => let val v' = new_type_var()
+ *                  in tv_pair_list := ((v,v')::(!tv_pair_list));  v'
+ *                  end)
+ *   | rn (Tyapp{Tyop, Args}) = 
+ *       (case (apply_subst_to_list rn Args)
+ *          of (YUP L) => CHANGED(Tyapp{Tyop = Tyop, Args = L})
+ *           | (NOPE _) => NO_CHANGE)
+ *   | rn _ = ERR("rename_tv","type construction")
+ * in
+ * fun rename_tv ty = ( tv_pair_list := []; rn ty)
+ * end;
+ *--------------------------------------------------------------------------*)
+
+val rename_tv =
+    let val tv_pair_list = ref ([]:(pretype * pretype) list)
+	fun rn (v as Utv _) = 
+	    ( assoc v (!tv_pair_list)
+	     handle NOT_FOUND =>
+		 let val v' = new_type_var()
+		 in ( tv_pair_list := ((v,v')::(!tv_pair_list));  v' )
+		 end )
+	  | rn (Link(ref ty)) = rn ty
+	  | rn (Tyapp(Tyop, Args)) = Tyapp(Tyop, map rn Args)
+	  | rn (Stv _) =
+	    ERR("rename_tv","attempt to rename system type variable")
+    in
+	fn ty => ( tv_pair_list := []; rn ty)
+    end;
+    
+(*-----------------------------------------------------------------
+ * Type inference for HOL terms.  Can be thought of as
+ * "preterm_to_term".
+ *-----------------------------------------------------------------*)
+
+fun TC (Comb(Rator, Rand)) = 
+      (TC Rator; TC Rand;
+       unify (pretype_of_preterm Rator) (pretype_of_preterm Rand --> new_type_var())
+       handle (e as UNIFY message) =>
+         let val tmp = !Globals.show_types
+             val _ = Globals.show_types := true
+         in
+           say "\nType inference failure: unable to infer a type \
+                            \for the application of\n\n";
+           print_preterm Rator;
+           say "\n\n";
+           if (is_atom Rator)
+           then ()
+           else (say "which has type\n\n";
+                 print_pretype(pretype_of_preterm Rator);
+                 say "\n\n");
+           say "to\n\n"; print_preterm Rand;
+           say "\n\n";
+           if (is_atom Rand)
+           then ()
+           else (say "which has type\n\n";
+                 print_pretype(pretype_of_preterm Rand);
+                 say "\n\n");
+
+           say ("unification failure message: "^message^"\n");
+           Globals.show_types := tmp;
+           ERR("typecheck","failed")
+         end)
+  | TC (Abs(Bvar, Body)) = (TC Bvar; TC Body)
+  | TC (Constrained(Var _,ty)) = ()
+  | TC (Const _) = ()
+  | TC (Constrained(tm,ty)) = 
+    (TC tm; unify (pretype_of_preterm tm) ty
+     handle (e as UNIFY message) =>
+         let val tmp = !Globals.show_types
+             val _ = Globals.show_types := true
+         in
+           say "\nType inference failure: the term\n\n"; 
+           print_preterm tm;
+           say "\n\n"; 
+           if (is_atom tm)
+           then ()
+           else (say "which has type\n\n"; 
+                 print_pretype (pretype_of_preterm tm);
+                 say "\n\n");
+           say "can not be constrained to be of type\n\n"; 
+           print_pretype ty;
+           say ("\n\nunification failure message: "^message^"\n");
+           Globals.show_types := tmp;
+           ERR("typecheck","failed")
+         end)
+  | TC (Antiq x) = ()
+  | TC _ = ERR("TC","failed since it was used on a non-type attributed preterm");
+    
+
+
+fun type_inference ptm = (TC ptm ; ptm)
+     
+(*-----------------------------------------------------------------
+ * Cleanup after type inference
+ *-----------------------------------------------------------------*)
+
+fun string_tl str = Portable.String.substring(str,1,(size str - 1))
+
+val ascii_dollar = Portable.String.ordof("$",0)
+
+fun strip_dollar "" = ERR("strip_dollar","empty string")
+  | strip_dollar s = 
+    if (Portable.String.ordof(s,0) = ascii_dollar) then 
+	(string_tl s) 
+    else s;
+
+fun typecheck_cleanup (ptm as Constrained (Var Name,Ty)) = 
+     (Term.Fv{Name = strip_dollar Name, Ty = pretype_to_type (shrink_pretype Ty)}
+      handle SHRINK_PRETYPE
+      => let val tmp = !Globals.show_types
+             val _ = Globals.show_types := true
+         in say "Unconstrained type variable in the variable\n   ";
+            print_preterm ptm;
+            say "\n";
+            Globals.show_types := tmp;
+            ERR("typecheck_cleanup", "unconstrained type variable")
+         end)
+  | typecheck_cleanup (ptm as Const (Name,Ty)) = 
+     (Term.Const{Name=strip_dollar Name, Ty = pretype_to_type (shrink_pretype Ty)}
+      handle SHRINK_PRETYPE
+      => let val tmp = !Globals.show_types
+             val _ = Globals.show_types := true
+         in say "Unconstrained type variable in the constant\n   ";
+            print_preterm ptm;
+            say "\n";
+            Globals.show_types := tmp;
+            ERR("typecheck_cleanup", "unconstrained type variable")
+         end)
+  | typecheck_cleanup (Comb(Rator,Rand)) = 
+                       Term.Comb{Rator = typecheck_cleanup Rator,
+                                 Rand = typecheck_cleanup Rand}
+  | typecheck_cleanup (Abs(Bvar,Body)) =
+                       Term.mk_abs{Bvar = typecheck_cleanup Bvar,
+                                   Body = typecheck_cleanup Body}
+  | typecheck_cleanup (Antiq tm) = tm
+  | typecheck_cleanup (Constrained(tm,_)) = typecheck_cleanup tm
+  | typecheck_cleanup _ = ERR("typecheck_cleanup","failed because it was applied to a non-type attributed preterm");
+
+fun typecheck tm = (TC tm; typecheck_cleanup tm);
+
+
+    
+
+
+end; (* PRETERM *)
+
+
+
+
+
+@
+
+
+1.7
+log
+@Fixed types, pretypes, fixities, parsing.
+@
+text
+@d11 1
+a11 1
+val PRETERM_ERR = Exception.ERR "Preterm";
+d91 1
+a91 1
+          | p _ = PRETERM_ERR("pretype_to_type","type contains links and/or system type variables")
+d119 1
+a119 1
+    Var of   (string * pretype)
+d124 2
+a125 1
+  | Antiq of Term.term
+d138 2
+a139 2
+fun any_preterm_to_term (Var (Name,Ty)) = 
+    Term.Fv {Name=Name,Ty=any_pretype_to_type Ty}
+d142 2
+a150 4
+  | any_preterm_to_term (Constrained(Var (Name,Ty),ty)) = 
+    Term.Fv {Name=Name,Ty=any_pretype_to_type ty}
+  | any_preterm_to_term (Constrained(Const (Name,Ty),ty)) = 
+    Term.Const {Name=Name,Ty=any_pretype_to_type ty}
+d163 1
+a163 1
+  | chase _ = PRETERM_ERR("infer_types.type_of.chase", "wierd type")
+d165 1
+a165 3
+fun pretype_of_preterm (Var(_,Ty)) = Ty
+  | pretype_of_preterm (Const(_,Ty)) = Ty
+  | pretype_of_preterm (Comb(Rator, _)) = chase (pretype_of_preterm Rator)
+d167 1
+d170 25
+d239 1
+a239 1
+	    PRETERM_ERR("rename_tv","attempt to rename system type variable")
+a243 19
+(*------------------------------------------------------------------------
+ * Printing of preterms/pretypes.  Convert to dummy terms and print.
+ * Utilises the term/type pretty printer.  The terms/types created
+ * may have invalid construction but are immediately thrown away
+ * in any case.
+ *
+ * To do this really properly, the printing should probably work the other
+ * way around - i.e. terms get converted to preterms/pretypes before
+ * printing.
+ * --------------------------------------------------------------------*)
+
+val preterm_to_string = Hol_pp.term_to_string o any_preterm_to_term
+val print_preterm = Lib.say o preterm_to_string
+val pretype_to_string = Hol_pp.type_to_string o any_pretype_to_type
+val print_pretype = Lib.say o pretype_to_string;
+fun pp_preterm pps p = Hol_pp.pp_term pps (any_preterm_to_term p);
+fun pp_pretype pps p n = Hol_pp.pp_type pps (any_pretype_to_type p) n;
+    
+    
+d256 1
+a256 1
+           Lib.say "\nType inference failure: unable to infer a type \
+d259 1
+a259 1
+           Lib.say "\n\n";
+d262 1
+a262 1
+           else (Lib.say "which has type\n\n";
+d264 3
+a266 3
+                 Lib.say "\n\n");
+           Lib.say "to\n\n"; print_preterm Rand;
+           Lib.say "\n\n";
+d269 1
+a269 1
+           else (Lib.say "which has type\n\n";
+d271 1
+a271 1
+                 Lib.say "\n\n");
+d273 1
+a273 1
+           Lib.say ("unification failure message: "^message^"\n");
+d275 1
+a275 1
+           PRETERM_ERR("typecheck","failed")
+d278 2
+d286 1
+a286 1
+           Lib.say "\nType inference failure: the term\n\n"; 
+d288 1
+a288 1
+           Lib.say "\n\n"; 
+d291 1
+a291 1
+           else (Lib.say "which has type\n\n"; 
+d293 2
+a294 2
+                 Lib.say "\n\n");
+           Lib.say "can not be constrained to be of type\n\n"; 
+d296 1
+a296 1
+           Lib.say ("\n\nunification failure message: "^message^"\n");
+d298 1
+a298 1
+           PRETERM_ERR("typecheck","failed")
+d300 3
+a302 1
+  | TC _ = ()
+d315 1
+a315 1
+fun strip_dollar "" = PRETERM_ERR("strip_dollar","empty string")
+d321 1
+a321 1
+fun typecheck_cleanup (Var(Name,Ty)) = 
+d324 1
+a324 2
+      => let val say = Lib.say
+             val tmp = !Globals.show_types
+d327 1
+a327 1
+            print_preterm (Var(Name, Ty));
+d330 1
+a330 1
+            PRETERM_ERR("typecheck_cleanup", "unconstrained type variable")
+d332 1
+a332 1
+  | typecheck_cleanup (Const(Name,Ty)) = 
+d335 1
+a335 2
+      => let val say = Lib.say
+             val tmp = !Globals.show_types
+d338 1
+a338 1
+            print_preterm (Const(Name, Ty));
+d341 1
+a341 1
+            PRETERM_ERR("typecheck_cleanup", "unconstrained type variable")
+d350 2
+a351 1
+  | typecheck_cleanup (Constrained(tm,_)) = typecheck_cleanup tm;
+d358 3
+a360 45
+(*----------------------------------------------------------------------
+ * Sharing version
+ * local
+ * open Type
+ * fun string_tl str = Portable.String.substring(str,1,(size str - 1))
+ * val ascii_dollar = Portable.String.ordof("$",0)
+ * fun strip_dollar "" = NONE
+ *   | strip_dollar s = 
+ *       if (Portable.String.ordof(s,0) = ascii_dollar)
+ *       then SOME (string_tl s)
+ *       else NONE
+ * fun build_atom tag {Name,Ty} =
+ *    case (strip_dollar Name, Type.shrink_type Ty)
+ *      of (NONE,NO_CHANGE) => NO_CHANGE
+ *       | (NONE, CHANGED ty) => CHANGED(tag{Name = Name, Ty = ty})
+ *       | (SOME name, NO_CHANGE) => CHANGED(tag{Name = name, Ty = Ty})
+ *       | (SOME name, CHANGED ty) => CHANGED(tag{Name = name, Ty = ty})
+ * 
+ * fun tc_cleanup (Var v) = build_atom Var v
+ *   | tc_cleanup (Const c) = build_atom Const c
+ *   | tc_cleanup (Comb{Rator,Rand}) = 
+ *       (case (tc_cleanup Rator, tc_cleanup Rand)
+ *          of (NO_CHANGE,NO_CHANGE) => NO_CHANGE
+ *           | (CHANGED Rator, NO_CHANGE) => CHANGED(Comb{Rator = Rator, 
+ *                                                        Rand = Rand})
+ *           | (NO_CHANGE, CHANGED Rand) => CHANGED(Comb{Rator = Rator, 
+ *                                                       Rand = Rand})
+ *           | (CHANGED Rator, CHANGED Rand) => CHANGED(Comb{Rator = Rator, 
+ *                                                           Rand = Rand}))
+ *   | tc_cleanup (Abs{Bvar,Body}) = 
+ *       (case (tc_cleanup Bvar, tc_cleanup Body)
+ *          of (NO_CHANGE, NO_CHANGE) => NO_CHANGE
+ *           | (CHANGED v, NO_CHANGE) => CHANGED(Abs{Bvar = v, Body = Body})
+ *  *           | (NO_CHANGE, CHANGED body) => CHANGED(Abs{Bvar = Bvar, Body = body})
+ *           | (CHANGED v, CHANGED body) => CHANGED(Abs{Bvar = v, Body = body}))
+ *   | tc_cleanup (Antiq tm) = CHANGED tm
+ *   | tc_cleanup (Constrained(tm,_)) = (case(tc_cleanup tm)
+ *                                         of NO_CHANGE => CHANGED tm
+ *                                          | x => x)
+ * in
+ * fun typecheck_cleanup tm = case (tc_cleanup tm)
+ *                              of NO_CHANGE => tm
+ *                               | (CHANGED tm') => tm'
+ * end;
+ * ------------------------------------------------------------------------*)
+a362 18
+(*--------------------------------------------------------------------------
+ * For loading from theory files 
+ * Removed by DRS - This is not used anywhere in the system
+ *
+ * fun preterm_to_term(Var _) = PRETERM_ERR("preterm_to_term",
+ *                                               "unconstrained variable")
+ *   | preterm_to_term(Const{Name,Ty}) = Term.Const{Name=strip_dollar Name,Ty=Ty}
+ *   | preterm_to_term(Constrained(Const{Name,...},ty)) =
+ *             Term.Const{Name=strip_dollar Name,Ty=ty}
+ *   | preterm_to_term(Comb{Rator,Rand}) = Term.Comb{Rator=preterm_to_term Rator,
+ *                                                   Rand=preterm_to_term Rand}
+ *   | preterm_to_term(Abs{Bvar = Constrained(Var{Name,...},ty),Body}) =
+ *                Term.mk_abs{Bvar=Term.Fv{Name=Name,Ty=ty},
+ *                            Body=preterm_to_term Body}
+ *   | preterm_to_term(Constrained(Var{Name,...},ty)) = Term.Fv{Name=Name,Ty=ty}
+ *   | preterm_to_term _ = PRETERM_ERR("preterm_to_term",
+ *                                          "badly formed preterm");
+ * ------------------------------------------------------------------------*)
+a364 1
+end; (* PRETERM *)
+@
+
+
+1.6
+log
+@Preterm and other changes, see 7.changes
+@
+text
+@d23 1
+a23 1
+    | Tyapp of {Tyop : string, Args : pretype list}
+d49 1
+a49 1
+     of (Tyapp{Tyop = s1, Args = A1},Tyapp{Tyop = s2, Args = A2}) =>
+d58 1
+a58 1
+   let fun occ (Tyapp{Args, ...}) = exists occ Args
+d71 1
+a71 1
+  | unif (Tyapp{Tyop = s1, Args = args1},Tyapp{Tyop = s2, Args = args2}) =
+d82 2
+a83 2
+  | shrink_pretype (Tyapp{Tyop, Args}) =  
+    Tyapp{Tyop = Tyop, Args = map shrink_pretype Args}
+d89 1
+a89 1
+          | p (Tyapp {Tyop,Args}) =
+d98 1
+a98 1
+  | any_pretype_to_type (Tyapp{Tyop, Args}) =  
+d104 1
+a104 1
+    Tyapp{Tyop=Tyop,Args=map type_to_pretype Args}
+d109 1
+a109 1
+fun a --> b = Tyapp{Tyop = "fun", Args = [a,b]}
+d119 4
+a122 4
+    Var of   {Name : string, Ty : pretype}
+  | Const of {Name : string, Ty : pretype}
+  | Comb of  {Rator: preterm, Rand : preterm}
+  | Abs of   {Bvar : preterm, Body : preterm}
+d137 1
+a137 1
+fun any_preterm_to_term (Var {Name,Ty}) = 
+d139 1
+a139 1
+  | any_preterm_to_term (Const {Name,Ty}) = 
+d141 1
+a141 1
+  | any_preterm_to_term (Comb{Rator,Rand}) = 
+d144 1
+a144 1
+  | any_preterm_to_term (Abs{Bvar,Body}) = 
+d148 1
+a148 1
+  | any_preterm_to_term (Constrained(Var {Name,Ty},ty)) = 
+d150 1
+a150 1
+  | any_preterm_to_term (Constrained(Const {Name,Ty},ty)) = 
+d162 1
+a162 1
+fun chase (Tyapp{Tyop = "fun", Args = [_,ty]}) = ty
+d166 4
+a169 4
+fun pretype_of_preterm (Var{Ty, ...}) = Ty
+  | pretype_of_preterm (Const{Ty, ...}) = Ty
+  | pretype_of_preterm (Comb{Rator, ...}) = chase (pretype_of_preterm Rator)
+  | pretype_of_preterm (Abs{Bvar,Body}) = (pretype_of_preterm Bvar --> pretype_of_preterm Body)
+d214 1
+a214 1
+	  | rn (Tyapp{Tyop, Args}) = Tyapp{Tyop = Tyop, Args = map rn Args}
+d245 1
+a245 1
+fun TC (Comb{Rator, Rand}) = 
+d273 1
+a273 1
+  | TC (Abs{Bvar, Body}) = (TC Bvar; TC Body)
+d313 1
+a313 1
+fun typecheck_cleanup (Var{Name,Ty}) = 
+d320 1
+a320 1
+            print_preterm (Var{Name = Name, Ty = Ty});
+d325 1
+a325 1
+  | typecheck_cleanup (Const{Name,Ty}) = 
+d332 1
+a332 1
+            print_preterm (Const{Name = Name, Ty = Ty});
+d337 1
+a337 1
+  | typecheck_cleanup (Comb{Rator,Rand}) = 
+d340 1
+a340 1
+  | typecheck_cleanup (Abs{Bvar,Body}) =
+d349 2
+@
+
+
+1.5
+log
+@The HOL90 sources have been changed to allow for the use of different
+Standard ML compilers (possibly simultaneously).
+
+ * Many files in "src/0" changed to make them more portable across different
+   ML compilers. Various additions have been made to the Portable structure
+   and files changed to access identifiers in the Portable structure rather
+   than from the global environment. Worthy of special note are:
+
+   - The pointer equality used in "src/0/term.sml" has been made into a
+     function in the Portable structure.
+
+   - The ML-Lex and ML-Yacc files for the various parsers have been changed
+     to access the Portable structure. Both the source files and the SML
+     produced from them have been changed but I have not verified that the
+     source files would reproduce the new SML versions if ML-Lex and ML-Yacc
+     were to be rerun on them. The changes involve some hacks that exploit the
+     way ML-Lex and ML-Yacc work. See the sources for details.
+
+R.J.Boulton, 15th November 1995.
+@
+text
+@d1 1
+a1 3
+functor PRETERM ((* structure Lib : Lib_sig *)
+		 structure Term : Term_sig
+                 structure Dsyntax : Dsyntax_sig
+d4 1
+a4 1
+                  Hol_pp.Term = Dsyntax.Term = Term) : Preterm_sig =
+d9 144
+a152 11
+fun PRETERM_ERR{function,message} =
+    Exception.HOL_ERR{origin_structure = "Preterm",
+		      origin_function = function,
+		      message = message}
+
+datatype preterm = Var of {Name : string, Ty : Type.hol_type}
+                 | Const of {Name : string, Ty : Type.hol_type}
+                 | Comb of {Rator : preterm, Rand : preterm}
+                 | Abs of {Bvar : preterm, Body : preterm}
+                 | Constrained of (preterm * Type.hol_type)
+                 | Antiq of Term.term
+a153 11
+
+
+fun to_term (Var n) = Term.Fv n
+  | to_term (Const n) = Term.Const n
+  | to_term (Comb{Rator,Rand}) = Term.Comb{Rator = to_term Rator,
+                                           Rand = to_term Rand}
+  | to_term (Abs{Bvar,Body}) = Term.mk_abs{Bvar = to_term Bvar,
+                                           Body = to_term Body}
+  | to_term (Antiq tm) = tm
+  | to_term (Constrained(tm,_)) = to_term tm;
+
+d158 87
+a244 14
+(* Type inference for HOL terms *)
+local
+fun mk_fun_type ty1 ty2 = Type.Tyapp{Tyop = "fun", Args = [ty1,ty2]}
+fun chase (Type.Tyapp{Tyop = "fun", Args = [_,ty]}) = ty
+  | chase (Type.Link(ref ty)) = chase ty
+  | chase _ = raise PRETERM_ERR{function = "TC.type_of.chase", message = ""}
+fun type_of (Var{Ty, ...}) = Ty
+  | type_of (Const{Ty, ...}) = Ty
+  | type_of (Comb{Rator, ...}) = chase (type_of Rator)
+  | type_of (Abs{Bvar,Body}) = Type.Tyapp{Tyop = "fun", 
+                                          Args = [type_of Bvar, type_of Body]}
+  | type_of (Constrained(_,ty)) = ty
+  | type_of (Antiq tm) = Term.type_of tm
+in
+d247 2
+a248 4
+       Type.unify (type_of Rator)
+                  (mk_fun_type (type_of Rand) (Type.new_type_var()))
+       handle (e as Exception.HOL_ERR{origin_structure="Type", 
+				      origin_function="unify",message}) =>
+a250 4
+             val ptm = Lib.say o Hol_pp.term_to_string
+             val pty = Lib.say o Hol_pp.type_to_string
+             val Rator' = to_term Rator
+             val Rand' = to_term Rand
+d254 1
+a254 1
+           ptm Rator';
+d259 1
+a259 1
+                 pty(type_of Rator);
+d261 1
+a261 1
+           Lib.say "to\n\n"; ptm Rand';
+d266 1
+a266 1
+                 pty(type_of Rand);
+d271 1
+a271 1
+           raise PRETERM_ERR{function="typecheck",message ="failed"}
+d275 2
+a276 3
+       (TC tm; Type.unify (type_of tm) ty
+	handle (e as Exception.HOL_ERR{origin_structure="Type", 
+				       origin_function="unify",message}) =>
+a278 2
+             val ptm = Lib.say o Hol_pp.term_to_string
+             val pty = Lib.say o Hol_pp.type_to_string
+d281 1
+a281 1
+           ptm (to_term tm);
+d286 1
+a286 1
+                 pty (type_of tm);
+d289 1
+a289 1
+           pty ty;
+d292 1
+a292 1
+           raise PRETERM_ERR{function="typecheck",message ="failed"}
+d295 1
+a295 1
+end;
+d297 5
+a302 1
+(* Non-sharing version *)
+d307 5
+a311 7
+fun strip_dollar "" = raise PRETERM_ERR{function = "strip_dollar",
+					message = "empty string"}
+  | strip_dollar s = if (Portable.String.ordof(s,0) = ascii_dollar) then (string_tl s) else s;
+
+fun shr ty = case (Type.shrink_type ty)
+               of Type.NO_CHANGE => ty
+                | (Type.CHANGED ty') => ty';
+d314 2
+a315 3
+     (Term.Fv{Name = strip_dollar Name, Ty = shr Ty}
+      handle Exception.HOL_ERR{origin_structure="Type",
+			       origin_function="shrink_type",...}
+a316 1
+             val ptm = Lib.say o Hol_pp.term_to_string
+d320 1
+a320 1
+            ptm (Term.Fv{Name = Name, Ty = Ty});
+d323 1
+a323 1
+            raise PRETERM_ERR{function = "typecheck_cleanup", message =""}
+d326 2
+a327 3
+     (Term.Const{Name=strip_dollar Name, Ty = shr Ty}
+      handle Exception.HOL_ERR{origin_structure="Type",
+			       origin_function="shrink_type",...}
+a328 1
+             val ptm = Lib.say o Hol_pp.term_to_string
+d332 1
+a332 1
+            ptm (Term.Const{Name = Name, Ty = Ty});
+d335 1
+a335 1
+            raise PRETERM_ERR{function = "typecheck_cleanup", message =""}
+d348 67
+a414 60
+(* Sharing version
+local
+open Type
+fun string_tl str = Portable.String.substring(str,1,(size str - 1))
+val ascii_dollar = Portable.String.ordof("$",0)
+fun strip_dollar "" = NONE
+  | strip_dollar s = 
+      if (Portable.String.ordof(s,0) = ascii_dollar)
+      then SOME (string_tl s)
+      else NONE
+fun build_atom tag {Name,Ty} =
+   case (strip_dollar Name, Type.shrink_type Ty)
+     of (NONE,NO_CHANGE) => NO_CHANGE
+      | (NONE, CHANGED ty) => CHANGED(tag{Name = Name, Ty = ty})
+      | (SOME name, NO_CHANGE) => CHANGED(tag{Name = name, Ty = Ty})
+      | (SOME name, CHANGED ty) => CHANGED(tag{Name = name, Ty = ty})
+
+fun tc_cleanup (Var v) = build_atom Var v
+  | tc_cleanup (Const c) = build_atom Const c
+  | tc_cleanup (Comb{Rator,Rand}) = 
+      (case (tc_cleanup Rator, tc_cleanup Rand)
+         of (NO_CHANGE,NO_CHANGE) => NO_CHANGE
+          | (CHANGED Rator, NO_CHANGE) => CHANGED(Comb{Rator = Rator, 
+                                                       Rand = Rand})
+          | (NO_CHANGE, CHANGED Rand) => CHANGED(Comb{Rator = Rator, 
+                                                      Rand = Rand})
+          | (CHANGED Rator, CHANGED Rand) => CHANGED(Comb{Rator = Rator, 
+                                                          Rand = Rand}))
+  | tc_cleanup (Abs{Bvar,Body}) = 
+      (case (tc_cleanup Bvar, tc_cleanup Body)
+         of (NO_CHANGE, NO_CHANGE) => NO_CHANGE
+          | (CHANGED v, NO_CHANGE) => CHANGED(Abs{Bvar = v, Body = Body})
+          | (NO_CHANGE, CHANGED body) => CHANGED(Abs{Bvar = Bvar, Body = body})
+          | (CHANGED v, CHANGED body) => CHANGED(Abs{Bvar = v, Body = body}))
+  | tc_cleanup (Antiq tm) = CHANGED tm
+  | tc_cleanup (Constrained(tm,_)) = (case(tc_cleanup tm)
+                                        of NO_CHANGE => CHANGED tm
+                                         | x => x)
+in
+fun typecheck_cleanup tm = case (tc_cleanup tm)
+                             of NO_CHANGE => tm
+                              | (CHANGED tm') => tm'
+end;
+*)
+
+
+(* For loading from theory files *)
+fun preterm_to_term(Var _) = raise PRETERM_ERR{function="preterm_to_term",
+                                              message="unconstrained variable"}
+  | preterm_to_term(Const{Name,Ty}) = Term.Const{Name=strip_dollar Name,Ty=Ty}
+  | preterm_to_term(Constrained(Const{Name,...},ty)) =
+            Term.Const{Name=strip_dollar Name,Ty=ty}
+  | preterm_to_term(Comb{Rator,Rand}) = Term.Comb{Rator=preterm_to_term Rator,
+                                                  Rand=preterm_to_term Rand}
+  | preterm_to_term(Abs{Bvar = Constrained(Var{Name,...},ty),Body}) =
+               Term.mk_abs{Bvar=Term.Fv{Name=Name,Ty=ty},
+                           Body=preterm_to_term Body}
+  | preterm_to_term(Constrained(Var{Name,...},ty)) = Term.Fv{Name=Name,Ty=ty}
+  | preterm_to_term _ = raise PRETERM_ERR{function="preterm_to_term",
+                                          message="badly formed preterm"};
+@
+
+
+1.5.4.1
+log
+@Removed files are parse files and portability files that have
+effectively been moved elsewhere.
+
+Modified files are up to date for ML 109.26.
+@
+text
+@d1 3
+a3 1
+functor PRETERM (structure Term : Term_sig
+d5 2
+a6 1
+                 sharing Hol_pp.Term = Term) : Preterm_sig =
+d11 11
+a21 5
+fun PRETERM_ERR{function,message} = 
+ Exception.HOL_ERR{origin_structure = "Preterm",
+                   origin_function = function,
+                   message = message};
+
+a22 6
+datatype preterm = Var   of {Name : string,  Ty : Type.hol_type}
+                 | Const of {Name : string,  Ty : Type.hol_type}
+                 | Comb  of {Rator: preterm, Rand : preterm}
+                 | Abs   of {Bvar : preterm, Body : preterm}
+                 | Constrained of preterm * Type.hol_type
+                 | Antiq of Term.term
+d38 13
+a50 16
+
+(*---------------------------------------------------------------------------
+ * Type inference for HOL terms. Looks ugly because of error messages, but
+ * could be improved.
+ *---------------------------------------------------------------------------*)
+local infix 5 -->
+      fun (ty1 --> ty2) = Type.Tyapp{Tyop = "fun", Args = [ty1,ty2]}
+      fun chase (Type.Tyapp{Tyop = "fun", Args = [_,ty]}) = ty
+        | chase (Type.Link(ref ty)) = chase ty
+        | chase _ = raise PRETERM_ERR{function="TC.type_of.chase", message=""}
+      fun type_of (Var{Ty, ...}) = Ty
+        | type_of (Const{Ty, ...}) = Ty
+        | type_of (Comb{Rator, ...}) = chase (type_of Rator)
+        | type_of (Abs{Bvar,Body}) = type_of Bvar --> type_of Body
+        | type_of (Constrained(_,ty)) = ty
+        | type_of (Antiq tm) = Term.type_of tm
+d52 59
+a110 64
+fun TC tyvars = 
+let fun check(Comb{Rator, Rand}) = 
+        (check Rator; check Rand;
+         Type.unify (type_of Rator) 
+                    (type_of Rand --> Lib.state(Lib.next tyvars))
+         handle (e as Exception.HOL_ERR{origin_structure="Type", 
+                                        origin_function="unify",message})
+         => let val tmp = !Globals.show_types
+                val _   = Globals.show_types := true
+                val ptm = Lib.say o Hol_pp.term_to_string
+                val pty = Lib.say o Hol_pp.type_to_string
+                val Rator' = to_term Rator
+                val Rand'  = to_term Rand
+            in
+            Lib.say "\nType inference failure: unable to infer a type \
+                              \for the application of\n\n";
+            ptm Rator';
+            Lib.say "\n\n";
+            if (is_atom Rator) then ()
+            else(Lib.say"which has type\n\n";pty(type_of Rator);Lib.say"\n\n");
+            Lib.say "to\n\n"; ptm Rand'; Lib.say "\n\n";
+            if (is_atom Rand) then ()
+            else(Lib.say"which has type\n\n";pty(type_of Rand);Lib.say"\n\n");
+   
+            Lib.say ("unification failure message: "^message^"\n");
+            Globals.show_types := tmp;
+            raise PRETERM_ERR{function="typecheck",message ="failed"}
+            end)
+      | check (Abs{Bvar, Body}) = (check Bvar; check Body)
+      | check (Constrained(tm,ty)) = 
+          (check tm; Type.unify (type_of tm) ty
+            handle (e as Exception.HOL_ERR{origin_structure="Type", 
+                                           origin_function="unify",message}) 
+            => let val tmp = !Globals.show_types
+                   val _ = Globals.show_types := true
+                   val ptm = Lib.say o Hol_pp.term_to_string
+                   val pty = Lib.say o Hol_pp.type_to_string
+               in
+               Lib.say "\nType inference failure: the term\n\n"; 
+               ptm (to_term tm); Lib.say "\n\n"; 
+               if (is_atom tm) then () 
+               else(Lib.say"which has type\n\n";pty(type_of tm);Lib.say"\n\n");
+               Lib.say "can not be constrained to be of type\n\n"; 
+               pty ty;
+               Lib.say ("\n\nunification failure message: "^message^"\n");
+               Globals.show_types := tmp;
+               raise PRETERM_ERR{function="typecheck",message ="failed"}
+               end)
+      | check _ = ()
+in check
+end end;
+
+(*---------------------------------------------------------------------------
+ * Post-type inference processing. Currently, this just guesses type 
+ * variables for the remaining unconstrained type variables.
+ *---------------------------------------------------------------------------*)
+
+local fun string_tl str = substring(str,1, size str - 1)
+      val ascii_dollar = ordof("$",0)
+in 
+fun zap_dollar s = 
+ if (s="") then raise PRETERM_ERR{function="zap_dollar",message="empty string"}
+  else if (ordof(s,0) = ascii_dollar) then string_tl s 
+    else s
+d113 5
+a117 8
+local open Type
+in
+fun tyvars (v as Utv _) vlist = insert v vlist
+  | tyvars (v as Stv _) vlist = insert v vlist
+  | tyvars (Tyc _) vlist = vlist
+  | tyvars (Tyapp{Args,...}) vlist = rev_itlist tyvars Args vlist
+  | tyvars (Link(ref ty)) vlist = tyvars ty vlist;
+end;
+d119 85
+a203 17
+val tyVars =
+ let fun union [] S = S
+       | union S [] = S
+       | union (h::t) S = union t (insert h S)
+     fun tyV (Var{Ty,...}) L       = tyvars Ty L
+       | tyV (Const{Ty,...}) L     = tyvars Ty L
+       | tyV (Comb{Rator,Rand}) L  = tyV Rand(tyV Rator L)
+       | tyV (Abs{Bvar,Body}) L    = tyV Body(tyV Bvar L)
+       | tyV (Antiq tm) L          = union (Term.type_vars_in_term tm) L
+       | tyV (Constrained(tm,_)) L = tyV tm L
+ in rev o C tyV []
+ end;
+
+local fun askii n = Portable.Char.toString(Char.chr (n + 97));
+      fun nonzero 0 = "" | nonzero n = Int.toString n;
+      nonfix div mod
+      val div = Int.div and mod = Int.mod 
+d205 3
+a207 2
+fun num2tyv m = Type.mk_vartype 
+  (Portable.String.concat(["'",askii(mod(m,26)), nonzero(div(m,26))]))
+d209 1
+a209 42
+
+fun vary src taken =
+  let fun V [] fresh = rev fresh
+        | V (_::rst) fresh =
+             let val _ = while (mem (state src) taken) do next src
+                 val v' = state src before next src
+             in V rst (v'::fresh)               end
+  in  V  end;
+
+local open Type
+in 
+fun shrink_type alist =
+  let fun shrink (Link(ref ty)) = shrink ty
+        | shrink (Tyapp{Tyop,Args}) = Tyapp{Tyop=Tyop, Args=map shrink Args}
+        | shrink (s as Stv _) = assoc s alist
+        | shrink ty = ty
+  in shrink
+end end;
+
+fun listify [] = []
+  | listify [x] = [x]
+  | listify (x::rst) = (x::", "::listify rst);
+
+fun cleanup tm = 
+ let val V = tyVars tm
+     val (utvs,stvs) = Lib.partition Term.Type.is_vartype V
+     val utv_src = mk_istream (fn x => x+1) 0 num2tyv
+     val new_utvs = vary utv_src utvs stvs []
+     val _ = Lib.mesg (not(null stvs) andalso !Globals.notify_on_tyvar_guess)
+             ("inventing new type variable names: "
+               ^String.concat(listify (map Type.dest_vartype new_utvs)))
+     val shr = shrink_type (zip stvs new_utvs)
+     fun clean(Var{Name,Ty})     = Term.Fv{Name=zap_dollar Name,Ty=shr Ty}
+       | clean(Const{Name,Ty})   = Term.Const{Name=zap_dollar Name,Ty=shr Ty}
+       | clean(Comb{Rator,Rand}) = Term.Comb{Rator=clean Rator,Rand=clean Rand}
+       | clean (Abs{Bvar,Body})  = Term.mk_abs{Bvar=clean Bvar,Body=clean Body}
+       | clean (Antiq tm)        = tm
+       | clean (Constrained(tm,_)) = clean tm
+ in clean tm
+ end;
+
+fun typecheck fresh_tyvs tm = (TC fresh_tyvs tm; cleanup tm);
+d215 1
+a215 1
+  | preterm_to_term(Const{Name,Ty}) = Term.Const{Name=zap_dollar Name,Ty=Ty}
+d217 1
+a217 1
+            Term.Const{Name=zap_dollar Name,Ty=ty}
+@
+
+
+1.5.4.2
+log
+@Added a phase to the type inference algorithm. After types are inferred, names
+are guessed for all unconstrained type variables. This will save on some
+irritating type constraints.
+@
+text
+@a6 1
+open Lib;
+a126 1
+
+d143 1
+a143 1
+      val div = Portable.Int.div and mod = Portable.Int.mod 
+a148 6
+
+(*---------------------------------------------------------------------------
+ * Use the "src" stream to generate new elements, not in "taken", up to 
+ * the quantity equal to the length of the list (1st parameter to V). The
+ * 2nd parameter to V is just the accumulator, which is not hidden.
+ *---------------------------------------------------------------------------*)
+d154 1
+a154 2
+             in V rst (v'::fresh)
+             end
+d190 1
+@
+
+
+1.5.4.3
+log
+@Change to accomodate a change to the type of the "before" combinator.
+@
+text
+@d38 2
+a39 2
+ * Type inference for HOL terms. Looks ugly because of error messages, which
+ * could be improved, but the algorithm itself is quite simple.
+d161 1
+a161 1
+                 val v' = state src before (next src;())
+@
+
+
+1.4
+log
+@First phase of hol90.8 development.  hol90 now compiles using NJSML-CM
+108.5, with separate compilation of libraries.  System dependencies
+have been isolated in the makefiles and "portable.sml".
+
+This involved a large number of enhancments to the source files,
+most of which are documented in the 7.changes file (or will be shortly).
+See also the correpsonding email corrspondence between RJB, KLS, TFM,
+JRH and DRS that happened during this development.
+@
+text
+@d115 1
+a115 1
+fun string_tl str = substring(str,1,(size str - 1))
+d169 1
+a169 1
+fun string_tl str = substring(str,1,(size str - 1))
+@
+
+
+1.3
+log
+@Check in after merging in Konrad's changes made after
+the release of hol90.7.  This involved creating a side branch
+in which to check in Konrad's changes, then merging in that
+side branch into the main development (which contains changes
+made by Elsa Gunter).
+
+Some other small modification have been made to the source code,
+as I begun to try to make this version into a working version:
+	- hol90 will now be compiled in an environment were no
+structures can be considered opn.  This means many structures
+now need "open Lib" and other such commands at their head.
+This has not yet been completed, but has been begun.
+	- "rotl" and "rotr" have been added to Lib, something
+which I just did impulsively.   Documentation files
+have also been added in help/90.
+@
+text
+@d117 1
+a117 1
+val ascii_dollar = Sml_system.String.ordof("$",0)
+d121 1
+a121 1
+  | strip_dollar s = if (Sml_system.String.ordof(s,0) = ascii_dollar) then (string_tl s) else s;
+d170 1
+a170 1
+val ascii_dollar = Sml_system.String.ordof("$",0)
+d173 1
+a173 1
+      if (Sml_system.String.ordof(s,0) = ascii_dollar)
+@
+
+
+1.2
+log
+@Keeping you up to date:
+
+I'm about to do a checkin of elsa's modifications to the hol90.7
+sources to create her hol90.pre8.  To recap what I've done:
+	- I checked out hol90 (in /usr/groups/hol/drs1004/hol90)
+		cvs co hol90
+	  (Well, to be honest, I only checked out those
+	  parts of hol90 I knew I'd be changing, e.g. not the
+	  Manual, and only parts of the library.  Checking out the
+	  entire source takes a while, mainly due to the enormous number
+	  of help files.  The limiting factor is files/second, which
+         runs at around 5 when CVS is working on nfs over a network, not
+         KB/second, which you might at first think it would be).
+
+	- By doing a recursive diff between Elsa's source and the
+	hol90.7 source I found all the changes Elsa had made to
+	source files.  I copied relevant files from Elsa's source
+	into my checked out version.  The only new files were
+		- the sml_system files in src/0
+		- some make scripts in src/.
+	Changed files were in:
+		src/{0,1,2,3}
+		library/arith/src/thm_convs.sml
+		library/list/src/list_conv1.sml
+		library/num/src/num_lib.sml
+		library/prog_logic/src/halts_logic.sml
+		library/prog_logic/src/translation.sml
+		library/prog_logic/theories/src/mk_halts.sml
+		library/real/theories/src/Make
+		library/real/theories/src/equiv.sml
+		library/real/theories/src/seq.sml
+		library/reduce/src/arithconv.sml
+		library/string/src/string_conv.sml
+		library/unity/theories/src/aux_definitions.sml
+		library/word/theories/src/*
+
+	- I will now commit these changes, with this email as the log message.
+		cvs commit
+
+	- Tomorrow I will get this version compiling
+	with NJSML 108 (I will probably add
+	the files to enable the NJSML compilation manager to make
+	this easier), then check those changes in.  I think it's
+	good to get things in a working state.
+@
+text
+@d38 1
+a112 1
+fun typecheck tm = (TC tm; tm);
+a113 2
+
+
+d121 1
+a121 4
+  | strip_dollar s = 
+      if (Sml_system.String.ordof(s,0) = ascii_dollar)
+      then (string_tl s)
+      else s;
+d164 1
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d1 2
+a2 1
+functor PRETERM (structure Term : Term_sig
+d11 4
+a14 3
+fun PRETERM_ERR{function,message} = HOL_ERR{origin_structure = "Preterm",
+					    origin_function = function,
+					    message = message}
+d55 2
+a56 2
+       handle (e as HOL_ERR{origin_structure="Type", 
+                            origin_function="unify",message}) =>
+d88 2
+a89 2
+       handle (e as HOL_ERR{origin_structure="Type", 
+                            origin_function="unify",message}) =>
+d119 1
+a119 1
+val ascii_dollar = ordof("$",0)
+d124 1
+a124 1
+      if (ordof(s,0) = ascii_dollar)
+d134 2
+a135 1
+      handle HOL_ERR{origin_structure="Type",origin_function="shrink_type",...}
+d148 2
+a149 1
+      handle HOL_ERR{origin_structure="Type",origin_function="shrink_type",...}
+d174 1
+a174 1
+val ascii_dollar = ordof("$",0)
+d177 1
+a177 1
+      if (ordof(s,0) = ascii_dollar)
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@
+
+
+1.1.1.1.2.1
+log
+@Konrad's bug fixes up to start of serious
+hol90.8 devel;opment.  Checked into branch revision for
+later merging with trunk (elsa's work).  See
+doc/7.chages for a full description of what's been done.
+@
+text
+@a35 1
+(* Type inference for HOL terms *)
+d110 1
+d112 2
+d121 4
+a124 1
+  | strip_dollar s = if (ordof(s,0) = ascii_dollar) then (string_tl s) else s;
+a164 1
+fun typecheck tm = (TC tm; typecheck_cleanup tm);
+@

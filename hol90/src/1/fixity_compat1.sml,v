@@ -1,0 +1,218 @@
+head	1.2;
+access;
+symbols;
+locks; strict;
+comment	@# @;
+
+
+1.2
+date	96.02.08.00.35.35;	author drs1004;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	96.01.04.13.48.39;	author drs1004;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.2
+log
+@New theory mechanism, code reorganisation and other enhancements by Don Syme.
+@
+text
+@
+
+
+signature FixityCompat1_sig =
+sig
+    structure Fixity : Fixity_sig
+    structure Thm : Thm_sig
+    val new_infix : {Name: string, Ty: Thm.Term.Type.typ, Prec: int} -> unit
+    val new_binder : {Name : string, Ty : Thm.Term.Type.typ} -> unit
+    val new_specification : {name :string,
+			     consts : {fixity : Fixity.fixity,
+				       const_name : string} list,
+			     sat_thm : Thm.thm} -> Thm.thm
+    val new_infix_definition :(string * Thm.Term.term * int) -> Thm.thm
+    val new_binder_definition : (string *  Thm.Term.term) -> Thm.thm
+(*    val infixes : string -> Thm.Term.term list
+    val binders : string -> Thm.Term.term list *)
+    val new_recursive_definition : {name : string, 
+				    fixity : Fixity.fixity,
+				    rec_axiom : Thm.thm,
+				    def : Thm.Term.term} -> Thm.thm
+end;
+    
+
+structure FixityCompat1 : FixityCompat1_sig =
+struct
+    structure Fixity = Fixity;
+    structure Thm = Thm;
+	
+    open Lib;
+    open Rterms;
+    open Fixity;
+    open Thm;
+	
+    val ERR = Exception.ERR "FixityCompat1";
+    val WRAP_ERR = Exception.WRAP_ERR "FixityCompat1";
+	
+	
+	
+    val is_binder_ty = can (dest_fun_ty o #dom o dest_fun_ty)
+    val is_infix_ty = can (dest_fun_ty o #ran o dest_fun_ty)
+
+    fun new_binder (c as {Name,Ty}) = 
+	if is_binder_ty Ty then
+	    let val x = Theory.new_constant c
+		val _ = Fixity.hol_binder Name
+	    in x
+	    end
+	else ERR ("new_binder", 
+		  "the type given for the new constant is not a binder type");
+	    
+
+    fun new_infix {Name,Ty,Prec} = 
+	if is_infix_ty Ty then
+	    let val x = Theory.new_constant {Name=Name,Ty=Ty}
+		val _ = Fixity.hol_infix Prec Name
+	    in x
+	    end
+	else ERR ("new_infix", 
+		  "the type given for the new constant is not an infix type");
+
+	
+    fun cname_def thm = #Name(dest_const(#1(strip_comb(lhs(#2(strip_forall (concl thm)))))));
+	
+    fun new_infix_definition(name,def,prec) = 
+	let val thm = Const_def.new_definition(name,def)
+	    val _ = Fixity.hol_infix prec (cname_def thm)
+	in thm
+	end    
+	handle e => WRAP_ERR("new_infix_definition",e);
+	    
+    fun new_binder_definition(name,def) = 
+	let val thm = Const_def.new_definition(name,def)
+	    val _ = Fixity.hol_binder (cname_def thm)
+	in thm
+	end
+	handle e => WRAP_ERR("new_binder_definition",e);
+
+    fun app_fix {fixity = Prefix,const_name} = Fixity.hol_prefix const_name
+      | app_fix {fixity = Infix n,const_name} = Fixity.hol_infix n const_name
+      | app_fix {fixity = Binder,const_name} = Fixity.hol_binder const_name;
+
+    fun new_specification{name, consts, sat_thm} =
+	let val def = Const_spec.new_specification(name,map #const_name consts,sat_thm)
+	    val _ = map app_fix consts
+	in def
+	end
+	handle e => WRAP_ERR("new_specification",e);
+
+    fun cname_rec_def thm = #Name(dest_const(#1(strip_comb(lhs(#2(strip_forall (el 1 (strip_conj (concl thm)))))))));
+    fun new_recursive_definition {name,fixity,rec_axiom,def} = 
+	let val thm = Prim_rec.new_recursive_definition {name=name,
+							 rec_axiom=rec_axiom,
+							 def=def}
+	    val _ = app_fix {fixity=fixity,const_name=cname_rec_def thm}
+	in thm
+	end;
+ 
+end;
+
+
+(*--------------------------------------------------------------------
+ * For compatibility (Const_spec)
+ * 
+ * fun n_strip_quant dest_fn 0 t = ([],t) |
+ *     n_strip_quant dest_fn n t =
+ *      let val {Bvar, Body} = dest_fn t
+ *          val (l,t'') = n_strip_quant dest_fn (n-1) Body
+ *      in
+ *      (Bvar::l, t'')
+ *      end;
+ * 
+ * 
+ * fun check_specification flag_name_prec_list th =
+ * (if not(Theory.draft_mode())
+ *  then ERR "not in draft mode"
+ *  else
+ *  if not(null(Thm.hyp th))
+ *  then  ERR "no assumptions to theorem allowed in specifications"
+ *  else 
+ *  if not(null(free_vars(Thm.concl th)))
+ *  then (ERR (itlist (fn t => fn s => "\""^(#Name(dest_var t))^"\" "^s)
+ *                        (free_vars(Thm.concl th))
+ *                        "is (are) unbound variable(s) in specification"))
+ *  else map (fn {const_name,...} =>
+ *              if (Theory.is_constant const_name)
+ *              then ERR ("attempt to specify an existing constant: "^const_name)
+ *              else if not(Lexis.allowed_term_constant const_name)
+ *              then ERR (const_name^ " is not an allowable constant name")
+ *              else ())
+ *           (flag_name_prec_list :{fixity:fixity,const_name:string} list);
+ * 
+ *  let val (vars,body) = n_strip_quant dest_exists
+ *                           (length flag_name_prec_list) 
+ * 			  (Thm.concl th)
+ *                        handle _ => 
+ *                         ERR "too few existentially quantified variables"
+ *  in
+ *  (map (fn var =>
+ *          if not(null(set_diff (type_vars_in_term body) 
+ *                                                 (type_vars_in_term var)))
+ *          then (ERR
+ *                        (itlist (fn vty => fn s => 
+ *                                  ((dest_vartype vty)^" "^s))
+ *                               (set_diff (type_vars_in_term body) 
+ *                                             (type_vars_in_term var))
+ *                               ("should occur in the type of "^
+ *                                 (#Name(dest_var var)))))
+ *          else ())
+ *       vars;
+ *   map2 (fn {fixity = Infix _,...} => (fn var =>
+ *              if (not(is_infix_type(type_of var)))
+ *              then  ERR (#Name(dest_var var)^
+ *                                         " doesn't have infix type")
+ *              else ())
+ *          | {fixity = Binder, ...} => (fn var =>
+ *              if (not(is_binder_type(type_of var)))
+ *              then  ERR (#Name(dest_var var)^
+ *                                         " doesn't have binder type")
+ *              else ())
+ *          | _ => fn _ => ())
+ *        flag_name_prec_list vars;
+ *   (vars,body)
+ *  )
+ *  end);
+ * 
+ * 
+ * end; (* CONST_SPEC *)
+ * 
+ * 
+ * 
+ * (* Make a new recursive function definition.				*)
+ * 
+ * 
+ *-------------------------------------------------------------------*)
+
+
+(* Auxiliary function to strip off n quantifiers *)
+@
+
+
+1.1
+log
+@Added simplifier components, added drule files, added MK_ABS_CONV, better error messages
+@
+text
+@d31 1
+a31 2
+    open Term;
+    open Dsyntax;
+@

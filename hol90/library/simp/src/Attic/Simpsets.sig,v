@@ -1,0 +1,141 @@
+head	1.1;
+access;
+symbols
+	HOL97:1.1.2.1.0.2
+	bpHOL97:1.1.2.1
+	hol90_9_alpha:1.1.2.1
+	hol90_pre8_for_multiple_compilers:1.1.0.2;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	96.08.06.12.24.00;	author rjb;	state dead;
+branches
+	1.1.2.1;
+next	;
+
+1.1.2.1
+date	96.08.06.12.24.01;	author rjb;	state Exp;
+branches
+	1.1.2.1.2.1;
+next	;
+
+1.1.2.1.2.1
+date	97.06.11.17.03.38;	author kxs;	state Exp;
+branches;
+next	1.1.2.1.2.2;
+
+1.1.2.1.2.2
+date	97.07.14.18.08.14;	author kxs;	state Exp;
+branches;
+next	1.1.2.1.2.3;
+
+1.1.2.1.2.3
+date	97.07.16.16.56.04;	author mn200;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@file Simpsets.sig was initially added on branch hol90_pre8_for_multiple_compilers.
+@
+text
+@@
+
+
+1.1.2.1
+log
+@New library simp.
+@
+text
+@a0 22
+signature Simpsets_sig =
+sig
+   local open Simplifier in
+     val bool_ss : simpset
+     val BOOL_ss : ssdata  
+       
+     val PAIR_ss : ssdata
+     val UNWIND_ss : ssdata
+     val NOT_ss : ssdata
+     val COMBIN_ss : ssdata
+     val LIST_ss : ssdata
+     val SUM_ss : ssdata 
+
+(* depth-1 prolog unification for finding existential variables. *)
+(* Still needs a little more work *)       
+    val SATISFY_REDUCER : Traverse.reducer;
+    val SATISFY_ss : ssdata
+       
+   end;
+end (* sig *)
+
+
+@
+
+
+1.1.2.1.2.1
+log
+@Konrad's changes to make it compile under SML109.26
+@
+text
+@d3 3
+a5 3
+   (* local open Simplifier in *)
+     val bool_ss : Simplifier.simpset
+     val BOOL_ss : Simplifier.ssdata  
+d7 6
+a12 6
+     val PAIR_ss : Simplifier.ssdata
+     val UNWIND_ss : Simplifier.ssdata
+     val NOT_ss : Simplifier.ssdata
+     val COMBIN_ss : Simplifier.ssdata
+     val LIST_ss : Simplifier.ssdata
+     val SUM_ss : Simplifier.ssdata 
+d17 1
+a17 1
+    val SATISFY_ss : Simplifier.ssdata
+d19 1
+a19 1
+(*   end; *)
+@
+
+
+1.1.2.1.2.2
+log
+@The "simp" library now loads under CM.
+@
+text
+@d3 1
+d6 1
+d19 1
+@
+
+
+1.1.2.1.2.3
+log
+@Added CONG_ss to Simpsets.{sig,sml}.  This new ssdata contains the
+congruences that have been removed from BOOL_ss.  Both bool_ss and hol_ss
+are unchanged in their behaviour as these both now merge in CONG_ss.
+@
+text
+@d4 1
+a4 2
+     val BOOL_ss : Simplifier.ssdata
+     val CONG_ss : Simplifier.ssdata
+d10 1
+a10 1
+     val SUM_ss : Simplifier.ssdata
+d13 1
+a13 1
+(* Still needs a little more work *)
+d16 1
+a16 1
+
+@

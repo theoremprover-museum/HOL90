@@ -1,0 +1,798 @@
+head	1.4;
+access;
+symbols
+	HOL97:1.2.0.4
+	bpHOL97:1.2
+	hol90_9_alpha:1.2
+	hol90_pre8_for_multiple_compilers:1.2.0.2
+	hol90_pre8_after_donalds_separate_compilation_changes:1.2
+	hol90_8_after_merging_Konrad_Elsa:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.4
+date	96.02.08.00.36.11;	author drs1004;	state Exp;
+branches;
+next	1.3;
+
+1.3
+date	96.01.04.13.48.53;	author drs1004;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	95.10.31.15.05.23;	author drs1004;	state Exp;
+branches
+	1.2.4.1;
+next	1.1;
+
+1.1
+date	95.10.16.13.30.14;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.30.14;	author rjb;	state Exp;
+branches
+	1.1.1.1.2.1;
+next	;
+
+1.1.1.1.2.1
+date	95.10.18.10.09.26;	author drs1004;	state Exp;
+branches;
+next	;
+
+1.2.4.1
+date	97.06.11.17.50.29;	author kxs;	state Exp;
+branches;
+next	1.2.4.2;
+
+1.2.4.2
+date	97.07.11.15.16.11;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.4
+log
+@New theory mechanism, code reorganisation and other enhancements by Don Syme.
+@
+text
+@(* ===================================================================== *)
+(* FILE          : rewrite.sml                                           *)
+(* DESCRIPTION   : The rewriting routines. Translated from hol88.        *)
+(*                                                                       *)
+(* AUTHOR        : (c) Larry Paulson, University of Cambridge, for hol88 *)
+(* TRANSLATOR    : Konrad Slind, University of Calgary                   *)
+(* DATE          : September 11, 1991                                    *)
+(* REVISED       : November 1994, to encapsulate the type of rewrite     *)
+(*                 rules. (KLS)                                          *)
+(* ===================================================================== *)
+
+
+structure Plain_rewrite :Plain_rewrite_sig =
+struct
+
+    open Lib Parse Rterms;
+    open Thm Drule Conv Rules Tactical Tactic;
+	infix THEN ORELSE
+    
+    
+infix 3 ##
+
+val ERR = Exception.ERR "Plain_ewrite";
+
+(*-----------------------------------------------------------------------------
+ * Split a theorem into a list of theorems suitable for rewriting:
+ *
+ *   1. Specialize all variables (SPEC_ALL).
+ *
+ *   2. Then do the following:
+ *
+ *        |- t1 /\ t2     -->    [|- t1 ; |- t2]
+ *
+ *   3. Then |- t --> |- t = T and |- ~t --> |- t = F
+ *
+ *---------------------------------------------------------------------------*)
+fun mk_rewrites th =
+  let val th = SPEC_ALL th
+      val t = Thm.concl th 
+  in 
+  if (is_eq t)
+  then [th]
+  else if (is_conj t)
+       then (op @@ o (mk_rewrites##mk_rewrites) o CONJ_PAIR) th
+       else if (is_neg t)
+            then [EQF_INTRO th]
+            else [EQT_INTRO th]
+  end
+  handle _ => ERR("mk_rewrites","");
+
+
+(* An abstract datatype of rewrite rule sets. *)
+
+datatype rewrites = RW of {thms :Thm.thm list,  net :Abbrev.conv Net.net}
+fun dest_rewrites(RW{thms, ...}) = thms
+val empty_rewrites = RW{thms = [],  net = Net.empty_net}
+
+ (* Create a conversion from some rewrites *)
+fun REWRITES_CONV (RW{net,...}) tm = FIRST_CONV (Net.lookup tm net) tm;
+
+fun add_rewrites (RW{thms,net}) thl =
+    RW{thms = thms@@thl,
+       net = itlist Net.enter
+       (map (fn th => (lhs(concl th), REWR_CONV th))
+	(itlist (append o mk_rewrites) thl [])) net}
+
+val implicit = ref empty_rewrites;
+fun implicit_rewrites() = #thms ((fn (RW x) => x) (!implicit));
+fun set_implicit_rewrites thl =
+    implicit := add_rewrites empty_rewrites thl;
+fun add_implicit_rewrites thl = 
+    implicit := add_rewrites (!implicit) thl;
+
+
+(*
+ local open PP
+ in
+
+ fun pp_rewrites ppstrm (RW{thms,...}) =
+    let val {add_string,add_break,begin_block,end_block,add_newline,...} = 
+               with_ppstream ppstrm
+        val pp_thm = Thm.pp_thm ppstrm
+        val thms' = flatten (map mk_rewrites thms)
+        val how_many = length thms'
+    in begin_block PP.CONSISTENT 0;
+       if (how_many = 0)
+       then (add_string "<empty rule set>")
+       else ( begin_block PP.INCONSISTENT 0;
+              pr_list pp_thm (fn () => add_string";")
+                             (fn () => add_break(2,0))
+                             thms';
+              end_block());
+       add_newline();
+       add_string("Number of rewrite rules = "^Lib.int_to_string how_many);
+       add_newline();
+       end_block()
+    end;
+ end; (*local *)
+*)
+
+
+(* Derived manipulations *)
+
+val _ = set_implicit_rewrites BOOL_SIMPS;
+
+(* =====================================================================*)
+(* Main rewriting conversion                         			*)
+(* =====================================================================*)
+
+fun GEN_REWRITE_CONV rw_func rws thl = 
+   rw_func (REWRITES_CONV (add_rewrites rws thl));
+
+(* ---------------------------------------------------------------------*)
+(* Rewriting conversions.                        			*)
+(* ---------------------------------------------------------------------*)
+
+val PURE_REWRITE_CONV = GEN_REWRITE_CONV TOP_DEPTH_CONV empty_rewrites
+and 
+PURE_ONCE_REWRITE_CONV = GEN_REWRITE_CONV ONCE_DEPTH_CONV empty_rewrites;
+ 
+fun REWRITE_CONV thl = GEN_REWRITE_CONV TOP_DEPTH_CONV 
+                                        (!implicit) thl
+and ONCE_REWRITE_CONV thl = GEN_REWRITE_CONV ONCE_DEPTH_CONV 
+                                        (!implicit) thl;
+
+(* Main rewriting rule *)
+fun GEN_REWRITE_RULE f rws = CONV_RULE o GEN_REWRITE_CONV f rws;
+
+val PURE_REWRITE_RULE = GEN_REWRITE_RULE TOP_DEPTH_CONV empty_rewrites
+and 
+PURE_ONCE_REWRITE_RULE = GEN_REWRITE_RULE ONCE_DEPTH_CONV empty_rewrites;
+
+fun REWRITE_RULE thl = GEN_REWRITE_RULE TOP_DEPTH_CONV 
+                                        (!implicit) thl
+and ONCE_REWRITE_RULE thl = GEN_REWRITE_RULE ONCE_DEPTH_CONV
+                                             (!implicit) thl;
+
+(* Rewrite a theorem with the help of its assumptions *)
+
+fun PURE_ASM_REWRITE_RULE thl th =
+   PURE_REWRITE_RULE ((map Thm.ASSUME (Thm.hyp th)) @@ thl) th
+and 
+PURE_ONCE_ASM_REWRITE_RULE thl th =
+   PURE_ONCE_REWRITE_RULE ((map Thm.ASSUME (Thm.hyp th)) @@ thl) th
+and 
+ASM_REWRITE_RULE thl th = 
+   REWRITE_RULE ((map Thm.ASSUME (Thm.hyp th)) @@ thl) th
+and 
+ONCE_ASM_REWRITE_RULE thl th = 
+   ONCE_REWRITE_RULE ((map Thm.ASSUME (Thm.hyp th)) @@ thl) th;
+
+
+(* Main rewriting tactic *)
+
+fun GEN_REWRITE_TAC f rws = CONV_TAC o GEN_REWRITE_CONV f rws;
+
+val PURE_REWRITE_TAC = GEN_REWRITE_TAC TOP_DEPTH_CONV empty_rewrites
+and 
+PURE_ONCE_REWRITE_TAC = GEN_REWRITE_TAC ONCE_DEPTH_CONV empty_rewrites;
+
+fun REWRITE_TAC thl = GEN_REWRITE_TAC TOP_DEPTH_CONV (!implicit)
+                                      thl
+and ONCE_REWRITE_TAC thl = 
+    GEN_REWRITE_TAC ONCE_DEPTH_CONV (!implicit) thl;
+
+
+(* Rewrite a goal with the help of its assumptions *)
+
+fun PURE_ASM_REWRITE_TAC thl  = 
+   Tactical.ASSUM_LIST (fn asl => PURE_REWRITE_TAC (asl @@ thl))
+and ASM_REWRITE_TAC thl       = 
+   Tactical.ASSUM_LIST (fn asl => REWRITE_TAC (asl @@ thl))
+and PURE_ONCE_ASM_REWRITE_TAC thl  = 
+   Tactical.ASSUM_LIST (fn asl => PURE_ONCE_REWRITE_TAC (asl @@ thl))
+and ONCE_ASM_REWRITE_TAC thl  = 
+   Tactical.ASSUM_LIST (fn asl => ONCE_REWRITE_TAC (asl @@ thl));
+
+(* Rewriting using equations that satisfy a predicate  *)
+fun FILTER_PURE_ASM_REWRITE_RULE f thl th =
+    PURE_REWRITE_RULE ((map Thm.ASSUME (filter f (Thm.hyp th))) @@ thl) th
+and FILTER_ASM_REWRITE_RULE f thl th = 
+    REWRITE_RULE ((map Thm.ASSUME (filter f (Thm.hyp th))) @@ thl) th
+and FILTER_PURE_ONCE_ASM_REWRITE_RULE f thl th =
+    PURE_ONCE_REWRITE_RULE ((map Thm.ASSUME (filter f (Thm.hyp th))) @@ thl) th
+and FILTER_ONCE_ASM_REWRITE_RULE f thl th = 
+    ONCE_REWRITE_RULE ((map Thm.ASSUME (filter f (Thm.hyp th))) @@ thl) th;;
+
+fun FILTER_PURE_ASM_REWRITE_TAC f thl =
+    Tactical.ASSUM_LIST 
+          (fn asl => PURE_REWRITE_TAC ((filter (f o Thm.concl) asl)@@thl))
+and FILTER_ASM_REWRITE_TAC f thl =
+    Tactical.ASSUM_LIST
+          (fn asl => REWRITE_TAC ((filter (f o Thm.concl) asl) @@ thl))
+and FILTER_PURE_ONCE_ASM_REWRITE_TAC f thl =
+    Tactical.ASSUM_LIST
+         (fn asl => PURE_ONCE_REWRITE_TAC ((filter (f o Thm.concl) asl) @@ thl))
+and FILTER_ONCE_ASM_REWRITE_TAC f thl =
+    Tactical.ASSUM_LIST 
+          (fn asl => ONCE_REWRITE_TAC ((filter (f o Thm.concl) asl) @@ thl));
+
+
+(***************************************************************************
+ * SUBST_MATCH (|-u=v) th   searches for an instance of u in
+ * (the conclusion of) th and then substitutes the corresponding
+ * instance of v. Much faster than rewriting.
+ ****************************************************************************)
+local
+(* Search a sub-term of t matching u *)
+exception FIND_MATCH_ERR;
+fun find_match u =
+   let fun find_mt t =
+          Match.match_term u t
+          handle _ =>
+          find_mt(Term.rator t)
+          handle _ =>
+          find_mt(Term.rand t)
+          handle _ =>
+          find_mt(#Body(Term.dest_abs t))
+          handle _ =>
+          raise FIND_MATCH_ERR
+   in
+   find_mt
+   end
+in
+fun SUBST_MATCH eqth th =
+   let val (tm_inst,ty_inst) = find_match (Dsyntax.lhs(Thm.concl eqth))
+                                          (Thm.concl th)
+   in
+   SUBS [INST tm_inst (Thm.INST_TYPE ty_inst eqth)] th
+   end
+   handle _ => ERR("SUBST_MATCH","")
+end;
+
+
+(* Possible further simplifications:
+
+  |- !t. ((\x.t1) t2)  =  t1
+
+  |- !t P. (!x. t /\ P x) = (t /\ (!x. P x))
+
+  |- !x:*. (@@x'.x'=x) = x
+
+  |- !t1 t2 t3. (t1\/t2) ==> t3   =   (t1==>t3) /\ (t2==>t3)  
+
+  |- !t1 t2 t3.  (t1\/t2) /\ t3   =   (t1/\t3) \/ (t2/\t3)   
+
+  |- !t1 t2 t3.  t3 /\ (t1\/t2)   =   (t3/\t1) \/ (t3/\t2)   
+
+  |- !t P.  (?x.P x) ==> t   =   !x'.(P x' ==> t)
+
+  |- !t P.  (?x.P x) /\ t   =   ?x'.(P x' /\ t)
+
+  |- !t P.  t /\ (?x.P x)   =   ?x'.(t /\ P x')
+
+  |- !t1 t2:bool.  (t1 = t2)  =  (t1==>t2  /\  t2==>t1)
+
+*)
+
+fun W f x = f x x;;
+val TAUT =
+  let fun RTAUT_TAC (asl,w) =
+      let fun ok t = 
+	  type_of t = bool_ty andalso can (find_term is_var) t andalso 
+	  free_in t w 
+      in (REPEAT(W((fn x => REWRITE_TAC[] THEN x) o BOOL_CASES_TAC o
+		 hd o sort free_in o (find_terms ok) o snd)) THEN
+	  REWRITE_TAC []) (asl,w) 
+      end
+      val TAUT_TAC = REPEAT(GEN_TAC ORELSE CONJ_TAC) THEN RTAUT_TAC 
+  in fn tm => prove(tm,TAUT_TAC)
+  end;;
+
+
+end; (* REWRITE *)
+
+
+@
+
+
+1.3
+log
+@Added simplifier components, added drule files, added MK_ABS_CONV, better error messages
+@
+text
+@d13 1
+a13 1
+structure Rewrite :Rewrite_sig =
+a14 2
+(* structure Base_logic = Base_logic *)
+structure Thm = Thm
+d16 3
+a18 6
+open Exception
+(* open Base_logic - no longer needed DRS *)
+open Lib
+open Parse;
+open Conv;
+open Rterms;
+d23 1
+a23 1
+val ERR = Exception.ERR "Rewrite";
+d38 1
+a38 1
+  let val th = Drule.SPEC_ALL th
+d41 1
+a41 1
+  if (Dsyntax.is_eq t)
+d43 5
+a47 5
+  else if (Dsyntax.is_conj t)
+       then (op @@ o (mk_rewrites##mk_rewrites) o Drule.CONJ_PAIR) th
+       else if (Dsyntax.is_neg t)
+            then [Drule.EQF_INTRO th]
+            else [Drule.EQT_INTRO th]
+d54 3
+a56 7
+abstype rewrites = RW of {thms :Thm.thm list,  net :Abbrev.conv Net.net}
+with
+ fun dest_rewrites(RW{thms, ...}) = thms
+ val empty_rewrites = RW{thms = [],  net = Net.empty_net}
+ val implicit = ref empty_rewrites;
+ fun implicit_rewrites() = !implicit
+ fun set_implicit_rewrites rws = (implicit := rws);
+d59 1
+a59 1
+ fun REWRITES_CONV (RW{net,...}) tm = FIRST_CONV (Net.lookup tm net) tm;
+d61 15
+a77 7
+ fun add_rewrites (RW{thms,net}) thl =
+    RW{thms = thms@@thl,
+       net = itlist Net.enter
+                    (map (fn th => (Dsyntax.lhs(Thm.concl th), 
+                                    REWR_CONV th))
+                         (itlist (append o mk_rewrites) thl []))
+                    net}
+d98 2
+a100 2
+ end; (*local *)
+end; (* abstype *)
+d104 1
+a104 11
+fun add_implicit_rewrites thl = 
+    set_implicit_rewrites (add_rewrites (implicit_rewrites()) thl);
+
+val bool_rewrites = add_rewrites empty_rewrites
+                         [Drule.REFL_CLAUSE,  Drule.EQ_CLAUSES,
+                          Drule.NOT_CLAUSES,  Drule.AND_CLAUSES,
+                          Drule.OR_CLAUSES,   Drule.IMP_CLAUSES,
+                          Drule.COND_CLAUSES, Drule.FORALL_SIMP,
+                          Drule.EXISTS_SIMP,  Drule.ABS_SIMP];
+
+val _ = set_implicit_rewrites bool_rewrites;
+d122 1
+a122 1
+                                        (implicit_rewrites()) thl
+d124 1
+a124 1
+                                        (implicit_rewrites()) thl;
+d134 1
+a134 1
+                                        (implicit_rewrites()) thl
+d136 1
+a136 1
+                                             (implicit_rewrites()) thl;
+d161 1
+a161 1
+fun REWRITE_TAC thl = GEN_REWRITE_TAC TOP_DEPTH_CONV (implicit_rewrites())
+d164 1
+a164 1
+    GEN_REWRITE_TAC ONCE_DEPTH_CONV (implicit_rewrites()) thl;
+d229 1
+a229 1
+   Drule.SUBS [Drule.INST tm_inst (Thm.INST_TYPE ty_inst eqth)] th
+d259 15
+@
+
+
+1.2
+log
+@First phase of hol90.8 development.  hol90 now compiles using NJSML-CM
+108.5, with separate compilation of libraries.  System dependencies
+have been isolated in the makefiles and "portable.sml".
+
+This involved a large number of enhancments to the source files,
+most of which are documented in the 7.changes file (or will be shortly).
+See also the correpsonding email corrspondence between RJB, KLS, TFM,
+JRH and DRS that happened during this development.
+@
+text
+@a17 3
+type tactic = Abbrev.tactic;
+type conv = Abbrev.conv;
+
+d21 5
+a25 2
+open Term_io.Parse;
+
+d28 1
+a28 5
+fun REWRITE_ERR{function,message} = 
+        HOL_ERR{origin_structure = "Rewrite",
+                origin_function = function,
+                message = message}
+
+d54 1
+a54 1
+  handle _ => raise REWRITE_ERR{function = "mk_rewrites",message = ""};
+d59 1
+a59 1
+abstype rewrites = RW of {thms :Thm.thm list,  net :conv Net.net}
+d68 1
+a68 1
+ fun REWRITES_CONV (RW{net,...}) tm = Conv.FIRST_CONV (Net.lookup tm net) tm;
+d76 1
+a76 1
+                                    Conv.REWR_CONV th))
+d121 1
+a121 1
+fun GEN_REWRITE_CONV (rw_func:conv->conv) rws thl = 
+d128 1
+a128 1
+val PURE_REWRITE_CONV = GEN_REWRITE_CONV Conv.TOP_DEPTH_CONV empty_rewrites
+d130 1
+a130 1
+PURE_ONCE_REWRITE_CONV = GEN_REWRITE_CONV Conv.ONCE_DEPTH_CONV empty_rewrites;
+d132 1
+a132 1
+fun REWRITE_CONV thl = GEN_REWRITE_CONV Conv.TOP_DEPTH_CONV 
+d134 1
+a134 1
+and ONCE_REWRITE_CONV thl = GEN_REWRITE_CONV Conv.ONCE_DEPTH_CONV 
+d138 1
+a138 1
+fun GEN_REWRITE_RULE f rws = Conv.CONV_RULE o GEN_REWRITE_CONV f rws;
+d140 1
+a140 1
+val PURE_REWRITE_RULE = GEN_REWRITE_RULE Conv.TOP_DEPTH_CONV empty_rewrites
+d142 1
+a142 1
+PURE_ONCE_REWRITE_RULE = GEN_REWRITE_RULE Conv.ONCE_DEPTH_CONV empty_rewrites;
+d144 1
+a144 1
+fun REWRITE_RULE thl = GEN_REWRITE_RULE Conv.TOP_DEPTH_CONV 
+d146 1
+a146 1
+and ONCE_REWRITE_RULE thl = GEN_REWRITE_RULE Conv.ONCE_DEPTH_CONV
+d166 1
+a166 1
+fun GEN_REWRITE_TAC f rws = Conv.CONV_TAC o GEN_REWRITE_CONV f rws;
+d168 1
+a168 1
+val PURE_REWRITE_TAC = GEN_REWRITE_TAC Conv.TOP_DEPTH_CONV empty_rewrites
+d170 1
+a170 1
+PURE_ONCE_REWRITE_TAC = GEN_REWRITE_TAC Conv.ONCE_DEPTH_CONV empty_rewrites;
+d172 1
+a172 1
+fun REWRITE_TAC thl = GEN_REWRITE_TAC Conv.TOP_DEPTH_CONV (implicit_rewrites())
+d175 1
+a175 1
+    GEN_REWRITE_TAC Conv.ONCE_DEPTH_CONV (implicit_rewrites()) thl;
+d180 1
+a180 1
+fun PURE_ASM_REWRITE_TAC thl :tactic = 
+d182 1
+a182 1
+and ASM_REWRITE_TAC thl :tactic      = 
+d184 1
+a184 1
+and PURE_ONCE_ASM_REWRITE_TAC thl :tactic = 
+d186 1
+a186 1
+and ONCE_ASM_REWRITE_TAC thl :tactic      = 
+d242 1
+a242 1
+   handle _ => raise REWRITE_ERR{function = "SUBST_MATCH",message = ""}
+@
+
+
+1.2.4.1
+log
+@Various updates have been made in order to build on top of SML/NJ 109.26.
+@
+text
+@d24 1
+a24 1
+open Parse;
+@
+
+
+1.2.4.2
+log
+@Minor changes to make HOL CM-friendly.
+@
+text
+@d15 2
+a16 3
+
+structure Thm = CoreHol.Thm
+open CoreHol;
+d22 1
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d8 2
+d15 2
+a16 1
+structure Base_logic = Base_logic
+d18 6
+a23 1
+open Base_logic;
+d26 2
+d34 29
+d65 1
+a65 1
+
+d67 3
+a69 2
+
+ val base = ref empty_rewrites;
+d71 2
+a72 25
+ local
+ (* Split a theorem into a list of theorems suitable for rewriting:
+  *
+  *   1. Specialize all variables (SPEC_ALL).
+  *
+  *   2. Then do the following:
+  *
+  *        |- t1 /\ t2     -->    [|- t1 ; |- t2]
+  *
+  *   3. Then |- t --> |- t = T and |- ~t --> |- t = F
+  *
+  ***************************************************************)
+ fun mk_rewrites th =
+    let val th = Drule.SPEC_ALL th
+        val t = Thm.concl th 
+    in 
+    if (Dsyntax.is_eq t)
+    then [th]
+    else if (Dsyntax.is_conj t)
+         then (op @@ o (mk_rewrites##mk_rewrites) o Drule.CONJ_PAIR) th
+         else if (Dsyntax.is_neg t)
+              then [Drule.EQF_INTRO th]
+              else [Drule.EQT_INTRO th]
+    end
+    handle _ => raise REWRITE_ERR{function = "mk_rewrites",message = ""}
+d74 1
+a74 1
+ open PP
+d102 1
+d104 2
+a105 3
+end;
+
+ end;
+d107 1
+d109 2
+a110 1
+ fun set_base_rewrites rws = (base := rws);
+d112 1
+a112 6
+ fun base_rewrites() = !base
+
+ fun add_base_rewrites thl = (base := add_rewrites (base_rewrites()) thl);
+
+ val _ = set_base_rewrites 
+           (add_rewrites empty_rewrites
+d117 1
+a117 7
+                          Drule.EXISTS_SIMP,  Drule.ABS_SIMP]);
+
+(* Create a conversion from some rewrites *)
+fun REWRITES_CONV (RW{net,...}) tm = Conv.FIRST_CONV (Net.lookup tm net) tm;
+
+
+end; (* abstype *)
+d119 1
+d137 1
+a137 1
+                                        (base_rewrites()) thl
+d139 1
+a139 1
+                                        (base_rewrites()) thl;
+d149 1
+a149 1
+                                        (base_rewrites()) thl
+d151 1
+a151 1
+                                             (base_rewrites()) thl;
+d176 2
+a177 1
+fun REWRITE_TAC thl = GEN_REWRITE_TAC Conv.TOP_DEPTH_CONV (base_rewrites()) thl
+d179 1
+a179 1
+    GEN_REWRITE_TAC Conv.ONCE_DEPTH_CONV (base_rewrites()) thl;
+d217 1
+a217 1
+(*
+d221 1
+a221 1
+*)
+d275 2
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@
+
+
+1.1.1.1.2.1
+log
+@	Konrad's bug fixes and further development to hol90.7 after it's release.
+	Checked n on a side branch for later merging with the main trunk
+	(Elsa's revisions).  See doc/7.changes for details.
+@
+text
+@a7 2
+(* REVISED       : November 1994, to encapsulate the type of rewrite     *)
+(*                 rules. (KLS)                                          *)
+a23 29
+(*-----------------------------------------------------------------------------
+ * Split a theorem into a list of theorems suitable for rewriting:
+ *
+ *   1. Specialize all variables (SPEC_ALL).
+ *
+ *   2. Then do the following:
+ *
+ *        |- t1 /\ t2     -->    [|- t1 ; |- t2]
+ *
+ *   3. Then |- t --> |- t = T and |- ~t --> |- t = F
+ *
+ *---------------------------------------------------------------------------*)
+fun mk_rewrites th =
+  let val th = Drule.SPEC_ALL th
+      val t = Thm.concl th 
+  in 
+  if (Dsyntax.is_eq t)
+  then [th]
+  else if (Dsyntax.is_conj t)
+       then (op @@ o (mk_rewrites##mk_rewrites) o Drule.CONJ_PAIR) th
+       else if (Dsyntax.is_neg t)
+            then [Drule.EQF_INTRO th]
+            else [Drule.EQT_INTRO th]
+  end
+  handle _ => raise REWRITE_ERR{function = "mk_rewrites",message = ""};
+
+
+(* An abstract datatype of rewrite rule sets. *)
+
+d26 1
+a26 1
+ fun dest_rewrites(RW{thms, ...}) = thms
+a27 3
+ val implicit = ref empty_rewrites;
+ fun implicit_rewrites() = !implicit
+ fun set_implicit_rewrites rws = (implicit := rws);
+d29 1
+a29 2
+ (* Create a conversion from some rewrites *)
+ fun REWRITES_CONV (RW{net,...}) tm = Conv.FIRST_CONV (Net.lookup tm net) tm;
+d31 27
+a57 1
+ local open PP
+d85 4
+a88 1
+    end;
+d90 2
+a91 2
+ end; (*local *)
+end; (* abstype *)
+d93 1
+a93 1
+(* Derived manipulations *)
+d95 1
+a95 2
+fun add_implicit_rewrites thl = 
+    set_implicit_rewrites (add_rewrites (implicit_rewrites()) thl);
+d97 2
+a98 1
+val bool_rewrites = add_rewrites empty_rewrites
+d103 7
+a109 1
+                          Drule.EXISTS_SIMP,  Drule.ABS_SIMP];
+a110 1
+val _ = set_implicit_rewrites bool_rewrites;
+d128 1
+a128 1
+                                        (implicit_rewrites()) thl
+d130 1
+a130 1
+                                        (implicit_rewrites()) thl;
+d140 1
+a140 1
+                                        (implicit_rewrites()) thl
+d142 1
+a142 1
+                                             (implicit_rewrites()) thl;
+d167 1
+a167 2
+fun REWRITE_TAC thl = GEN_REWRITE_TAC Conv.TOP_DEPTH_CONV (implicit_rewrites())
+                                      thl
+d169 1
+a169 1
+    GEN_REWRITE_TAC Conv.ONCE_DEPTH_CONV (implicit_rewrites()) thl;
+d207 1
+a207 1
+(***************************************************************************
+d211 1
+a211 1
+ ****************************************************************************)
+@

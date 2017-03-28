@@ -1,0 +1,901 @@
+<TITLE>Theory: leadsto</TITLE>
+<H1>Theory: leadsto</H1>
+<H1>Parents</H1>
+    <UL>
+    <LI><A HREF = "gen_induct.html"><STRONG>gen_induct</STRONG></A>
+    </UL>
+
+
+<HR>
+<H1>Type constants</H1>
+    <UL>
+    
+    </UL>
+
+
+<HR>
+<H1>Term constants</H1>
+    <UL>
+    <LI><STRONG>LUB</STRONG><EM>:(('a -> bool) -> bool) -> 'a -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>In</STRONG><EM>:('a -> bool) -> (('a -> bool) -> bool) ->
+                                bool</EM>
+        <STRONG>{</STRONG>fixity  = Infix 450<STRONG>}</STRONG>
+    <LI><STRONG>LeadstoRel</STRONG><EM>:(('a -> bool) -> ('a -> bool) ->
+                                        ('a -> 'a) list -> bool) ->
+                                        ('a -> 'a) list -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>LEADSTO</STRONG><EM>:('a -> bool) -> ('a -> bool) ->
+                                     ('a -> 'a) list -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Infix 425<STRONG>}</STRONG>
+    <LI><STRONG>LEADSTO2Fn</STRONG><EM>:(('a -> bool) -> ('a -> bool) ->
+                                        ('a -> 'a) list -> bool) ->
+                                        ('a -> bool) -> ('a -> bool) ->
+                                        ('a -> 'a) list -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>LEADSTO2</STRONG><EM>:('a -> bool) -> ('a -> bool) ->
+                                      ('a -> 'a) list -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>LEADSTO2Fam</STRONG><EM>:(('a -> bool) -> ('a -> bool) ->
+                                         ('a -> 'a) list -> bool) ->
+                                         ('a -> 'a) list -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>EQmetric</STRONG><EM>:('a -> num) -> num -> 'a -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Infix 450<STRONG>}</STRONG>
+    <LI><STRONG>LESSmetric</STRONG><EM>:('a -> num) -> num -> 'a -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Infix 450<STRONG>}</STRONG>
+    </UL>
+
+
+<HR>
+<H1>Axioms</H1>
+<DL>
+
+</DL>
+
+
+<HR>
+<H1>Definitions</H1>
+<DL>
+<DT><STRONG>LUB</STRONG>
+<DD>
+<PRE>
+|- !P. LUB P = (\s. ?p. P p /\ p s)
+</PRE>
+
+<DT><STRONG>In</STRONG>
+<DD>
+<PRE>
+|- !p P. p In P = P p
+</PRE>
+
+<DT><STRONG>LeadstoRel</STRONG>
+<DD>
+<PRE>
+|- !R Pr.
+     LeadstoRel R Pr =
+     (!p q.
+       ((p ENSURES q) Pr ==> R p q Pr) /\
+       (!r. R p r Pr /\ R r q Pr ==> R p q Pr) /\
+       (!P. (p = LUB P) /\ (!p. p In P ==> R p q Pr) ==> R p q Pr))
+</PRE>
+
+<DT><STRONG>LEADSTO</STRONG>
+<DD>
+<PRE>
+|- !p q Pr. (p LEADSTO q) Pr = (!R. LeadstoRel R Pr ==> R p q Pr)
+</PRE>
+
+<DT><STRONG>LEADSTO2Fn</STRONG>
+<DD>
+<PRE>
+|- !R.
+     LEADSTO2Fn R =
+     (\p q Pr.
+       (p ENSURES q) Pr \/
+       (?r. (p ENSURES r) Pr /\ R r q Pr) \/
+       (?P. (p = LUB P) /\ (!p. p In P ==> R p q Pr)))
+</PRE>
+
+<DT><STRONG>LEADSTO2</STRONG>
+<DD>
+<PRE>
+|- !p q Pr.
+     LEADSTO2 p q Pr =
+     (!R. (!p q. LEADSTO2Fn R p q Pr ==> R p q Pr) ==> R p q Pr)
+</PRE>
+
+<DT><STRONG>LEADSTO2Fam</STRONG>
+<DD>
+<PRE>
+|- !R Pr.
+     LEADSTO2Fam R Pr =
+     (!p q.
+       ((p ENSURES q) Pr ==> R p q Pr) /\
+       (!r. (p ENSURES r) Pr /\ R r q Pr ==> R p q Pr) /\
+       (!P. (!p. p In P ==> R p q Pr) ==> R (LUB P) q Pr))
+</PRE>
+
+<DT><STRONG>EQmetric</STRONG>
+<DD>
+<PRE>
+|- !M m. M EQmetric m = (\s. M s = m)
+</PRE>
+
+<DT><STRONG>LESSmetric</STRONG>
+<DD>
+<PRE>
+|- !M m. M LESSmetric m = (\s. M s < m)
+</PRE>
+
+</DL>
+
+
+<HR>
+<H1>Theorems</H1>
+<DL>
+<DT><STRONG>LEADSTO_thm0</STRONG>
+<DD>
+<PRE>
+|- !p q Pr. (p ENSURES q) Pr ==> (p LEADSTO q) Pr
+</PRE>
+
+<DT><STRONG>LEADSTO_thm1</STRONG>
+<DD>
+<PRE>
+|- !p r q Pr. (p LEADSTO r) Pr /\ (r LEADSTO q) Pr ==> (p LEADSTO q) Pr
+</PRE>
+
+<DT><STRONG>LEADSTO_thm2</STRONG>
+<DD>
+<PRE>
+|- !p r q Pr. (p ENSURES r) Pr /\ (r LEADSTO q) Pr ==> (p LEADSTO q) Pr
+</PRE>
+
+<DT><STRONG>LEADSTO_thm2a</STRONG>
+<DD>
+<PRE>
+|- !p r q Pr. (p ENSURES r) Pr /\ (r ENSURES q) Pr ==> (p LEADSTO q) Pr
+</PRE>
+
+<DT><STRONG>LEADSTO_thm3</STRONG>
+<DD>
+<PRE>
+|- !p P q Pr.
+     (p = LUB P) /\ (!p. p In P ==> (p LEADSTO q) Pr) ==> (p LEADSTO q) Pr
+</PRE>
+
+<DT><STRONG>LEADSTO_thm3a</STRONG>
+<DD>
+<PRE>
+|- !P q Pr. (!p. p In P ==> (p LEADSTO q) Pr) ==> (LUB P LEADSTO q) Pr
+</PRE>
+
+<DT><STRONG>LEADSTO_thm3c</STRONG>
+<DD>
+<PRE>
+|- !P q Pr. (!i. (P i LEADSTO q) Pr) ==> ($?* P LEADSTO q) Pr
+</PRE>
+
+<DT><STRONG>LEADSTO_thm4</STRONG>
+<DD>
+<PRE>
+|- !p1 p2 q Pr.
+     (p1 LEADSTO q) Pr /\ (p2 LEADSTO q) Pr ==> (p1 \/* p2 LEADSTO q) Pr
+</PRE>
+
+<DT><STRONG>LEADSTO_thm5</STRONG>
+<DD>
+<PRE>
+|- !p q Pr.
+     (p ENSURES q) Pr \/
+     (?r. (p LEADSTO r) Pr /\ (r LEADSTO q) Pr) \/
+     (?P. (p = LUB P) /\ (!p. p In P ==> (p LEADSTO q) Pr)) =
+     (p LEADSTO q) Pr
+</PRE>
+
+<DT><STRONG>LEADSTO_thm6</STRONG>
+<DD>
+<PRE>
+|- !p q Pr.
+     (p ENSURES q) Pr \/
+     (?r. (p ENSURES r) Pr /\ (r LEADSTO q) Pr) \/
+     (?P. (p = LUB P) /\ (!p. p In P ==> (p LEADSTO q) Pr)) =
+     (p LEADSTO q) Pr
+</PRE>
+
+<DT><STRONG>LEADSTO_thm7</STRONG>
+<DD>
+<PRE>
+|- !p q Pr.
+     (p ENSURES q) Pr \/
+     (?r. (p ENSURES r) Pr /\ (r ENSURES q) Pr) \/
+     (?P. (p = LUB P) /\ (!p. p In P ==> (p LEADSTO q) Pr)) =
+     (p LEADSTO q) Pr
+</PRE>
+
+<DT><STRONG>LEADSTO_thm8</STRONG>
+<DD>
+<PRE>
+|- !p q Pr.
+     (p ENSURES q) Pr \/
+     (?P. (p = LUB P) /\ (!p. p In P ==> (p LEADSTO q) Pr)) =
+     (p LEADSTO q) Pr
+</PRE>
+
+<DT><STRONG>LEADSTO_thm9</STRONG>
+<DD>
+<PRE>
+|- !p q Pr.
+     (?P. (p = LUB P) /\ (!p. p In P ==> (p LEADSTO q) Pr)) = (p LEADSTO q) Pr
+</PRE>
+
+<DT><STRONG>LEADSTO_thm11</STRONG>
+<DD>
+<PRE>
+|- !p q st Pr.
+     (?r. (p ENSURES r) (CONS st Pr) /\ (r LEADSTO q) (CONS st Pr)) =
+     (p LEADSTO q) (CONS st Pr)
+</PRE>
+
+<DT><STRONG>LEADSTO_thm12</STRONG>
+<DD>
+<PRE>
+|- !p st Pr. (p LEADSTO p) (CONS st Pr)
+</PRE>
+
+<DT><STRONG>LEADSTO_thm13</STRONG>
+<DD>
+<PRE>
+|- !p q st Pr.
+     (?r. (p LEADSTO r) (CONS st Pr) /\ (r LEADSTO q) (CONS st Pr)) =
+     (p LEADSTO q) (CONS st Pr)
+</PRE>
+
+<DT><STRONG>LEADSTO_thm14</STRONG>
+<DD>
+<PRE>
+|- !p q st Pr.
+     (?r. (p LEADSTO r) (CONS st Pr) /\ (r LEADSTO q) (CONS st Pr)) =
+     (?r. (p ENSURES r) (CONS st Pr) /\ (r LEADSTO q) (CONS st Pr))
+</PRE>
+
+<DT><STRONG>LEADSTO_thm15</STRONG>
+<DD>
+<PRE>
+|- !p q Pr.
+     (p ENSURES q) Pr \/
+     (!r. (p ENSURES r) Pr /\ (r LEADSTO q) Pr) \/
+     (?P. (p = LUB P) /\ (!p. p In P ==> (p LEADSTO q) Pr)) =
+     (p LEADSTO q) Pr
+</PRE>
+
+<DT><STRONG>LEADSTO_thm16</STRONG>
+<DD>
+<PRE>
+|- !p q Pr.
+     (!r. (p ENSURES r) Pr /\ (r LEADSTO q) Pr) \/
+     (?P. (p = LUB P) /\ (!p. p In P ==> (p LEADSTO q) Pr)) =
+     (p LEADSTO q) Pr
+</PRE>
+
+<DT><STRONG>LEADSTO_thm17</STRONG>
+<DD>
+<PRE>
+|- !X p q Pr.
+     (!p q.
+       ((p ENSURES q) Pr ==> X p q Pr) /\
+       (!r.
+         (p LEADSTO r) Pr /\
+         ((p LEADSTO r) Pr ==> X p r Pr) /\
+         (r LEADSTO q) Pr /\
+         ((r LEADSTO q) Pr ==> X r q Pr) ==>
+         (p LEADSTO q) Pr ==>
+         X p q Pr) /\
+       (!P.
+         (!p. p In P ==> (p LEADSTO q) Pr) /\
+         (!p. p In P ==> (p LEADSTO q) Pr ==> X p q Pr) ==>
+         (LUB P LEADSTO q) Pr ==>
+         X (LUB P) q Pr)) ==>
+     (p LEADSTO q) Pr ==>
+     X p q Pr
+</PRE>
+
+<DT><STRONG>LEADSTO_thm18</STRONG>
+<DD>
+<PRE>
+|- !X.
+     (!p q Pr. (p ENSURES q) Pr ==> X p q Pr) /\
+     (!p r q Pr.
+       (p LEADSTO r) Pr /\
+       ((p LEADSTO r) Pr ==> X p r Pr) /\
+       (r LEADSTO q) Pr /\
+       ((r LEADSTO q) Pr ==> X r q Pr) ==>
+       (p LEADSTO q) Pr ==>
+       X p q Pr) /\
+     (!p P q Pr.
+       (!p. p In P ==> (p LEADSTO q) Pr) /\
+       (!p. p In P ==> (p LEADSTO q) Pr ==> X p q Pr) ==>
+       (LUB P LEADSTO q) Pr ==>
+       X (LUB P) q Pr) ==>
+     (!p q Pr. (p LEADSTO q) Pr ==> X p q Pr)
+</PRE>
+
+<DT><STRONG>LEADSTO_thm19</STRONG>
+<DD>
+<PRE>
+|- !X p q Pr.
+     (!p q.
+       ((p ENSURES q) Pr ==> X p q Pr) /\
+       (!r.
+         (p LEADSTO r) Pr /\ X p r Pr /\ (r LEADSTO q) Pr /\ X r q Pr ==>
+         (p LEADSTO q) Pr ==>
+         X p q Pr) /\
+       (!P.
+         (!p. p In P ==> (p LEADSTO q) Pr) /\ (!p. p In P ==> X p q Pr) ==>
+         (LUB P LEADSTO q) Pr ==>
+         X (LUB P) q Pr)) ==>
+     (p LEADSTO q) Pr ==>
+     X p q Pr
+</PRE>
+
+<DT><STRONG>LEADSTO_thm20</STRONG>
+<DD>
+<PRE>
+|- !X.
+     (!p q Pr. (p ENSURES q) Pr ==> X p q Pr) /\
+     (!p r q Pr.
+       (p LEADSTO r) Pr /\ X p r Pr /\ (r LEADSTO q) Pr /\ X r q Pr ==>
+       (p LEADSTO q) Pr ==>
+       X p q Pr) /\
+     (!p P q Pr.
+       (!p. p In P ==> (p LEADSTO q) Pr) /\ (!p. p In P ==> X p q Pr) ==>
+       (LUB P LEADSTO q) Pr ==>
+       X (LUB P) q Pr) ==>
+     (!p q Pr. (p LEADSTO q) Pr ==> X p q Pr)
+</PRE>
+
+<DT><STRONG>LEADSTO_thm21</STRONG>
+<DD>
+<PRE>
+|- !X p q Pr.
+     (!p q.
+       ((p ENSURES q) Pr ==> X p q Pr) /\
+       (!r. X p r Pr /\ X r q Pr ==> X p q Pr) /\
+       (!P. (p = LUB P) /\ (!p. p In P ==> X p q Pr) ==> X p q Pr)) ==>
+     (p LEADSTO q) Pr ==>
+     X p q Pr
+</PRE>
+
+<DT><STRONG>LEADSTO_thm22</STRONG>
+<DD>
+<PRE>
+|- !X.
+     (!p q Pr. (p ENSURES q) Pr ==> X p q Pr) /\
+     (!p r q Pr. X p r Pr /\ X r q Pr ==> X p q Pr) /\
+     (!p P q Pr. (p = LUB P) /\ (!p. p In P ==> X p q Pr) ==> X p q Pr) ==>
+     (!p q Pr. (p LEADSTO q) Pr ==> X p q Pr)
+</PRE>
+
+<DT><STRONG>LEADSTO_thm23</STRONG>
+<DD>
+<PRE>
+|- !X Pr.
+     (!p q.
+       ((p ENSURES q) Pr ==> X p q Pr) /\
+       (!r.
+         (p LEADSTO r) Pr /\ (r LEADSTO q) Pr /\ X p r Pr /\ X r q Pr ==>
+         X p q Pr) /\
+       (!P.
+         (p = LUB P) /\
+         (!p. p In P ==> (p LEADSTO q) Pr) /\
+         (!p. p In P ==> X p q Pr) ==>
+         X p q Pr)) ==>
+     (!p q. (p LEADSTO q) Pr ==> X p q Pr)
+</PRE>
+
+<DT><STRONG>LEADSTO_thm24</STRONG>
+<DD>
+<PRE>
+|- !X Pr.
+     (!p q.
+       ((p ENSURES q) Pr ==> X p q Pr) /\
+       (!r.
+         (p LEADSTO r) Pr /\ (r LEADSTO q) Pr /\ X p r Pr /\ X r q Pr ==>
+         X p q Pr) /\
+       (!P.
+         (!p. p In P ==> (p LEADSTO q) Pr) /\ (!p. p In P ==> X p q Pr) ==>
+         X (LUB P) q Pr)) ==>
+     (!p q. (p LEADSTO q) Pr ==> X p q Pr)
+</PRE>
+
+<DT><STRONG>LEADSTO_thm25</STRONG>
+<DD>
+<PRE>
+|- !p q st Pr. (!s. p s ==> q s) ==> (p LEADSTO q) (CONS st Pr)
+</PRE>
+
+<DT><STRONG>LEADSTO_thm26</STRONG>
+<DD>
+<PRE>
+|- !p q q' st Pr.
+     (p LEADSTO q) (CONS st Pr) ==> (p LEADSTO q \/* q') (CONS st Pr)
+</PRE>
+
+<DT><STRONG>LEADSTO_thm27</STRONG>
+<DD>
+<PRE>
+|- !p q p' q' st Pr.
+     (p LEADSTO q) (CONS st Pr) /\ (p' LEADSTO q') (CONS st Pr) ==>
+     (p \/* p' LEADSTO q \/* q') (CONS st Pr)
+</PRE>
+
+<DT><STRONG>LEADSTO_thm28</STRONG>
+<DD>
+<PRE>
+|- !p q b r st Pr.
+     (p LEADSTO q \/* b) (CONS st Pr) /\ (b LEADSTO r) (CONS st Pr) ==>
+     (p LEADSTO q \/* r) (CONS st Pr)
+</PRE>
+
+<DT><STRONG>LEADSTO_thm29</STRONG>
+<DD>
+<PRE>
+|- !p q r b st Pr.
+     (p LEADSTO q) (CONS st Pr) /\ (r UNLESS b) (CONS st Pr) ==>
+     (p /\* r LEADSTO q /\* r \/* b) (CONS st Pr)
+</PRE>
+
+<DT><STRONG>LEADSTO_thm30</STRONG>
+<DD>
+<PRE>
+|- !p st Pr. (p LEADSTO False) (CONS st Pr) ==> (!s. ~* p s)
+</PRE>
+
+<DT><STRONG>LEADSTO_cor1</STRONG>
+<DD>
+<PRE>
+|- !p b q Pr.
+     (p /\* b LEADSTO q) Pr /\ (p /\* ~* b LEADSTO q) Pr ==> (p LEADSTO q) Pr
+</PRE>
+
+<DT><STRONG>LEADSTO_cor2</STRONG>
+<DD>
+<PRE>
+|- !p q r st Pr.
+     (p LEADSTO q) (CONS st Pr) /\ r STABLE CONS st Pr ==>
+     (p /\* r LEADSTO q /\* r) (CONS st Pr)
+</PRE>
+
+<DT><STRONG>LEADSTO_cor3</STRONG>
+<DD>
+<PRE>
+|- !p q st Pr.
+     (p LEADSTO q) (CONS st Pr) = (p /\* ~* q LEADSTO q) (CONS st Pr)
+</PRE>
+
+<DT><STRONG>LEADSTO_cor4</STRONG>
+<DD>
+<PRE>
+|- !p b q st Pr.
+     (p /\* b LEADSTO q) (CONS st Pr) /\
+     (p /\* ~* b LEADSTO p /\* b \/* q) (CONS st Pr) ==>
+     (p LEADSTO q) (CONS st Pr)
+</PRE>
+
+<DT><STRONG>LEADSTO_cor5</STRONG>
+<DD>
+<PRE>
+|- !p q r st Pr.
+     (p /\* q LEADSTO r) (CONS st Pr) ==> (p LEADSTO ~* q \/* r) (CONS st Pr)
+</PRE>
+
+<DT><STRONG>LEADSTO_cor6</STRONG>
+<DD>
+<PRE>
+|- !p q r st Pr.
+     (p LEADSTO q) (CONS st Pr) /\ (r UNLESS q /\* r) (CONS st Pr) ==>
+     (p /\* r LEADSTO q /\* r) (CONS st Pr)
+</PRE>
+
+<DT><STRONG>LEADSTO_cor7</STRONG>
+<DD>
+<PRE>
+|- !p q r st Pr.
+     (p LEADSTO q) (CONS st Pr) /\ r /\* ~* q STABLE CONS st Pr ==>
+     (!s. (p /\* r) s ==> q s)
+</PRE>
+
+<DT><STRONG>LEADSTO_cor8</STRONG>
+<DD>
+<PRE>
+|- !p r q st Pr.
+     (p LEADSTO r) (CONS st Pr) ==> (p /\* q LEADSTO r) (CONS st Pr)
+</PRE>
+
+<DT><STRONG>LEADSTO_cor9</STRONG>
+<DD>
+<PRE>
+|- !p q r st Pr.
+     (p LEADSTO q) (CONS st Pr) /\ (!s. q s ==> r s) ==>
+     (p LEADSTO r) (CONS st Pr)
+</PRE>
+
+<DT><STRONG>LEADSTO_cor10</STRONG>
+<DD>
+<PRE>
+|- !P q Pr. (!i. (P i LEADSTO q) Pr) ==> (!i. (\<=/* P i LEADSTO q) Pr)
+</PRE>
+
+<DT><STRONG>LEADSTO_cor11</STRONG>
+<DD>
+<PRE>
+|- !p st Pr. (False LEADSTO p) (CONS st Pr)
+</PRE>
+
+<DT><STRONG>LEADSTO_cor12</STRONG>
+<DD>
+<PRE>
+|- !P q st Pr.
+     (!i. (P i LEADSTO q) (CONS st Pr)) ==>
+     (!i. (\</* P i LEADSTO q) (CONS st Pr))
+</PRE>
+
+<DT><STRONG>LEADSTO2_thm0</STRONG>
+<DD>
+<PRE>
+|- !p q Pr. (p ENSURES q) Pr ==> LEADSTO2 p q Pr
+</PRE>
+
+<DT><STRONG>LEADSTO2_thm1</STRONG>
+<DD>
+<PRE>
+|- !p r q Pr. (p ENSURES r) Pr /\ LEADSTO2 r q Pr ==> LEADSTO2 p q Pr
+</PRE>
+
+<DT><STRONG>LEADSTO2_thm3</STRONG>
+<DD>
+<PRE>
+|- !P q Pr. (!p. p In P ==> LEADSTO2 p q Pr) ==> LEADSTO2 (LUB P) q Pr
+</PRE>
+
+<DT><STRONG>LEADSTO2_thm3a</STRONG>
+<DD>
+<PRE>
+|- !P q Pr.
+     (p = LUB P) /\ (!p. p In P ==> LEADSTO2 p q Pr) ==> LEADSTO2 p q Pr
+</PRE>
+
+<DT><STRONG>LEADSTO2_thm4</STRONG>
+<DD>
+<PRE>
+|- !p1 p2 q Pr.
+     LEADSTO2 p1 q Pr /\ LEADSTO2 p2 q Pr ==> LEADSTO2 (p1 \/* p2) q Pr
+</PRE>
+
+<DT><STRONG>LEADSTO2_thm8</STRONG>
+<DD>
+<PRE>
+|- !X p q Pr.
+     (!p q.
+       ((p ENSURES q) Pr ==> X p q Pr) /\
+       (!r. (p ENSURES r) Pr /\ X r q Pr ==> X p q Pr) /\
+       (!P. (!p. p In P ==> X p q Pr) ==> X (LUB P) q Pr)) ==>
+     LEADSTO2 p q Pr ==>
+     X p q Pr
+</PRE>
+
+<DT><STRONG>LEADSTO2_thm2</STRONG>
+<DD>
+<PRE>
+|- !p r q Pr. LEADSTO2 p r Pr /\ LEADSTO2 r q Pr ==> LEADSTO2 p q Pr
+</PRE>
+
+<DT><STRONG>LEADSTO2_thm5</STRONG>
+<DD>
+<PRE>
+|- !p q Pr.
+     (p ENSURES q) Pr \/
+     (?r. LEADSTO2 p r Pr /\ LEADSTO2 r q Pr) \/
+     (?P. (p = LUB P) /\ (!p. p In P ==> LEADSTO2 p q Pr)) =
+     LEADSTO2 p q Pr
+</PRE>
+
+<DT><STRONG>LEADSTO2_thm6</STRONG>
+<DD>
+<PRE>
+|- !p q Pr.
+     (p ENSURES q) Pr \/
+     (?r. (p ENSURES r) Pr /\ LEADSTO2 r q Pr) \/
+     (?P. (p = LUB P) /\ (!p. p In P ==> LEADSTO2 p q Pr)) =
+     LEADSTO2 p q Pr
+</PRE>
+
+<DT><STRONG>LEADSTO2_thm7</STRONG>
+<DD>
+<PRE>
+|- !X p q Pr.
+     (!p q.
+       ((p ENSURES q) Pr ==> X p q Pr) /\
+       (!r.
+         (p ENSURES r) Pr /\
+         LEADSTO2 r q Pr /\
+         (LEADSTO2 r q Pr ==> X r q Pr) ==>
+         LEADSTO2 p q Pr ==>
+         X p q Pr) /\
+       (!P.
+         (!p. p In P ==> LEADSTO2 p q Pr) /\
+         (!p. p In P ==> LEADSTO2 p q Pr ==> X p q Pr) ==>
+         LEADSTO2 (LUB P) q Pr ==>
+         X (LUB P) q Pr)) ==>
+     LEADSTO2 p q Pr ==>
+     X p q Pr
+</PRE>
+
+<DT><STRONG>LEADSTO_EQ_LEADSTO2</STRONG>
+<DD>
+<PRE>
+|- !p q Pr. (p LEADSTO q) Pr = LEADSTO2 p q Pr
+</PRE>
+
+<DT><STRONG>LEADSTO_thm31</STRONG>
+<DD>
+<PRE>
+|- !X p q Pr.
+     (!p q.
+       ((p ENSURES q) Pr ==> X p q Pr) /\
+       (!r. (p ENSURES r) Pr /\ X r q Pr ==> X p q Pr) /\
+       (!P. (!p. p In P ==> X p q Pr) ==> X (LUB P) q Pr)) ==>
+     (p LEADSTO q) Pr ==>
+     X p q Pr
+</PRE>
+
+<DT><STRONG>LEADSTO_thm32</STRONG>
+<DD>
+<PRE>
+|- !X.
+     (!p q Pr. (p ENSURES q) Pr ==> X p q Pr) /\
+     (!p r q Pr. (p ENSURES r) Pr /\ X r q Pr ==> X p q Pr) /\
+     (!P q Pr. (!p. p In P ==> X p q Pr) ==> X (LUB P) q Pr) ==>
+     (!p q Pr. (p LEADSTO q) Pr ==> X p q Pr)
+</PRE>
+
+<DT><STRONG>LEADSTO_thm33</STRONG>
+<DD>
+<PRE>
+|- !X p q Pr.
+     (!p q.
+       ((p ENSURES q) Pr ==> X p q Pr) /\
+       (!r.
+         (p ENSURES r) Pr /\
+         (r LEADSTO q) Pr /\
+         ((r LEADSTO q) Pr ==> X r q Pr) ==>
+         (p LEADSTO q) Pr ==>
+         X p q Pr) /\
+       (!P.
+         (!p. p In P ==> (p LEADSTO q) Pr) /\
+         (!p. p In P ==> (p LEADSTO q) Pr ==> X p q Pr) ==>
+         (LUB P LEADSTO q) Pr ==>
+         X (LUB P) q Pr)) ==>
+     (p LEADSTO q) Pr ==>
+     X p q Pr
+</PRE>
+
+<DT><STRONG>LEADSTO_thm34</STRONG>
+<DD>
+<PRE>
+|- !X.
+     (!p q Pr. (p ENSURES q) Pr ==> X p q Pr) /\
+     (!p r q Pr.
+       (p ENSURES r) Pr /\
+       (r LEADSTO q) Pr /\
+       ((r LEADSTO q) Pr ==> X r q Pr) ==>
+       (p LEADSTO q) Pr ==>
+       X p q Pr) /\
+     (!P q Pr.
+       (!p. p In P ==> (p LEADSTO q) Pr) /\
+       (!p. p In P ==> (p LEADSTO q) Pr ==> X p q Pr) ==>
+       (LUB P LEADSTO q) Pr ==>
+       X (LUB P) q Pr) ==>
+     (!p q Pr. (p LEADSTO q) Pr ==> X p q Pr)
+</PRE>
+
+<DT><STRONG>LEADSTO_thm34a</STRONG>
+<DD>
+<PRE>
+|- !X Pr.
+     (!p q. (p ENSURES q) Pr ==> X p q Pr) /\
+     (!p r q.
+       (p ENSURES r) Pr /\ (r LEADSTO q) Pr /\ X r q Pr ==> X p q Pr) /\
+     (!P q.
+       (!p. p In P ==> (p LEADSTO q) Pr) /\ (!p. p In P ==> X p q Pr) ==>
+       X (LUB P) q Pr) ==>
+     (!p q. (p LEADSTO q) Pr ==> X p q Pr)
+</PRE>
+
+<DT><STRONG>LEADSTO_thm34b</STRONG>
+<DD>
+<PRE>
+|- !X.
+     (!p q st Pr. (p ENSURES q) (CONS st Pr) ==> X p q (CONS st Pr)) /\
+     (!p r q st Pr.
+       (p ENSURES r) (CONS st Pr) /\
+       (r LEADSTO q) (CONS st Pr) /\
+       X r q (CONS st Pr) ==>
+       X p q (CONS st Pr)) /\
+     (!P q st Pr.
+       (!p. p In P ==> (p LEADSTO q) (CONS st Pr)) /\
+       (!p. p In P ==> X p q (CONS st Pr)) ==>
+       X (LUB P) q (CONS st Pr)) ==>
+     (!p q st Pr. (p LEADSTO q) (CONS st Pr) ==> X p q (CONS st Pr))
+</PRE>
+
+<DT><STRONG>LEADSTO_thm35</STRONG>
+<DD>
+<PRE>
+|- !p q p' q' r st Pr.
+     (p LEADSTO q) (CONS st Pr) /\
+     (p' LEADSTO q') (CONS st Pr) /\
+     (q UNLESS r) (CONS st Pr) /\
+     (q' UNLESS r) (CONS st Pr) ==>
+     (p /\* p' LEADSTO q /\* q' \/* r) (CONS st Pr)
+</PRE>
+
+<DT><STRONG>LEADSTO_thm36</STRONG>
+<DD>
+<PRE>
+|- !p q st Pr M.
+     (!m.
+       (p /\* (M EQmetric m) LEADSTO p /\* (M LESSmetric m) \/* q)
+         (CONS st Pr)) ==>
+     (p LEADSTO q) (CONS st Pr)
+</PRE>
+
+<DT><STRONG>LEADSTO_thm37</STRONG>
+<DD>
+<PRE>
+|- !X p q Pr.
+     (!p q.
+       ((p ENSURES q) Pr ==> X p q) /\
+       (!r.
+         (p LEADSTO r) Pr /\ X p r /\ (r LEADSTO q) Pr /\ X r q ==> X p q) /\
+       (!P.
+         (!p. p In P ==> (p LEADSTO q) Pr) /\ (!p. p In P ==> X p q) ==>
+         X (LUB P) q)) ==>
+     (p LEADSTO q) Pr ==>
+     X p q
+</PRE>
+
+<DT><STRONG>LEADSTO_thm38</STRONG>
+<DD>
+<PRE>
+|- !X.
+     (!p q Pr. (p ENSURES q) Pr ==> X p q) /\
+     (!p r q Pr.
+       (p LEADSTO r) Pr /\ X p r /\ (r LEADSTO q) Pr /\ X r q ==> X p q) /\
+     (!P q Pr.
+       (!p. p In P ==> (p LEADSTO q) Pr) /\ (!p. p In P ==> X p q) ==>
+       X (LUB P) q) ==>
+     (!p q Pr. (p LEADSTO q) Pr ==> X p q)
+</PRE>
+
+<DT><STRONG>LEADSTO_thm39</STRONG>
+<DD>
+<PRE>
+|- !X p q Pr.
+     (!p q.
+       ((p ENSURES q) Pr ==> X p q) /\
+       (!r. (p ENSURES r) Pr /\ (r LEADSTO q) Pr /\ X r q ==> X p q) /\
+       (!P.
+         (!p. p In P ==> (p LEADSTO q) Pr) /\ (!p. p In P ==> X p q) ==>
+         X (LUB P) q)) ==>
+     (p LEADSTO q) Pr ==>
+     X p q
+</PRE>
+
+<DT><STRONG>LEADSTO_thm40</STRONG>
+<DD>
+<PRE>
+|- !X.
+     (!p q Pr. (p ENSURES q) Pr ==> X p q) /\
+     (!p r q Pr. (p ENSURES r) Pr /\ (r LEADSTO q) Pr /\ X r q ==> X p q) /\
+     (!P q Pr.
+       (!p. p In P ==> (p LEADSTO q) Pr) /\ (!p. p In P ==> X p q) ==>
+       X (LUB P) q) ==>
+     (!p q Pr. (p LEADSTO q) Pr ==> X p q)
+</PRE>
+
+<DT><STRONG>LEADSTO_thm41</STRONG>
+<DD>
+<PRE>
+|- !X.
+     (!p q Pr. (p ENSURES q) Pr ==> X p q Pr) /\
+     (!p r q Pr.
+       (p LEADSTO r) Pr /\ (r LEADSTO q) Pr /\ X p r Pr /\ X r q Pr ==>
+       X p q Pr) /\
+     (!p P q Pr.
+       (p = LUB P) /\
+       (!p. p In P ==> (p LEADSTO q) Pr) /\
+       (!p. p In P ==> X p q Pr) ==>
+       X p q Pr) ==>
+     (!p q Pr. (p LEADSTO q) Pr ==> X p q Pr)
+</PRE>
+
+<DT><STRONG>LEADSTO_thm42</STRONG>
+<DD>
+<PRE>
+|- !X Pr.
+     (!p q.
+       ((p ENSURES q) Pr ==> X p q Pr) /\
+       (!r.
+         (p ENSURES r) Pr /\ (r LEADSTO q) Pr /\ X p r Pr /\ X r q Pr ==>
+         X p q Pr) /\
+       (!P.
+         (p = LUB P) /\
+         (!p. p In P ==> (p LEADSTO q) Pr) /\
+         (!p. p In P ==> X p q Pr) ==>
+         X p q Pr)) ==>
+     (!p q. (p LEADSTO q) Pr ==> X p q Pr)
+</PRE>
+
+<DT><STRONG>LEADSTO_thm43</STRONG>
+<DD>
+<PRE>
+|- !X.
+     (!p q Pr. (p ENSURES q) Pr ==> X p q Pr) /\
+     (!p r q Pr.
+       (p ENSURES r) Pr /\ (r LEADSTO q) Pr /\ X p r Pr /\ X r q Pr ==>
+       X p q Pr) /\
+     (!p P q Pr.
+       (p = LUB P) /\
+       (!p. p In P ==> (p LEADSTO q) Pr) /\
+       (!p. p In P ==> X p q Pr) ==>
+       X p q Pr) ==>
+     (!p q Pr. (p LEADSTO q) Pr ==> X p q Pr)
+</PRE>
+
+<DT><STRONG>LEADSTO_cor13</STRONG>
+<DD>
+<PRE>
+|- !P Q r st Pr.
+     (!i. (P i LEADSTO Q i \/* r) (CONS st Pr)) /\
+     (!i. (Q i UNLESS r) (CONS st Pr)) ==>
+     (!i. (/<=\* P i LEADSTO /<=\* Q i \/* r) (CONS st Pr))
+</PRE>
+
+<DT><STRONG>LEADSTO_cor14</STRONG>
+<DD>
+<PRE>
+|- !p q r p' q' st Pr.
+     (p LEADSTO q \/* r) (CONS st Pr) /\
+     (q UNLESS r) (CONS st Pr) /\
+     (p' LEADSTO q' \/* r) (CONS st Pr) /\
+     (q' UNLESS r) (CONS st Pr) ==>
+     (p /\* p' LEADSTO q /\* q' \/* r) (CONS st Pr)
+</PRE>
+
+<DT><STRONG>LEADSTO_cor15</STRONG>
+<DD>
+<PRE>
+|- !p q r b p' q' r' b' st Pr.
+     (p LEADSTO q \/* r) (CONS st Pr) /\
+     (q UNLESS b) (CONS st Pr) /\
+     (p' LEADSTO q' \/* r') (CONS st Pr) /\
+     (q' UNLESS b') (CONS st Pr) ==>
+     (p /\* p' LEADSTO q /\* q' \/* (r \/* b) \/* r' \/* b') (CONS st Pr)
+</PRE>
+
+<DT><STRONG>LEADSTO_cor16</STRONG>
+<DD>
+<PRE>
+|- !P Q R B st Pr.
+     (!i. (P i LEADSTO Q i \/* R i) (CONS st Pr)) /\
+     (!i. (Q i UNLESS B i) (CONS st Pr)) ==>
+     (!i.
+       (/<=\* P i LEADSTO /<=\* Q i \/* \<=/* R i \/* \<=/* B i) (CONS st Pr))
+</PRE>
+
+</DL>
+
+
+<HR>

@@ -1,0 +1,144 @@
+thid = (process_fix, 784032840, 107572)
+axioms = []
+definitions =
+[((MONO_PROCESS),
+  [],
+  `((! :((process -> process) -> bool) -> bool)
+   (\(fun :process -> process). (((= :bool -> bool -> bool) (MONO $0))
+   ((! :(process -> bool) -> bool) (\(p1 :process).
+   ((! :(process -> bool) -> bool) (\(p2 :process). ((==> ((<< $1)
+   $0)) ((<< ($2 $1)) ($2 $0))))))))))`),
+ ((CONTINUOUS),
+  [],
+  `((! :((process -> process) -> bool) -> bool)
+   (\(fun :process -> process). (((= :bool -> bool -> bool)
+   (CONTINUOUS $0)) ((! :((num -> process) -> bool) -> bool)
+   (\(P :num -> process). ((==> (CHAIN $0))
+   (((= :process -> process -> bool) ($1 (LIM_PROC $0))) (LIM_PROC
+   (\(n :num). ($2 ($1 $0)))))))))))`),
+ ((LIM_PROC),
+  [],
+  `((! :((num -> process) -> bool) -> bool) (\(P :num -> process).
+   (((= :process -> process -> bool) (LIM_PROC $0))
+   ((@ :(process -> bool) -> process) (\(Q :process). ((==> (CHAIN
+   $1)) (((= :process -> process -> bool) $0) (ABS_process
+   (((, :string set -> string list set ->
+         string set # string list set) (ALPHA ($1 0)))
+   ((IT_UNION :(num -> string list set) -> string list set)
+   (\(n :num). (TRACES ($2 $0)))))))))))))`),
+ ((CHAIN),
+  [],
+  `((! :((num -> process) -> bool) -> bool) (\(P :num -> process).
+   (((= :bool -> bool -> bool) (CHAIN $0)) ((! :(num -> bool) -> bool)
+   (\(n :num). ((<< ($1 $0)) ($1 (SUC $0))))))))`),
+ ((IT_UNION),
+  [],
+  `((! :((num -> 'a set) -> bool) -> bool) (\(c :num -> 'a set).
+   (((= :'a set -> 'a set -> bool)
+   ((IT_UNION :(num -> 'a set) -> 'a set) $0))
+   ((GSPEC :('a -> 'a # bool) -> 'a set) (\(x :'a).
+   (((, :'a -> bool -> 'a # bool) $0) ((? :(num -> bool) -> bool)
+   (\(n :num). (((IN :'a -> 'a set -> bool) $1) ($2 $0))))))))))`),
+ ((ITER),
+  [],
+  `((/\ ((! :(('a -> 'a) -> bool) -> bool) (\(f :'a -> 'a).
+   ((! :('a -> bool) -> bool) (\(x :'a). (((= :'a -> 'a -> bool)
+   ((((ITER :num -> ('a -> 'a) -> 'a -> 'a) 0) $1) $0)) $0))))))
+   ((! :(num -> bool) -> bool) (\(n :num).
+   ((! :(('a -> 'a) -> bool) -> bool) (\(f :'a -> 'a).
+   ((! :('a -> bool) -> bool) (\(x :'a). (((= :'a -> 'a -> bool)
+   ((((ITER :num -> ('a -> 'a) -> 'a -> 'a) (SUC $2)) $1) $0)) ($1
+   ((((ITER :num -> ('a -> 'a) -> 'a -> 'a) $2) $1) $0))))))))))`),
+ ((PROCESS_FIX),
+  [],
+  `((! :((process -> process) -> bool) -> bool)
+   (\(fun :process -> process). (((= :process -> process -> bool)
+   (FIX_PROC $0)) ((@ :(process -> bool) -> process) (\(P :process).
+   ((/\ (((= :process -> process -> bool) ($1 $0)) $0))
+   ((! :(process -> bool) -> bool) (\(Q :process). ((==>
+   (((= :process -> process -> bool) ($2 $0)) $0)) ((<< $1)
+   $0))))))))))`),
+ ((PROCESS_ORDER),
+  [],
+  `((! :(process -> bool) -> bool) (\(P :process).
+   ((! :(process -> bool) -> bool) (\(Q :process).
+   (((= :bool -> bool -> bool) ((<< $1) $0)) ((/\
+   (((= :string set -> string set -> bool) (ALPHA $1)) (ALPHA $0)))
+   (((SUBSET :string list set -> string list set -> bool) (TRACES $1))
+   (TRACES $0))))))))`)]
+theorems =
+[((LUB_CHAIN2),
+  [],
+  `((! :((num -> process) -> bool) -> bool) (\(P :num -> process).
+   ((! :(process -> bool) -> bool) (\(Q :process). ((==> ((/\ (CHAIN
+   $1)) ((! :(num -> bool) -> bool) (\(n :num). ((<< ($2 $0)) $1)))))
+   ((<< (LIM_PROC $1)) $0))))))`),
+ ((LUB_CHAIN1),
+  [],
+  `((! :((num -> process) -> bool) -> bool) (\(P :num -> process).
+   ((==> (CHAIN $0)) ((! :(num -> bool) -> bool) (\(n :num). ((<< ($1
+   $0)) (LIM_PROC $1)))))))`),
+ ((LEAST_PROCESS),
+  [],
+  `((! :(string set -> bool) -> bool) (\(A :string set).
+   ((! :(process -> bool) -> bool) (\(P :process). ((==>
+   (((= :string set -> string set -> bool) $1) (ALPHA $0))) ((<< (STOP
+   $1)) $0))))))`),
+ ((TRACES_LIMIT),
+  [],
+  `((==> (CHAIN (P :num -> process)))
+   (((= :string list set -> string list set -> bool) (TRACES (LIM_PROC
+   (P :num -> process))))
+   ((IT_UNION :(num -> string list set) -> string list set)
+   (\(n :num). (TRACES ((P :num -> process) $0))))))`),
+ ((ALPHA_LIMIT),
+  [],
+  `((==> (CHAIN (P :num -> process)))
+   (((= :string set -> string set -> bool) (ALPHA (LIM_PROC
+   (P :num -> process)))) (ALPHA ((P :num -> process) 0))))`),
+ ((IS_PROCESS_LIMIT),
+  [],
+  `((! :((num -> process) -> bool) -> bool) (\(P :num -> process).
+   ((==> (CHAIN $0)) (IS_PROCESS
+   (((, :string set -> string list set ->
+         string set # string list set) (ALPHA ($0 0)))
+   ((IT_UNION :(num -> string list set) -> string list set)
+   (\(n :num). (TRACES ($1 $0)))))))))`),
+ ((LIM_PROC_THM),
+  [],
+  `((! :((num -> process) -> bool) -> bool) (\(P :num -> process).
+   ((==> (CHAIN $0)) (((= :process -> process -> bool) (LIM_PROC $0))
+   (ABS_process
+   (((, :string set -> string list set ->
+         string set # string list set) (ALPHA ($0 0)))
+   ((IT_UNION :(num -> string list set) -> string list set)
+   (\(n :num). (TRACES ($1 $0))))))))))`),
+ ((CHAIN_EQ_ALPHA),
+  [],
+  `((! :((num -> process) -> bool) -> bool) (\(P :num -> process).
+   ((==> (CHAIN $0)) ((! :(num -> bool) -> bool) (\(n :num).
+   ((! :(num -> bool) -> bool) (\(m :num).
+   (((= :string set -> string set -> bool) (ALPHA ($2 $1))) (ALPHA ($2
+   $0))))))))))`),
+ ((ANTISYM_PROCESS_ORDER),
+  [],
+  `((! :(process -> bool) -> bool) (\(P :process).
+   ((! :(process -> bool) -> bool) (\(Q :process). ((==> ((/\ ((<< $1)
+   $0)) ((<< $0) $1))) (((= :process -> process -> bool) $1)
+   $0))))))`),
+ ((TRANS_PROCESS_ORDER),
+  [],
+  `((! :(process -> bool) -> bool) (\(P :process).
+   ((! :(process -> bool) -> bool) (\(Q :process).
+   ((! :(process -> bool) -> bool) (\(R :process). ((==> ((/\ ((<< $2)
+   $1)) ((<< $1) $0))) ((<< $2) $0))))))))`),
+ ((REFL_PROCESS_ORDER),
+  [],
+  `((! :(process -> bool) -> bool) (\(P :process). ((<< $0) $0)))`),
+ ((EQ_SUB_THM),
+  [],
+  `((! :('a set -> bool) -> bool) (\(A :'a set).
+   ((! :('a set -> bool) -> bool) (\(B :'a set).
+   (((= :bool -> bool -> bool) (((= :'a set -> 'a set -> bool) $1)
+   $0)) ((/\ (((SUBSET :'a set -> 'a set -> bool) $1) $0))
+   (((SUBSET :'a set -> 'a set -> bool) $0) $1)))))))`)]

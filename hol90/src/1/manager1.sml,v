@@ -1,0 +1,117 @@
+head	1.1;
+access;
+symbols;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	96.02.08.00.35.53;	author drs1004;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@New theory mechanism, code reorganisation and other enhancements by Don Syme.
+@
+text
+@(*========================================================================
+ * Fully hol90.7 compatible session manager (for level 1 functionality)
+ *=======================================================================*)
+
+signature Manager1_sig =
+sig
+    (* implicitly side effecting on current theory *)
+    val new_recursive_definition : {name : string, 
+				    fixity : Fixity.fixity,
+				    rec_axiom : Thm.thm,
+				    def : Term.term} -> Thm.thm
+    val store_thm : string * Thm.Term.term * Abbrev.tactic -> Thm.thm
+    val define_new_type_bijections :{name:string,
+				     ABS:string,
+				     REP:string,
+				     tyax:Thm.thm} -> Thm.thm
+end;
+    
+
+structure Manager1 : Manager1_sig =
+struct
+    open Lib;
+	infix |->
+    open Pterms;
+    open Fixity;
+    open Thm;
+	
+    open Manager0;
+	
+    val ERR = Exception.ERR "Manager";
+    val WRAP_ERR = Exception.WRAP_ERR "Manager";
+	
+    fun store_thm (name, tm, tac) = 
+	(save_thm (name, Tactical.prove (tm, tac))
+	 handle e => WRAP_ERR("store_thm ("^name^")",e))
+	handle e => Exception.Raise e;
+    
+
+    val new_recursive_definition  = 
+	let fun f {name,fixity,rec_axiom,def} =
+	    let fun app_fix {fixity = Prefix,const_name} = 
+  		hol_prefix const_name
+		  | app_fix {fixity = Infix n,const_name} = 
+		    hol_infix n const_name
+		  | app_fix {fixity = Binder,const_name} = 
+		    hol_binder const_name;
+		fun vname tm = #1 (dest_const tm) handle _ => #1 (dest_var tm)
+		val def' =
+		    let val c = #1(strip_comb(lhs(#2(strip_forall (el 1 (strip_conj def))))))
+			handle e => ERR("new_recursive_definition",
+				      "badly formed definition (1)");
+			val cname =  vname c
+			    handle e => ERR("new_recursive_definition",
+					  "badly formed definition (2)");
+			val cname' = Manager0.tmc_variant cname
+			val c' = mk_var(cname',type_of c)
+		    in subst [c |-> c'] def
+		    end
+		fun cname_from_ax thm = 
+		    #1(dest_const(#1(strip_comb(lhs(
+                        #2(strip_forall (el 1 (strip_conj (concl thm)))))))));
+		    
+		val thm = Manager0.save_definition(name,
+			     Prim_rec.new_recursive_definition (rec_axiom,def'))
+		val _ = app_fix {fixity=fixity,const_name=cname_from_ax thm}
+	    in thm
+	    end
+	in fn x => (Manager0.atomic_manager_op f x
+		    handle e => WRAP_ERR("new_recursive_definition ("^(#name x)^")",e))
+	    handle e => Exception.Raise e
+	end;
+	
+
+    val define_new_type_bijections =
+	let fun f {name:string,
+		   ABS:string,
+		   REP:string,
+		   tyax:thm} =
+	    Manager0.save_definition(name,
+		    Type_def_support.define_new_type_bijections {ABS=ABS,
+								 REP=REP,
+								 tyax=tyax})
+	in fn x => (Manager0.atomic_manager_op f x
+		    handle e => WRAP_ERR("define_new_type_bijections ("^(#name x)^")",e))
+	    handle e => Exception.Raise e
+	end;
+;
+	
+
+end;
+
+
+
+
+@

@@ -1,0 +1,104 @@
+head	1.1;
+access;
+symbols
+	HOL97:1.1.2.1.0.2
+	bpHOL97:1.1.2.1
+	hol90_9_alpha:1.1.2.1
+	hol90_pre8_for_multiple_compilers:1.1.0.2;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	96.08.06.12.23.34;	author rjb;	state dead;
+branches
+	1.1.2.1;
+next	;
+
+1.1.2.1
+date	96.08.06.12.23.35;	author rjb;	state Exp;
+branches
+	1.1.2.1.2.1;
+next	;
+
+1.1.2.1.2.1
+date	97.07.14.18.07.59;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@file Cache.sml was initially added on branch hol90_pre8_for_multiple_compilers.
+@
+text
+@@
+
+
+1.1.2.1
+log
+@New library simp.
+@
+text
+@a0 39
+structure Cache : Cache_sig =
+struct
+
+open LiteLib Trace Termtable;
+
+infix <<;  (* A subsetof B *)
+fun x << y = all (C mem y) x;
+
+type table = (term list * thm option) list termtable
+type cache = table ref;
+
+fun CACHE (filt,conv) =
+  let exception FIRST
+      fun first p [] = raise FIRST
+        | first p (h::t) = if p h then h else first p t;        
+      val cache = (ref (mk_termtable (100,Subscript)): cache);
+      fun cache_proc thms tm =
+        let val _ = if (filt tm) then () 
+                    else failwith "CACHE_CCONV: not applicable"
+            val prevs = termtable_find (!cache) ([],tm) handle Subscript => []
+            val curr = flatten (map hyp thms)
+            fun ok (prev,SOME thm) = prev << curr
+              | ok (prev,NONE) = curr << prev
+        in (case (snd (first ok prevs)) of
+              SOME x => (trace(1,PRODUCE(tm,"cache hit!",x)); x) 
+            | NONE => failwith "cache hit was failure")
+          handle FIRST => 
+          let val thm = conv thms tm
+              handle e => (termtable_insert (!cache) (([],tm),(curr,NONE)::prevs);
+                           raise e)
+          in (termtable_insert (!cache) (([],tm),(curr,SOME thm)::prevs); thm)
+          end
+        end;
+  in (cache_proc, cache)
+  end;
+  
+fun clear_cache cache = (cache := (mk_termtable (100,Subscript):table));
+
+end (* struct *)
+@
+
+
+1.1.2.1.2.1
+log
+@The "simp" library now loads under CM.
+@
+text
+@a3 5
+  type term = CoreHol.Term.term
+  type thm = CoreHol.Thm.thm
+  type conv = Abbrev.conv;
+
+open Lib liteLib;
+d21 1
+a21 1
+            val curr = flatten (map CoreHol.Thm.hyp thms)
+@

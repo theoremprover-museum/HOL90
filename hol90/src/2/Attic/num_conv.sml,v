@@ -1,0 +1,307 @@
+head	1.4;
+access;
+symbols
+	HOL97:1.2.0.4
+	bpHOL97:1.2
+	hol90_9_alpha:1.2
+	hol90_pre8_for_multiple_compilers:1.2.0.2
+	hol90_pre8_after_donalds_separate_compilation_changes:1.2
+	hol90_8_after_merging_Konrad_Elsa:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.4
+date	96.02.08.00.44.52;	author drs1004;	state dead;
+branches;
+next	1.3;
+
+1.3
+date	96.01.04.14.06.04;	author drs1004;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	95.10.31.15.07.11;	author drs1004;	state Exp;
+branches
+	1.2.4.1;
+next	1.1;
+
+1.1
+date	95.10.16.13.30.20;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.30.20;	author rjb;	state Exp;
+branches
+	1.1.1.1.2.1;
+next	;
+
+1.1.1.1.2.1
+date	95.10.18.10.09.29;	author drs1004;	state Exp;
+branches;
+next	;
+
+1.2.4.1
+date	97.06.11.17.52.06;	author kxs;	state Exp;
+branches;
+next	1.2.4.2;
+
+1.2.4.2
+date	97.07.11.15.18.12;	author kxs;	state Exp;
+branches;
+next	1.2.4.3;
+
+1.2.4.3
+date	98.02.23.20.55.38;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.4
+log
+@New theory mechanism, code reorganisation and other enhancements by Don Syme.
+@
+text
+@(* ===================================================================== *)
+(* FILE          : num_conv.sml                                          *)
+(* DESCRIPTION   : num_conv maps a number constant to a theorem equating *)
+(*                 it with the successor of its predecessor. Translated  *)
+(*                 from hol88.                                           *)
+(*                                                                       *)
+(* AUTHOR        : T.Melham                                              *)
+(* TRANSLATOR    : Konrad Slind, University of Calgary                   *)
+(* DATE          : 87.08.23                                              *)
+(*                 September 11, 1991                                    *)
+(* ===================================================================== *)
+
+
+structure Num_conv : Num_conv_sig =
+struct
+
+structure Thm = Thm;
+
+open Exception;
+open Lib;
+open Thm;
+open Term_io.Parse;
+open Dsyntax;
+open Term;
+
+val ERR = Exception.ERR "Num_conv";
+
+
+val num_ty = ==`:num`==;
+fun mk_numeral n = 
+    mk_const{Name = int_to_string n, Ty = num_ty}
+fun dest_numeral t = 
+    string_to_int(#Name(dest_const t)) 
+    handle _ => ERR("dest_numeral","");
+	
+
+(* axiom scheme for numerals   *)
+local
+val SUC = --`SUC`--
+val eq = --`$= :num->num->bool`--
+in
+fun num_CONV t =
+   let val n = dest_numeral t 
+   in if (n<1) 
+   then ERR("num_CONV",int_to_string n^" is not a successor")
+   else Thm.mk_drule_thm([], 
+         list_mk_comb(eq, [t,mk_comb{Rator = SUC, Rand = mk_numeral(n-1)}]))
+   end
+end;
+
+end; (* Num_conv *)
+@
+
+
+1.3
+log
+@Added simplifier components, added drule files, added MK_ABS_CONV, better error messages
+@
+text
+@@
+
+
+1.2
+log
+@First phase of hol90.8 development.  hol90 now compiles using NJSML-CM
+108.5, with separate compilation of libraries.  System dependencies
+have been isolated in the makefiles and "portable.sml".
+
+This involved a large number of enhancments to the source files,
+most of which are documented in the 7.changes file (or will be shortly).
+See also the correpsonding email corrspondence between RJB, KLS, TFM,
+JRH and DRS that happened during this development.
+@
+text
+@d26 1
+a26 4
+fun NUM_CONV_ERR{function,message} = 
+         HOL_ERR{origin_structure ="Num_conv",
+                 origin_function = function,
+                 message = message}
+d28 9
+a37 1
+
+a38 1
+val N = ==`:num`==
+a40 3
+fun num_to_term n = mk_const{Name = int_to_string n, Ty = N}
+fun term_to_num t = string_to_int(#Name(dest_const t)) handle _ 
+                    => raise NUM_CONV_ERR{function="term_to_num",message = ""}
+d43 1
+a43 1
+   let val n = term_to_num t 
+d45 1
+a45 2
+   then raise NUM_CONV_ERR{function = "num_CONV",
+                           message = int_to_string n^" is not a successor"}
+d47 1
+a47 1
+         list_mk_comb(eq, [t,mk_comb{Rator = SUC, Rand = num_to_term(n-1)}]))
+@
+
+
+1.2.4.1
+log
+@Changes made in order to move to SML/NJ 109.26.
+@
+text
+@d22 1
+a22 1
+open Parse;
+@
+
+
+1.2.4.2
+log
+@Minor changes to make HOL CM-friendly.
+@
+text
+@a16 2
+open CoreHol;
+
+d33 6
+a38 5
+local val N = ==`:num`==
+      val SUC = --`SUC`--
+      val eq = --`$= :num->num->bool`--
+      fun num_to_term n = mk_const{Name = int_to_string n, Ty = N}
+      fun term_to_num t = string_to_int(#Name(dest_const t)) handle _ 
+@
+
+
+1.2.4.3
+log
+@Addition of inference tracking for Wai Wong.
+@
+text
+@d38 3
+a40 3
+      fun num_to_term n = mk_const{Name=int_to_string n, Ty=N}
+      fun term_to_num t = string_to_int(#Name(dest_const t)) 
+       handle _ => raise NUM_CONV_ERR{function="term_to_num",message = ""}
+d47 2
+a48 4
+   else let val th' = Thm.mk_drule_thm([], 
+                         list_mk_comb(eq, [t,mk_comb{Rator = SUC, 
+                                                Rand = num_to_term(n-1)}]))
+        in Thm.note (STEP{Name="NUMCONV", Just=[JA_TERM t], Thm=th'},th') end
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d17 1
+a17 3
+fun NUM_CONV_ERR{function,message} = HOL_ERR{origin_structure ="Num_conv",
+					     origin_function = function,
+					     message = message}
+d19 6
+a24 1
+(* axiom scheme for numerals                                         *)
+d26 7
+d36 4
+a39 4
+fun int_to_term n = mk_const{Name = int_to_string n, Ty = N}
+fun term_to_int t = string_to_int(#Name(dest_const t))
+                    handle _ => raise NUM_CONV_ERR{function = "term_to_int",
+						   message = ""}
+d42 2
+a43 3
+   let val n = term_to_int t 
+   in
+   if (n<1) 
+d45 1
+a45 2
+                           message = 
+			    (Lib.int_to_string n)^" is not a successor"}
+d47 1
+a47 1
+         mk_eq{lhs = t, rhs = mk_comb{Rator = SUC, Rand = int_to_term(n-1)}})
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@
+
+
+1.1.1.1.2.1
+log
+@	Konrad's bug fixes and further development to hol90.7 after it's release.
+	Checked n on a side branch for later merging with the main trunk
+	(Elsa's revisions).  See doc/7.changes for details.
+@
+text
+@d17 3
+a19 4
+fun NUM_CONV_ERR{function,message} = 
+         HOL_ERR{origin_structure ="Num_conv",
+                 origin_function = function,
+                 message = message}
+d21 1
+a21 1
+(* axiom scheme for numerals   *)
+a25 1
+val eq = --`$= :num->num->bool`--
+d27 3
+a29 2
+fun term_to_int t = string_to_int(#Name(dest_const t)) handle _ 
+                    => raise NUM_CONV_ERR{function="term_to_int",message = ""}
+d33 2
+a34 1
+   in if (n<1) 
+d36 2
+a37 1
+                           message = Lib.int_to_string n^" is not a successor"}
+d39 1
+a39 1
+         list_mk_comb(eq, [t,mk_comb{Rator = SUC, Rand = int_to_term(n-1)}]))
+@

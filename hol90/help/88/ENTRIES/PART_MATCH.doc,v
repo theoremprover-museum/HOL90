@@ -1,0 +1,104 @@
+head	1.1;
+branch	1.1.1;
+access;
+symbols
+	HOL97:1.1.1.1.0.6
+	bpHOL97:1.1.1.1
+	hol90_9_alpha:1.1.1.1
+	hol90_pre8_for_multiple_compilers:1.1.1.1.0.4
+	hol90_pre8_after_donalds_separate_compilation_changes:1.1.1.1
+	hol90_8_after_merging_Konrad_Elsa:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	95.10.16.13.34.12;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.34.12;	author rjb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@\DOC PART_MATCH
+
+\TYPE {PART_MATCH : ((term -> term) -> thm -> term -> thm)}
+
+\SYNOPSIS
+Instantiates a theorem by matching part of it to a term.
+
+\KEYWORDS
+rule.
+
+\DESCRIBE
+When applied to a `selector' function of type {term -> term}, a theorem and a
+term:
+{
+   PART_MATCH fn (A |- !x1...xn. t) tm
+}
+\noindent the function {PART_MATCH} applies {fn} to {t'} (the result
+of specializing universally quantified variables in the conclusion of
+the theorem), and attempts to match the resulting term to the argument term
+{tm}. If it succeeds, the appropriately instantiated version of the theorem is
+returned.
+
+\FAILURE
+Fails if the selector function {fn} fails when applied to the instantiated
+theorem, or if the match fails with the term it has provided.
+
+\EXAMPLE
+Suppose that we have the following theorem:
+{
+   th = |- !x. x==>x
+}
+\noindent
+then the following:
+{
+   PART_MATCH (fst o dest_imp) th "T"
+}
+\noindent results in the theorem:
+{
+   |- T ==> T
+}
+\noindent because the selector function picks the antecedent of the implication
+(the inbuilt specialization gets rid of the universal quantifier), and matches
+it to {T}.
+
+\SEEALSO
+INST_TYPE, INST_TY_TERM, match.
+
+\ENDDOC
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

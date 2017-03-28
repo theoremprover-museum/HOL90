@@ -1,0 +1,225 @@
+head	1.3;
+access;
+symbols
+	hol90_pre8_for_multiple_compilers:1.3.0.2
+	hol90_pre8_after_donalds_separate_compilation_changes:1.3
+	hol90_8_after_merging_Konrad_Elsa:1.3
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.3
+date	95.10.18.16.36.44;	author drs1004;	state Exp;
+branches
+	1.3.2.1;
+next	1.2;
+
+1.2
+date	95.10.17.17.06.33;	author drs1004;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	95.10.16.13.29.48;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.29.48;	author rjb;	state Exp;
+branches
+	1.1.1.1.2.1;
+next	;
+
+1.1.1.1.2.1
+date	95.10.18.10.09.05;	author drs1004;	state Exp;
+branches;
+next	;
+
+1.3.2.1
+date	96.06.27.15.57.13;	author rjb;	state dead;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.3
+log
+@Check in after merging in Konrad's changes made after
+the release of hol90.7.  This involved creating a side branch
+in which to check in Konrad's changes, then merging in that
+side branch into the main development (which contains changes
+made by Elsa Gunter).
+
+Some other small modification have been made to the source code,
+as I begun to try to make this version into a working version:
+	- hol90 will now be compiled in an environment were no
+structures can be considered opn.  This means many structures
+now need "open Lib" and other such commands at their head.
+This has not yet been completed, but has been begun.
+	- "rotl" and "rotr" have been added to Lib, something
+which I just did impulsively.   Documentation files
+have also been added in help/90.
+@
+text
+@val basic_hol_lib =
+   if Globals.remake_theory_files
+   then Library.new_library
+        {name = "BASIC_HOL",
+         doc = "Supplies numbers and pairs. Preloaded.",
+         path = !Globals.HOLdir,
+         parents = [prim_hol_lib],
+         theories = ["BASIC_HOL"],
+         code = ["2/num_conv.sig","2/num_conv.sml",
+                 "2/let_conv.sig","2/let_conv.sml",
+                 "2/num_induct.sig","2/num_induct.sml",
+                 "2/rec_type_support.sig","2/rec_type_support.sml"],
+         help = [],
+         loaded = "fn() => \
+           \ let val pair_rewrites = map (theorem \"pair\") \
+           \                             [\"PAIR\",\"FST\",\"SND\"] \
+           \ in \
+           \    Globals.theory_path := tl (!Globals.theory_path); \
+           \    if Globals.remake_theory_files \
+           \    then (close_theory(); export_theory()) \
+           \    else (); \
+           \    Globals.assert_nums_defined(); \
+           \    Rewrite.add_implicit_rewrites pair_rewrites;\
+           \    Lib.use_string\"open Num_conv Let_conv\"; \
+           \    Lib.use_string\"open Num_induct Rec_type_support\"; \
+           \    Sml_system.interp := true; \
+           \    Save_hol.save_hol\"hol90.2\" \
+           \ end"}
+   else let val bh_lib = Library.find_library "BASIC_HOL";
+        in Library.move_library(bh_lib, !Globals.HOLdir);
+           bh_lib
+        end;
+
+if Globals.remake_theory_files 
+then ( load_theory "pair";
+       Theory.new_theory "BASIC_HOL";
+       Theory.new_parent "num";
+      ())
+else Theory.load_theory "BASIC_HOL";
+
+
+(* Need "" at head of theory_path in order for absolute paths used in 
+   library theories to make sense when loading theory files.
+   Complicated: see interaction with "loaded" definition above.
+*)
+val _ = (Lib.cons_path "" Globals.theory_path;
+         Library.load_library_in_place basic_hol_lib);
+@
+
+
+1.3.2.1
+log
+@Theory files now build with SML/NJ 109, SML/NJ 108.5 (using CM), SML/NJ 0.93,
+and Poly/ML 3.0.
+The quotation filter has been modified so that antiquotation works correctly
+in old-style quotations.
+The quotation filter is now compiled using flex and gcc (by default).
+The arguments to the script for running hol90 have been changed.
+@
+text
+@@
+
+
+1.2
+log
+@Keeping you up to date:
+
+I'm about to do a checkin of elsa's modifications to the hol90.7
+sources to create her hol90.pre8.  To recap what I've done:
+	- I checked out hol90 (in /usr/groups/hol/drs1004/hol90)
+		cvs co hol90
+	  (Well, to be honest, I only checked out those
+	  parts of hol90 I knew I'd be changing, e.g. not the
+	  Manual, and only parts of the library.  Checking out the
+	  entire source takes a while, mainly due to the enormous number
+	  of help files.  The limiting factor is files/second, which
+         runs at around 5 when CVS is working on nfs over a network, not
+         KB/second, which you might at first think it would be).
+
+	- By doing a recursive diff between Elsa's source and the
+	hol90.7 source I found all the changes Elsa had made to
+	source files.  I copied relevant files from Elsa's source
+	into my checked out version.  The only new files were
+		- the sml_system files in src/0
+		- some make scripts in src/.
+	Changed files were in:
+		src/{0,1,2,3}
+		library/arith/src/thm_convs.sml
+		library/list/src/list_conv1.sml
+		library/num/src/num_lib.sml
+		library/prog_logic/src/halts_logic.sml
+		library/prog_logic/src/translation.sml
+		library/prog_logic/theories/src/mk_halts.sml
+		library/real/theories/src/Make
+		library/real/theories/src/equiv.sml
+		library/real/theories/src/seq.sml
+		library/reduce/src/arithconv.sml
+		library/string/src/string_conv.sml
+		library/unity/theories/src/aux_definitions.sml
+		library/word/theories/src/*
+
+	- I will now commit these changes, with this email as the log message.
+		cvs commit
+
+	- Tomorrow I will get this version compiling
+	with NJSML 108 (I will probably add
+	the files to enable the NJSML compilation manager to make
+	this easier), then check those changes in.  I think it's
+	good to get things in a working state.
+@
+text
+@d23 1
+a23 1
+           \    Rewrite.add_base_rewrites pair_rewrites;\
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d26 1
+a26 1
+           \    System.Control.interp := true; \
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@
+
+
+1.1.1.1.2.1
+log
+@	Konrad's bug fixes and further development to hol90.7 after it's release.
+	Checked n on a side branch for later merging with the main trunk
+	(Elsa's revisions).  See doc/7.changes for details.
+@
+text
+@d23 1
+a23 1
+           \    Rewrite.add_implicit_rewrites pair_rewrites;\
+@

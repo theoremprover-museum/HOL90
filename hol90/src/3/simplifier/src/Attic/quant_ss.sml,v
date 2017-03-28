@@ -1,0 +1,156 @@
+head	1.2;
+access;
+symbols;
+locks; strict;
+comment	@# @;
+
+
+1.2
+date	96.01.04.14.15.10;	author drs1004;	state dead;
+branches;
+next	1.1;
+
+1.1
+date	95.12.18.11.39.40;	author drs1004;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.2
+log
+@Added simplifier components, added drule files, added MK_ABS_CONV, better error messages
+@
+text
+@
+(* =====================================================================
+ * Simpsets for Quantifier movements
+ *
+use "3/simplifier/src/quant_ss.sml";
+ * =====================================================================*)
+
+signature Quant_ss_sig =
+sig
+	structure Simplifier : Simplifier_sig
+
+	val NOT_IN_ss : Simplifier.simpset
+	val NOT_SIMP_ss : Simplifier.simpset
+	val EXISTS_NORM_ss : Simplifier.simpset;
+
+end;
+
+
+structure Quant_ss : Quant_ss_sig =
+struct 
+  structure Simplifier = Simplifier;
+  structure Pure_ss = Pure_ss;
+  open Core;
+     infix |>;
+  open Simplifier;
+  infix ++;
+      
+  open Pure_ss;
+  open Quant_thms;
+  open Bool_ss;
+
+
+(* ---------------------------------------------------------------------
+ * NOT_IN_ss
+ *
+ * Moving negations inwards.
+ * --------------------------------------------------------------------*)
+
+val NOT_IN_ss =
+    pure_ss 
+    ++ [NOT_IMP,
+	DE_MORGAN_THM,
+	NOT_FORALL_THM,
+	NOT_EXISTS_THM];
+
+(* ---------------------------------------------------------------------
+ * EXISTS_NORM_ss
+ *
+ * Moving existentials 
+ *    - inwards over disjunctions
+ *    - outwards over conjunctions
+ *    - outwards from left of implications (??? - do we want this??)
+ *    - inwards into right of implications
+ * --------------------------------------------------------------------*)
+
+val EXISTS_NORM_ss =
+    pure_ss 
+    ++ [EXISTS_OR_THM, 
+        TRIV_AND_EXISTS_THM, 
+        LEFT_AND_EXISTS_THM,
+        RIGHT_AND_EXISTS_THM,
+        LEFT_IMP_EXISTS_THM,
+        TRIV_EXISTS_IMP_THM];
+
+
+(* ---------------------------------------------------------------------
+ * NOT_SIMP_ss
+ *
+ * Moving negations inwards, eliminate disjuncts incolving negations,
+ * eliminate negations on either side of equalities.
+ * --------------------------------------------------------------------*)
+
+val NOT_OR_CLAUSE1 = prove((--`~x \/ y = (x ==> y)`--),
+    BOOL_CASES_TAC (--`(x :bool)`--) THEN 
+    BOOL_CASES_TAC (--`(y :bool)`--) THEN SIMP_TAC bool_ss
+);
+
+val NOT_OR_CLAUSE2 = prove((--`x \/ ~y = (y ==> x)`--),
+    BOOL_CASES_TAC (--`(x :bool)`--) THEN 
+    BOOL_CASES_TAC (--`(y :bool)`--) THEN SIMP_TAC bool_ss
+);
+
+val NOT_11 = prove((--`(~p = ~q) = (p = q)`--),
+    MAP_EVERY BOOL_CASES_TAC [(--`p:bool`--),(--`q:bool`--)] THEN 
+    SIMP_TAC bool_ss
+);
+
+val NOT_SIMP_ss =
+    NOT_IN_ss 
+    ++ [NOT_OR_CLAUSE1,NOT_OR_CLAUSE2,NOT_11];
+
+
+
+end; 
+
+
+
+
+
+
+(* Tests:
+
+open Simplifier;
+open Quant_ss;
+open Trace;
+trace_level 5;
+
+prove(--`!P. ~P = (P = F)`--,SIMP_TAC bool_ss);
+prove(--`!P. P = (P = T)`--,SIMP_TAC bool_ss);
+prove(--`!P. P = (P /\ T)`--, SIMP_TAC bool_ss);
+SIMP_CONV bool_ss (--`1=1`--);
+SIMP_CONV bool_ss (--`!x:'a. 1=1`--);
+SIMP_CONV bool_ss (--`!x:'a. x = x`--);
+SIMP_CONV bool_ss (--`!x:'a. (\y. P x y) x`--);
+SIMP_CONV bool_ss (--`(x = 0) ==> (x + y = z + x)`--);
+profile2 SIMP_CONV CNF_ss (--`(x = y) ==> x ==> (~x /\ (y \/ z))`--);
+profile2 SIMP_CONV DNF_ss (--`(x = y) ==> x ==> (~x /\ (y \/ z))`--);
+*)
+
+
+@
+
+
+1.1
+log
+@Preterm and other changes, see 7.changes
+@
+text
+@@

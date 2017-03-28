@@ -1,0 +1,125 @@
+
+
+          HHH                 LL
+          HHH                  LL
+          HHH                   LL
+          HHH                    LL
+          HHH          OOOO       LL
+          HHHHHHH     OO  OO       LL
+          HHHHHHH     OO  OO       LLL
+          HHH          OOOO        LLLL
+          HHH                     LL  LL
+          HHH                    LL    LL
+          HHH                   LL      LL
+          HHH                  LL        LL90.7
+
+Created on Tue Nov 15 10:19:01 GMT 1994
+using: Standard ML of New Jersey, Version 0.93, February 15, 1993
+
+
+val it = () : unit
+val it = () : unit
+- [opening after_laws.sml]
+
+Declaring theory "after_laws".
+
+Theory "CSP_base" already consistent with disk, hence not exported.
+val it = () : unit
+val it = () : unit
+val event = (--`(ty_antiq((==`:string`==)))`--) : term
+val trace = (--`(ty_antiq((==`:string list`==)))`--) : term
+val alphabet = (--`(ty_antiq((==`:string set`==)))`--) : term
+val it = [(),(),(),(),()] : unit list
+val ALPHA_choice_SPEC =
+  |- WELL_DEF_ALPHA A P ==> (!c. c IN A ==> (ALPHA (choice A P) = ALPHA (P c)))
+  : thm
+val TRACES_choice =
+  |- !P A.
+       WELL_DEF_ALPHA A P ==>
+       (TRACES (choice A P) =
+        {[]} UNION {CONS a t | a IN A /\ t IN TRACES (P a)}) : thm
+val AFTER =
+  |- !P s.
+       s IN TRACES P ==>
+       (ALPHA (P / s) = ALPHA P) /\
+       (TRACES (P / s) = {t | APPEND s t IN TRACES P}) : thm
+val TRACES_AFTER =
+  |- !P s. s IN TRACES P ==> (TRACES (P / s) = {t | APPEND s t IN TRACES P})
+  : thm
+val TRACES_PREFIX =
+  |- !P a.
+       a IN ALPHA P ==>
+       (TRACES (a --> P) = {[]} UNION {CONS a t | t IN TRACES P}) : thm
+val ALPHA_PREFIX = |- !P a. a IN ALPHA P ==> (ALPHA (a --> P) = ALPHA P) : thm
+val PROCESS_EQ_SPLIT =
+  |- !P Q. (P = Q) = (ALPHA P = ALPHA Q) /\ (TRACES P = TRACES Q) : thm
+val TRACES_SND = |- !x y. IS_PROCESS (x,y) ==> (TRACES (ABS_process (x,y)) = y)
+  : thm
+val ALPHA_FST = |- !x y. IS_PROCESS (x,y) ==> (ALPHA (ABS_process (x,y)) = x)
+  : thm
+val APPEND_IN_TRACES = |- !P s t. APPEND s t IN TRACES P ==> s IN TRACES P
+  : thm
+val NIL_IN_TRACES = |- !P. [] IN TRACES P : thm
+val CONS_EQ_APPEND = |- !a l. CONS a l = APPEND [a] l : thm
+val APPEND_EQ_NIL = |- !l1 l2. (APPEND l1 l2 = []) = (l1 = []) /\ (l2 = [])
+  : thm
+val it = [(),(),(),(),()] : unit list
+val SET_ABBREV = |- !A. {x | x IN A} = A : thm
+val AFTER_NIL = |- P / [] = P : thm
+val TRACES_AFTER_THM =
+  |- !s t P. APPEND s t IN TRACES P ==> s IN TRACES P /\ t IN TRACES (P / s)
+  : thm
+val AFTER_APPEND =
+  |- !s t P. APPEND s t IN TRACES P ==> (P / APPEND s t = (P / s) / t) : thm
+val simplify_lemma =
+  |- !t c. (?t'. (APPEND [c] t = CONS c t') /\ t' IN TRACES P) = t IN TRACES P
+  : thm
+val AFTER_PREFIX = |- !c P. c IN ALPHA P ==> ((c --> P) / [c] = P) : thm
+val simplify_lemma2 =
+  |- (?a t'. (APPEND [c] t = CONS a t') /\ a IN B /\ t' IN TRACES (P a)) =
+     c IN B /\ t IN TRACES (P c) : thm
+val simplify_lemma3 =
+  |- (?a t. ((c = a) /\ ([] = t)) /\ a IN B /\ t IN TRACES (P a)) = c IN B
+  : thm
+val AFTER_CHOICE_LEMMA =
+  |- c IN B ==>
+     WELL_DEF_ALPHA B P ==>
+     (ALPHA (choice B P / [c]) = ALPHA (choice B P)) /\
+     (TRACES (choice B P / [c]) = TRACES (P c)) : thm
+val AFTER_CHOICE =
+  |- !c P B. WELL_DEF_ALPHA B P /\ c IN B ==> (choice B P / [c] = P c) : thm
+
+Theory "after_laws" exported.
+val it = () : unit
+val it = () : unit
+Theory: after_laws
+
+Parents:
+    process
+    CSP_base
+
+Type constants:
+    
+
+Term constants:
+    
+
+Axioms:
+    
+
+Definitions:
+    
+
+Theorems:
+    SET_ABBREV |- !A. {x | x IN A} = A
+    AFTER_NIL |- P / [] = P
+    TRACES_AFTER_THM
+    |- !s t P. APPEND s t IN TRACES P ==> s IN TRACES P /\ t IN TRACES (P / s)
+    AFTER_APPEND
+    |- !s t P. APPEND s t IN TRACES P ==> (P / APPEND s t = (P / s) / t)
+    AFTER_PREFIX |- !c P. c IN ALPHA P ==> ((c --> P) / [c] = P)
+    AFTER_CHOICE
+    |- !c P B. WELL_DEF_ALPHA B P /\ c IN B ==> (choice B P / [c] = P c)
+
+Theory "after_laws" is consistent with disk.
+val it = () : unit

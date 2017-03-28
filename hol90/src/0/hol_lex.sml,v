@@ -1,0 +1,1462 @@
+head	1.5;
+access;
+symbols
+	HOL97:1.4.2.1.0.2
+	bpHOL97:1.4.2.1
+	hol90_9_alpha:1.4.2.1
+	hol90_pre8_for_multiple_compilers:1.4.0.2
+	hol90_pre8_after_donalds_separate_compilation_changes:1.3
+	hol90_8_after_merging_Konrad_Elsa:1.2
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.5
+date	96.02.08.00.31.03;	author drs1004;	state Exp;
+branches;
+next	1.4;
+
+1.4
+date	95.11.15.13.24.23;	author rjb;	state Exp;
+branches
+	1.4.2.1;
+next	1.3;
+
+1.3
+date	95.10.31.13.56.12;	author drs1004;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	95.10.17.17.06.56;	author drs1004;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	95.10.16.13.29.52;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.29.52;	author rjb;	state Exp;
+branches;
+next	;
+
+1.4.2.1
+date	96.08.23.14.23.34;	author rjb;	state Exp;
+branches
+	1.4.2.1.2.1;
+next	;
+
+1.4.2.1.2.1
+date	97.06.11.17.23.59;	author kxs;	state dead;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.5
+log
+@New theory mechanism, by Donald Syme, and many other enhancements.
+@
+text
+@functor HOL_LEX(structure Tokens : hol_TOKENS
+                         structure Parse_support : Parse_support_sig
+                         sharing
+                           Tokens.Parse_support = Parse_support)=
+   struct
+    structure UserDeclarations =
+      struct
+structure Parse_support = Parse_support;
+structure Tokens = Tokens;
+
+type pos = int;
+type svalue = Tokens.svalue;
+type ('a,'b) token = ('a,'b) Tokens.token;
+type lexresult = (svalue,pos) Tokens.token;
+
+
+fun error(s,_,_) = output(std_out,"HOL lexer error: "^s^"\n");
+
+fun eof (_:Tokens.Parse_support.Preterm.Term.term list ref) = Tokens.EOF(0,0);
+val type_paren_count = ref 0;
+val comment_paren_count = ref 0;
+val string_list = ref ([]:string list);
+exception AQ_ERR of string;
+exception LEX_ERR of string;
+
+fun has_tilde s =
+   let val tilde = Portable.String.ordof("~",0)
+       fun f i = ((Portable.String.ordof(s,i) = tilde) orelse f(i+1))
+   in f 0 handle _ => false
+   end;
+
+fun drop_dollar s =
+   let val dollar = Portable.String.ordof("$",0)
+   in if (Portable.String.ordof(s,0) = dollar)
+      then substring(s,1,String.size s - 1)
+      else s
+   end;
+
+(*
+ * fun break s = snd
+ *    (itlist (fn ch => fn (current_frag,seen) =>
+ *              if (ch = "~")
+ *              then if (null current_frag)
+ *                   then ([],(ch::seen))
+ *                   else ([],(ch::(implode current_frag)::seen))
+ *              else ((ch::current_frag),seen))
+ *            (""::explode s) ([],[]));
+ ****)
+
+
+(* Confusion warning: symbolic_ident means roughly 
+
+       Maybe a $ followed by any sequence of symbols
+*)
+(* The next "end" closes the UserDeclarations structure in the compiled file
+   so that the declarations below are available in the rest of the compiled
+   code. The Empty structure then matches with the "end" that should have
+   closed the UserDeclarations structure.
+*)
+end
+
+val substring = Portable.String.substring;
+val ordof = Portable.String.ordof;
+val concat = Portable.String.concat;
+structure Vector = Portable.Vector;
+
+structure Empty =
+struct
+end (* end of user routines *)
+exception LexError (* raised if illegal leaf action tried *)
+structure Internal =
+	struct
+
+datatype yyfinstate = N of int
+type statedata = {fin : yyfinstate list, trans: string}
+(* transition & final state table *)
+val tab = let
+val s0 =
+"\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000"
+val s1 =
+"\011\011\011\011\011\011\011\011\011\030\032\011\030\011\011\011\
+\\011\011\011\011\011\011\011\011\011\011\011\011\011\011\011\011\
+\\030\015\029\015\027\015\015\011\025\024\015\015\015\015\023\015\
+\\018\018\018\018\018\018\018\018\018\018\015\015\015\015\015\015\
+\\015\018\018\018\018\018\018\018\018\018\018\018\018\018\018\018\
+\\018\018\018\018\018\018\018\018\018\018\018\022\015\021\020\015\
+\\011\018\018\018\018\018\018\018\018\018\018\018\018\018\018\018\
+\\018\018\018\018\018\018\018\018\018\018\018\017\015\014\012\011\
+\\011"
+val s3 =
+"\033\033\033\033\033\033\033\033\033\060\062\033\060\033\033\033\
+\\033\033\033\033\033\033\033\033\033\033\033\033\033\033\033\033\
+\\060\037\033\059\057\037\037\055\053\052\037\051\050\048\047\037\
+\\040\040\040\040\040\040\040\040\040\040\037\037\037\045\037\037\
+\\037\040\040\040\040\040\040\040\040\040\040\040\040\040\040\040\
+\\040\040\040\040\040\040\040\040\040\040\040\044\037\043\042\037\
+\\033\040\040\040\040\040\040\040\040\040\040\040\040\040\040\040\
+\\040\040\040\040\040\040\040\040\040\040\040\039\037\036\034\033\
+\\033"
+val s5 =
+"\063\063\063\063\063\063\063\063\063\063\068\063\063\063\063\063\
+\\063\063\063\063\063\063\063\063\063\063\063\063\063\063\063\063\
+\\063\063\063\063\063\063\063\063\066\063\064\063\063\063\063\063\
+\\063\063\063\063\063\063\063\063\063\063\063\063\063\063\063\063\
+\\063\063\063\063\063\063\063\063\063\063\063\063\063\063\063\063\
+\\063\063\063\063\063\063\063\063\063\063\063\063\063\063\063\063\
+\\063\063\063\063\063\063\063\063\063\063\063\063\063\063\063\063\
+\\063\063\063\063\063\063\063\063\063\063\063\063\063\063\063\063\
+\\063"
+val s7 =
+"\069\069\069\069\069\069\069\069\069\069\074\069\069\069\069\069\
+\\069\069\069\069\069\069\069\069\069\069\069\069\069\069\069\069\
+\\069\069\069\069\069\069\069\069\072\069\070\069\069\069\069\069\
+\\069\069\069\069\069\069\069\069\069\069\069\069\069\069\069\069\
+\\069\069\069\069\069\069\069\069\069\069\069\069\069\069\069\069\
+\\069\069\069\069\069\069\069\069\069\069\069\069\069\069\069\069\
+\\069\069\069\069\069\069\069\069\069\069\069\069\069\069\069\069\
+\\069\069\069\069\069\069\069\069\069\069\069\069\069\069\069\069\
+\\069"
+val s9 =
+"\075\075\075\075\075\075\075\075\075\075\079\075\075\075\075\075\
+\\075\075\075\075\075\075\075\075\075\075\075\075\075\075\075\075\
+\\075\075\078\075\075\075\075\075\075\075\075\075\075\075\075\075\
+\\075\075\075\075\075\075\075\075\075\075\075\075\075\075\075\075\
+\\075\075\075\075\075\075\075\075\075\075\075\075\075\075\075\075\
+\\075\075\075\075\075\075\075\075\075\075\075\075\076\075\075\075\
+\\075\075\075\075\075\075\075\075\075\075\075\075\075\075\075\075\
+\\075\075\075\075\075\075\075\075\075\075\075\075\075\075\075\075\
+\\075"
+val s12 =
+"\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000\013\000\013\000\013\013\000\000\000\013\013\013\013\000\013\
+\\000\000\000\000\000\000\000\000\000\000\013\013\013\013\013\013\
+\\013\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000\000\000\000\000\000\000\000\000\000\000\000\013\000\000\013\
+\\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000\000\000\000\000\000\000\000\000\000\000\000\013\000\013\000\
+\\000"
+val s15 =
+"\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000\016\000\016\000\016\016\000\000\000\016\016\016\016\000\016\
+\\000\000\000\000\000\000\000\000\000\000\016\016\016\016\016\016\
+\\016\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000\000\000\000\000\000\000\000\000\000\000\000\016\000\000\016\
+\\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000\000\000\000\000\000\000\000\000\000\000\000\016\000\013\000\
+\\000"
+val s18 =
+"\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000\000\000\000\000\000\000\019\000\000\000\000\000\000\000\000\
+\\019\019\019\019\019\019\019\019\019\019\000\000\000\000\000\000\
+\\000\019\019\019\019\019\019\019\019\019\019\019\019\019\019\019\
+\\019\019\019\019\019\019\019\019\019\019\019\000\000\000\000\019\
+\\000\019\019\019\019\019\019\019\019\019\019\019\019\019\019\019\
+\\019\019\019\019\019\019\019\019\019\019\019\000\000\000\000\000\
+\\000"
+val s25 =
+"\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000\000\000\000\000\000\000\000\000\000\026\000\000\000\000\000\
+\\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000"
+val s27 =
+"\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000\016\000\016\000\016\016\000\000\000\016\016\016\016\000\016\
+\\019\019\019\019\019\019\019\019\019\019\016\016\016\016\016\016\
+\\016\019\019\019\019\019\019\019\019\019\019\019\019\019\019\019\
+\\019\019\019\019\019\019\019\019\019\019\019\000\016\000\000\016\
+\\000\019\019\019\019\019\019\019\019\019\019\019\019\019\019\019\
+\\019\019\019\019\019\019\019\019\019\019\019\000\016\000\028\000\
+\\000"
+val s30 =
+"\000\000\000\000\000\000\000\000\000\031\031\000\031\000\000\000\
+\\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\031\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000"
+val s34 =
+"\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000\035\000\035\000\035\035\000\000\000\035\035\035\035\000\035\
+\\000\000\000\000\000\000\000\000\000\000\035\035\035\035\035\035\
+\\035\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000\000\000\000\000\000\000\000\000\000\000\000\035\000\000\035\
+\\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000\000\000\000\000\000\000\000\000\000\000\000\035\000\035\000\
+\\000"
+val s37 =
+"\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000\038\000\038\000\038\038\000\000\000\038\038\038\038\000\038\
+\\000\000\000\000\000\000\000\000\000\000\038\038\038\038\038\038\
+\\038\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000\000\000\000\000\000\000\000\000\000\000\000\038\000\000\038\
+\\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000\000\000\000\000\000\000\000\000\000\000\000\038\000\035\000\
+\\000"
+val s40 =
+"\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000\000\000\000\000\000\000\041\000\000\000\000\000\000\000\000\
+\\041\041\041\041\041\041\041\041\041\041\000\000\000\000\000\000\
+\\000\041\041\041\041\041\041\041\041\041\041\041\041\041\041\041\
+\\041\041\041\041\041\041\041\041\041\041\041\000\000\000\000\041\
+\\000\041\041\041\041\041\041\041\041\041\041\041\041\041\041\041\
+\\041\041\041\041\041\041\041\041\041\041\041\000\000\000\000\000\
+\\000"
+val s45 =
+"\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000\038\000\038\000\038\038\000\000\000\038\038\038\038\000\038\
+\\000\000\000\000\000\000\000\000\000\000\038\038\038\038\046\038\
+\\038\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000\000\000\000\000\000\000\000\000\000\000\000\038\000\000\038\
+\\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000\000\000\000\000\000\000\000\000\000\000\000\038\000\035\000\
+\\000"
+val s48 =
+"\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000\038\000\038\000\038\038\000\000\000\038\038\038\038\000\038\
+\\000\000\000\000\000\000\000\000\000\000\038\038\038\038\049\038\
+\\038\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000\000\000\000\000\000\000\000\000\000\000\000\038\000\000\038\
+\\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000\000\000\000\000\000\000\000\000\000\000\000\038\000\035\000\
+\\000"
+val s53 =
+"\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000\000\000\000\000\000\000\000\000\000\054\000\000\000\000\000\
+\\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000"
+val s55 =
+"\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000\056\056\056\056\056\056\056\056\056\056\056\056\056\056\056\
+\\056\056\056\056\056\056\056\056\056\056\056\000\000\000\000\000\
+\\000\056\056\056\056\056\056\056\056\056\056\056\056\056\056\056\
+\\056\056\056\056\056\056\056\056\056\056\056\000\000\000\000\000\
+\\000"
+val s56 =
+"\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\056\056\056\056\056\056\056\056\056\056\000\000\000\000\000\000\
+\\000\056\056\056\056\056\056\056\056\056\056\056\056\056\056\056\
+\\056\056\056\056\056\056\056\056\056\056\056\000\000\000\000\056\
+\\000\056\056\056\056\056\056\056\056\056\056\056\056\056\056\056\
+\\056\056\056\056\056\056\056\056\056\056\056\000\000\000\000\000\
+\\000"
+val s57 =
+"\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000\038\000\038\000\038\038\000\000\000\038\038\038\038\000\038\
+\\041\041\041\041\041\041\041\041\041\041\038\038\038\038\038\038\
+\\038\041\041\041\041\041\041\041\041\041\041\041\041\041\041\041\
+\\041\041\041\041\041\041\041\041\041\041\041\000\038\000\000\038\
+\\000\041\041\041\041\041\041\041\041\041\041\041\041\041\041\041\
+\\041\041\041\041\041\041\041\041\041\041\041\000\038\000\058\000\
+\\000"
+val s60 =
+"\000\000\000\000\000\000\000\000\000\061\061\000\061\000\000\000\
+\\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\061\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000"
+val s64 =
+"\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000\000\000\000\000\000\000\000\000\065\000\000\000\000\000\000\
+\\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000"
+val s66 =
+"\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000\000\000\000\000\000\000\000\000\000\067\000\000\000\000\000\
+\\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000"
+val s70 =
+"\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000\000\000\000\000\000\000\000\000\071\000\000\000\000\000\000\
+\\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000"
+val s72 =
+"\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000\000\000\000\000\000\000\000\000\000\073\000\000\000\000\000\
+\\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000"
+val s76 =
+"\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000\000\077\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000"
+in Vector.fromList
+[{fin = [], trans = s0},
+{fin = [], trans = s1},
+{fin = [], trans = s1},
+{fin = [], trans = s3},
+{fin = [], trans = s3},
+{fin = [], trans = s5},
+{fin = [], trans = s5},
+{fin = [], trans = s7},
+{fin = [], trans = s7},
+{fin = [], trans = s9},
+{fin = [], trans = s9},
+{fin = [(N 44)], trans = s0},
+{fin = [(N 33),(N 42),(N 44)], trans = s12},
+{fin = [(N 33)], trans = s12},
+{fin = [(N 19),(N 44)], trans = s0},
+{fin = [(N 33),(N 37),(N 44)], trans = s15},
+{fin = [(N 33),(N 37)], trans = s15},
+{fin = [(N 17),(N 44)], trans = s0},
+{fin = [(N 29),(N 44)], trans = s18},
+{fin = [(N 29)], trans = s18},
+{fin = [(N 25),(N 44)], trans = s0},
+{fin = [(N 23),(N 44)], trans = s0},
+{fin = [(N 21),(N 44)], trans = s0},
+{fin = [(N 11),(N 44)], trans = s0},
+{fin = [(N 15),(N 44)], trans = s0},
+{fin = [(N 13),(N 44)], trans = s25},
+{fin = [(N 7)], trans = s0},
+{fin = [(N 44)], trans = s27},
+{fin = [(N 33),(N 40)], trans = s12},
+{fin = [(N 9),(N 44)], trans = s0},
+{fin = [(N 4),(N 44)], trans = s30},
+{fin = [(N 4)], trans = s30},
+{fin = [(N 1),(N 4)], trans = s30},
+{fin = [(N 103)], trans = s0},
+{fin = [(N 92),(N 101),(N 103)], trans = s34},
+{fin = [(N 92)], trans = s34},
+{fin = [(N 85),(N 103)], trans = s0},
+{fin = [(N 92),(N 96),(N 103)], trans = s37},
+{fin = [(N 92),(N 96)], trans = s37},
+{fin = [(N 83),(N 103)], trans = s0},
+{fin = [(N 60),(N 103)], trans = s40},
+{fin = [(N 60)], trans = s40},
+{fin = [(N 62),(N 103)], trans = s0},
+{fin = [(N 81),(N 103)], trans = s0},
+{fin = [(N 79),(N 103)], trans = s0},
+{fin = [(N 92),(N 96),(N 103)], trans = s45},
+{fin = [(N 88),(N 92),(N 96)], trans = s37},
+{fin = [(N 73),(N 103)], trans = s0},
+{fin = [(N 92),(N 96),(N 103)], trans = s48},
+{fin = [(N 65),(N 92),(N 96)], trans = s37},
+{fin = [(N 71),(N 92),(N 96),(N 103)], trans = s37},
+{fin = [(N 67),(N 92),(N 96),(N 103)], trans = s37},
+{fin = [(N 77),(N 103)], trans = s0},
+{fin = [(N 75),(N 103)], trans = s53},
+{fin = [(N 52)], trans = s0},
+{fin = [(N 103)], trans = s55},
+{fin = [(N 56)], trans = s56},
+{fin = [(N 103)], trans = s57},
+{fin = [(N 92),(N 99)], trans = s34},
+{fin = [(N 69),(N 92),(N 96),(N 103)], trans = s37},
+{fin = [(N 49),(N 103)], trans = s60},
+{fin = [(N 49)], trans = s60},
+{fin = [(N 46),(N 49)], trans = s60},
+{fin = [(N 113)], trans = s0},
+{fin = [(N 113)], trans = s64},
+{fin = [(N 111)], trans = s0},
+{fin = [(N 113)], trans = s66},
+{fin = [(N 108)], trans = s0},
+{fin = [(N 105)], trans = s0},
+{fin = [(N 123)], trans = s0},
+{fin = [(N 123)], trans = s70},
+{fin = [(N 121)], trans = s0},
+{fin = [(N 123)], trans = s72},
+{fin = [(N 118)], trans = s0},
+{fin = [(N 115)], trans = s0},
+{fin = [(N 132)], trans = s0},
+{fin = [(N 132)], trans = s76},
+{fin = [(N 128)], trans = s0},
+{fin = [(N 130),(N 132)], trans = s0},
+{fin = [(N 125)], trans = s0}]
+end
+structure StartStates =
+	struct
+	datatype yystartstate = STARTSTATE of int
+
+(* start state definitions *)
+
+val COMMENT = STARTSTATE 7;
+val INITIAL = STARTSTATE 1;
+val STRING = STARTSTATE 9;
+val TYCOMMENT = STARTSTATE 5;
+val TYPE = STARTSTATE 3;
+
+end
+type result = UserDeclarations.lexresult
+	exception LexerError (* raised if illegal leaf action tried *)
+end
+
+fun makeLexer yyinput = 
+let 
+	val yyb = ref "\n" 		(* buffer *)
+	val yybl = ref 1		(*buffer length *)
+	val yybufpos = ref 1		(* location of next character to use *)
+	val yygone = ref 1		(* position in file of beginning of buffer *)
+	val yydone = ref false		(* eof found yet? *)
+	val yybegin = ref 1		(*Current 'start state' for lexer *)
+
+	val YYBEGIN = fn (Internal.StartStates.STARTSTATE x) =>
+		 yybegin := x
+
+fun lex (yyarg as (lala : Parse_support.Preterm.Term.term list ref)) =
+let fun continue() : Internal.result = 
+  let fun scan (s,AcceptingLeaves : Internal.yyfinstate list list,l,i0) =
+	let fun action (i,nil) = raise LexError
+	| action (i,nil::l) = action (i-1,l)
+	| action (i,(node::acts)::l) =
+		case node of
+		    Internal.N yyk => 
+			(let val yytext = substring(!yyb,i0,i-i0)
+			     val yypos = i0+ !yygone
+			fun REJECT() = action(i,acts::l)
+			open UserDeclarations Internal.StartStates
+ in (yybufpos := i; case yyk of 
+
+			(* Application actions *)
+
+  1 => (continue())
+| 101 => (YYBEGIN INITIAL;Tokens.ident("~",!yybufpos-(size yytext),!yybufpos))
+| 103 => (raise LEX_ERR "TYPE.catchall")
+| 105 => (continue())
+| 108 => (Lib.inc comment_paren_count; continue())
+| 11 => (Tokens.dot(!yybufpos-(size yytext),!yybufpos))
+| 111 => (Lib.dec comment_paren_count;
+                    if (!comment_paren_count = 0)
+                    then YYBEGIN TYPE
+                    else ();
+                    continue())
+| 113 => (continue())
+| 115 => (continue())
+| 118 => (Lib.inc comment_paren_count; continue())
+| 121 => (Lib.dec comment_paren_count;
+                  if (!comment_paren_count = 0)
+                  then YYBEGIN INITIAL
+                  else ();
+                  continue())
+| 123 => (continue())
+| 125 => (string_list :=  yytext::(!string_list); continue())
+| 128 => (string_list := yytext::(!string_list); continue())
+| 13 => (Tokens.lparen(!yybufpos-(size yytext),!yybufpos))
+| 130 => (YYBEGIN INITIAL; 
+              Tokens.string_(Portable.String.concat(rev(yytext::(!string_list))),!yybufpos-(size yytext),!yybufpos))
+| 132 => (string_list :=  yytext::(!string_list); continue())
+| 15 => (Tokens.rparen(!yybufpos-(size yytext),!yybufpos))
+| 17 => (Tokens.lbrace(!yybufpos-(size yytext),!yybufpos))
+| 19 => (Tokens.rbrace(!yybufpos-(size yytext),!yybufpos))
+| 21 => (Tokens.lbracket(!yybufpos-(size yytext),!yybufpos))
+| 23 => (Tokens.rbracket(!yybufpos-(size yytext),!yybufpos))
+| 25 => (let val (L as ref (x::t)) = lala
+                     val _ = L := t
+                 in Tokens.aq(x,!yybufpos-(size yytext),!yybufpos)
+                 end
+                 handle _ => raise AQ_ERR "lexer.INITIAL")
+| 29 => (case yytext
+         of "let" => Tokens.let_(!yybufpos-(size yytext),!yybufpos)
+          | "in" => Tokens.in_(!yybufpos-(size yytext),!yybufpos)
+          | "and" => Tokens.and_(!yybufpos-(size yytext),!yybufpos)
+          | "of" => (case (!Globals.in_type_spec)
+                       of NONE => raise LEX_ERR(Lib.quote "of"^" is a keyword.")
+                        |(SOME"")=>raise LEX_ERR(Lib.quote "of"^" is a keyword.")
+                        |(SOME _) => (YYBEGIN TYPE; type_paren_count := 0;
+                                      Tokens.of_(!yybufpos-(size yytext),!yybufpos)))
+          |    _ => if (Parse_support.is_binder yytext)
+                    then Tokens.binder(yytext,!yybufpos-(size yytext),!yybufpos)
+                    else Tokens.ident(yytext,!yybufpos-(size yytext),!yybufpos))
+| 33 => ( if (has_tilde yytext
+         andalso (Lib.mem (drop_dollar yytext) (!Globals.tilde_symbols)))
+     then if (Parse_support.is_binder yytext)
+          then Tokens.binder(yytext,!yybufpos-(size yytext),!yybufpos)
+          else Tokens.symbolic_ident(yytext,!yybufpos-(size yytext),!yybufpos)
+     else REJECT())
+| 37 => ( case yytext 
+         of ";" => Tokens.semi_colon(!yybufpos-(size yytext),!yybufpos)
+          | "=>" => Tokens.eq_gt(!yybufpos-(size yytext),!yybufpos)
+          | "="  => Tokens.eq(!yybufpos-(size yytext),!yybufpos)
+          | "|"  => Tokens.bar(!yybufpos-(size yytext),!yybufpos)
+          | "::" => Tokens.dcolon(!yybufpos-(size yytext),!yybufpos)
+          | ":" => ((case(!Globals.in_type_spec)
+                       of NONE => (YYBEGIN TYPE;  type_paren_count := 0)
+                        | _ => ());
+                    Tokens.colon(!yybufpos-(size yytext),!yybufpos))
+          |   _  => if (Parse_support.is_binder yytext)
+                    then Tokens.binder(yytext,!yybufpos-(size yytext),!yybufpos)
+                    else Tokens.symbolic_ident(yytext,!yybufpos-(size yytext),!yybufpos))
+| 4 => (continue())
+| 40 => (Tokens.ident("~",!yybufpos-(size yytext),!yybufpos))
+| 42 => (Tokens.ident("~",!yybufpos-(size yytext),!yybufpos))
+| 44 => (raise LEX_ERR "INITIAL.catchall")
+| 46 => (continue())
+| 49 => (continue())
+| 52 => ( YYBEGIN TYCOMMENT; comment_paren_count := 1; continue())
+| 56 => (Tokens.type_var_ident(yytext,!yybufpos-(size yytext),!yybufpos))
+| 60 => (case yytext
+                    of "let" => (YYBEGIN INITIAL; Tokens.let_(!yybufpos-(size yytext),!yybufpos))
+                     | "in" => (YYBEGIN INITIAL; Tokens.in_(!yybufpos-(size yytext),!yybufpos))
+                     | "and" => (YYBEGIN INITIAL; Tokens.and_(!yybufpos-(size yytext),!yybufpos))
+                     |    _ => Tokens.type_ident(yytext,!yybufpos-(size yytext),!yybufpos))
+| 62 => (let val (L as ref (x::t)) = lala
+                  val () = L := t
+              in Tokens.aq(x,!yybufpos-(size yytext),!yybufpos)
+              end
+              handle _ => raise AQ_ERR "lexer.TYPE")
+| 65 => (Tokens.type_right_arrow(!yybufpos-(size yytext),!yybufpos))
+| 67 => (Tokens.type_plus(!yybufpos-(size yytext),!yybufpos))
+| 69 => (Tokens.type_hash(!yybufpos-(size yytext),!yybufpos))
+| 7 => ( YYBEGIN COMMENT; comment_paren_count := 1; continue())
+| 71 => (if (!type_paren_count = 0)
+              then (YYBEGIN INITIAL; Tokens.symbolic_ident(",",!yybufpos-(size yytext),!yybufpos))
+              else Tokens.type_comma(!yybufpos-(size yytext),!yybufpos))
+| 73 => (YYBEGIN INITIAL; Tokens.dot(!yybufpos-(size yytext),!yybufpos))
+| 75 => (Lib.inc type_paren_count; Tokens.type_lparen(!yybufpos-(size yytext),!yybufpos))
+| 77 => (if (!type_paren_count = 0)
+               then (YYBEGIN INITIAL; Tokens.rparen(!yybufpos-(size yytext),!yybufpos))
+               else (Lib.dec type_paren_count; Tokens.type_rparen(!yybufpos-(size yytext),!yybufpos)))
+| 79 => (YYBEGIN INITIAL; Tokens.lbracket(!yybufpos-(size yytext),!yybufpos))
+| 81 => (YYBEGIN INITIAL; Tokens.rbracket(!yybufpos-(size yytext),!yybufpos))
+| 83 => (YYBEGIN INITIAL; Tokens.lbrace(!yybufpos-(size yytext),!yybufpos))
+| 85 => (YYBEGIN INITIAL; Tokens.rbrace(!yybufpos-(size yytext),!yybufpos))
+| 88 => ((case (!Globals.in_type_spec)
+                  of (SOME _) => ()
+                   | NONE => YYBEGIN INITIAL);
+               Tokens.eq_gt(!yybufpos-(size yytext),!yybufpos))
+| 9 => ( YYBEGIN STRING; string_list := [yytext]; continue())
+| 92 => ( if (has_tilde yytext 
+         andalso (Lib.mem (drop_dollar yytext) (!Globals.tilde_symbols)))
+     then( YYBEGIN INITIAL;
+           if (Parse_support.is_binder yytext)
+           then Tokens.binder(yytext,!yybufpos-(size yytext),!yybufpos)
+           else Tokens.symbolic_ident(yytext,!yybufpos-(size yytext),!yybufpos))
+     else REJECT())
+| 96 => ( YYBEGIN INITIAL;
+          case yytext 
+            of ";"  => Tokens.semi_colon(!yybufpos-(size yytext),!yybufpos)
+             | "=>" => Tokens.eq_gt(!yybufpos-(size yytext),!yybufpos)
+             | "="  => Tokens.eq(!yybufpos-(size yytext),!yybufpos)
+             | "|"  => Tokens.bar(!yybufpos-(size yytext),!yybufpos)
+             | "::" => Tokens.dcolon(!yybufpos-(size yytext),!yybufpos)
+             |   _  => if (Parse_support.is_binder yytext)
+                       then Tokens.binder(yytext,!yybufpos-(size yytext),!yybufpos)
+                       else Tokens.symbolic_ident(yytext,!yybufpos-(size yytext),!yybufpos))
+| 99 => (YYBEGIN INITIAL;Tokens.ident("~",!yybufpos-(size yytext),!yybufpos))
+| _ => raise Internal.LexerError
+
+		) end )
+
+	val {fin,trans} = Vector.sub(Internal.tab, s)
+	val NewAcceptingLeaves = fin::AcceptingLeaves
+	in if l = !yybl then
+	     if trans = #trans(Vector.sub(Internal.tab,0))
+	       then action(l,NewAcceptingLeaves
+) else	    let val newchars= if !yydone then "" else yyinput 1024
+	    in if (size newchars)=0
+		  then (yydone := true;
+		        if (l=i0) then UserDeclarations.eof yyarg
+		                  else action(l,NewAcceptingLeaves))
+		  else (if i0=l then yyb := newchars
+		     else yyb := substring(!yyb,i0,l-i0)^newchars;
+		     yygone := !yygone+i0;
+		     yybl := size (!yyb);
+		     scan (s,AcceptingLeaves,l-i0,0))
+	    end
+	  else let val NewChar = Char.ord(String.sub(!yyb,l))
+		val NewState = if NewChar<128 then Char.ord(String.sub(trans,NewChar)) else Char.ord(String.sub(trans,128))
+		in if NewState=0 then action(l,NewAcceptingLeaves)
+		else scan(NewState,NewAcceptingLeaves,l+1,i0)
+	end
+	end
+(*
+	val start= if substring(!yyb,!yybufpos-1,1)="\n"
+then !yybegin+1 else !yybegin
+*)
+	in scan(!yybegin (* start *),nil,!yybufpos,!yybufpos)
+    end
+in continue end
+  in lex
+  end
+end
+@
+
+
+1.4
+log
+@The HOL90 sources have been changed to allow for the use of different
+Standard ML compilers (possibly simultaneously).
+
+ * Many files in "src/0" changed to make them more portable across different
+   ML compilers. Various additions have been made to the Portable structure
+   and files changed to access identifiers in the Portable structure rather
+   than from the global environment. Worthy of special note are:
+
+   - The pointer equality used in "src/0/term.sml" has been made into a
+     function in the Portable structure.
+
+   - The ML-Lex and ML-Yacc files for the various parsers have been changed
+     to access the Portable structure. Both the source files and the SML
+     produced from them have been changed but I have not verified that the
+     source files would reproduce the new SML versions if ML-Lex and ML-Yacc
+     were to be rerun on them. The changes involve some hacks that exploit the
+     way ML-Lex and ML-Yacc work. See the sources for details.
+
+R.J.Boulton, 15th November 1995.
+@
+text
+@d1 1
+a1 2
+functor HOL_LEX((* structure Lib : Lib_sig *)
+                         structure Tokens : hol_TOKENS
+a11 1
+val line:pos = 0;
+d19 1
+a19 1
+fun eof (_:Tokens.Parse_support.Preterm.Term.term list ref) = Tokens.EOF(line,line);
+d27 1
+a27 1
+   let val tilde = 126 (*"~"*)
+d33 1
+a33 1
+   let val dollar = 36 (*"$"*)
+d35 1
+a35 1
+      then Portable.String.substring(s,1,Portable.String.size s - 1)
+a444 1
+	exception Reject	(* for implementing REJECT *)
+a458 2
+	val REJECT = fn () => raise Internal.Reject
+
+d469 1
+d476 1
+a476 1
+| 101 => (YYBEGIN INITIAL;Tokens.ident("~",line,line))
+d480 1
+a480 1
+| 11 => (Tokens.dot(line,line))
+d497 1
+a497 1
+| 13 => (Tokens.lparen(line,line))
+d499 1
+a499 1
+              Tokens.string_(concat(rev(yytext::(!string_list))),line,line))
+d501 5
+a505 5
+| 15 => (Tokens.rparen(line,line))
+| 17 => (Tokens.lbrace(line,line))
+| 19 => (Tokens.rbrace(line,line))
+| 21 => (Tokens.lbracket(line,line))
+| 23 => (Tokens.rbracket(line,line))
+d508 1
+a508 1
+                 in Tokens.aq(x,line,line)
+d512 3
+a514 3
+         of "let" => Tokens.let_(line,line)
+          | "in" => Tokens.in_(line,line)
+          | "and" => Tokens.and_(line,line)
+d519 1
+a519 1
+                                      Tokens.of_(line,line)))
+d521 2
+a522 2
+                    then Tokens.binder(yytext,line,line)
+                    else Tokens.ident(yytext,line,line))
+d526 2
+a527 2
+          then Tokens.binder(yytext,line,line)
+          else Tokens.symbolic_ident(yytext,line,line)
+d530 5
+a534 5
+         of ";" => Tokens.semi_colon(line,line)
+          | "=>" => Tokens.eq_gt(line,line)
+          | "="  => Tokens.eq(line,line)
+          | "|"  => Tokens.bar(line,line)
+          | "::" => Tokens.dcolon(line,line)
+d538 1
+a538 1
+                    Tokens.colon(line,line))
+d540 2
+a541 2
+                    then Tokens.binder(yytext,line,line)
+                    else Tokens.symbolic_ident(yytext,line,line))
+d543 2
+a544 2
+| 40 => (Tokens.ident("~",line,line))
+| 42 => (Tokens.ident("~",line,line))
+d549 1
+a549 1
+| 56 => (Tokens.type_var_ident(yytext,line,line))
+d551 4
+a554 4
+                    of "let" => (YYBEGIN INITIAL; Tokens.let_(line,line))
+                     | "in" => (YYBEGIN INITIAL; Tokens.in_(line,line))
+                     | "and" => (YYBEGIN INITIAL; Tokens.and_(line,line))
+                     |    _ => Tokens.type_ident(yytext,line,line))
+d557 1
+a557 1
+              in Tokens.aq(x,line,line)
+d560 3
+a562 3
+| 65 => (Tokens.type_right_arrow(line,line))
+| 67 => (Tokens.type_plus(line,line))
+| 69 => (Tokens.type_hash(line,line))
+d565 4
+a568 4
+              then (YYBEGIN INITIAL; Tokens.symbolic_ident(",",line,line))
+              else Tokens.type_comma(line,line))
+| 73 => (YYBEGIN INITIAL; Tokens.dot(line,line))
+| 75 => (Lib.inc type_paren_count; Tokens.type_lparen(line,line))
+d570 6
+a575 6
+               then (YYBEGIN INITIAL; Tokens.rparen(line,line))
+               else (Lib.dec type_paren_count; Tokens.type_rparen(line,line)))
+| 79 => (YYBEGIN INITIAL; Tokens.lbracket(line,line))
+| 81 => (YYBEGIN INITIAL; Tokens.rbracket(line,line))
+| 83 => (YYBEGIN INITIAL; Tokens.lbrace(line,line))
+| 85 => (YYBEGIN INITIAL; Tokens.rbrace(line,line))
+d579 1
+a579 1
+               Tokens.eq_gt(line,line))
+d585 2
+a586 2
+           then Tokens.binder(yytext,line,line)
+           else Tokens.symbolic_ident(yytext,line,line))
+d590 5
+a594 5
+            of ";"  => Tokens.semi_colon(line,line)
+             | "=>" => Tokens.eq_gt(line,line)
+             | "="  => Tokens.eq(line,line)
+             | "|"  => Tokens.bar(line,line)
+             | "::" => Tokens.dcolon(line,line)
+d596 3
+a598 3
+                       then Tokens.binder(yytext,line,line)
+                       else Tokens.symbolic_ident(yytext,line,line))
+| 99 => (YYBEGIN INITIAL;Tokens.ident("~",line,line))
+d601 1
+a601 1
+		) end handle Reject => action(i,acts::l))
+d619 2
+a620 2
+	  else let val NewChar = ordof(!yyb,l)
+		val NewState = if NewChar<128 then ordof(trans,NewChar) else ordof(trans,128)
+@
+
+
+1.4.2.1
+log
+@Recompiled hol_lex.
+@
+text
+@d29 2
+a30 7
+   let val tilde = Portable.String.ordof ("~",0)
+       val comma = Portable.String.ordof (",",0)
+       val semicolon = Portable.String.ordof (";",0)
+       fun f i = let val oof = Portable.String.ordof (s,i)
+                 in (oof = tilde) orelse (oof = comma) orelse 
+                    (oof = semicolon) orelse f(i+1)
+                 end
+d35 3
+a37 3
+   let val dollar = Portable.String.ordof ("$",0)
+   in if (Portable.String.ordof (s,0) = dollar)
+      then Portable.String.substring (s,1,Portable.String.size s - 1)
+d41 1
+a41 1
+(*---------------------------------------------------------------------------
+d50 2
+a51 1
+ *---------------------------------------------------------------------------*)
+d53 1
+d55 2
+a56 5
+(*---------------------------------------------------------------------------
+ * Confusion warning: symbolic_ident means roughly 
+ *
+ *       Maybe a $ followed by any sequence of symbols
+ *---------------------------------------------------------------------------*)
+d67 1
+a67 5
+structure Vector =
+struct
+   open Portable.Vector
+   val vector = fromList
+end;
+d91 1
+a91 1
+"\011\011\011\011\011\011\011\011\011\032\034\011\032\011\011\011\
+d93 1
+a93 1
+\\032\015\031\015\028\015\015\011\026\025\015\015\024\015\023\015\
+d101 9
+a109 9
+"\035\035\035\035\035\035\035\035\035\063\065\035\063\035\035\035\
+\\035\035\035\035\035\035\035\035\035\035\035\035\035\035\035\035\
+\\063\039\035\062\059\039\039\057\055\054\039\053\052\050\049\039\
+\\042\042\042\042\042\042\042\042\042\042\039\039\039\047\039\039\
+\\039\042\042\042\042\042\042\042\042\042\042\042\042\042\042\042\
+\\042\042\042\042\042\042\042\042\042\042\042\046\039\045\044\039\
+\\035\042\042\042\042\042\042\042\042\042\042\042\042\042\042\042\
+\\042\042\042\042\042\042\042\042\042\042\042\041\039\038\036\035\
+\\035"
+d111 9
+a119 9
+"\066\066\066\066\066\066\066\066\066\066\071\066\066\066\066\066\
+\\066\066\066\066\066\066\066\066\066\066\066\066\066\066\066\066\
+\\066\066\066\066\066\066\066\066\069\066\067\066\066\066\066\066\
+\\066\066\066\066\066\066\066\066\066\066\066\066\066\066\066\066\
+\\066\066\066\066\066\066\066\066\066\066\066\066\066\066\066\066\
+\\066\066\066\066\066\066\066\066\066\066\066\066\066\066\066\066\
+\\066\066\066\066\066\066\066\066\066\066\066\066\066\066\066\066\
+\\066\066\066\066\066\066\066\066\066\066\066\066\066\066\066\066\
+\\066"
+d121 9
+a129 9
+"\072\072\072\072\072\072\072\072\072\072\077\072\072\072\072\072\
+\\072\072\072\072\072\072\072\072\072\072\072\072\072\072\072\072\
+\\072\072\072\072\072\072\072\072\075\072\073\072\072\072\072\072\
+\\072\072\072\072\072\072\072\072\072\072\072\072\072\072\072\072\
+\\072\072\072\072\072\072\072\072\072\072\072\072\072\072\072\072\
+\\072\072\072\072\072\072\072\072\072\072\072\072\072\072\072\072\
+\\072\072\072\072\072\072\072\072\072\072\072\072\072\072\072\072\
+\\072\072\072\072\072\072\072\072\072\072\072\072\072\072\072\072\
+\\072"
+d131 9
+a139 9
+"\078\078\078\078\078\078\078\078\078\078\082\078\078\078\078\078\
+\\078\078\078\078\078\078\078\078\078\078\078\078\078\078\078\078\
+\\078\078\081\078\078\078\078\078\078\078\078\078\078\078\078\078\
+\\078\078\078\078\078\078\078\078\078\078\078\078\078\078\078\078\
+\\078\078\078\078\078\078\078\078\078\078\078\078\078\078\078\078\
+\\078\078\078\078\078\078\078\078\078\078\078\078\079\078\078\078\
+\\078\078\078\078\078\078\078\078\078\078\078\078\078\078\078\078\
+\\078\078\078\078\078\078\078\078\078\078\078\078\078\078\078\078\
+\\078"
+d153 1
+a153 1
+\\000\016\000\016\000\016\016\000\000\000\016\016\013\016\000\016\
+d170 1
+a170 1
+val s26 =
+d173 1
+a173 1
+\\000\000\000\000\000\000\000\000\000\000\027\000\000\000\000\000\
+d180 1
+a180 1
+val s28 =
+d183 1
+a183 1
+\\000\016\000\016\000\016\016\000\000\000\016\016\030\016\000\016\
+d188 1
+a188 1
+\\019\019\019\019\019\019\019\019\019\019\019\000\016\000\029\000\
+d190 2
+a191 2
+val s32 =
+"\000\000\000\000\000\000\000\000\000\033\033\000\033\000\000\000\
+d193 1
+a193 1
+\\033\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+d200 1
+a200 1
+val s36 =
+d203 4
+a206 4
+\\000\037\000\037\000\037\037\000\000\000\037\037\037\037\000\037\
+\\000\000\000\000\000\000\000\000\000\000\037\037\037\037\037\037\
+\\037\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000\000\000\000\000\000\000\000\000\000\000\000\037\000\000\037\
+d208 1
+a208 1
+\\000\000\000\000\000\000\000\000\000\000\000\000\037\000\037\000\
+d210 1
+a210 1
+val s39 =
+d213 4
+a216 4
+\\000\040\000\040\000\040\040\000\000\000\040\040\037\040\000\040\
+\\000\000\000\000\000\000\000\000\000\000\040\040\040\040\040\040\
+\\040\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000\000\000\000\000\000\000\000\000\000\000\000\040\000\000\040\
+d218 1
+a218 1
+\\000\000\000\000\000\000\000\000\000\000\000\000\040\000\037\000\
+d220 1
+a220 1
+val s42 =
+d223 6
+a228 6
+\\000\000\000\000\000\000\000\043\000\000\000\000\000\000\000\000\
+\\043\043\043\043\043\043\043\043\043\043\000\000\000\000\000\000\
+\\000\043\043\043\043\043\043\043\043\043\043\043\043\043\043\043\
+\\043\043\043\043\043\043\043\043\043\043\043\000\000\000\000\043\
+\\000\043\043\043\043\043\043\043\043\043\043\043\043\043\043\043\
+\\043\043\043\043\043\043\043\043\043\043\043\000\000\000\000\000\
+d230 1
+a230 1
+val s47 =
+d233 4
+a236 4
+\\000\040\000\040\000\040\040\000\000\000\040\040\037\040\000\040\
+\\000\000\000\000\000\000\000\000\000\000\040\040\040\040\048\040\
+\\040\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000\000\000\000\000\000\000\000\000\000\000\000\040\000\000\040\
+d238 1
+a238 1
+\\000\000\000\000\000\000\000\000\000\000\000\000\040\000\037\000\
+d240 1
+a240 1
+val s50 =
+d243 4
+a246 4
+\\000\040\000\040\000\040\040\000\000\000\040\040\037\040\000\040\
+\\000\000\000\000\000\000\000\000\000\000\040\040\040\040\051\040\
+\\040\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000\000\000\000\000\000\000\000\000\000\000\000\040\000\000\040\
+d248 1
+a248 1
+\\000\000\000\000\000\000\000\000\000\000\000\000\040\000\037\000\
+d250 1
+a250 1
+val s55 =
+d253 1
+a253 1
+\\000\000\000\000\000\000\000\000\000\000\056\000\000\000\000\000\
+d260 1
+a260 1
+val s57 =
+d265 4
+a268 4
+\\000\058\058\058\058\058\058\058\058\058\058\058\058\058\058\058\
+\\058\058\058\058\058\058\058\058\058\058\058\000\000\000\000\000\
+\\000\058\058\058\058\058\058\058\058\058\058\058\058\058\058\058\
+\\058\058\058\058\058\058\058\058\058\058\058\000\000\000\000\000\
+d270 1
+a270 1
+val s58 =
+d274 5
+a278 5
+\\058\058\058\058\058\058\058\058\058\058\000\000\000\000\000\000\
+\\000\058\058\058\058\058\058\058\058\058\058\058\058\058\058\058\
+\\058\058\058\058\058\058\058\058\058\058\058\000\000\000\000\058\
+\\000\058\058\058\058\058\058\058\058\058\058\058\058\058\058\058\
+\\058\058\058\058\058\058\058\058\058\058\058\000\000\000\000\000\
+d280 1
+a280 1
+val s59 =
+d283 6
+a288 6
+\\000\040\000\040\000\040\040\000\000\000\040\040\061\040\000\040\
+\\043\043\043\043\043\043\043\043\043\043\040\040\040\040\040\040\
+\\040\043\043\043\043\043\043\043\043\043\043\043\043\043\043\043\
+\\043\043\043\043\043\043\043\043\043\043\043\000\040\000\000\040\
+\\000\043\043\043\043\043\043\043\043\043\043\043\043\043\043\043\
+\\043\043\043\043\043\043\043\043\043\043\043\000\040\000\060\000\
+d290 2
+a291 2
+val s63 =
+"\000\000\000\000\000\000\000\000\000\064\064\000\064\000\000\000\
+d293 1
+a293 1
+\\064\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+d300 1
+a300 1
+val s67 =
+d303 1
+a303 1
+\\000\000\000\000\000\000\000\000\000\068\000\000\000\000\000\000\
+d310 1
+a310 1
+val s69 =
+d313 1
+a313 1
+\\000\000\000\000\000\000\000\000\000\000\070\000\000\000\000\000\
+d320 1
+a320 1
+val s73 =
+d323 1
+a323 1
+\\000\000\000\000\000\000\000\000\000\074\000\000\000\000\000\000\
+d330 1
+a330 1
+val s75 =
+d333 1
+a333 1
+\\000\000\000\000\000\000\000\000\000\000\076\000\000\000\000\000\
+d340 1
+a340 1
+val s79 =
+d343 1
+a343 1
+\\000\000\080\000\000\000\000\000\000\000\000\000\000\000\000\000\
+d350 1
+a350 1
+in Vector.vector
+d362 2
+a363 2
+{fin = [(N 49)], trans = s0},
+{fin = [(N 33),(N 42),(N 49)], trans = s12},
+d365 2
+a366 2
+{fin = [(N 19),(N 49)], trans = s0},
+{fin = [(N 33),(N 37),(N 49)], trans = s15},
+d368 2
+a369 2
+{fin = [(N 17),(N 49)], trans = s0},
+{fin = [(N 29),(N 49)], trans = s18},
+d371 6
+a376 7
+{fin = [(N 25),(N 49)], trans = s0},
+{fin = [(N 23),(N 49)], trans = s0},
+{fin = [(N 21),(N 49)], trans = s0},
+{fin = [(N 11),(N 49)], trans = s0},
+{fin = [(N 33),(N 47),(N 49)], trans = s12},
+{fin = [(N 15),(N 49)], trans = s0},
+{fin = [(N 13),(N 49)], trans = s26},
+d378 1
+a378 1
+{fin = [(N 49)], trans = s28},
+d380 34
+a413 5
+{fin = [(N 33),(N 45)], trans = s12},
+{fin = [(N 9),(N 49)], trans = s0},
+{fin = [(N 4),(N 49)], trans = s32},
+{fin = [(N 4)], trans = s32},
+{fin = [(N 1),(N 4)], trans = s32},
+d415 5
+a419 30
+{fin = [(N 97),(N 106),(N 113)], trans = s36},
+{fin = [(N 97)], trans = s36},
+{fin = [(N 90),(N 113)], trans = s0},
+{fin = [(N 97),(N 101),(N 113)], trans = s39},
+{fin = [(N 97),(N 101)], trans = s39},
+{fin = [(N 88),(N 113)], trans = s0},
+{fin = [(N 65),(N 113)], trans = s42},
+{fin = [(N 65)], trans = s42},
+{fin = [(N 67),(N 113)], trans = s0},
+{fin = [(N 86),(N 113)], trans = s0},
+{fin = [(N 84),(N 113)], trans = s0},
+{fin = [(N 97),(N 101),(N 113)], trans = s47},
+{fin = [(N 93),(N 97),(N 101)], trans = s39},
+{fin = [(N 78),(N 113)], trans = s0},
+{fin = [(N 97),(N 101),(N 113)], trans = s50},
+{fin = [(N 70),(N 97),(N 101)], trans = s39},
+{fin = [(N 76),(N 97),(N 111),(N 113)], trans = s36},
+{fin = [(N 72),(N 97),(N 101),(N 113)], trans = s39},
+{fin = [(N 82),(N 113)], trans = s0},
+{fin = [(N 80),(N 113)], trans = s55},
+{fin = [(N 57)], trans = s0},
+{fin = [(N 113)], trans = s57},
+{fin = [(N 61)], trans = s58},
+{fin = [(N 113)], trans = s59},
+{fin = [(N 97),(N 104)], trans = s36},
+{fin = [(N 97),(N 109)], trans = s36},
+{fin = [(N 74),(N 97),(N 101),(N 113)], trans = s39},
+{fin = [(N 54),(N 113)], trans = s63},
+{fin = [(N 54)], trans = s63},
+{fin = [(N 51),(N 54)], trans = s63},
+d421 1
+a421 1
+{fin = [(N 123)], trans = s67},
+d423 1
+a423 1
+{fin = [(N 123)], trans = s69},
+d426 2
+a427 4
+{fin = [(N 133)], trans = s0},
+{fin = [(N 133)], trans = s73},
+{fin = [(N 131)], trans = s0},
+{fin = [(N 133)], trans = s75},
+d429 2
+a430 6
+{fin = [(N 125)], trans = s0},
+{fin = [(N 142)], trans = s0},
+{fin = [(N 142)], trans = s79},
+{fin = [(N 138)], trans = s0},
+{fin = [(N 140),(N 142)], trans = s0},
+{fin = [(N 135)], trans = s0}]
+d480 4
+a483 13
+| 101 => ( YYBEGIN INITIAL;
+          case yytext 
+            of ";"  => Tokens.semi_colon(line,line)
+             | "=>" => Tokens.eq_gt(line,line)
+             | "="  => Tokens.eq(line,line)
+             | "|"  => Tokens.bar(line,line)
+             | "::" => Tokens.dcolon(line,line)
+             |   _  => if (Parse_support.is_binder yytext)
+                       then Tokens.binder(yytext,line,line)
+                       else Tokens.symbolic_ident(yytext,line,line))
+| 104 => (YYBEGIN INITIAL;Tokens.ident("~",line,line))
+| 106 => (YYBEGIN INITIAL;Tokens.ident("~",line,line))
+| 109 => (YYBEGIN INITIAL;Tokens.symbolic_ident("$,",line,line))
+d485 1
+a485 5
+| 111 => (YYBEGIN INITIAL;Tokens.symbolic_ident(",",line,line))
+| 113 => (raise LEX_ERR "TYPE.catchall")
+| 115 => (continue())
+| 118 => (Lib.inc comment_paren_count; continue())
+| 121 => (Lib.dec comment_paren_count;
+d490 4
+a493 5
+| 123 => (continue())
+| 125 => (continue())
+| 128 => (Lib.inc comment_paren_count; continue())
+| 13 => (Tokens.lparen(line,line))
+| 131 => (Lib.dec comment_paren_count;
+d498 5
+a502 4
+| 133 => (continue())
+| 135 => (string_list :=  yytext::(!string_list); continue())
+| 138 => (string_list := yytext::(!string_list); continue())
+| 140 => (YYBEGIN INITIAL;
+d504 1
+a504 1
+| 142 => (string_list :=  yytext::(!string_list); continue())
+d549 6
+a554 8
+| 45 => (Tokens.symbolic_ident("$,",line,line))
+| 47 => (Tokens.symbolic_ident(",",line,line))
+| 49 => (raise LEX_ERR "INITIAL.catchall")
+| 51 => (continue())
+| 54 => (continue())
+| 57 => ( YYBEGIN TYCOMMENT; comment_paren_count := 1; continue())
+| 61 => (Tokens.type_var_ident(yytext,line,line))
+| 65 => (case yytext
+d556 1
+a556 1
+                     | "in"  => (YYBEGIN INITIAL; Tokens.in_(line,line))
+d559 1
+a559 1
+| 67 => (let val (L as ref (x::t)) = lala
+d564 3
+d568 1
+a568 4
+| 70 => (Tokens.type_right_arrow(line,line))
+| 72 => (Tokens.type_plus(line,line))
+| 74 => (Tokens.type_hash(line,line))
+| 76 => (if (!type_paren_count = 0)
+d571 3
+a573 3
+| 78 => (YYBEGIN INITIAL; Tokens.dot(line,line))
+| 80 => (Lib.inc type_paren_count; Tokens.type_lparen(line,line))
+| 82 => (if (!type_paren_count = 0)
+d576 5
+a580 6
+| 84 => (YYBEGIN INITIAL; Tokens.lbracket(line,line))
+| 86 => (YYBEGIN INITIAL; Tokens.rbracket(line,line))
+| 88 => (YYBEGIN INITIAL; Tokens.lbrace(line,line))
+| 9 => ( YYBEGIN STRING; string_list := [yytext]; continue())
+| 90 => (YYBEGIN INITIAL; Tokens.rbrace(line,line))
+| 93 => ((case (!Globals.in_type_spec)
+d584 2
+a585 1
+| 97 => ( if (has_tilde yytext 
+d592 11
+d605 1
+a605 1
+		) end handle Internal.Reject => action(i,acts::l))
+@
+
+
+1.4.2.1.2.1
+log
+@Removed files are parse files and portability files that have
+effectively been moved elsewhere.
+
+Modified files are up to date for ML 109.26.
+@
+text
+@@
+
+
+1.3
+log
+@First phase of hol90.8 development.  hol90 now compiles using NJSML-CM
+108.5, with separate compilation of libraries.  System dependencies
+have been isolated in the makefiles and "portable.sml".
+
+This involved a large number of enhancments to the source files,
+most of which are documented in the 7.changes file (or will be shortly).
+See also the correpsonding email corrspondence between RJB, KLS, TFM,
+JRH and DRS that happened during this development.
+@
+text
+@d37 1
+a37 1
+      then substring(s,1,String.size s - 1)
+d57 14
+d350 1
+a350 1
+in Portable.Vector.fromList
+d503 1
+a503 1
+              Tokens.string_(Portable.String.concat(rev(yytext::(!string_list))),line,line))
+d623 2
+a624 2
+	  else let val NewChar = Portable.String.ordof(!yyb,l)
+		val NewState = if NewChar<128 then Portable.String.ordof(trans,NewChar) else Portable.String.ordof(trans,128)
+@
+
+
+1.2
+log
+@Keeping you up to date:
+
+I'm about to do a checkin of elsa's modifications to the hol90.7
+sources to create her hol90.pre8.  To recap what I've done:
+	- I checked out hol90 (in /usr/groups/hol/drs1004/hol90)
+		cvs co hol90
+	  (Well, to be honest, I only checked out those
+	  parts of hol90 I knew I'd be changing, e.g. not the
+	  Manual, and only parts of the library.  Checking out the
+	  entire source takes a while, mainly due to the enormous number
+	  of help files.  The limiting factor is files/second, which
+         runs at around 5 when CVS is working on nfs over a network, not
+         KB/second, which you might at first think it would be).
+
+	- By doing a recursive diff between Elsa's source and the
+	hol90.7 source I found all the changes Elsa had made to
+	source files.  I copied relevant files from Elsa's source
+	into my checked out version.  The only new files were
+		- the sml_system files in src/0
+		- some make scripts in src/.
+	Changed files were in:
+		src/{0,1,2,3}
+		library/arith/src/thm_convs.sml
+		library/list/src/list_conv1.sml
+		library/num/src/num_lib.sml
+		library/prog_logic/src/halts_logic.sml
+		library/prog_logic/src/translation.sml
+		library/prog_logic/theories/src/mk_halts.sml
+		library/real/theories/src/Make
+		library/real/theories/src/equiv.sml
+		library/real/theories/src/seq.sml
+		library/reduce/src/arithconv.sml
+		library/string/src/string_conv.sml
+		library/unity/theories/src/aux_definitions.sml
+		library/word/theories/src/*
+
+	- I will now commit these changes, with this email as the log message.
+		cvs commit
+
+	- Tomorrow I will get this version compiling
+	with NJSML 108 (I will probably add
+	the files to enable the NJSML compilation manager to make
+	this easier), then check those changes in.  I think it's
+	good to get things in a working state.
+@
+text
+@d30 1
+a30 1
+       fun f i = ((Sml_system.String.ordof(s,i) = tilde) orelse f(i+1))
+d36 1
+a36 1
+   in if (Sml_system.String.ordof(s,0) = dollar)
+d336 1
+a336 1
+in Sml_system.Vector.fromList
+d489 1
+a489 1
+              Tokens.string_(Sml_system.String.concat(rev(yytext::(!string_list))),line,line))
+d609 2
+a610 2
+	  else let val NewChar = Sml_system.String.ordof(!yyb,l)
+		val NewState = if NewChar<128 then Sml_system.String.ordof(trans,NewChar) else Sml_system.String.ordof(trans,128)
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d1 2
+a2 1
+functor HOL_LEX(structure Tokens : hol_TOKENS
+d29 2
+a30 2
+   let val tilde = ord "~"
+       fun f i = ((ordof(s,i) = tilde) orelse f(i+1))
+d35 2
+a36 2
+   let val dollar = ord "$"
+   in if (ordof(s,0) = dollar)
+d336 1
+a336 1
+in Vector.vector
+d469 1
+a469 1
+| 108 => (inc comment_paren_count; continue())
+d471 1
+a471 1
+| 111 => (dec comment_paren_count;
+d478 2
+a479 2
+| 118 => (inc comment_paren_count; continue())
+| 121 => (dec comment_paren_count;
+d489 1
+a489 1
+              Tokens.string_(implode(rev(yytext::(!string_list))),line,line))
+d506 2
+a507 2
+                       of NONE => raise LEX_ERR(quote "of"^" is a keyword.")
+                        |(SOME"")=>raise LEX_ERR(quote "of"^" is a keyword.")
+d514 1
+a514 1
+         andalso (mem (drop_dollar yytext) (!Globals.tilde_symbols)))
+d558 1
+a558 1
+| 75 => (inc type_paren_count; Tokens.type_lparen(line,line))
+d561 1
+a561 1
+               else (dec type_paren_count; Tokens.type_rparen(line,line)))
+d572 1
+a572 1
+         andalso (mem (drop_dollar yytext) (!Globals.tilde_symbols)))
+d609 2
+a610 2
+	  else let val NewChar = ordof(!yyb,l)
+		val NewState = if NewChar<128 then ordof(trans,NewChar) else ordof(trans,128)
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

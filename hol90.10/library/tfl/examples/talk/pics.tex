@@ -1,0 +1,137 @@
+\documentstyle[12pt,epsf,a4]{report}
+
+\pagestyle{plain}
+\input{amssym.def}
+\input{amssym.tex}
+
+\newcommand{\imp}{\supset}
+\newcommand{\ie}{{\it i.e.}}
+\newcommand{\eg}{{\it e.g.}}
+\newcommand{\constr}[1]{\mbox{\sf {#1}}}
+\newcommand{\TFL}{\mbox{\tt TFL}}
+\newcommand{\itelse}[3]{\mbox{$\mbox{if}\ {#1}\ \mbox{then}\ {#2}\
+    \mbox{else}\ {#3}$}}
+\newcommand{\restr}[3]{\mbox{${#1}\!\mid\!{#2},{#3}$}}
+
+\newcommand{\inbox}[1]  {\begin{center}
+                         \framebox{\parbox{0.984\textwidth}{#1}}
+                         \end{center}}
+\def\pfbox
+  {\hbox{\hskip 3pt
+%\lower2pt
+\vbox{\hrule\hbox to 7pt{\vrule height 7pt\hfill\vrule}
+  \hrule}}\hskip3pt}
+
+\begin{document}
+
+\title{ZOO}
+\author{Konrad Slind}
+\maketitle
+
+%\begin{figure}[htbp]
+%\inbox{\begin{picture}(500,600)\thicklines
+\begin{picture}(500,600)\thicklines
+% Boxes
+\put(25,560){\cal R}
+\put(34,555){\vector(1, -1){70}}
+
+\put(200,570){\fbox{$\begin{array}{c}
+               f(pat_1) = rhs_1[f] \\ \vdots \\ f(pat_n) = rhs_n[f]
+             \end{array}$}}
+
+\put(190,510){$\lambda f\;x. M$}
+\put(250,510){\it (Pattern match translation)}
+\put(240,544){\vector(-1,-1){20}}
+\put(205,504){\vector(-2,-1){40}}
+
+\put(50,470){\fbox{${~~~~~}f \equiv WFREC\ R\ (\lambda f\;x. M){~~~~~}$}}
+\put(275,470){\it Define function}
+\put(140,464){\vector(0,-1){30}}
+
+\put(50,420){\fbox{$WF(R) \vdash \forall x.\ f(x) = (\lambda f\;x. M)\
+    (\restr{f}{R}{x})\ x$}}
+\put(275,421){\begin{tabular}{l}
+               {\it instantiate rec'n thm;} \\
+               {\it eliminate definition}
+             \end{tabular}}
+\put(140,414){\vector(0,-1){32}}
+
+\put(50,350)
+{\fbox{$\begin{array}{rcl}
+     WF(R) & \vdash & f(pat_1) = rhs_1[(\restr{f}{R}{pat_1})] \\ 
+     & \vdots & \\ 
+     WF(R) & \vdash & f(pat_n) = rhs_n[(\restr{f}{R}{pat_n})]
+    \end{array}$}}
+
+\put(275,355){\begin{tabular}{l}
+               $\beta$-{\it reduction}; \\
+               {\it spec. to patterns;} \\
+               {\it case reduction}
+             \end{tabular}}
+\put(140,325){\vector(0,-1){33}}
+
+\put(50,260)
+{\fbox{$\begin{array}{rcl}
+     WF(R),TC_{11},\ldots,TC_{1{k_1}} & \vdash & f(pat_1) = rhs_1 \\ 
+     & \vdots & \\ 
+     WF(R),TC_{n1},\ldots,TC_{n{k_n}} & \vdash & f(pat_n) = rhs_n
+    \end{array}$}}
+
+\put(300,262){\begin{tabular}{l}
+               {\it termination} \\
+               {\it condition} \\
+               {\it extraction}
+             \end{tabular}}
+
+\put(44,165)
+{\fbox{$\begin{array}{l}
+\vdash_? WF(R), \\
+\vdash_? TC_{11},\ldots, \vdash_? TC_{1{k_1}} \\ 
+{~~~~~} \vdots \\ 
+\vdash_? TC_{n1},\ldots, \vdash_? TC_{n{k_n}}
+\end{array}$}}
+
+\put(0,175){\begin{tabular}{l}
+               {\it invoke} \\
+               {\it provers} \\
+             \end{tabular}}
+\put(140,235){\vector(-1,-3){10}}
+\put(143,235){\vector(3,-1){90}}
+
+\put(190,165)
+{\fbox{$\begin{array}{l}
+[\ WF(R), \\
+  {~~}TC_{11},\ldots, TC_{1{k_1}}, \\ 
+ {~~~~~~}\vdots \\ 
+ {~~} TC_{n1},\ldots,  TC_{n{k_n}}\ ] \vdash ind.\ thm
+\end{array}$}}
+
+\put(365,175){\begin{tabular}{l}
+               {\it prove} \\
+               {\it induction} \\
+             \end{tabular}}
+
+\put(140,133){\vector(0,-1){37}}
+\put(220,133){\vector(0,-1){37}}
+
+\put(75,50)
+{\fbox{$\begin{array}{rcl}
+ \{remaining\ TCs\}_1 & \vdash & f(pat_1) = rhs_1 \\ 
+ & \vdots & \\ 
+ \{remaining\ TCs\}_n & \vdash & f(pat_n) = rhs_n \\ 
+ & & \\
+ \{remaining\ TCs\}_{1\ldots n} & \vdash & ind.\ thm
+\end{array}$}}
+
+\put(310,50){\begin{tabular}{l}
+               {\it eliminate} \\
+               {\it proved} \\
+               {\it termination} \\
+               {\it conditions} \\
+             \end{tabular}}
+
+\end{picture}
+%\caption{The process of definition}
+%\end{figure}
+
+\end{document}

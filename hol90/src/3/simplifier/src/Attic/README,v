@@ -1,0 +1,190 @@
+head	1.2;
+access;
+symbols;
+locks; strict;
+comment	@# @;
+
+
+1.2
+date	96.01.04.14.14.42;	author drs1004;	state dead;
+branches;
+next	1.1;
+
+1.1
+date	95.12.18.11.39.05;	author drs1004;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.2
+log
+@Added simplifier components, added drule files, added MK_ABS_CONV, better error messages
+@
+text
+@
+
+A Simplifier/Programmable Grinder for hol90 (v. 0.1!)
+-------------------------------------------
+
+In the last week I have implemented a contextual, conditional
+simplifier (rewriter) for hol90.  It is a powerful new
+proof tool for HOL, and the time you put into learning
+to use it should, I think, pay off almost immediately.
+
+It is based almost entirely
+on the Isabelle simplifier, in concept and also in code.
+I did this because I was inspired by reading the Isabelle
+reference manual (chapter 9) and wanted to see how easy such
+a simplifier would be to implement in HOL.  It turned out
+easier than I thought (though more difficult than in Isabelle,
+for reasons I'll mention later), so I've decided to clean it up
+and release it.
+
+So what does a powerful simplifier give you?
+\begin{itemize}
+    \item[Normal rewriting] (just like REWRITE_TAC, ASM_REWRITE_TAC etc.)
+
+    \item[Contextual Rewriting] For example, when rewriting 
+		P ==> Q
+      the simplifier can use any rewrites that come from P
+      when rewriting Q.
+
+    \item[Conditional Rewriting].  This is a bit different to what
+	you find in the res_quan library, but hopefully more
+	powerful.  Conditional rewriting means you can rewrite 
+        with theorems such as
+
+               |- (m <= x) ==> ((x - m) + m = x)
+
+	The rewrite will only be applied if the conditions (here m <= x) can
+	be solved by "the solver" (explained below) *in the current
+        context*.
+
+    
+    \item[Simplify with arbitrary conversions]
+
+        You can add arbitrary conversions to the simplifier, to be
+	applied to all relevant sub-terms.  For instance, you
+	might like to add ARITH_CONV to the simplifier to turn
+	the simplifier into something beginning to look like
+        a PVS-like grinder.
+
+        BETA_CONV is added by default.  Application of conversions
+	is keyed by a termnet, and so they are only tried when there
+	is a chance they will be relevant.  
+
+	Other typical conversions to add are the ones to move
+	! and ? quantifiers in and out of scope.  This turns the
+	simplifier into a normalizer as well.
+
+
+    \item[Extensibility for advanced users]
+    \begin{itemize}
+        \item More contextual rewriting can be added. For example
+	to pick up context when moving inside different kinds
+	of binders.
+	
+        \item The method by which rewrites are constructed can be specified.
+    \end{itemize}
+
+\end{itemize}
+
+Nearly all of this is all old hat for Isabelle users, but it's a powerful
+new tool for HOL users.  Of course none of this is "research" - it's
+just doing the hol2000 thing and taking the best things from other 
+systems and implementing them in HOL.
+
+
+\subsection{Simpsets}
+
+The simplifier needs data to work on.  These are specified in 
+{\em simpsets}. A simpset contains:
+\begin{itemize}
+\end{itemize}
+
+\subsection{Contextual Rewriting}
+
+Contextual rewriting lets you add assumptions to your rewrite
+set as you descend into a term.
+
+The most obvious contextual rewrite is for terms of the form:
+		P ==> Q
+The simplifier can use any rewrites that come from P
+when rewriting Q.  
+
+Other contextual rewrites included are:
+	      P => T1 | T2  (assume P when rewriting T1, ~P when rewriting T2)
+	      !x::P. T1[x]  (assume "P x" when rewriting T1[x])
+	      ?x::P. T1[x]  (assume "P x" when rewriting T1[x])
+	      \x::P. T1[x]  (assume "P x" when rewriting T1[x])
+
+
+Conditional Rewriting
+---------------------
+
+Any theorem which can be converted to the form
+	|- P1[x1...xm] ==> ... Pm[x1...xm] ==> (T1[x1...xm] = T2 [x1...xm])
+can theoretically be used as a conditional rewrite.  This is 
+like the existing conditional rewriting in HOL.  However, the process
+of producing conditional rewrites is automated by setting the "rewrite
+maker" in your simpset.  For example, res_quan_ss (the simpset
+for the res_quan library) extends the rewrite maker to be able to convert
+theorems such as:
+
+|- !n. !w ::(PWORDLEN n). NBWORD n (BNVAL w) = w : thm
+
+into conditional rewrites.  The above theorem will become:
+
+|- PWORDLEN n w ==> (NBWORD n (BNVAL w) = w)
+
+and will only be applied if "PWORDLEN n w" can be solved in the
+context-of-application.  Here "n" and "w" will be instantiated
+to the correct arguments.
+
+Adding Arbitrary Conversions
+----------------------------
+
+When you add a conversion to a simpset, you can specifiy a
+term that acts as a key for the type of terms that the conversion
+might apply to.  If you want to add a conversion that might apply
+to every term (like ARITH_CONV???), use a key which is just a variable.
+
+For example, BETA_CONV is keyed on the term (--`(\x. t) y`--).  (Nb. I'm
+not sure if the HOL implementation of term nets handles keys
+which contain abstractions efficiently).
+
+
+
+*Adding More Contextual Rewriting
+---------------------------------
+
+Arbitrary extra contextual rewrites can be introduced by
+using "congurence rules".  In Isabelle these are just theorems,
+in HOL they correspond to gross bits of ML code.  This is
+because HOL does not have meta-variables.  However,
+only experienced HOL users should ever have to add contextual rewrites,
+and there are examples to work from in the existing code.
+
+A congruence rule has type
+	(thm list -> conv) -> conv
+The first argument is the "continuation" for the congruence rule,
+i.e
+
+
+
+
+
+
+@
+
+
+1.1
+log
+@Preterm and other changes, see 7.changes
+@
+text
+@@

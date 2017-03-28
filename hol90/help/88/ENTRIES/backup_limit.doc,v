@@ -1,0 +1,115 @@
+head	1.1;
+branch	1.1.1;
+access;
+symbols
+	HOL97:1.1.1.1.0.6
+	bpHOL97:1.1.1.1
+	hol90_9_alpha:1.1.1.1
+	hol90_pre8_for_multiple_compilers:1.1.1.1.0.4
+	hol90_pre8_after_donalds_separate_compilation_changes:1.1.1.1
+	hol90_8_after_merging_Konrad_Elsa:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	95.10.16.13.34.31;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.34.31;	author rjb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@\DOC backup_limit
+
+\TYPE {backup_limit : int}
+
+\SYNOPSIS
+Limits the number of proof states saved on the subgoal package backup list.
+
+\DESCRIBE
+The assignable variable {backup_limit} is initially set to 12. Its value is one
+less than the maximum number of proof states that may be saved on the backup
+list. Adding a new proof state (by, for example, a call to {expand}) after the
+maximum is reached causes the earliest proof state on the list to be discarded.
+For a description of the subgoal package, see  {set_goal}.
+
+\EXAMPLE
+{
+#backup_limit := 0;;
+0 : int
+
+#g "(HD[1;2;3] = 1) /\ (TL[1;2;3] = [2;3])";;
+"(HD[1;2;3] = 1) /\ (TL[1;2;3] = [2;3])"
+
+() : void
+
+#e CONJ_TAC;;
+OK..
+2 subgoals
+"TL[1;2;3] = [2;3]"
+
+"HD[1;2;3] = 1"
+
+() : void
+
+#e (REWRITE_TAC[HD]);;
+OK..
+goal proved
+|- HD[1;2;3] = 1
+
+Previous subproof:
+"TL[1;2;3] = [2;3]"
+
+() : void
+
+#b();;
+2 subgoals
+"TL[1;2;3] = [2;3]"
+
+"HD[1;2;3] = 1"
+
+() : void
+
+#b();;
+evaluation failed     backup:  backup list is empty
+}
+\SEEALSO
+b, backup, e, expand, expandf, g, get_state, p, print_state, r,
+rotate, save_top_thm, set_goal, set_state, top_goal, top_thm.
+
+\ENDDOC
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

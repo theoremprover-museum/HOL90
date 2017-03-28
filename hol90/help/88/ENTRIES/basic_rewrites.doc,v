@@ -1,0 +1,130 @@
+head	1.1;
+branch	1.1.1;
+access;
+symbols
+	HOL97:1.1.1.1.0.6
+	bpHOL97:1.1.1.1
+	hol90_9_alpha:1.1.1.1
+	hol90_pre8_for_multiple_compilers:1.1.1.1.0.4
+	hol90_pre8_after_donalds_separate_compilation_changes:1.1.1.1
+	hol90_8_after_merging_Konrad_Elsa:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	95.10.16.13.34.31;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.34.31;	author rjb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@\DOC basic_rewrites
+
+\TYPE {basic_rewrites: thm list}
+
+\SYNOPSIS
+Contains a number of built-in tautologies used, by default, in rewriting.
+
+\DESCRIBE
+The variable {basic_rewrites} contains polymorphic tautologies which
+are often used for simplifying and solving a goal through rewriting.
+They include the clause for reflexivity:
+{
+   |- !x. (x = x) = T;
+}
+\noindent as well as rules to reason about equality:
+{
+   |- !t.
+      ((T = t) = t) /\ ((t = T) = t) /\ ((F = t) = ~t) /\ ((t = F) = ~t);
+}
+Negations are manipulated by the following clauses:
+{
+   |- (!t. ~~t = t) /\ (~T = F) /\ (~F = T);
+}
+The set of tautologies includes truth tables for conjunctions,
+disjunctions, and implications:
+{
+   |- !t.
+       (T /\ t = t) /\
+       (t /\ T = t) /\
+       (F /\ t = F) /\
+       (t /\ F = F) /\
+       (t /\ t = t);
+   |- !t.
+       (T \/ t = T) /\
+       (t \/ T = T) /\
+       (F \/ t = t) /\
+       (t \/ F = t) /\
+       (t \/ t = t);
+   |- !t.
+       (T ==> t = t) /\
+       (t ==> T = T) /\
+       (F ==> t = T) /\
+       (t ==> t = T) /\
+       (t ==> F = ~t);
+}
+Simple rules for reasoning about conditionals are given by:
+{
+   |- !t1 t2. ((T => t1 | t2) = t1) /\ ((F => t1 | t2) = t2);
+}
+Rewriting with the following tautologies allows simplification of
+universally and existentially quantified variables and abstractions:
+{
+   |- !t. (!x. t) = t;
+   |- !t. (?x. t) = t;
+   |- !t1 t2. (\x. t1)t2 = t1;
+}
+The list {basic_rewrites} also includes rules for reasoning about
+pairs in HOL:
+{
+   |- !x. FST x,SND x = x;
+   |- !x y. FST(x,y) = x;
+   |- !x y. SND(x,y) = y]
+}
+\USES
+The {basic_rewrites} are included in the set of equations used by some
+of the rewriting tools.
+
+\SEEALSO
+ABS_SIMP, AND_CLAUSES, COND_CLAUSES, EQ_CLAUSES, EXISTS_SIMP,
+FORALL_SIMP, FST, GEN_REWRITE_RULE, GEN_REWRITE_TAC, IMP_CLAUSES,
+NOT_CLAUSES, OR_CLAUSES, PAIR, REFL_CLAUSE, REWRITE_RULE, REWRITE_TAC,
+SND.
+
+\ENDDOC
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

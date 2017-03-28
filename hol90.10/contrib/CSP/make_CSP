@@ -1,0 +1,29 @@
+#!/bin/sh
+
+# Invocation: make_csp <hol90>
+
+
+# Make the theories of the CSP library.
+
+(cd theories/src; make clean; make all outofbox_Hol=$1;
+ mv *.holsig *.thms ../ascii; /bin/rm -f CSP_hol)
+
+echo '======> DONE MAKING CSP THEORIES'
+
+# Declare library
+
+echo 'new_library'\
+     '{name = "CSP",'\
+     'doc = "The CSP of Hoare, by Albert Camilleri, ported by Brian Graham",'\
+     'path = (!HOLdir)^"contrib/CSP/",'\
+     'parents = [set_lib, string_lib],'\
+     'theories = ["CSP"],'\
+     'code = [],'\
+     'help = [],'\
+     'loaded = "fn () => ()"};'\
+     | $1
+
+
+# Move library description to common area for contrib libraries
+
+mv CSP.hol_lib ../desc

@@ -1,0 +1,68 @@
+\DOC OPEN_CONTEXT
+
+\TYPE {OPEN_CONTEXT : (term * path -> win_stack -> win_stack)}
+
+\SYNOPSIS
+Open a subwindow for deriving a new lemma.
+
+\LIBRARY window
+
+\DESCRIBE
+{OPEN_CONTEXT tm path s} opens a subwindow on the assumption, lemma
+or conjecture {tm} at the position described by {path}. The subwindow
+is pushed onto the window stack {s}. The relationship preserved by
+the subwindow will be chosen so that transforming the subwindow will
+transform {tm} to {tm'} generating the theorem {(..|- tm ==> tm')}.
+When the subwindow is closed, {tm'} becomes a new lemma in the parent
+window.
+
+\FAILURE
+{OPEN_CONTEXT tm paths } will fail if {tm} is not an assumption,
+lemma or conjecture of the top window of {s}. This function will also
+fail if {path} describes a position which is not present in {tm}.
+
+\EXAMPLE
+{
+- BEGIN_STACK "example" (--`($<==) (B /\ C)`--)
+              [(--`A ==> B`--), (--`A /\ C`--)] [];
+
+    ! A ==> B
+    ! A /\ C
+<== * B /\ C
+val it = () : unit
+- DO (OPEN_CONTEXT ((--`A /\ C`--), [RATOR,RAND]));
+
+    ! A ==> B
+    ! A /\ C
+    ! C
+==> * A
+val it = () : unit
+- DO (RULE_WIN (MP (ASSUME (--`A ==> B`--))));
+
+    ! A ==> B
+    ! A /\ C
+    ! C
+==> * B
+val it = () : unit
+- DO CLOSE_WIN;
+
+    ! A ==> B
+    ! A /\ C
+    | B /\ C
+<== * B /\ C
+val it = () : unit
+- DO (REWRITE_WIN [ASSUME (--`B /\ C`--)]);
+
+    ! A ==> B
+    ! A /\ C
+    | B /\ C
+<== * T
+val it = () : unit
+- END_STACK "example";
+val it = () : unit
+}
+
+\SEEALSO
+CLOSE_WIN, ESTABLISH, GEN_OPEN_WIN, OPEN_WIN 
+
+\ENDDOC

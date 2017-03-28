@@ -1,0 +1,75 @@
+head	1.1;
+access;
+symbols;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	95.12.18.11.35.22;	author drs1004;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@Preterm and other changes, see 7.changes
+@
+text
+@(*============================================================================
+ * $Id$
+ *
+ * Symbol tables.  Implementation is based on hash tables.
+ *==========================================================================*)
+
+
+signature Symtab_sig = sig
+   type 'a symtab
+   val mkTable : (int * exn) -> '_a symtab
+   val numItems : 'a symtab -> int
+   val listItems : 'a symtab -> (string * 'a) list
+   val insert : '_a symtab -> string * '_a -> unit
+   val remove : 'a symtab -> string -> 'a
+   val copy : '_a symtab -> '_a symtab
+   val find : 'a symtab -> string -> 'a
+   val peek : 'a symtab -> string -> 'a option
+   val apply : (string * 'a -> 'b) -> 'a symtab -> unit
+   val filter : (string * 'a -> bool) -> 'a symtab -> unit
+   val transform : ('a -> '_b) -> 'a symtab -> '_b symtab
+   val map : (string * 'a -> '_b) -> 'a symtab -> '_b symtab
+end;
+
+structure Symtab : Symtab_sig =
+struct
+local
+    structure Symtab = HashTable(
+     struct
+       type hash_key = string
+       val hashVal = Lib.hash_string
+       val sameKey = (op =) : (string * string) -> bool
+     end
+    );
+
+in
+   open Symtab;
+   type 'a symtab = 'a Symtab.hash_table;
+end
+end;
+
+(*
+
+open Symtab;
+val x = (mkTable 1000):int symtab;
+val _ = insert x ("hello",1);
+peek x "hello";
+peek x "goodbye";
+listItems x;
+val _ = insert x ("hello",2);
+listItems x;
+
+*)
+@

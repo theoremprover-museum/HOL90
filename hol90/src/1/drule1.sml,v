@@ -1,0 +1,852 @@
+head	1.2;
+access;
+symbols;
+locks; strict;
+comment	@# @;
+
+
+1.2
+date	96.02.08.00.35.27;	author drs1004;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	96.01.04.13.48.32;	author drs1004;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.2
+log
+@New theory mechanism, code reorganisation and other enhancements by Don Syme.
+@
+text
+@structure Drule1 :Drule1_sig =
+struct
+open Lib Rterms Parse;
+   infixr 3 -->;
+open Thm;
+
+val ERR = Exception.ERR "Drule";
+val WRAP_ERR = Exception.WRAP_ERR "Drule";
+
+(*--------------------------------------------------------------------
+ * Add an assumption
+ * 
+ *       A |- t'
+ *    -----------
+ *     A,t |- t'
+ * 
+ * fun ADD_ASSUM t th = MP (DISCH t th) (ASSUME t);
+ *-------------------------------------------------------------------*)
+
+fun ADD_ASSUM t th = mk_drule_thm(union [t] (hyp th), concl th);
+
+(*--------------------------------------------------------------------
+ * Undischarging
+ * 
+ *    A |- t1 ==> t2
+ *    -------------
+ *     A, t1 |- t2
+ *-------------------------------------------------------------------*)
+
+fun UNDISCH th = MP th (ASSUME(#ant(dest_imp(concl th))))
+                 handle _ => ERR("UNDISCH","");
+
+(*--------------------------------------------------------------------
+ * Symmetry of =
+ * 
+ *        A |- t1 = t2
+ *      ----------------
+ *        A |- t2 = t1
+ * 
+ * fun SYM th =
+ *    let val (t1,t2) = dest_eq(concl th)
+ *        val v = genvar(type_of t1)
+ *    in
+ *    SUBST [(th,v)] (mk_eq(v,t1)) (REFL t1)
+ *    end
+ *    handle _ => ERR("SYM","");
+ *-------------------------------------------------------------------*)
+
+fun SYM th =
+   let val (hyps,conc) = dest_thm th
+       val {lhs,rhs} = dest_eq conc
+   in
+   mk_drule_thm (hyps, mk_eq {lhs = rhs, rhs = lhs})
+   end 
+   handle _ => ERR("SYM","");
+
+
+
+(*--------------------------------------------------------------------
+ * Transitivity of =
+ * 
+ *    A1 |- t1 = t2  ,  A2 |- t2 = t3
+ *   ---------------------------------
+ *         A1 u A2 |- t1=t3
+ * 
+ * fun TRANS th1 th2 =
+ *    let val (t1,t2) = dest_eq(concl th1)
+ *        and (t2',t3) = dest_eq(concl th2)
+ *        val v = genvar(type_of t1)
+ *    in
+ *    SUBST [(th2,v)] (mk_eq(t1,v)) th1
+ *    end
+ *    handle _ => ERR("TRANS","");
+ * 
+ * ml_curried_infix `TRANS`;
+ * 
+ * Note: for hol90 I made TRANS prefix  -- KLS
+ *-------------------------------------------------------------------*)
+
+fun TRANS th1 th2 =
+   let val (h1,c1) = dest_thm th1
+       and (h2,c2) = dest_thm th2
+       val {lhs = lhs1, rhs = rhs1} = dest_eq c1
+       and {lhs = lhs2, rhs = rhs2} = dest_eq c2
+       and hyps = union h1 h2
+   in
+   if (aconv rhs1 lhs2)
+   then mk_drule_thm(hyps,mk_eq{lhs = lhs1, rhs = rhs2})
+   else ERR("TRANS","")
+   end
+   handle _ => ERR("TRANS","");
+
+(*--------------------------------------------------------------------
+ * Transitivity of ==>
+ * 
+ *    A1 |- t1 ==> t2            A2 |- t2 ==> t3
+ *  ---------------------------------------------
+ *            A1 u A2 |- t1 ==> t3
+ * 
+ * fun IMP_TRANS th1 th2 =
+ *    let val (t1,t2) = dest_imp(concl th1)
+ *    in
+ *    DISCH t1 (MP th2 (MP th1 (ASSUME t1)))
+ *    end
+ *    handle _ => ERR("IMP_TRANS","");
+ *
+ * Modified: TFM 88.10.08 to use "union A1 A1" instead of A1 @@ A2 *
+ *-------------------------------------------------------------------*)
+
+fun IMP_TRANS th1 th2 =
+   let val (A1, c1) = dest_thm th1
+       val {ant, conseq} = dest_imp c1
+       val (A2,c2) = dest_thm th2
+       val {ant = ant', conseq = conseq'} = dest_imp c2
+   in
+       if (aconv conseq ant')
+	   then mk_drule_thm(union A1 A2, mk_imp{ant = ant, conseq = conseq'}) 
+       else ERR("IMP_TRANS","")
+   end
+   handle _ => ERR("IMP_TRANS","");
+
+
+(*--------------------------------------------------------------------
+ * Application of a term to a theorem
+ * 
+ *     A |- t1 = t2
+ *  ------------------
+ *   A |- t t1 = t t2
+ * 
+ * fun AP_TERM tm th = 
+ *    let val (t1,_) = dest_eq(concl th)
+ *        val th1 = REFL (--`^tm ^t1`--)
+ *        (* th1 = |- t t1 = t t1 *)
+ *        and v  = genvar(type_of t1)
+ *    in
+ *    SUBST [(th,v)] (--`^tm ^t1 = ^tm ^v`--) th1
+ *    end
+ *    handle _ => ERR("AP_TERM","");
+ *-------------------------------------------------------------------*)
+
+fun AP_TERM tm th =
+   let val {lhs,rhs} = dest_eq(concl th)
+   in 
+       mk_drule_thm(hyp th, mk_eq{lhs = mk_comb{Rator = tm, Rand = lhs},
+				  rhs = mk_comb{Rator = tm, Rand = rhs}})
+   end
+   handle _ => ERR("AP_TERM","");
+
+
+(*--------------------------------------------------------------------
+ * Application of a theorem to a term
+ * 
+ *     A |- t1 = t2
+ *    ----------------
+ *    A |- t1 t = t2 t
+ * 
+ * fun AP_THM th tm =
+ *    let val (t1,_) = dest_eq(concl th)
+ *        val th1 = REFL (--`^t1 ^tm`--)
+ *        (* th1 = |- t1 t = t1 t *)
+ *        and v   = genvar(type_of t1)
+ *    in
+ *    SUBST [(th,v)] (--`^t1 ^tm = ^v ^tm`--) th1
+ *    end
+ *    handle _ => ERR("AP_THM","");
+ *-------------------------------------------------------------------*)
+
+
+fun AP_THM th tm =
+   let val {lhs,rhs} = dest_eq(concl th)
+   in
+       mk_drule_thm(hyp th, mk_eq{lhs = mk_comb{Rator = lhs, Rand = tm},
+				  rhs = mk_comb{Rator = rhs, Rand = tm}})
+   end
+   handle _ => ERR("AP_THM","");
+
+(*--------------------------------------------------------------------
+ * Modus Ponens for =
+ * 
+ * 
+ *    A1 |- t1 = t2  ,  A2 |- t1
+ *   ----------------------------
+ *         A1 u A2 |- t2
+ * 
+ * fun EQ_MP th1 th2 =
+ *    let val (t1,t2) = dest_eq(concl th1)
+ *        val v = genvar(type_of t1)
+ *    in
+ *    SUBST [(th1,v)] v th2
+ *    end
+ *    handle _ => ERR("EQ_MP","");
+ *-------------------------------------------------------------------*)
+
+fun EQ_MP th1 th2 =
+   let val {lhs,rhs} = dest_eq(concl th1)
+       and t1'   = concl th2
+   in
+       if (aconv lhs t1') then
+	   mk_drule_thm(union(hyp th1)(hyp th2), rhs)
+       else ERR("EQ_MP","")
+   end
+   handle _ => ERR("EQ_MP","");
+
+
+(*--------------------------------------------------------------------
+ *
+ *               A |- t1 = t2
+ *     ------------------------------------
+ *      A |- t1 ==> t2      A |- t2 ==> t1
+ * 
+ * fun EQ_IMP_RULE th =
+ *    let val (t1,t2) = dest_eq(concl th)
+ *    in
+ *    (DISCH t1 (EQ_MP th (ASSUME t1)), DISCH t2 (EQ_MP(SYM th)(ASSUME t2)))
+ *    end
+ *    handle _ => ERR("EQ_IMP_RULE","");
+ *-------------------------------------------------------------------*)
+ 
+fun EQ_IMP_RULE th =
+   let val {lhs,rhs} = dest_eq(concl th)
+       and A = hyp th
+   in
+       (mk_drule_thm(A,mk_imp{ant = lhs, conseq = rhs}),
+	mk_drule_thm(A,mk_imp{ant = rhs, conseq = lhs}))
+   end
+   handle _ => ERR("EQ_IMP_RULE","");
+
+(*--------------------------------------------------------------------
+ * |- T (type of "x" set to ":bool" for HOL88)
+ *-------------------------------------------------------------------*)
+
+
+val TRUTH = EQ_MP (SYM Boolean.T_DEF) (REFL (--`\x:bool. x`--));
+
+
+(*--------------------------------------------------------------------
+ * =T elimination
+ * 
+ *    A |- t = T
+ *   ------------
+ *     A |- t
+ *-------------------------------------------------------------------*)
+
+fun EQT_ELIM th = EQ_MP (SYM th) TRUTH
+                  handle _ => ERR("EQT_ELIM", "");
+
+(*--------------------------------------------------------------------
+ * Specialization
+ * 
+ *     A |- !(\x.u)
+ *   --------------------   (where t is free for x in u)
+ *     A |- u[t/x]
+ * 
+ * fun SPEC t th =
+ *    let val {Rator=F,Rand=body} = dest_comb(concl th)
+ *    in
+ *    if (not(#Name(dest_const F)="!"))
+ *    then ERR("SPEC","")
+ *    else let val {Bvar=x,Body=u} = dest_abs body
+ *         and v1 = genvar(type_of F)
+ *         and v2 = genvar(type_of body)
+ *         val th1 = SUBST[{var = v1,
+ *                          thm = INST_TYPE[{redex   = (==`:'a`==),
+ *                                           residue = type_of x}] FORALL_DEF}]
+ *                        (--`^v1 ^body`--) th
+ *         (* th1 = |- (\P. P = (\x. T))(\x. t1 x) *)
+ *         val th2 = BETA_CONV(concl th1)
+ *         (* th2 = |- (\P. P = (\x. T))(\x. t1 x) = ((\x. t1 x) = (\x. T)) *)
+ *         val th3 = EQ_MP th2 th1
+ *         (* th3 = |- (\x. t1 x) = (\x. T) *)
+ *         val th4 = SUBST [{var= v2, thm=th3}] (--`^body ^t = ^v2 ^t`--) 
+ *                         (REFL (--`^body ^t`--))
+ *         (* th4 = |- (\x. t1 x)t = (\x. T)t *)
+ *         val {lhs=ls,rhs=rs} = dest_eq(concl th4)
+ *         val th5 = TRANS(TRANS(SYM(BETA_CONV ls))th4)(BETA_CONV rs)
+ *         (* th5 = |- t1 t = T *)
+ *         in
+ *         EQT_ELIM th5
+ *         end
+ *    end
+ *    handle e => WRAP_ERR("SPEC",e);
+ * 
+ * 
+ * pre-dB manner:
+ * fun SPEC t th =  
+ *    let val {Bvar,Body} = dest_forall(concl th) 
+ *    in
+ *    mk_drule_thm(hyp th, subst[{redex = Bvar, residue = t}] Body)
+ *    end
+ *    handle _ => ERR("SPEC","");
+ *-------------------------------------------------------------------*)
+
+fun SPEC t th =  
+   let val {Rator,Rand} = dest_comb(concl th)
+       val {Name="!",...} = dest_const Rator
+   in
+   mk_drule_thm(hyp th, beta_conv(mk_comb{Rator = Rand, Rand = t}))
+   end
+   handle e => WRAP_ERR("SPEC",e);
+
+
+
+(*--------------------------------------------------------------------
+ *
+ *       |- !x1 ... xn. t[xi]
+ *     --------------------------	SPECL [t1; ...; tn]
+ *           |-  t[ti]
+ *-------------------------------------------------------------------*)
+
+fun SPECL tm_list th = rev_itlist SPEC tm_list th handle _ 
+                       => ERR("SPECL","");
+
+
+(*--------------------------------------------------------------------
+ * Introduce  =T
+ * 
+ *      A |- t
+ *    ------------
+ *      A |- t=T
+ * 
+ * fun EQT_INTRO th =
+ *    let val t = concl th
+ *    in
+ *    MP (MP(SPEC truth (SPEC t IMP_ANTISYM_AX))
+ *          (DISCH t TRUTH))
+ *       (DISCH truth th)
+ *    end;
+ *-------------------------------------------------------------------*)
+
+fun EQT_INTRO th = mk_drule_thm(hyp th, mk_eq{lhs = concl th, rhs = truth})
+                   handle _ => ERR("EQT_INTRO","")
+
+(*--------------------------------------------------------------------
+ * Generalization  - This does not work in HOL88
+ * 
+ *          A |- t
+ *    -------------------   (where x not free in A)
+ *        A |- !(\x.t)
+ * 
+ * fun GEN x th =
+ *    let val th1 = ABS x (EQT_INTRO th)
+ *    (* th1 = |- (\x. t1 x) = (\x. T)  --ABS does not behave this way --KLS*)
+ *       val abs = `\^x. ^(concl th)`
+ *       and v1 = genvar `:(^(type_of x) -> bool) -> bool`
+ *       and v2 = genvar `:bool`
+ *       val th2 = SUBST [(INST_TYPE[(type_of x, `:'a`)]FORALL_DEF,v1)]
+ *                       `($! ^abs) = (^v1 ^abs)`
+ *                       (REFL `$! ^abs`)
+ *       (* th2 = |- (!x. t1 x) = (\P. P = (\x. T))(\x. t1 x) *)
+ *       val th3 = TRANS th2 (BETA_CONV(snd(dest_eq(concl th2))))
+ *       (* th3 = |- (!x. t1 x) = ((\x. t1 x) = (\x. T)) *)
+ *       in
+ *       SUBST [(SYM th3, v2)] v2 th1
+ *       end
+ *       handle _ => ERR("GEN","");
+ *-------------------------------------------------------------------*)
+
+fun GEN x th = 
+   if (exists (free_in x) (hyp th))
+   then ERR("GEN","")
+   else mk_drule_thm(hyp th, mk_forall{Bvar = x, Body = concl th})
+   handle _ => ERR("GEN","");
+
+val GENL = itlist GEN;
+
+(*--------------------------------------------------------------------
+ * Eta-conversion
+ * 
+ *  	"(\x.t x)"   --->    |- (\x.t x) = t  (if x not free in t)
+ * 
+ * fun ETA_CONV (tm as Abs(Var(vty,_), cmb as Comb(t,_))) =
+ *       (let val body_ty = type_of cmb
+ *         val th = SPEC t (INST_TYPE [(vty, `:'a`), (body_ty, `:'b`)] ETA_AX)
+ *            (* th = |- (\x. t x) = t *)
+ *        in
+ *        TRANS (SIMPLE_ALPHA(tm,lhs(concl th))) th
+ *        end
+ *        handle _ => ERR("ETA_CONV",""))
+ *   | ETA_CONV _ = ERR("ETA_CONV","");
+ * 
+ *-------------------------------------------------------------------*)
+
+fun ETA_CONV tm =
+   let val {Bvar,Body} = dest_abs tm
+       val {Rator, Rand} = dest_comb Body
+   in
+   if ((Bvar = Rand) andalso (not(mem Bvar (free_vars Rator))))
+   then mk_drule_thm([], mk_eq{lhs = tm, rhs = Rator})
+   else ERR("ETA_CONV","")
+   end
+   handle _ => ERR("ETA_CONV","");
+
+(*--------------------------------------------------------------------
+ * Extensionality
+ * 
+ *      A |- !x. t1 x = t2 x
+ *     ----------------------     (x not free in A, t1 or t2)
+ *         A |- t1 = t2
+ * 
+ * fun EXT th =
+ *    let val (x,_) = dest_forall(concl th)
+ *        val th1 = SPEC x th
+ *        (* th1 = |- t1 x = t2 x *)
+ *        val (t1x,t2x) = dest_eq(concl th1)
+ *        val x = snd(dest_comb t1x)
+ *        val th2 = ABS x th1
+ *        (* th2 = |- (\x. t1 x) = (\x. t2 x) *)
+ *    in
+ *    TRANS (TRANS(SYM(ETA_CONV `\(^x). ^t1x`))th2)
+ *          (ETA_CONV `\(^x). ^t2x`)
+ *    end
+ *    handle _ => ERR("EXT","");
+ *-------------------------------------------------------------------*)
+
+fun EXT th =
+   let val {Bvar,Body} = dest_forall(concl th)
+       val {lhs,rhs} = dest_eq Body
+       val {Rator = Rator1, Rand = v1} = dest_comb lhs
+       val {Rator = Rator2, Rand = v2} = dest_comb rhs
+       val fv = union (free_vars Rator1) (free_vars Rator2)
+   in
+   if (not(mem Bvar fv) andalso (Bvar = v1) andalso (Bvar = v2))
+   then mk_drule_thm(hyp th, mk_eq{lhs = Rator1, rhs = Rator2})
+   else ERR("EXT","")
+   end
+   handle _ => ERR("EXT","");
+
+(*--------------------------------------------------------------------
+ * SELECT introduction
+ * 
+ *     A |- P t
+ *   -----------------
+ *    A |- P($@@ P)
+ *-------------------------------------------------------------------*)
+
+local
+val alpha = ==`:'a`==
+fun alpha_subst ty = [alpha |-> ty]
+in
+fun SELECT_INTRO th =
+   let val {Rator, Rand} = dest_comb(concl th)
+      val SELECT_AX' = INST_TYPE (alpha_subst (type_of Rand)) Boolean.SELECT_AX
+   in
+   MP (SPEC Rand (SPEC Rator SELECT_AX'))
+      th
+   end
+   handle _ => ERR("SELECT_INTRO","")
+end;
+
+
+(*--------------------------------------------------------------------
+ * SELECT elimination (cases)
+ * 
+ *    A1 |- P($? P)    ,    A2, "P v" |- t
+ *   ------------------------------------------ (v occurs nowhere)
+ *               A1 u A2 |- t
+ *-------------------------------------------------------------------*)
+
+fun SELECT_ELIM th1 (v,th2) =
+  let val {Rator, Rand} = dest_comb(concl th1)
+      val th3 = DISCH (mk_comb{Rator = Rator, Rand = v}) th2
+      (* th3 = |- P v ==> t *)
+  in
+  MP (SPEC Rand (GEN v th3)) th1
+  end
+  handle _ => ERR("SELECT_ELIM","");
+
+
+(*--------------------------------------------------------------------
+ * Existential introduction
+ * 
+ *     A |- t[t']
+ *   --------------
+ *    A |- ?x.t[x]
+ * 
+ *   The parameters are: EXISTS("?x.t[x]", "t'") (|- t[t'])
+ * 
+ * fun EXISTS (fm,tm) th =
+ *    let val (x,t) = dest_exists fm
+ *        val th1 = BETA_CONV `(\(^x). ^t) ^tm`
+ *        (* th1 = |- (\x. t x)t' = t t' *)
+ *        val th2 = EQ_MP (SYM th1) th
+ *        (* th2 = |- (\x. t x)t' *)
+ *        val th3 = SELECT_INTRO th2 
+ *        (* th3 = |- (\x. t x)(@@x. t x) *)
+ *        val th4 = AP_THM(INST_TYPE[(type_of x, `:'a`)]EXISTS_DEF) `\(^x).^t`
+ *        (* th4 = |- (?x. t x) = (\P. P($@@ P))(\x. t x) *)
+ *        val th5 = TRANS th4 (BETA_CONV(snd(dest_eq(concl th4))))
+ *        (* th5 = |- (?x. t x) = (\x. t x)(@@x. t x) *)
+ *    in
+ *    EQ_MP (SYM th5) th3
+ *    end
+ *    handle _ => ERR("EXISTS","");
+ *-------------------------------------------------------------------*)
+
+fun EXISTS (w,t) th =
+   let val {Rator,Rand} = dest_comb w
+   in
+   if (#Name(dest_const Rator) = "?")
+   then if (aconv (Term.beta_conv(mk_comb{Rator=Rand, Rand=t})) (concl th))
+        then mk_drule_thm(hyp th, w)
+        else ERR("EXISTS", "incompatible structure")
+   else ERR("EXISTS","not an existential")
+   end;
+
+
+(*--------------------------------------------------------------------
+ * Existential elimination
+ * 
+ *    A1 |- ?x.t[x]   ,   A2, "t[v]" |- t'
+ *    ------------------------------------     (variable v occurs nowhere)
+ *             A1 u A2 |- t'
+ * 
+ * fun CHOOSE (v,th1) th2 =
+ *    let val (x,body) = dest_exists(concl th1)
+ *        and t'     = concl th2
+ *        and v1     = genvar `:bool`
+ *     val th3 = AP_THM (INST_TYPE[(type_of v, `:'a`)]EXISTS_DEF) `\(^x).^body`
+ *        (* th3 = |- (?x. t x) = (\P. P($@@ P))(\x. t x) *)
+ *        val th4 = EQ_MP th3 th1
+ *        (* th4 = |- (\P. P($@@ P))(\x. t x) *)
+ *        val th5 = EQ_MP (BETA_CONV(concl th4)) th4
+ *        (* th5 = |- (\x. t x)(@@x. t x) *)
+ *        val th6 = BETA_CONV `(\(^x).^body)^v`
+ *        (* th6 = |- (\x. t x)v = t v *)
+ *        val Pa = snd(dest_eq(concl th6))
+ *        val th7 = UNDISCH(SUBST [(SYM th6,v1)] `^v1 ==> ^t'` (DISCH Pa th2))
+ *        (* th7 = |- t' *)
+ *    in
+ *    SELECT_ELIM th5 (v,th7)
+ *    end
+ *    handle _ => ERR("CHOOSE","");
+ *-------------------------------------------------------------------*)
+
+fun disch(w,wl) = gather (not o aconv w) wl;
+
+fun CHOOSE (v,xth) bth =
+   let val {Bvar,Body} = dest_exists (concl xth)
+       val bhyp = disch(subst [Bvar |-> v] Body, hyp bth)
+   in
+   if (not(is_var v) orelse
+       (exists (free_in v) ((concl xth :: hyp xth)@@(concl bth :: bhyp))))
+   then ERR("CHOOSE","")
+   else mk_drule_thm(union (hyp xth) bhyp, concl bth)
+   end 
+   handle _ => ERR("CHOOSE","");
+
+
+(*--------------------------------------------------------------------
+ * SELECT introduction
+ * 
+ *     A |- ?x. t[x]
+ *   -----------------
+ *    A |- t[@@x.t[x]]
+ *-------------------------------------------------------------------*)
+
+local
+val alpha = ==`:'a`==
+fun alpha_subst ty = [alpha |-> ty]
+in
+fun SELECT_RULE th =
+   let val (tm as {Bvar, Body}) = dest_exists(concl th)
+       val v = genvar(type_of Bvar)
+       val P = mk_abs tm
+       val SELECT_AX' = INST_TYPE(alpha_subst(type_of Bvar)) Boolean.SELECT_AX
+       val th1 = SPEC v (SPEC P SELECT_AX')
+       val {ant,conseq} = dest_imp(concl th1)
+       val th2 = BETA_CONV ant 
+       and th3 = BETA_CONV conseq
+       val th4 = EQ_MP th3 (MP th1 (EQ_MP(SYM th2)
+                                         (ASSUME (rhs(concl th2)))))
+   in
+   CHOOSE (v,th) th4
+   end
+   handle _ => ERR("SELECT_RULE","")
+end;
+
+(*--------------------------------------------------------------------
+ *
+ * 
+ *    A1 |- t1 ==> t2         A2 |- t2 ==> t1
+ *   -----------------------------------------
+ *             A1 u A2 |- t1 = t2
+ * 
+ * fun IMP_ANTISYM_RULE th1 th2 =
+ *    let val (t1,t2) = dest_imp(concl th1)
+ *    in
+ *    MP (MP (SPEC t2 (SPEC t1 IMP_ANTISYM_AX)) th1) th2
+ *    end
+ *    handle _ => ERR("IMP_ANTISYM_RULE","");
+ *
+ * Modified: TFM 88.10.08 to use "union A1 A2" instead of A1 @@ A2 
+ *-------------------------------------------------------------------*)
+
+fun IMP_ANTISYM_RULE th1 th2 =
+   let val {ant = ant1, conseq = conseq1} = dest_imp(concl th1)
+       and {ant = ant2, conseq = conseq2} = dest_imp(concl th2)
+   in
+   if (aconv ant1 conseq2 andalso aconv ant2 conseq1)
+   then mk_drule_thm(union (hyp th1) (hyp th2), mk_eq{lhs = ant1, rhs = conseq1}) 
+   else ERR("IMP_ANTISYM_RULE","")
+   end
+   handle _ => ERR("IMP_ANTISYM_RULE","");
+
+
+(*--------------------------------------------------------------------
+ *  |- !x. t    ---->    x', |- t[x'/x]	 
+ *-------------------------------------------------------------------*)
+
+fun SPEC_VAR th =
+   let val {Bvar,...} = dest_forall (concl th)
+       val bv' = variant (free_varsl (hyp th)) Bvar
+   in   
+   (bv', SPEC bv' th)
+   end;
+
+
+(*--------------------------------------------------------------------
+ *
+ *        A |-  (!x. t1 = t2)
+ *    ---------------------------
+ *     A |- (?x.t1)  =  (?x.t2)
+ * 
+ * fun MK_EXISTS bodyth =
+ *    let val (x, sth) = SPEC_VAR bodyth
+ *        val (a,b) = dest_eq (concl sth)
+ *        val (abimp,baimp) = EQ_IMP_RULE sth
+ *        fun HALF (p,q) pqimp =
+ *           let val xp = mk_exists(x,p) 
+ *               and xq = mk_exists(x,q)
+ *           in
+ *           DISCH xp (CHOOSE (x, ASSUME xp)
+ *                            (EXISTS (xq,x) 
+ *                                    (MP pqimp (ASSUME p))))
+ *           end
+ *    in
+ *    IMP_ANTISYM_RULE (HALF (a,b) abimp) (HALF (b,a) baimp)
+ *    end
+ *    handle _ => ERR("MK_EXISTS","");
+ *-------------------------------------------------------------------*)
+
+fun MK_EXISTS bodyth =
+   let val {Bvar,Body} = dest_forall (concl bodyth)
+       val {lhs,rhs} = dest_eq Body 
+   in
+   mk_drule_thm (hyp bodyth, mk_eq{lhs = mk_exists{Bvar = Bvar, Body = lhs},
+                             rhs = mk_exists{Bvar = Bvar, Body = rhs}})
+   end
+   handle _ => ERR("MK_EXISTS","");
+
+
+(*--------------------------------------------------------------------
+ *
+ *                A |-  t1 = t2
+ *    ------------------------------------------- (xi not free in A)
+ *     A |- (?x1 ... xn. t1)  =  (?x1 ... xn. t2)
+ *-------------------------------------------------------------------*)
+
+fun LIST_MK_EXISTS l th = itlist (fn x => fn th => MK_EXISTS(GEN x th)) l th;
+
+
+(*--------------------------------------------------------------------
+ * ! abstraction
+ * 
+ *           A |- t1 = t2
+ *      -----------------------
+ *       A |- (!x.t1) = (!x.t2)
+ *-------------------------------------------------------------------*)
+
+fun pred_ty ty = ty --> bool_ty
+
+fun FORALL_EQ x =
+   let val forall = AP_TERM(mk_const{Name = "!", 
+                                     Ty = pred_ty(pred_ty(type_of x))})
+   in
+   fn th => forall (ABS x th)
+   end
+   handle _ => ERR("FORALL_EQ","");
+
+
+(*--------------------------------------------------------------------
+ * ? abstraction
+ * 
+ *           A |- t1 = t2
+ *      -----------------------
+ *       A |- (?x.t1) = (?x.t2)
+ *-------------------------------------------------------------------*)
+
+fun EXISTS_EQ x =
+   let val exists = AP_TERM(mk_const{Name = "?", 
+                                     Ty = pred_ty(pred_ty(type_of x))})
+   in
+   fn th => exists (ABS x th)
+   end
+   handle _ => ERR("EXISTS_EQ","");
+
+
+(*--------------------------------------------------------------------
+ * @@ abstraction
+ * 
+ *           A |- t1 = t2
+ *      -----------------------
+ *       A |- (@@x.t1) = (@@x.t2)
+ *-------------------------------------------------------------------*)
+
+fun SELECT_EQ x =
+ let val ty = type_of x
+ in fn th => 
+   AP_TERM (mk_const{Name = "@@", Ty = pred_ty ty --> ty})
+           (ABS x th)
+ end handle _ => ERR("SELECT_EQ","");
+
+
+(*--------------------------------------------------------------------
+ *
+ *      A1 |- t1 == u1   ...   An |- tn = un       A |- t[ti]
+ *     -------------------------------------------------------
+ *                A1 u ... An u A |-  t[ui]
+ * 
+ * fun GSUBS substfn ths th =
+ *    let val ls = map (lhs o concl) ths
+ *        val vars = map (genvar o type_of) ls
+ *        val w = substfn (combine(vars,ls)) (concl th)
+ *    in
+ *    SUBST (combine(ths,vars)) w th
+ *    end;
+ * 
+ *-------------------------------------------------------------------*)
+
+local
+fun GSUBS substfn ths th =
+   let val (hth,cth) = dest_thm th
+       val (h',s) = itlist (fn th => fn (H,L) =>
+                              let val (h,c) = dest_thm th
+                                  val {lhs,rhs} = dest_eq c 
+                              in (union h H, (lhs |-> rhs)::L)
+                              end) ths (hth,[])
+   in mk_drule_thm (h', substfn s cth)
+   end
+in    
+fun SUBS ths th = GSUBS subst ths th handle _ => ERR("SUBS","")
+fun SUBS_OCCS nlths th =
+   let val (nll, ths) = unzip nlths 
+   in GSUBS (subst_occs nll) ths th 
+   end
+   handle _ => ERR("SUBS_OCCS","")
+end;
+
+
+(*--------------------------------------------------------------------
+ *
+ *        A |- ti == ui
+ *     --------------------
+ *      A |- t[ti] = t[ui]
+ * 
+ * fun SUBST_CONV thvars template tm = 
+ *    SUBST thvars `^tm = ^template` (REFL tm)
+ *    handle _ => ERR("SUBST_CONV", "");
+ *-------------------------------------------------------------------*)
+
+fun SUBST_CONV replacements template tm =
+   let val (ltheta, rtheta, hyps) =
+      itlist (fn {var,thm} => fn (ltheta,rtheta,hyps) =>
+              let val (h,c) = dest_thm thm
+                  val {lhs,rhs} = dest_eq c
+              in ((var |-> lhs)::ltheta, (var |-> rhs)::rtheta, union h hyps)
+              end) replacements ([],[],[])
+   in if (aconv (subst ltheta template) tm)
+      then mk_drule_thm(hyps, mk_eq{lhs = tm, rhs = subst rtheta template})
+      else ERR("SUBST_CONV","")
+   end
+   handle _ => ERR("SUBST_CONV","");
+
+
+(*--------------------------------------------------------------------
+ * Beta-conversion to the rhs of an equation
+ * 
+ *    A |- t1 = (\x.t2)t3
+ *   --------------------
+ *    A |- t1 = t2[t3/x]
+ *-------------------------------------------------------------------*)
+
+fun RIGHT_BETA th = TRANS th (BETA_CONV(#rhs(dest_eq(concl th))))
+                    handle _ => ERR("RIGHT_BETA","");
+
+(*--------------------------------------------------------------------
+ *  "(\x1 ... xn.t)t1 ... tn" --> 
+ *     |- (\x1 ... xn.t)t1 ... tn = t[t1/x1] ... [tn/xn]
+ *-------------------------------------------------------------------*)
+
+fun LIST_BETA_CONV tm =
+   let val {Rator,Rand} = dest_comb tm 
+   in
+   RIGHT_BETA (AP_THM (LIST_BETA_CONV Rator) Rand)
+   end
+   handle _ => REFL tm;
+
+
+fun RIGHT_LIST_BETA th = TRANS th (LIST_BETA_CONV(#rhs(dest_eq(concl th))));
+end; (* Drule1 *)
+
+@
+
+
+1.1
+log
+@Added simplifier components, added drule files, added MK_ABS_CONV, better error messages
+@
+text
+@d3 2
+a4 2
+open Exception
+open Lib;
+a5 8
+open Dsyntax;
+   infixr 3 -->;
+    
+   open Term;
+       
+open Parse;
+
+structure Thm = Thm;
+a7 1
+    
+@

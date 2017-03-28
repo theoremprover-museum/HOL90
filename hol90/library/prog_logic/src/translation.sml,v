@@ -1,0 +1,366 @@
+head	1.3;
+access;
+symbols
+	HOL97:1.3.2.1.0.2
+	bpHOL97:1.3.2.1
+	hol90_9_alpha:1.3.2.1
+	hol90_pre8_for_multiple_compilers:1.3.0.2
+	hol90_pre8_after_donalds_separate_compilation_changes:1.3
+	hol90_8_after_merging_Konrad_Elsa:1.2
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.3
+date	95.10.31.15.31.18;	author drs1004;	state Exp;
+branches
+	1.3.2.1;
+next	1.2;
+
+1.2
+date	95.10.16.17.47.50;	author drs1004;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	95.10.16.13.31.52;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.31.52;	author rjb;	state Exp;
+branches;
+next	;
+
+1.3.2.1
+date	96.08.23.09.47.54;	author rjb;	state Exp;
+branches
+	1.3.2.1.2.1;
+next	;
+
+1.3.2.1.2.1
+date	97.06.11.18.34.50;	author kxs;	state Exp;
+branches;
+next	1.3.2.1.2.2;
+
+1.3.2.1.2.2
+date	97.07.14.17.34.36;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.3
+log
+@Changes by DRS for separate compilation using NJSML 108.5/CM
+@
+text
+@signature TRANSLATION =
+    sig
+        (* HACKERY *)
+
+        val prime_var  : Term.term -> Term.term
+        val unprime    : Term.term -> Term.term
+        val is_ghost   : string -> bool
+        val trans_term : Term.term -> Term.term -> Term.term
+        val untrans_term : Term.term -> Term.term
+        val TRANS_THM  : Thm.thm -> Thm.thm
+
+    end
+
+(* ------------------------------------------------------------------------ *)
+(*        THIS IS ALL HACKERY, AND I DON'T LIKE IT ONE LITTLE BIT!          *)
+(* ------------------------------------------------------------------------ *)
+
+functor Translation () : TRANSLATION =
+    struct
+
+open Core; (* open up all of the HOL 0/1 Core - could be replaced by more *)
+           (* explicit opens to avoid endless recompilation of libraries  *)
+           (* during system development                                   *)
+
+   open Rsyntax;
+
+  val butlast = fst o Lib.front_n_back;
+
+
+  fun SYNTAX_ERR {function,message} = 
+      HOL_ERR{origin_structure = "Translation",
+	      origin_function = function,
+	      message = message}
+
+  exception FAIL
+
+  (* "x"   --->   "`x`"  *)
+
+  fun prime_var tm = 
+      mk_const{Name=("\""^((#Name o dest_var) tm)^"\""),Ty=(==`:string`==)}
+
+  (* unprime "`X`"   --->   "X:num" *)
+
+  fun unprime t =
+      let val {Name,...} = dest_const t
+      in
+	  mk_var{Name=implode(butlast(tl(explode Name))),Ty=(==`:num`==)}
+      end
+
+(*
+   A ghost variable will be one that satisfies the predicate is_ghost.
+   This is an assignable predicate; we initialize it to the predicate
+
+      is_lower : tok -> bool   
+
+   which tests whether a token is made up of lower case letters.
+*)
+
+  fun is_ghost tok =
+      can (map (fn ch =>
+		let 
+		    val true = (Sml_system.Char.ord ch >= 97 (*"a"*)
+				andalso
+				Sml_system.Char.ord ch <= 122 (*"z"*))
+		in
+		    true
+		end)) (explode tok)
+
+  (* trans_term : "s", " ... x ..."  -->  "\s. ... s `x` ..." *)
+
+  fun trans_term s tm =
+      (let val NUM = (==`:num`==)
+	   val subst_list = 
+	       mapfilter
+	       (fn t => 
+		if (type_of t = NUM) andalso (not(is_ghost(#Name(dest_var t))))
+		    then {redex=t, residue=mk_comb{Rator=s, Rand=prime_var t}}
+		else raise FAIL)
+	       (free_vars tm)
+       in 
+	   mk_abs{Bvar=s, Body=subst subst_list tm}
+       end) handle _ => raise SYNTAX_ERR{function="trans_term",message=""}
+
+  (* untrans_term : "\s. ... s `x` ..."   --->   " ... x ... " *)
+
+  fun untrans_term t =
+      (let val {Bvar=s,Body=t1} = dest_abs t
+	   fun u_fn t =
+	       if (is_const t) orelse (is_var t)
+		   then t
+	       else if is_comb t
+			then 
+			    let val {Rator,Rand} = dest_comb t
+			    in
+				if Rator = s
+				    then (unprime Rand)
+				else mk_comb{Rator=u_fn Rator,Rand= u_fn Rand}
+			    end
+		    else if is_abs t
+			     then 
+				 let val {Bvar,Body} = dest_abs t
+				 in
+				     mk_abs{Bvar=Bvar,Body= u_fn Body}
+				 end
+			 else raise FAIL
+       in
+	   u_fn t1
+       end) handle _ => raise SYNTAX_ERR{function="untrans_term",message=""}
+
+(* Test examples:
+
+trans_term (--`s:string->num`--) (--`(X:num=x) /\ (Y:num=y)`--);
+trans_term (--`s:string->num`--) (--`(R < Y) /\ (X = R + (Y*Q))`--);     
+
+*)
+
+(* TRANS_THM instantiates a theorem using INST 
+
+     |- ... x ...  -->  |- !s. ... s "x" ..."
+*)
+
+  fun TRANS_THM th =
+      (let val s = (--`s:string->num`--)
+	   val NUM = (==`:num`==)
+	   val subst_list = 
+	       mapfilter
+	       (fn t => 
+		if (type_of t = NUM) andalso (not(is_ghost(#Name(dest_var t))))
+		    then {redex=t, residue=mk_comb{Rator=s, Rand=prime_var t}}
+		else raise FAIL)
+	       (free_vars (concl th))
+       in 
+	   GEN s (INST subst_list th)
+       end) handle FAIL => raise SYNTAX_ERR{function="TRANS_THM",message=""}
+
+    end (* Functor Translation() *)
+
+@
+
+
+1.3.2.1
+log
+@Added semicolon for Poly/ML.
+Use of Sml_system replaced by opening of Portable structure.
+@
+text
+@d12 1
+a12 1
+    end;
+a20 2
+open Portable; (* for structure Char *)
+
+d62 1
+a62 1
+		    val true = (Char.ord ch >= 97 (*"a"*)
+d64 1
+a64 1
+				Char.ord ch <= 122 (*"z"*))
+@
+
+
+1.3.2.1.2.1
+log
+@Changes to accomodate move to SML/NJ 109.26.
+@
+text
+@d29 1
+d31 1
+d47 4
+a50 4
+  let val {Name,...} = dest_const t
+  in mk_var{Name=Portable.implode(#1(front_last(tl(Portable.explode Name)))),
+            Ty= (==`:num`==)}
+  end
+d63 2
+a64 1
+		let val true = (Char.ord ch >= 97 (*"a"*)
+d69 1
+a69 1
+		end)) (Portable.String.explode tok)
+@
+
+
+1.3.2.1.2.2
+log
+@The prog_logic library now loads under CM. The entrypoint is the
+structure prog_logicLib. The removed files are target files of hol_lex and
+hol_yak.
+@
+text
+@d2 2
+a3 7
+sig
+    val prime_var  : CoreHol.Term.term -> CoreHol.Term.term
+    val unprime    : CoreHol.Term.term -> CoreHol.Term.term
+    val is_ghost   : string -> bool
+    val trans_term :CoreHol.Term.term -> CoreHol.Term.term -> CoreHol.Term.term
+    val untrans_term : CoreHol.Term.term -> CoreHol.Term.term
+    val TRANS_THM  : CoreHol.Thm.thm -> CoreHol.Thm.thm
+d5 8
+a12 1
+end;
+d19 3
+a21 1
+struct
+d23 3
+a25 2
+type term = CoreHol.Term.term;
+type thm = CoreHol.Thm.thm;
+d27 1
+a27 2
+open Exception Lib CoreHol;
+open Term Dsyntax Thm Drule Parse;
+a28 1
+structure Char = Portable.Char;
+d35 1
+a35 1
+  exception FAIL;
+@
+
+
+1.2
+log
+@I'm about to do a checkin of Elsa Gunter's modifications to the hol90.7
+sources to create her hol90.pre8.  To recap what I've done:
+	- I checked out hol90 (in /usr/groups/hol/drs1004/hol90)
+		cvs co hol90
+
+	- By doing a recursive diff between Elsa's source and the
+	hol90.7 source I found all the changes Elsa had made to
+	source files.  I copied relevant files from Elsa's source
+	into my checked out version.  The only new files were
+		- the sml_system files in src/0
+		- some make scripts in src/.
+	Changed files were in:
+		src/{0,1,2,3}
+		library/arith/src/thm_convs.sml
+		library/list/src/list_conv1.sml
+		library/num/src/num_lib.sml
+		library/prog_logic/src/halts_logic.sml
+		library/prog_logic/src/translation.sml
+		library/prog_logic/theories/src/mk_halts.sml
+		library/real/theories/src/Make
+		library/real/theories/src/equiv.sml
+		library/real/theories/src/seq.sml
+		library/reduce/src/arithconv.sml
+		library/string/src/string_conv.sml
+		library/unity/theories/src/aux_definitions.sml
+		library/word/theories/src/*
+
+	- I will now commit these changes, with this email as the log message.
+		cvs commit
+
+	- Tomorrow I will get this version compiling
+	with NJSML 108 (I will probably add
+	the files to enable the NJSML compilation manager to make
+	this easier), then check those changes in.  I think it's
+	good to get things working.
+@
+text
+@d5 2
+a6 2
+        val prime_var  : term -> term
+        val unprime    : term -> term
+d8 3
+a10 3
+        val trans_term : term -> term -> term
+        val untrans_term : term -> term
+        val TRANS_THM  : thm -> thm
+d21 4
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d56 8
+a63 5
+      can (map (fn ch => let 
+			     val true = (ch >= "a" andalso ch <= "z")
+			 in
+			     true
+			 end)) (explode tok)
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

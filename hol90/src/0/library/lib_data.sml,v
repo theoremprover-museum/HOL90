@@ -1,0 +1,125 @@
+head	1.2;
+access;
+symbols
+	HOL97:1.2.0.4
+	bpHOL97:1.2
+	hol90_9_alpha:1.2
+	hol90_pre8_for_multiple_compilers:1.2.0.2
+	hol90_pre8_after_donalds_separate_compilation_changes:1.2
+	hol90_8_after_merging_Konrad_Elsa:1.2
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.2
+date	95.10.18.16.37.34;	author drs1004;	state Exp;
+branches
+	1.2.4.1;
+next	1.1;
+
+1.1
+date	95.10.16.13.30.07;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.30.07;	author rjb;	state Exp;
+branches;
+next	;
+
+1.2.4.1
+date	97.07.10.19.16.17;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.2
+log
+@Check in after merging in Konrad's changes made after
+the release of hol90.7.  This involved creating a side branch
+in which to check in Konrad's changes, then merging in that
+side branch into the main development (which contains changes
+made by Elsa Gunter).
+
+Some other small modification have been made to the source code,
+as I begun to try to make this version into a working version:
+	- hol90 will now be compiled in an environment were no
+structures can be considered opn.  This means many structures
+now need "open Lib" and other such commands at their head.
+This has not yet been completed, but has been begun.
+	- "rotl" and "rotr" have been added to Lib, something
+which I just did impulsively.   Documentation files
+have also been added in help/90.
+@
+text
+@functor LIB_DATA ((* structure Lib : Lib_sig *)) : Lib_data_sig = 
+struct
+
+structure Lib_id = UID();
+type lib_id = Lib_id.uid;
+val new_lib_id = Lib_id.mk_uid
+val mk_lib_id = Lib_id.re_mk_uid
+val lib_id_name = Lib_id.name
+val lib_id_timestamp = Lib_id.timestamp
+val lib_id_eq = Lib_id.eq
+
+type lib_data = {lib_id : lib_id,
+                 doc : string,
+                 path : string,
+                 parents : lib_id list,
+                 theories : string list,
+                 code : string list,
+                 help : string list,
+                 loaded : string}
+
+val dest_lib_data = Lib.I
+val mk_lib_data = Lib.I
+
+end;
+@
+
+
+1.2.4.1
+log
+@Added lib_io.90.sml for backwards compatibility with SML'90.
+@
+text
+@d1 1
+a1 1
+structure Lib_data : Lib_data_sig = 
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d1 1
+a1 1
+structure Lib_data : Lib_data_sig = 
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

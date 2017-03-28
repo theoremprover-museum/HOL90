@@ -1,0 +1,96 @@
+head	1.1;
+access;
+symbols
+	HOL97:1.1.2.1.0.2
+	bpHOL97:1.1.2.1
+	hol90_pre8_for_multiple_compilers:1.1.0.2;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	96.12.18.12.14.10;	author rjb;	state dead;
+branches
+	1.1.2.1;
+next	;
+
+1.1.2.1
+date	96.12.18.12.14.11;	author rjb;	state Exp;
+branches
+	1.1.2.1.2.1;
+next	;
+
+1.1.2.1.2.1
+date	97.06.11.18.09.33;	author kxs;	state dead;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@file architecture was initially added on branch hol90_pre8_for_multiple_compilers.
+@
+text
+@@
+
+
+1.1.2.1
+log
+@See doc/8/8.changes for a description of the changes.
+@
+text
+@a0 27
+#!/bin/sh
+#
+# Determine architecture
+#
+case `uname -s` in
+     HP-UX) ARCH=hppa;;
+     SunOS) ARCH=`arch`
+            case `uname -r` in
+                 4*) case $ARCH in
+                          sun4) ARCH=sparc-sunos;;
+                          *) ;;
+                     esac;;
+                 5*) case $ARCH in
+                          sun4) ARCH="sparc-solaris";;
+                          i?86*) ARCH="x86";;
+                          *) ;;
+                     esac;;
+                 *) ;;
+            esac;;
+     Linux) ARCH=`arch`
+            case $ARCH in
+                 i?86*) ARCH="x86";;
+                 *) ;;
+            esac;;
+     *) ARCH=`arch`;;
+esac
+echo $ARCH
+@
+
+
+1.1.2.1.2.1
+log
+@Many minor changes in order to get HOL to build on SML/NJ 109.26. There are
+several real changes, however.
+
+  1. The reliance on hacked ML-Yacc support files is gone.
+
+  2. After type inference, there is now a pass where new names are guessed for
+     unconstrained type variables. This is experimental.
+
+  3. All the grammars used in the basic HOL system are put in one place
+     (the "src/Grammars" directory).
+
+  4. The implementations of the "Portable" structure have been moved to
+      src/portableML.
+
+  5. All the makefiles used to build the system are in src/Makefiles.
+@
+text
+@@

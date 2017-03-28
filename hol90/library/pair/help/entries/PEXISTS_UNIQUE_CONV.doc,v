@@ -1,0 +1,91 @@
+head	1.1;
+branch	1.1.1;
+access;
+symbols
+	HOL97:1.1.1.1.0.6
+	bpHOL97:1.1.1.1
+	hol90_9_alpha:1.1.1.1
+	hol90_pre8_for_multiple_compilers:1.1.1.1.0.4
+	hol90_pre8_after_donalds_separate_compilation_changes:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	95.10.16.13.32.08;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.32.08;	author rjb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@\DOC PEXISTS_UNIQUE_CONV
+
+\TYPE {PEXISTS_UNIQUE_CONV : conv}
+
+\KEYWORDS
+conversion, quantifier, existential, unique.
+
+\LIBRARY pair
+
+\SYNOPSIS
+Expands with the definition of paired unique existence.
+
+\DESCRIBE
+Given a term of the form {"?!p. t[p]"}, the conversion {PEXISTS_UNIQUE_CONV}
+proves that this assertion is equivalent to the conjunction of two statements,
+namely that there exists at least one pair {p} such that {t[p]}, and that
+there is at most one value {p} for which {t[p]} holds. The theorem returned is:
+{
+   |- (?!p. t[p]) = (?p. t[p]) /\ (!p p'. t[p] /\ t[p'] ==> (p = p'))
+}
+\noindent where {p'} is a primed variant of the pair {p} none of the components
+of which appear free in the input term.  Note that the quantified pair {p}
+need not in fact appear free in the body of the input term.  
+For example, {PEXISTS_UNIQUE_CONV "?!(x,y). T"}
+returns the theorem:
+{
+   |- (?!(x,y). T) =
+      (?(x,y). T) /\ (!(x,y) (x',y'). T /\ T ==> ((x,y) = (x',y')))
+}
+\FAILURE
+{PEXISTS_UNIQUE_CONV tm} fails if {tm} does not have the form {"?!p.t"}.
+
+\SEEALSO
+EXISTS_UNIQUE_CONV, PEXISTENCE.
+
+\ENDDOC
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

@@ -1,0 +1,37 @@
+\DOC FILTER_COND_EQ_CONV
+
+\TYPE {FILTER_COND_EQ_CONV : (term -> bool) -> conv}
+
+\SYNOPSIS
+moves the selected right-hand term of an equation inward through a conditional.
+
+\LIBRARY cond
+
+\DESCRIBE
+moves the selected right-hand term of an equation inward through a conditional.
+
+{
+ |- (A => x|y) = z
+===================
+ |- A => x=z|y=z
+}
+
+\EXAMPLE
+
+{
+- FILTER_COND_EQ_CONV (fn t => t=(--`5`--)) (--`(A => 5|6) = 5`--);
+val it = |- ((A => 5 | 6) = 5) = (A => (5 = 5) | (6 = 5)) : thm
+- (FILTER_COND_EQ_CONV (fn t => t=(--`6`--)) (--`(A => 5|6) = 5`--);())
+  handle e => print_HOL_ERR e;
+Exception raised at cond.FILTER_COND_EQ_CONV:
+the supplied filter is not true for
+5
+}
+
+\SEEALSO
+COND_EQ_CONV COND_EQ_RULE COND_EQ_TAC
+FILTER_COND_EQ_RULE FILTER_COND_EQ_TAC
+EQ_COND_CONV EQ_COND_RULE EQ_COND_TAC
+FILTER_EQ_COND_CONV FILTER_EQ_COND_RULE FILTER_EQ_COND_TAC
+
+\ENDDOC

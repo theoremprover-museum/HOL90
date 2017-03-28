@@ -1,0 +1,906 @@
+head	1.5;
+access;
+symbols
+	HOL97:1.2.0.4
+	bpHOL97:1.2
+	hol90_9_alpha:1.2
+	hol90_pre8_for_multiple_compilers:1.2.0.2
+	hol90_pre8_after_donalds_separate_compilation_changes:1.2
+	hol90_8_after_merging_Konrad_Elsa:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.5
+date	96.02.08.00.35.57;	author drs1004;	state Exp;
+branches;
+next	1.4;
+
+1.4
+date	96.01.04.13.48.50;	author drs1004;	state Exp;
+branches;
+next	1.3;
+
+1.3
+date	95.12.18.11.36.32;	author drs1004;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	95.10.31.15.05.16;	author drs1004;	state Exp;
+branches
+	1.2.4.1;
+next	1.1;
+
+1.1
+date	95.10.16.13.30.17;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.30.17;	author rjb;	state Exp;
+branches
+	1.1.1.1.2.1;
+next	;
+
+1.1.1.1.2.1
+date	95.10.18.10.09.23;	author drs1004;	state Exp;
+branches;
+next	;
+
+1.2.4.1
+date	97.07.11.15.16.04;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.5
+log
+@New theory mechanism, code reorganisation and other enhancements by Don Syme.
+@
+text
+@(* ===================================================================== *)
+(* FILE          : prim_rec.sml                                          *)
+(* DESCRIPTION   : Primitive recursive definitions on arbitrary recursive*)
+(*                 types.  Assumes the type is defined by an axiom of    *)
+(*                 the form proved by the recursive types package.       *)
+(*                 Translated from hol88.                                *)
+(*                                                                       *)
+(* AUTHOR        : (c) T. F. Melham, University of Cambridge             *)
+(* DATE	         : 87.08.23                                              *)
+(* TRANSLATOR    : Konrad Slind, University of Calgary                   *)
+(* DATE          : September 11, 1991                                    *)
+(* ===================================================================== *)
+
+
+structure Prim_rec : Prim_rec_sig =
+struct
+    open Lib Rterms;
+    open Thm Drule Tactical Tactic Plain_rewrite Conv Quant_convs;
+    infix THEN;
+    infix THENL;
+    infix ORELSE;
+
+type goal = Abbrev.goal;
+
+infix ##
+val WRAP_ERR = Exception.WRAP_ERR "Prim_rec";
+val ERR = Exception.ERR "Prim_rec";
+
+(* remove x satisfying p from l.... giving x and the thing and rest of l*)
+fun pr_remove p [] = ERR("pr_remove","[]")
+  | pr_remove p (a::A) = 
+     if p a then (a, A) else (I##(fn r => (a :: r))) (pr_remove p A);
+
+
+(*----------------------------------------------------------------------*)
+(* derive_existence_thm th tm						*)
+(*									*)
+(* If th is a rec type axiom and tm is a term giving a prim rec 	*)
+(* definition, derive an existence theorem for doing the definition.	*)
+(* The existence theorem has cases corresponding to those in tm and	*)
+(* is suitably type-instantiated.					*)
+(*									*)
+(* E.g. Input								*)
+(*									*)
+(* |- !f0 f1 f2 e. ?! fn.						*)
+(*    (!x0 x1 t t'. fn(C1 t x0 t' x1) = f0(fn t)(fn t')x0 x1 t t') /\	*)
+(*    (!t. fn(C2 t) = f1(fn t)t) /\             			*)
+(*    (!x. fn(C3 x) = f2 x) /\     					*)
+(*     (fn C4 = e)							*)
+(*									*)
+(*  "(!n b. Fn n C4 b = ...) /\						*)
+(*   (!b n m t x t'. Fn n (C1 t' b t m) x = ...) /\			*)
+(*   (!m x q. Fn m (C3 x) q = ...)"					*)
+(*									*)
+(* Output:								*)
+(*									*)
+(* |- !e f0 f2. ?fn.							*)
+(*    (!g1 g2. fn C4 g1 g2 = e g1 g2) /\				*)
+(*    (!g3 g4 g5 g6 g7 g8. fn(C1 g5 g3 g6 g4) g7 g8 = 			*)
+(*		       f0(fn g5)(fn g6)g3 g4 g5 g6) g7 g8 /\	        *)
+(*    (!g9 g10 g11. fn(C3 g9) g10 g11 = f2 g9 g10 g11)			*)
+(*									*)
+(* Note: the g's are genvars	(so are e ... f2)			*)
+(*----------------------------------------------------------------------*)
+
+
+(* val derive_existence_thm = fn : thm -> term -> thm   *)
+
+fun derive_existence_thm th tm : thm =
+   let val vars = map (genvar o type_of) (fst(strip_forall(concl th)))
+       val exists = CONJUNCT1(CONV_RULE EXISTS_UNIQUE_CONV(SPECL vars th)) 
+       val e_fn = #Bvar(dest_exists(concl exists))
+       and conjs = strip_conj tm 
+       fun splt (h::t) = 
+              if (is_var h) 
+              then let val (bv,C,av) = splt t
+                   in ((h::bv), C, av)
+                   end
+              else if (is_const h orelse is_comb h)
+                   then ([], h, t)
+                   else ERR("derive_existence_thm","1")
+       val(bv,Con,av) = splt(snd(strip_comb(lhs(snd(strip_forall(hd conjs))))))
+       val rhsfn = let val cv = genvar(type_of Con) 
+                       val r = rhs(snd(strip_forall(hd conjs)))
+                   in list_mk_abs(cv::(bv @@ av),r) 
+                   end 
+       val th_inst = INST_TYPE (snd(Match.match_term e_fn rhsfn)) exists 
+       fun get_c t =
+          let val args = snd(strip_comb(lhs(snd(strip_forall t))))
+              val c = fst(strip_comb(first (fn t=> is_const t orelse is_comb t)
+                                           args))
+          in if (is_const c) then c 
+           else ERR("derive_existence_thm","2")
+          end 
+       val cs  = map get_c conjs 
+       and exl = CONJUNCTS (SELECT_RULE th_inst) 
+       and fn1 = #Bvar(dest_exists(concl th_inst)) 
+       fun same_c c cl = 
+          (c = fst (strip_comb (rand (lhs (snd (strip_forall (concl cl)))))))
+       fun get_ths [] exl = []
+         | get_ths (a::A) exl = 
+              let val (c, ex) = pr_remove (same_c a) exl
+              in (c :: (get_ths A ex)) 
+              end
+       val ths = get_ths cs exl
+       val argvars = map (genvar o type_of) (bv @@ av) 
+       fun ap_ths th = 
+          let val v = map (genvar o type_of) (fst(strip_forall(concl th))) 
+              val th1 = rev_itlist (C AP_THM) argvars (SPECL v th)
+          in
+          GENL (v @@ argvars) th1
+          end
+       val th1 = LIST_CONJ (map ap_ths ths) 
+       val sel = mk_select(dest_exists (concl th_inst)) 
+   in
+   GEN_ALL(EXISTS(mk_exists{Bvar = fn1, Body = subst[sel |-> fn1] (concl th1)},
+                  sel) th1)
+   end handle e => WRAP_ERR("derive_existence_thm",e);
+
+
+
+(* mk_fn: make the function for the rhs of a clause in the existence thm  *)
+(*                                                                        *)
+(* returns:  1) the function                                              *)
+(*      2) a list of variables that the clause should be SPECL            *)
+(*      3) a pre-done beta-conversion of the rhs.                         *)
+
+fun mk_fn (cl, Fn, bv, C, ((av, r):goal)) = 
+   let val (lcl::lclvars) = snd (strip_comb (lhs (snd (strip_forall cl))))
+       val m = (fst(Match.match_term lcl C))@@(map2 (fn res => fn red =>
+                                                {redex=red, residue=res})
+                                             (bv@@av) lclvars)
+       val cl'= subst m (snd(strip_forall cl)) 
+       val z1 = snd(strip_comb(rhs cl'))
+       val nonrec = filter (is_var)  z1
+       and rec1 = filter (is_comb) z1
+       val recvars = map (genvar o type_of) rec1 
+       val basepat = list_mk_comb(Fn, (map (genvar o type_of) bv)) 
+       fun find t = 
+            find_terms 
+              (fn tm => can(Match.match_term(mk_comb{Rator=basepat,Rand=t})) tm
+                        andalso (fst (strip_comb tm) = Fn) 
+                        andalso (rand tm = t))
+       fun do_subst (new,old) tm = 
+          if (tm = old) 
+          then new 
+          else if (is_abs tm) 
+               then let val {Bvar,Body} = dest_abs tm
+                    in mk_abs{Bvar = Bvar, Body = do_subst(new,old) Body} 
+                    end
+               else if (is_comb tm) 
+                    then let val {Rator,Rand} = dest_comb tm
+                             val f = do_subst(new,old)
+                         in mk_comb{Rator = f Rator, Rand = f Rand}
+                         end 
+                    else tm 
+       fun mk_substs (rc,rcv) t = 
+          let val occs = find (rand rc) t 
+              fun args tm = snd(strip_comb (rator tm)) 
+              val news = map (fn tm => list_mk_comb(rcv,args tm)) occs
+          in itlist do_subst (zip news occs) t 
+          end
+       val r'= itlist mk_substs (zip rec1 recvars) r
+       val varsub = map (fn v => {redex = v, residue = genvar (type_of v)})
+                        (recvars @@ nonrec) 
+       val fn1 = list_mk_abs(map #residue varsub,subst varsub r') 
+       fun subst_assoc _ [] = NONE
+         | subst_assoc v ({redex,residue}::L) = 
+                if (v = redex)
+                then SOME residue
+                else subst_assoc v L
+       val specl = 
+             map (fn v => case (subst_assoc v m) of (SOME x) => x | NONE => v)
+                 (fst(strip_forall cl)) 
+       val beta = LIST_BETA_CONV(list_mk_comb(fn1,snd(strip_comb(rhs cl'))))
+   in
+   (fn1, specl, beta) 
+   end
+   handle e => WRAP_ERR("mk_fn",e);
+
+
+fun MK_FN (cl, (Fn, bv, C, g)) = mk_fn (cl, Fn, bv, C, g);
+
+
+(* instantiate_existence_thm eth tm : instantiate eth to match tm   *)
+(*                                                                  *)
+(* E.g. INPUT:                                                      *)
+(*                                                                  *)
+(* |- !e f0 f2. ?fn.                                                *)
+(*    (!g1 g2. fn C4 g1 g2 = e g1 g2) /\                            *)
+(*    (!g3 g4 g5 g6 g7 g8. fn(C1 g5 g3 g6 g4) g7 g8 =               *)
+(*           f0(fn g5)(fn g6)g3 g4 g5 g6) g7 g8 /\                  *)
+(*    (!g9 g10 g11. fn(C3 g9) g10 g11 = f2 g9 g10 g11)              *)
+(*                                                                  *)
+(*                                                                  *)
+(*  "(!n b. Fn n C4 b = ...) /\                                     *)
+(*   (!b n m t x t'. Fn n (C1 t' b t m) x = ...) /\                 *)
+(*   (!m x q. Fn m (C3 x) q = ...)"                                 *)
+(*                                                                  *)
+(* OUTPUT:                                                          *)
+(*  |- ?fn. (!n b. fn C4 n b = ...) /\                              *)
+(*          (!b n m t x t'. fn (C1 t' b t m) n x = ...) /\          *)
+(*      (!m x q. fn (C3 x) m q = ...)                               *)
+
+
+
+local
+fun z3 [] A B C = (A, rev B, rev C)
+  | z3 ((a, b, c)::L) A B C = z3 L (a::A) (b::B) (c::C)
+in
+fun unzip3 L = z3 L [] [] []
+end;
+
+fun instantiate_existence_thm eth tm :thm = 
+   let val cls = map (snd o strip_forall) (strip_conj tm) 
+       fun splt [] = ERR("instantiate_existence_thm","splt.[]")
+         | splt (a::A) = 
+             if (is_var a)
+             then let val (bv,C,av) = splt A 
+                  in ((a :: bv),C,av)
+                  end
+             else if (is_const a) orelse (is_comb a) 
+                  then ([], a, A) 
+                  else ERR("instantiate_existence_thm","splt.non-empty")
+       fun dest tm = 
+          let val {lhs,rhs = r} = dest_eq tm
+              val (Fn,(bv,C,av)) = ((I ## splt) o strip_comb) lhs
+          in (Fn,bv,C,((av,r):goal))
+          end
+       val destcl = (map dest cls) 
+       val ecls = strip_conj(#Body(dest_exists(snd(strip_forall(concl eth))))) 
+       val (fns,spec,beta) = unzip3 (map MK_FN (zip ecls destcl))
+       val ethsp = SPECL fns eth 
+       val conjs = map (uncurry SPECL) 
+                       (combine(spec,CONJUNCTS(SELECT_RULE ethsp))) 
+       fun rule (th1,th2) = CONV_RULE (RAND_CONV (REWR_CONV th1)) th2 
+       val th = LIST_CONJ (map (GEN_ALL o rule) (zip beta conjs)) 
+       val fn1 = #Bvar(dest_exists (concl ethsp)) 
+       and fsel = mk_select(dest_exists(concl ethsp)) 
+   in
+   EXISTS(mk_exists{Bvar=fn1, Body=subst[fsel |-> fn1] (concl th)},fsel) th
+   end handle e => WRAP_ERR("instantiate_existence_thm",e);
+
+
+
+(* prove_rec_fn_exists th tm                               *)
+(*                                                         *)
+(* Given 1) th, a recursion theorem (type axiom)           *)
+(*       2) tm, the specification of a recursive function  *)
+(*                                                         *)
+(* proves that such a function exists.                     *)
+
+(* Quantify the equations of the function spec.            *)
+
+fun closeup tm = 
+   let fun lvars t = 
+          set_diff (free_varsl(snd(strip_comb(lhs(snd (strip_forall t))))))
+                   (fst(strip_forall t)) 
+   in list_mk_conj(map (fn tm => list_mk_forall(lvars tm,tm)) (strip_conj tm))
+   end;
+
+
+(* MJCG 17/1/89: added test for attempted redefinition of a constant and *)
+(* code to propagate failure message					 *)
+
+fun prove_rec_fn_exists th tm : thm = 
+   let val eth = derive_existence_thm th tm 
+       val ith = instantiate_existence_thm eth tm 
+       fun get_avars tm  = 
+	  if (is_var (rand tm)) 
+          then get_avars (rator tm)
+          else (snd(strip_comb (rator tm)),rand tm)
+       val cl = snd(strip_forall(hd(strip_conj tm))) 
+       val fn1 = fst(strip_comb(lhs cl)) 
+       and (av,tv) = ((map (genvar o type_of)) ## (genvar o type_of))
+	             (get_avars (lhs cl)) 
+   in
+   if (is_const fn1)
+   then ERR("prove_rec_fn_exists",
+                       (#Name(dest_const fn1)^" previously defined"))
+   else let val goal = ([],mk_exists{Bvar = fn1, Body = closeup tm})
+            fun etac th = 
+               let val efn = fst(strip_comb(lhs(snd(strip_forall(concl th))))) 
+               in EXISTS_TAC (list_mk_abs(av@@[tv],list_mk_comb(efn,tv::av)))
+               end  
+            fun fn_beta th (A,gl) = 
+ 	       let val efn = fst(strip_comb(lhs(snd(strip_forall(concl th)))))
+                   val eabs = (list_mk_abs(av@@[tv],list_mk_comb(efn,tv :: av)))
+	           val epat = list_mk_comb(eabs, map (genvar o type_of)
+                                                     (av @@ [tv]))
+	           val tms = find_terms(fn tm => can(Match.match_term epat) tm)
+                                       gl
+               in PURE_ONCE_REWRITE_TAC (map LIST_BETA_CONV tms) (A,gl) 
+               end
+        in
+        GEN_ALL(TAC_PROOF(goal,
+                STRIP_ASSUME_TAC ith THEN 
+                FIRST_ASSUM etac THEN
+                REPEAT STRIP_TAC THEN 
+                FIRST_ASSUM fn_beta THEN
+                FIRST_ASSUM MATCH_ACCEPT_TAC))
+       end
+   end
+   handle e => WRAP_ERR("prove_rec_fn_exists",e);
+
+(*------------------------------------------------------------------------
+ * Make a new recursive function definition.			       
+ *-----------------------------------------------------------------------*)
+
+fun new_recursive_definition (axiom,def) = 
+    let val thm = prove_rec_fn_exists axiom def
+	val cname = #Name(dest_var(#Bvar(dest_exists(concl thm))))
+    in Extension.new_specification ([cname], thm)
+    end
+    handle e => WRAP_ERR("new_recursive_definition",e);
+    
+
+end; (* Prim_rec *)
+@
+
+
+1.4
+log
+@Added simplifier components, added drule files, added MK_ABS_CONV, better error messages
+@
+text
+@d17 5
+a21 10
+open Thm Drule Term Dsyntax Match;
+open Tactical Tactic;
+  infix THEN;
+  infix THENL;
+  infix ORELSE;
+open Rewrite;
+open Conv;
+open Resolve;
+open Lib;
+open Exception;
+d310 2
+a311 2
+fun new_recursive_definition {name,rec_axiom,def} = 
+    let val thm = prove_rec_fn_exists rec_axiom def
+d313 1
+a313 1
+    in Const_spec.new_specification (name, [cname], thm)
+@
+
+
+1.3
+log
+@Preterm and other changes, see 7.changes
+@
+text
+@a16 1
+(* open Base_logic; -- Not needed DRS*)
+d22 2
+a23 2
+open Const_spec;
+open Rewrite Conv;
+d32 1
+a32 4
+fun PRIM_REC_ERR{function,message} = 
+         HOL_ERR{origin_structure = "Prim_rec",
+                 origin_function = function,
+                 message = message}
+d35 1
+a35 1
+fun pr_remove p [] = raise PRIM_REC_ERR{function = "pr_remove",message = "[]"}
+d75 1
+a75 1
+   let val vars = map (genvar o type_of) (Lib.fst(strip_forall(concl th)))
+d86 1
+a86 2
+                   else raise PRIM_REC_ERR{function = "derive_existence_thm",
+                                           message = "1"}
+d92 1
+a92 1
+       val th_inst = INST_TYPE (Lib.snd(Match.match_term e_fn rhsfn)) exists 
+d94 2
+a95 2
+          let val args = Lib.snd(strip_comb(lhs(Lib.snd(strip_forall t))))
+              val c = Lib.fst(strip_comb(Lib.first (fn t=> is_const t orelse is_comb t)
+d98 1
+a98 1
+           else raise PRIM_REC_ERR{function="derive_existence_thm",message="2"}
+d113 2
+a114 2
+          let val v = map (genvar o type_of) (Lib.fst(strip_forall(concl th))) 
+              val th1 = Lib.rev_itlist (Lib.C AP_THM) argvars (SPECL v th)
+d134 2
+a135 2
+   let val (lcl::lclvars) = Lib.snd (strip_comb (lhs (Lib.snd (strip_forall cl))))
+       val m = (Lib.fst(Match.match_term lcl C))@@(Lib.map2 (fn res => fn red =>
+d138 4
+a141 4
+       val cl'= subst m (Lib.snd(strip_forall cl)) 
+       val z1 = Lib.snd(strip_comb(rhs cl'))
+       val nonrec = Lib.filter (is_var)  z1
+       and rec1 = Lib.filter (is_comb) z1
+d146 2
+a147 2
+              (fn tm => Lib.can(Match.match_term(mk_comb{Rator=basepat,Rand=t})) tm
+                        andalso (Lib.fst (strip_comb tm) = Fn) 
+d164 1
+a164 1
+              fun args tm = Lib.snd(strip_comb (rator tm)) 
+d168 1
+a168 1
+       val r'= Lib.itlist mk_substs (Lib.zip rec1 recvars) r
+d220 2
+a221 3
+   let val cls = map (Lib.snd o strip_forall) (strip_conj tm) 
+       fun splt [] = raise PRIM_REC_ERR{function = "instantiate_existence_thm",
+                                        message = "splt.[]"}
+d229 1
+a229 2
+                  else raise PRIM_REC_ERR{function="instantiate_existence_thm",
+                                          message = "splt.non-empty"}
+d236 2
+a237 2
+       val ecls = strip_conj(#Body(dest_exists(Lib.snd(strip_forall(concl eth))))) 
+       val (fns,spec,beta) = unzip3 (map MK_FN (Lib.zip ecls destcl))
+d239 2
+a240 2
+       val conjs = map (Lib.uncurry SPECL) 
+                       (Lib.combine(spec,CONJUNCTS(SELECT_RULE ethsp))) 
+d242 1
+a242 1
+       val th = LIST_CONJ (map (GEN_ALL o rule) (Lib.zip beta conjs)) 
+d277 3
+a279 3
+          else (Lib.snd(strip_comb (rator tm)),rand tm)
+       val cl = Lib.snd(strip_forall(hd(strip_conj tm))) 
+       val fn1 = Lib.fst(strip_comb(lhs cl)) 
+d284 2
+a285 2
+   then raise PRIM_REC_ERR{function = "prove_rec_fn_exists",
+                       message = (#Name(dest_const fn1)^" previously defined")}
+d292 1
+a292 1
+ 	       let val efn = Lib.fst(strip_comb(lhs(Lib.snd(strip_forall(concl th)))))
+d296 1
+a296 1
+	           val tms = find_terms(fn tm => Lib.can(Match.match_term epat) tm)
+d311 11
+a321 9
+(* Make a new recursive function definition.				*)
+fun new_recursive_definition {name,fixity,rec_axiom,def} = 
+ let val thm = prove_rec_fn_exists rec_axiom def
+ in
+ new_specification
+    {name = name, sat_thm = thm,
+     consts =  [{fixity = fixity, 
+                 const_name = #Name(dest_var(#Bvar(dest_exists(concl thm))))}]}
+ end;
+@
+
+
+1.2
+log
+@First phase of hol90.8 development.  hol90 now compiles using NJSML-CM
+108.5, with separate compilation of libraries.  System dependencies
+have been isolated in the makefiles and "portable.sml".
+
+This involved a large number of enhancments to the source files,
+most of which are documented in the 7.changes file (or will be shortly).
+See also the correpsonding email corrspondence between RJB, KLS, TFM,
+JRH and DRS that happened during this development.
+@
+text
+@d32 1
+d128 1
+a128 5
+   end handle (e as HOL_ERR{origin_structure = "Prim_rec",
+                            origin_function = "derive_existence_thm",...}) 
+               => raise e
+        | _ => raise PRIM_REC_ERR{function = "derive_existence_thm",
+                                  message = ""};
+d188 2
+a189 1
+   end;
+d254 2
+a255 5
+   end handle (e as HOL_ERR{origin_structure = "Prim_rec",
+                            origin_function = "instantiate_existence_thm",...})
+               => raise e
+        | _ => raise PRIM_REC_ERR{function = "instantiate_existence_thm",
+                                  message = ""};
+d316 1
+a316 5
+   handle (e as HOL_ERR{origin_structure = "Prim_rec",
+                        origin_function = "prove_rec_fn_exists",...}) 
+           => raise e
+        | _ => raise PRIM_REC_ERR{function = "prove_rec_fn_exists",
+                                  message = "Can't solve recursion equation"};
+@
+
+
+1.2.4.1
+log
+@Minor changes to make HOL CM-friendly.
+@
+text
+@d17 1
+a17 1
+open CoreHol;
+a31 2
+  infix |->;
+
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d17 1
+a17 1
+open Base_logic;
+d26 2
+d29 1
+a29 3
+fun PRIM_REC_ERR{function,message} = HOL_ERR{origin_structure = "Prim_rec",
+					     origin_function = function,
+					     message = message}
+d31 6
+d38 3
+a40 5
+
+fun pr_remove p []     = raise PRIM_REC_ERR{function = "pr_remove",
+					    message = "[]"}
+  | pr_remove p (a::A) = if p a then (a, A) else
+                        (I ## (fn r => (a :: r))) (pr_remove p A);
+d43 1
+d72 1
+d78 1
+a78 1
+   let val vars = map (genvar o type_of) (fst(strip_forall(concl th)))
+d85 1
+a85 2
+                   in
+                   ((h::bv), C, av)
+d90 1
+a90 1
+					   message = "1"}
+d94 1
+a94 2
+                   in
+                   list_mk_abs(cv::(bv @@ av),r) 
+d96 1
+a96 1
+       val th_inst = INST_TYPE (snd(Match.match_term e_fn rhsfn)) exists 
+d98 2
+a99 2
+          let val args = snd(strip_comb(lhs(snd(strip_forall t))))
+              val c = fst(strip_comb(first (fn t=> is_const t orelse is_comb t)
+d101 2
+a102 5
+          in
+          if (is_const c)
+          then c
+          else raise PRIM_REC_ERR{function = "derive_existence_thm",
+				  message = "2"}
+d109 5
+a113 5
+       fun get_ths [] exl     = []
+         | get_ths (a::A) exl = let val (c, ex) = pr_remove (same_c a) exl
+                                in
+                                (c :: (get_ths A ex)) 
+                                end
+d117 2
+a118 2
+          let val v = map (genvar o type_of) (fst(strip_forall(concl th))) 
+              val th1 = rev_itlist (C AP_THM) argvars (SPECL v th)
+d125 1
+a125 3
+   GEN_ALL(EXISTS(mk_exists{Bvar = fn1,
+                            Body = subst[{redex = sel, residue = fn1}]
+                                        (concl th1)},
+d127 3
+a129 4
+   end
+   handle (e as HOL_ERR{origin_structure = "Prim_rec",
+			origin_function = "derive_existence_thm",...}) =>
+           raise e
+d131 1
+a131 1
+				  message = ""};
+d142 2
+a143 2
+   let val (lcl::lclvars) = snd (strip_comb (lhs (snd (strip_forall cl))))
+       val m = (fst(Match.match_term lcl C))@@(map2 (fn res => fn red =>
+d146 4
+a149 4
+       val cl'= subst m (snd(strip_forall cl)) 
+       val z1 = snd(strip_comb(rhs cl'))
+       val nonrec = filter (is_var)  z1
+       and rec1 = filter (is_comb) z1
+d154 2
+a155 2
+              (fn tm => can(Match.match_term(mk_comb{Rator=basepat,Rand=t})) tm
+                        andalso (fst (strip_comb tm) = Fn) 
+d162 1
+a162 2
+                    in
+                    mk_abs{Bvar = Bvar, Body = do_subst(new,old) Body} 
+d167 1
+a167 2
+                         in
+                         mk_comb{Rator = f Rator, Rand = f Rand}
+d172 1
+a172 1
+              fun args tm = snd(strip_comb (rator tm)) 
+d174 1
+a174 2
+          in
+          itlist do_subst (zip news occs) t 
+d176 1
+a176 1
+       val r'= itlist mk_substs (zip rec1 recvars) r
+a178 1
+      
+d185 3
+a187 4
+       val specl = map (fn v => case (subst_assoc v m) 
+                                  of (SOME x) => x
+                                   | NONE => v)
+                        (fst(strip_forall cl)) 
+d227 1
+a227 1
+   let val cls = map (snd o strip_forall) (strip_conj tm) 
+d229 1
+a229 1
+					message = "splt.[]"}
+d231 8
+a238 10
+               if (is_var a)
+               then let val (bv,C,av) = splt A 
+                    in 
+                    ((a :: bv),C,av)
+                    end
+               else if (is_const a) orelse (is_comb a) 
+                    then ([], a, A) 
+                    else raise PRIM_REC_ERR
+			        {function = "instantiate_existence_thm",
+				 message = "splt.non-empty"}
+d242 1
+a242 2
+          in
+          (Fn,bv,C,((av,r):goal))
+d245 2
+a246 2
+       val ecls = strip_conj(#Body(dest_exists(snd(strip_forall(concl eth))))) 
+       val (fns,spec,beta) = unzip3 (map MK_FN (zip ecls destcl))
+d248 2
+a249 2
+       val conjs = map (uncurry SPECL) 
+                       (combine(spec,CONJUNCTS(SELECT_RULE ethsp))) 
+d251 1
+a251 1
+       val th = LIST_CONJ (map (GEN_ALL o rule) (zip beta conjs)) 
+d255 4
+a258 8
+   EXISTS (mk_exists{Bvar = fn1, 
+                     Body = subst [{redex = fsel, residue = fn1}]
+                                  (concl th)},
+           fsel)  th
+   end 
+   handle (e as HOL_ERR{origin_structure = "Prim_rec",
+			origin_function = "instantiate_existence_thm",...}) =>
+           raise e
+d260 1
+a260 1
+				  message = ""};
+d276 1
+a276 3
+   in
+   list_mk_conj(map (fn tm => list_mk_forall(lvars tm,tm))
+                    (strip_conj tm))
+d289 3
+a291 3
+          else (snd(strip_comb (rator tm)),rand tm)
+       val cl = snd(strip_forall(hd(strip_conj tm))) 
+       val fn1 = fst(strip_comb(lhs cl)) 
+d297 1
+a297 2
+                           message = (#Name(dest_const fn1)^
+				      " previously defined")}
+d301 1
+a301 2
+               in
+               EXISTS_TAC (list_mk_abs(av@@[tv],list_mk_comb(efn,tv::av)))
+d304 1
+a304 1
+ 	       let val efn = fst(strip_comb(lhs(snd(strip_forall(concl th)))))
+d308 1
+a308 1
+	           val tms = find_terms(fn tm => can(Match.match_term epat) tm)
+d310 1
+a310 2
+               in
+               PURE_ONCE_REWRITE_TAC (map LIST_BETA_CONV tms) (A,gl) 
+d322 2
+a323 2
+			origin_function = "prove_rec_fn_exists",...}) =>
+          raise e
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@
+
+
+1.1.1.1.2.1
+log
+@	Konrad's bug fixes and further development to hol90.7 after it's release.
+	Checked n on a side branch for later merging with the main trunk
+	(Elsa's revisions).  See doc/7.changes for details.
+@
+text
+@d27 3
+a29 4
+fun PRIM_REC_ERR{function,message} = 
+         HOL_ERR{origin_structure = "Prim_rec",
+                 origin_function = function,
+                 message = message}
+a31 3
+fun pr_remove p [] = raise PRIM_REC_ERR{function = "pr_remove",message = "[]"}
+  | pr_remove p (a::A) = 
+     if p a then (a, A) else (I##(fn r => (a :: r))) (pr_remove p A);
+d33 4
+d38 1
+a38 1
+(*----------------------------------------------------------------------*)
+a66 1
+(*----------------------------------------------------------------------*)
+d79 2
+a80 1
+                   in ((h::bv), C, av)
+d85 1
+a85 1
+                                           message = "1"}
+d89 2
+a90 1
+                   in list_mk_abs(cv::(bv @@ av),r) 
+d97 5
+a101 2
+          in if (is_const c) then c 
+           else raise PRIM_REC_ERR{function="derive_existence_thm",message="2"}
+d108 5
+a112 5
+       fun get_ths [] exl = []
+         | get_ths (a::A) exl = 
+              let val (c, ex) = pr_remove (same_c a) exl
+              in (c :: (get_ths A ex)) 
+              end
+d124 3
+a126 1
+   GEN_ALL(EXISTS(mk_exists{Bvar = fn1, Body = subst[sel |-> fn1] (concl th1)},
+d128 4
+a131 3
+   end handle (e as HOL_ERR{origin_structure = "Prim_rec",
+                            origin_function = "derive_existence_thm",...}) 
+               => raise e
+d133 1
+a133 1
+                                  message = ""};
+d164 2
+a165 1
+                    in mk_abs{Bvar = Bvar, Body = do_subst(new,old) Body} 
+d170 2
+a171 1
+                         in mk_comb{Rator = f Rator, Rand = f Rand}
+d178 2
+a179 1
+          in itlist do_subst (zip news occs) t 
+d184 1
+d191 4
+a194 3
+       val specl = 
+             map (fn v => case (subst_assoc v m) of (SOME x) => x | NONE => v)
+                 (fst(strip_forall cl)) 
+d236 1
+a236 1
+                                        message = "splt.[]"}
+d238 10
+a247 8
+             if (is_var a)
+             then let val (bv,C,av) = splt A 
+                  in ((a :: bv),C,av)
+                  end
+             else if (is_const a) orelse (is_comb a) 
+                  then ([], a, A) 
+                  else raise PRIM_REC_ERR{function="instantiate_existence_thm",
+                                          message = "splt.non-empty"}
+d251 2
+a252 1
+          in (Fn,bv,C,((av,r):goal))
+d265 8
+a272 4
+   EXISTS(mk_exists{Bvar=fn1, Body=subst[fsel |-> fn1] (concl th)},fsel) th
+   end handle (e as HOL_ERR{origin_structure = "Prim_rec",
+                            origin_function = "instantiate_existence_thm",...})
+               => raise e
+d274 1
+a274 1
+                                  message = ""};
+d290 3
+a292 1
+   in list_mk_conj(map (fn tm => list_mk_forall(lvars tm,tm)) (strip_conj tm))
+d313 2
+a314 1
+                       message = (#Name(dest_const fn1)^" previously defined")}
+d318 2
+a319 1
+               in EXISTS_TAC (list_mk_abs(av@@[tv],list_mk_comb(efn,tv::av)))
+d328 2
+a329 1
+               in PURE_ONCE_REWRITE_TAC (map LIST_BETA_CONV tms) (A,gl) 
+d341 2
+a342 2
+                        origin_function = "prove_rec_fn_exists",...}) 
+           => raise e
+@

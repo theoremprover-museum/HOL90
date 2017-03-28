@@ -1,0 +1,163 @@
+head	1.1;
+branch	1.1.1;
+access;
+symbols
+	HOL97:1.1.1.1.4.2.0.2
+	bpHOL97:1.1.1.1.4.2
+	hol90_9_alpha:1.1.1.1.4.2
+	hol90_pre8_for_multiple_compilers:1.1.1.1.0.4
+	hol90_pre8_after_donalds_separate_compilation_changes:1.1.1.1
+	hol90_8_after_merging_Konrad_Elsa:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	95.10.16.13.30.54;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.30.54;	author rjb;	state Exp;
+branches
+	1.1.1.1.4.1;
+next	;
+
+1.1.1.1.4.1
+date	96.08.23.10.59.00;	author rjb;	state Exp;
+branches;
+next	1.1.1.1.4.2;
+
+1.1.1.1.4.2
+date	96.09.03.15.55.48;	author rjb;	state Exp;
+branches
+	1.1.1.1.4.2.2.1;
+next	;
+
+1.1.1.1.4.2.2.1
+date	97.06.11.18.44.30;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@#!/bin/csh
+#
+# Usage	 make_unity <hol90>
+#
+
+if ("$1" == "") then
+    set hol90 = hol90
+else
+    set hol90    = $1
+endif
+
+set theories = ( state_logic unless ensures gen_induct leadsto comp_unity)
+
+cd theories/src
+
+foreach f ( $theories )
+    echo -n Building theory $f...
+    $hol90 < mk_$f.sml
+    echo ' done.'
+end
+
+echo "hol90 UNITY theories built."
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@
+
+
+1.1.1.1.4.1
+log
+@Now uses full hol command including options and exits on failure.
+Changed to use sh instead of csh.
+@
+text
+@d1 1
+a1 1
+#!/bin/sh
+d3 1
+a3 1
+# Usage: make_unity <hol90>
+d6 5
+a10 4
+if test "$1" = "";
+then hol90="hol90";
+else hol90="$*";
+fi
+d12 1
+a12 1
+theories="state_logic unless ensures gen_induct leadsto comp_unity"
+d16 5
+a20 5
+for f in $theories;
+do echo -n Building theory $f...;
+   echo "use_and_exit print_HOL_ERR \"mk_$f.sml\";" | $hol90 || exit 1;
+   echo ' done.';
+done
+d22 1
+a22 1
+echo 'hol90 UNITY theories built.'
+@
+
+
+1.1.1.1.4.2
+log
+@Modified library make file to create the target directory for the theory files
+if it does not already exist.
+@
+text
+@a5 2
+if test -z "$THEORY_TYPE"; then THEORY_TYPE=ascii; fi
+
+a12 2
+mkdir theories/$THEORY_TYPE 2>/dev/null || true
+
+@
+
+
+1.1.1.1.4.2.2.1
+log
+@Changes to accomodate move to SML/NJ 109.26.
+@
+text
+@a18 6
+#for f in $theories;
+#do echo -n Building theory $f...;
+#  echo "Portable.use_and_exit print_HOL_ERR \"mk_$f.sml\";" | $hol90 || exit 1;
+#  echo ' done.';
+#done
+
+d21 2
+a22 2
+  $hol90 < mk_$f.sml;
+  echo ' done.';
+@

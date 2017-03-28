@@ -1,0 +1,164 @@
+head	1.2;
+access;
+symbols;
+locks; strict;
+comment	@# @;
+
+
+1.2
+date	96.02.08.00.31.58;	author drs1004;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	95.12.18.11.35.19;	author drs1004;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.2
+log
+@New theory mechanism, by Donald Syme, and many other enhancements.
+@
+text
+@
+structure Sequence : Sequence_sig = 
+struct
+
+open Lib;
+
+val ERR = Exception.ERR "Sequence";
+
+fun prs s = output (std_out, s);
+
+datatype 'a seq = Seq of unit -> ('a * 'a seq)option;
+
+(*Return next sequence element as NONE or SOME(x,str) *)
+fun pull(Seq f) = f();
+
+(*Head and tail.  Beware of calling the sequence function twice!!*)
+fun hd s = #1 (the (pull s))
+and tl s = #2 (the (pull s));
+
+(*the abstraction for making a sequence*)
+val seqof = Seq;
+
+(*prefix an element to the sequence
+    use cons(x,s) only if evaluation of s need not be delayed,
+      otherwise use seqof(fn()=> SOME(x,s)) *)
+fun cons all = Seq(fn()=>SOME all);
+
+(*the empty sequence*)
+val null = Seq(fn()=>NONE);
+
+fun single(x) = cons (x, null);
+
+(*The list of the first n elements, paired with rest of sequence.
+  If length of list is less than n, then sequence had less than n elements.*)
+fun chop (n:int, s: 'a seq): 'a list * 'a seq =
+  if n<=0 then ([],s)
+  else case pull(s) of
+           NONE => ([],s)
+         | SOME(x,s') => let val (xs,s'') = chop (n-1,s')
+		         in  (x::xs, s'')  end;
+
+(*conversion from sequence to list*)
+fun list_of_s (s: 'a seq) : 'a list = case pull(s) of
+        NONE => []
+      | SOME(x,s') => x :: list_of_s s';
+
+
+(*conversion from list to sequence*)
+fun s_of_list []     = null
+  | s_of_list (x::l) = cons (x, s_of_list l);
+
+
+(*functional to print a sequence, up to "count" elements
+  the function prelem should print the element number and also the element*)
+fun prints (prelem: int -> 'a -> unit) count (s: 'a seq) : unit =
+  let fun pr (k,s) = 
+	   if k>count then ()
+	   else case pull(s) of
+	       NONE => ()
+	     | SOME(x,s') => (prelem k x;  prs"\n";  pr (k+1, s'))
+  in  pr(1,s)  end;
+
+(*Map the function f over the sequence, making a new sequence*)
+fun maps f xq = seqof (fn()=> case pull(xq) of
+        NONE       => NONE
+      | SOME(x,yq) => SOME(f x,  maps f yq));
+
+(*Sequence append:  put the elements of xq in front of those of yq*)
+fun append (xq,yq)  =
+  let fun copy xq = seqof (fn()=>
+	    case pull xq of  
+		 NONE       => pull yq
+	       | SOME(x,xq') => SOME (x, copy xq'))
+  in  copy xq end;
+
+(*Interleave elements of xq with those of yq -- fairer than append*)
+fun interleave (xq,yq) = seqof (fn()=>
+      case pull(xq) of  
+          NONE       => pull yq
+	| SOME(x,xq') => SOME (x, interleave(yq, xq')));
+
+(*map over a sequence xq, append the sequence yq*)
+fun mapp f xq yq =
+  let fun copy s = seqof (fn()=> 
+            case pull(s) of
+	        NONE       => pull(yq)
+              | SOME(x,xq') => SOME(f x, copy xq'))
+  in  copy xq end;
+
+(*Flatten a sequence of sequences to a single sequence. *)
+fun flats ss = seqof (fn()=> case pull(ss) of
+        NONE => NONE
+      | SOME(s,ss') =>  pull(append(s, flats ss')));
+
+
+(*accumulating a function over a sequence;  this is lazy*)
+fun its_right (f: 'a * 'b seq -> 'b seq) (s: 'a seq, bstr: 'b seq) : 'b seq =
+  let fun its s = seqof (fn()=>
+            case pull(s) of
+	        NONE       => pull bstr
+	      | SOME(a,s') => pull(f(a, its s')))
+  in  its s end; 
+
+fun filters pred xq =
+  let fun copy s = seqof (fn()=> 
+            case pull(s) of
+	        NONE       => NONE
+              | SOME(x,xq') => if pred x then SOME(x, copy xq')
+			       else pull (copy xq') )
+  in  copy xq end
+
+
+fun mapfilters f xq =
+  let fun copy s = seqof (fn()=> 
+            case pull(s) of
+	        NONE       => NONE
+              | SOME(x,xq') => SOME(f x, copy xq')
+			       handle _ => pull (copy xq') )
+  in  copy xq end;
+      
+
+
+end;
+
+@
+
+
+1.1
+log
+@Preterm and other changes, see 7.changes
+@
+text
+@d113 8
+a120 2
+fun mapfilters f s =
+    maps the (filters is_some (maps (fn x => SOME (f x) handle _ => NONE) s));
+@

@@ -1,0 +1,548 @@
+head	1.2;
+access;
+symbols;
+locks; strict;
+comment	@# @;
+
+
+1.2
+date	96.01.04.14.14.41;	author drs1004;	state dead;
+branches;
+next	1.1;
+
+1.1
+date	95.12.18.11.39.04;	author drs1004;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.2
+log
+@Added simplifier components, added drule files, added MK_ABS_CONV, better error messages
+@
+text
+@
+
+signature AC_sig = sig
+
+	val dest_binop : term -> term -> term * term
+        val mk_binop : term -> term * term -> term
+	val is_binop : term -> term -> bool
+        val strip_binop : term -> term -> (term list * term)
+
+        val dest_unop : term -> term -> term
+        val mk_unop : term -> term -> term
+        val is_unop : term -> term -> bool
+
+	val dest_ACop : term -> term -> term * term
+        val mk_ACop : term -> term * term -> term
+        val strip_ACop : term -> term -> term list
+	val is_ACop : term -> term -> bool
+
+(*--------------------------------------------------------------------------
+ * COMM_NORM_CONV : thm -> conv
+ *
+ * Normalize commutative operations of the kind specified by the
+ * input theorem using the simplifier.
+ * 
+ * (Do not add this conversion to the simplifier, since it works
+ * at depth, not at the top level.  Instead 
+ * add the commuativity theorem into simpset.)
+ *
+ * EXAMPLE
+ *
+ * COMM_NORM_CONV ADD_SYM (--`1 + (x + 4) + (3 + v) + z`--);
+ *------------------------------------------------------------------------*)
+
+ 	val COMM_NORM_CONV : thm -> conv
+
+(*--------------------------------------------------------------------------
+ * AC_NORM_CONV
+ *
+ * General proof tool for normalizing AC operations.  Just like AC_CONV really
+ *
+ * EXAMPLE
+ *
+ * AC_NORM {assoc=theorem "arithmetic" "ADD_ASSOC",comm=theorem "arithmetic" "ADD_SYM"} (--`1 + x + 4 + (3 + v) + z`--);
+ *------------------------------------------------------------------------*)
+
+        val AC_NORM_CONV : {assoc:thm,comm:thm} -> conv
+
+(*--------------------------------------------------------------------------
+ * AC_SORT_QCONV : {assoc:thm,comm:thm} -> 
+ *                 (term * term -> bool) -> conv -> conv
+ * AC_SORT_CONV : {assoc:thm,comm:thm} -> 
+ *                 (term * term -> bool) -> conv -> conv
+ *
+ * Conversion to sort an AC list into groups of like terms.  
+ * Like terms are indicated
+ * the second argument, which should implement an equivalence
+ * relation over terms.  The third argument should be a 
+ * "collector" conversion, which *must* be able
+ * to reduce all the like terms collected together to a single term,
+ * otherwise putting ths conversion in the simplifier will cause
+ * looping when used in conjunction with AC-rewriting.
+ *
+ * EXAMPLE
+ *
+ * Here is an example where constants are collected and reduced in
+ * numeric reductions.
+ *
+ * open Arith_cons;
+ * fun equiv (tm1,tm2) = is_num_const tm1 andalso is_num_const tm2;
+   val assoc = theorem "arithmetic" "ADD_ASSOC";
+   val comm = theorem "arithmetic" "ADD_SYM";
+   AC_SORT_QCONV {assoc=assoc,comm=comm} equiv ALL_CONV (--`1 + 3 * x + 4 + (3 + x) + z`--);
+   val collect = DEPTH_CONV ADD_CONV;
+   AC_SORT_QCONV {assoc=assoc,comm=comm} equiv collect (--`1 + 3 * x + 4 + (3 + x) + z`--);
+
+ *------------------------------------------------------------------------*)
+
+	val AC_SORT_QCONV : {assoc:thm,comm:thm} -> (term * term -> bool) -> conv -> conv
+	val AC_SORT_CONV : {assoc:thm,comm:thm} -> (term * term -> bool) -> conv -> conv
+
+(*--------------------------------------------------------------------------
+ * CANCEL_INVERSES_QCONV : {assoc:thm,comm:thm,inv_id:thm} -> ss -> conv
+ *
+ * Collects together elements and their inverses, then cancels
+ * them.  Should work for any abelian group.  
+ *
+ * EXAMPLE
+
+val inv_id = theorem "REAL" "REAL_MUL_RINV";
+val comm = theorem "REAL" "REAL_MUL_SYM";
+val assoc = theorem "REAL" "REAL_MUL_ASSOC";
+val inv_conv = CANCEL_INVERSES_QCONV {assoc=assoc,comm=comm,inv_id=inv_id};
+val asm_x = ASSUME (--`~(x = & 0)`--);
+val asm_y = ASSUME (--`~(y = & 0)`--);
+inv_conv hol_ss (--`x |*| inv x |*| y |*| inv y |*| & 3`--);
+inv_conv (hol_ss addcontext [asm_x]) (--`x |*| inv x |*| y |*| inv y |*| & 3`--);
+  . |- x |*| inv x |*| y |*| inv y |*| & 3 = & 1 |*| (y |*| inv y) |*| & 3
+inv_conv (hol_ss addcontext [asm_x, asm_y]) (--`x |*| inv x |*| y |*| inv y |*| & 3`--);
+
+ *------------------------------------------------------------------------*)
+
+    val CANCEL_INVERSES_QCONV : {assoc:thm,comm:thm,inv_id:thm} -> simpset -> conv
+    val CANCEL_INVERSES_CONV : {assoc:thm,comm:thm,inv_id:thm} -> simpset -> conv
+
+
+(*--------------------------------------------------------------------------
+ * FACTORIZE_CONSTS_LEFT_QCONV 
+ *
+ * Factorizes constants out of like terms. For a term such as:
+ *    ... t1 op C1 ++ ... ++ t1 op C2 ...  (* for COLLECT_RIGHT_CONV *)
+ *    ... C1 op t1 ++ ... ++ C2 op t1  ... (* for COLLECT_LEFT_CONV *)
+ * The conversion collects together like terms 
+ * ("t1 op C1" and "t2 op C2" in the above example)
+ * and adds C1 and C2 together using the "adder".  
+ * It groups terms not containing a constant on the right
+ * as if they were prefixed by some identity element. So
+ * these two get grouped together:
+ *    ... ++ t1 ++ ... ++ t1 op C ++ ...
+ * It also groups terms which are simply constants together
+ * as well.
+ *
+ * If "op" is commutative (e.g multiplication), it assumes constants 
+ * have been outside on the left/right of the term by other conversions.
+ * If "op" is not commutative (e.g. when op is "EXP", and ++ is multiplication)
+ * then this assumption is usually true anyway.
+ *
+ * EXAMPLE
+
+val collect_conv = FACTORIZE_CONSTS_LEFT_QCONV {
+        comm = theorem "REAL" "REAL_ADD_SYM",
+        assoc = theorem "REAL" "REAL_ADD_ASSOC",
+        rdistrib = theorem "REAL" "REAL_RDISTRIB",
+        is_const = is_real_const,
+        lid_thm = theorem "REAL" "REAL_MUL_LID"
+} adder;
+
+collect_conv hol_ss (--`& 6 |*| y  |+| & 4 |*| x  |+| y |+| & 3 |*| y`--);
+
+ *------------------------------------------------------------------------*)
+
+    val FACTORIZE_CONSTS_LEFT_QCONV: {
+	   assoc: thm,      (* |- x ++ (y ++ z) = (x ++ y) ++ x      *)
+           comm: thm,       (* |- x ++ y = y ++ x                    *)
+           rdistrib: thm,    (* |- (y PP z) op x = y op x ++ z op x   *)
+           left_id_thm: thm,    (* |- e PP x = z                         *)
+           is_const: term -> bool
+        } ->
+        conv ->
+        simpset -> (* context: not actually used *)
+        conv;
+
+    val FACTORIZE_CONSTS_LEFT_CONV: {
+	   assoc: thm,      (* |- x ++ (y ++ z) = (x ++ y) ++ x      *)
+           comm: thm,       (* |- x ++ y = y ++ x                    *)
+           rdistrib: thm,    (* |- (y PP z) op x = y op x ++ z op x   *)
+           left_id_thm: thm,    (* |- e PP x = z                         *)
+           is_const: term -> bool
+        } ->
+        conv ->
+        simpset -> (* context: not actually used *)
+        conv;
+
+
+end;
+
+
+structure AC : AC_sig =
+struct
+
+open Core;
+open Psyntax;
+open Qconv;
+open Arith_cons;
+
+val WRAP = Exception.WRAP_ERR "AC";
+
+(*--------------------------------------------------------------------------
+ * COMM_NORM_CONV : cconv
+ *
+ *------------------------------------------------------------------------*)
+
+fun COMM_NORM_CONV comm = 
+    SIMP_CONV (pure_ss addrewrs [comm])
+
+(*--------------------------------------------------------------------------
+ * AC_NORM_CONV
+ *------------------------------------------------------------------------*)
+
+fun AC_NORM_CONV {assoc,comm} =
+   let val lassoc = 
+         CONV_RULE (RHS_CONV (LHS_CONV (PURE_ONCE_REWRITE_CONV [comm]))
+                    THENC RHS_CONV (PURE_ONCE_REWRITE_CONV [GSYM assoc]))
+                   (SPEC_ALL assoc)
+       val conv = SIMP_CONV (pure_ss addrewrs [GSYM assoc,lassoc,comm])
+   in conv
+   end;
+
+
+
+(*--------------------------------------------------------------------------
+ *------------------------------------------------------------------------*)
+
+fun mk_binop oper (tm1,tm2) = 
+    list_mk_comb (oper,[tm1,tm2]);
+
+
+fun dest_binop oper =
+    let val name = #1(dest_const oper)
+    in fn tm => 
+       let val (c,[arg1,arg2]) = strip_comb tm
+       in if (#1(dest_const c) = name)
+          then (arg1,arg2)
+          else ERR("dest_binop","")
+       end
+    end;
+fun is_binop oper = can (dest_binop oper);
+
+
+fun strip_binop oper =
+   let val dest_op' = dest_binop oper 
+       fun strip_op' tm = 
+          let val (l,r) = dest_op' tm
+              val (res,tail) = strip_op' r
+          in (l::res,tail)
+          end
+          handle _ => ([],tm)
+   in strip_op'
+   end;
+
+fun strip_ACop oper =
+   let val dest_op' = dest_binop oper 
+       fun strip_op' tm = 
+          let val (l,r) = dest_op' tm
+          in strip_op' l@@strip_op' r
+          end
+          handle _ => [tm]
+   in strip_op'
+   end;
+val mk_ACop = mk_binop
+val dest_ACop = dest_binop
+val is_ACop = is_binop
+
+fun dest_unop oper =
+    let val name = #1(dest_const oper)
+    in fn tm => 
+       let val (c,[arg1]) = strip_comb tm
+       in if (#1(dest_const c) = name)
+          then arg1
+          else ERR("dest_unop","")
+       end
+    end;
+fun is_unop oper = can (dest_unop oper);
+fun mk_unop oper tm = mk_comb(oper,tm)
+
+(*--------------------------------------------------------------------------
+ * AC_SUB_QCONV
+ * AC_SUB_CONV
+ *
+ * Apply a conversion to each immediate subterm in a list of AC operations,
+ * as in 
+ *    (a ++ b) ++ c ++ d
+ * where the conversion is applied to some of (a ++ b) 
+ * and c and d.  The integer
+ * argument indicates the number of subterms that the operation should
+ * treat the term as having - for instance in the above example
+ * the value 1 would result in the conv being applied to the whole
+ * term, the value 2 would result in it being applied to 
+ * (a ++ b) and (c ++ d), and three to (a ++ b), c and d.  Any other
+ * values are invalid.
+ *
+ * AC_SUB_CONV (num_CONV ORELSEC ADD_CONV) (--`(1 + 2) + 3 + 5`--) 3;
+ *------------------------------------------------------------------------*)
+
+fun AC_SUB_QCONV conv n =
+   funpow (n-1) (fn sofar => LHS_CONV conv THENQC RHS_CONV sofar) conv
+
+fun AC_SUB_CONV conv = QCONV o AC_SUB_QCONV (CONVQ conv);
+
+
+(*--------------------------------------------------------------------------
+ * AC_SORT_QCONV : {assoc:thm,comm:thm} -> (term * term -> bool) -> conv -> conv
+ *------------------------------------------------------------------------*)
+
+fun equiv_partition equiv (h::tl) =
+   let val (l1,l2) = partition (fn t => equiv(h,t)) tl
+   in (h::l1)::(equiv_partition equiv l2)
+   end
+  | equiv_partition equiv [] = [];
+
+
+
+
+fun is_single [x] = true
+  | is_single _ = false;
+
+fun AC_SORT_QCONV {
+	assoc: thm,  (* |- x ++ (y ++ z) = (x ++ y) ++ x      *)
+        comm: thm}   (* |- x ++ y = y ++ x                    *)
+        equiv collector =
+   let val plus = #1(strip_comb(lhs(#2(strip_forall (concl comm)))))
+       val strip_plus = strip_ACop plus
+       val mk_plus = curry (mk_ACop plus)
+       val ac_conv = AC_CONV (assoc,comm)
+       val collect_elements_conv = AC_SUB_QCONV collector
+    in fn tm =>
+       let val _ = trace_tm(2,"AC_SORT_QCONV sorting",tm)
+           val pieces = strip_plus tm
+           val sorted = equiv_partition equiv pieces
+           val _ = if (all is_single sorted) then ERR("AC_SORT_QCONV","sort did not collect any terms") else ()
+           val new_pieces = map (end_itlist mk_plus) sorted
+           val new_tm = end_itlist mk_plus new_pieces
+           val _ = trace_tm(2,"AC_SORT_QCONV sorted to",new_tm)
+           fun sort_qconv tm =
+              let val _ = if (tm = new_tm) then raise UNCHANGED else ()
+                  val thm2 = SYM (ac_norm_conv new_tm)
+                  val sort_thm = EQT_ELIM (ac_conv (mk_eq(tm,new_tm)))
+                  val _ = trace_production(2,tm,"AC_SORT_QCONV sort",sort_thm)
+      
+              in
+                 sort_thm
+              end
+       in (sort_qconv THENQC collect_elements_conv (length new_pieces)) tm
+       end
+   end
+   handle e => WRAP("AC_SORT_QCONV - invalid input theorems",e);
+
+
+fun AC_SORT_CONV thms equiv collector = QCONV (AC_SORT_QCONV thms equiv (CONVQ collector));
+
+
+(*--------------------------------------------------------------------------
+ * CANCEL_INVERSES_QCONV : {assoc:thm,comm:thm,inv_id:thm} -> ss -> conv
+ *
+ * Collects together elements and their inverses, then cancels
+ * them.  Should work for any abelian group.  
+ *
+ * EXAMPLE
+
+val inv_id = theorem "REAL" "REAL_MUL_RINV";
+val comm = theorem "REAL" "REAL_MUL_SYM";
+val assoc = theorem "REAL" "REAL_MUL_ASSOC";
+val inv_conv = CANCEL_INVERSES_QCONV {assoc=assoc,comm=comm,inv_id=inv_id};
+val asm_x = ASSUME (--`~(x = & 0)`--);
+val asm_y = ASSUME (--`~(y = & 0)`--);
+inv_conv hol_ss (--`x |*| inv x |*| y |*| inv y |*| & 3`--);
+inv_conv (hol_ss addcontext [asm_x]) (--`x |*| inv x |*| y |*| inv y |*| & 3`--);
+  . |- x |*| inv x |*| y |*| inv y |*| & 3 = & 1 |*| (y |*| inv y) |*| & 3
+inv_conv (hol_ss addcontext [asm_x, asm_y]) (--`x |*| inv x |*| y |*| inv y |*| & 3`--);
+
+ *------------------------------------------------------------------------*)
+
+fun CANCEL_INVERSES_QCONV {
+	assoc: thm,  (* |- x ++ (y ++ z) = (x ++ y) ++ x      *)
+        comm: thm,   (* |- x ++ y = y ++ x                    *)
+        inv_id: thm}    (* |- [... ==>] (x ++ (op x) = id)       *)
+        =
+   let val inv = rator(arg2(lhs(#2(strip_imp(#2(strip_forall (concl inv_id)))))))
+       val is_inv = is_unop inv
+       val dest_inv = dest_unop inv
+       fun equiv (tm1,tm2) = 
+           (is_inv tm1 andalso (tm2 = dest_inv tm1)) orelse
+           (is_inv tm2 andalso (tm1 = dest_inv tm2))
+       val rev_inv_id = PURE_ONCE_REWRITE_RULE [comm] inv_id
+   in fn ss => 
+       let val collector = SIMP_QCONV (ss addrewrs [inv_id, rev_inv_id])
+       in AC_SORT_QCONV {assoc=assoc,comm=comm} equiv collector
+       end
+   end;
+
+fun CANCEL_INVERSES_CONV thms = QCONV o (CANCEL_INVERSES_QCONV thms);
+
+
+(*--------------------------------------------------------------------------
+ * FACTORIZE_CONSTS_LEFT_QCONV : {assoc:thm,comm:thm,ldistrib,rdistrib,is_const:term->bool,adder:conv} -> ss -> conv
+ *
+ * Factorizes constants out of like terms. For a term such as:
+ *    ... t1 op C1 ++ ... ++ t1 op C2 ...  (* for COLLECT_RIGHT_CONV *)
+ *    ... C1 op t1 ++ ... ++ C2 op t1  ... (* for COLLECT_LEFT_CONV *)
+ * The conversion collects together like terms 
+ * ("t1 op C1" and "t2 op C2" in the above example)
+ * and adds C1 and C2 together using the "adder".  
+ * It groups terms not containing a constant on the right
+ * as if they were prefixed by some identity element. So
+ * these two get grouped together:
+ *    ... ++ t1 ++ ... ++ t1 op C ++ ...
+ * It also groups terms which are simply constants together
+ * as well.
+ *
+ * NOTE: "adder" get applied to the extracted
+ * term after distributivity is applied,
+ * as in:
+ * 	(C1 ++ C2 ++ ... Cn)
+ *
+ * If "op" is commutative (e.g multiplication), it assumes constants 
+ * have been outside on the left/right of the term by other conversions.
+ * If "op" is not commutative (e.g. when op is "EXP", and ++ is multiplication)
+ * then this assumption is usually true anyway.
+ *
+ * EXAMPLE
+
+val inj = (--`&`--);
+val dest_inj = dest_unop inj;
+
+fun dest_nat tm = 
+   let val n = dest_inj tm
+   in if is_num_const n then n else ERR("dest_nat","")
+   end
+
+val is_nat = can dest_nat;
+val real_div = (--`/`--);
+val dest_real_div = dest_binop real_div
+fun dest_rat tm = 
+   let val (q,r) = dest_real_div tm 
+   in (dest_nat q, dest_nat r) 
+   end;
+val is_rat = can dest_rat;
+fun is_real_const tm = 
+   (is_nat tm) orelse (is_rat tm);
+
+(* is_real_const (--`& 4`--);
+   is_real_const (--`& n`--);
+   is_real_const (--`& 8 / & 4`--);
+   is_real_const (--`& 9 / & n`--);
+*)
+
+
+val adder = REPEATC (CHANGED_CONV (REWRITE_CONV [theorem "REAL" "REAL_ADD"] THENC REDUCE_CONV));
+
+val collect_qconv = FACTORIZE_CONSTS_LEFT_QCONV {
+        comm = theorem "REAL" "REAL_ADD_SYM",
+        assoc = theorem "REAL" "REAL_ADD_ASSOC",
+        rdistrib = theorem "REAL" "REAL_RDISTRIB",
+        is_const = is_real_const,
+        left_id_thm = theorem "REAL" "REAL_MUL_LID"
+} adder;
+
+collect_qconv hol_ss (--`& 6 |*| y |*| y |+| & 4 |*| x  |+| y |*| y |+| & 3 |*| y`--);
+collect_qconv hol_ss (--`& 6 |*| y  |+| & 4 |*| x  |+| y |+| & 3 |*| y`--);
+collect_qconv hol_ss (--`& 6 |*| y  |+| & 4 |*| x  |+| y`--);
+collect_qconv hol_ss (--`& 6 |*| y  |+| & x  |+| y`--);
+collect_qconv hol_ss (--`& 6 |*| y  |+| & 2 |*| & x`--);
+collect_qconv hol_ss (--`& y  |+| & 2 |*| & x`--);
+collect_qconv hol_ss (--`& y`--);
+
+ *------------------------------------------------------------------------*)
+
+fun FACTORIZE_CONSTS_LEFT_QCONV {
+	assoc: thm,      (* |- x ++ (y ++ z) = (x ++ y) ++ x      *)
+        comm: thm,       (* |- x ++ y = y ++ x                    *)
+        rdistrib: thm,    (* |- (y PP z) op x = y op x ++ z op x   *)
+        left_id_thm: thm,    (* |- e PP x = z                         *)
+        is_const: term -> bool}
+        adder
+        =
+   let val PP = #1(strip_comb(lhs(#2(strip_forall(concl left_id_thm)))))
+       val dest_PP = dest_binop PP
+       val left_id = arg1(lhs(#2(strip_forall(concl left_id_thm))))
+       val OP = #1(strip_comb(lhs(#2(strip_forall(concl rdistrib)))))
+       val dest_OP = dest_binop OP
+       val is_OP = can dest_OP
+       val plus = #1(strip_comb(lhs(#2(strip_forall(concl comm)))))
+       val dest_plus = dest_ACop plus
+       val is_plus = can dest_plus
+       val strip_plus = strip_ACop plus
+
+       (* determine if two terms are alike up to constants.
+          Do not include constants as they are better collected in
+          other ways. *)
+       exception CONST
+       fun var_factors tm =
+          if is_const tm then raise CONST
+          else if is_OP tm andalso is_const (arg1 tm) 
+          then SOME (arg2 tm)
+          else SOME tm
+       fun equiv (tm1,tm2) = 
+           (var_factors tm1 = var_factors tm2)
+           handle CONST => false
+
+       val left_id_thm_rev = GEN_ALL (GSYM left_id_thm);
+       val left_id_thm' = GEN_ALL left_id_thm (* just in case *)
+       fun add_left_id_qconv tm =
+          if (var_factors tm = SOME tm) 
+          then SPEC tm left_id_thm_rev
+          else raise UNCHANGED
+       fun take_left_id_qconv tm =
+          if (arg1 tm = left_id) 
+          then SPEC (arg2 tm) left_id_thm'
+          else raise UNCHANGED
+       fun add_left_ids_qconv tm = AC_SUB_QCONV add_left_id_qconv (length (strip_plus tm)) tm
+   in fn ss => 
+       let val collector = 
+            add_left_ids_qconv
+            THENQC REWRITE_CONV [GSYM rdistrib] 
+            THENQC LHS_CONV adder
+            THENQC take_left_id_qconv
+           fun traced_collector tm =
+            (trace_tm(2, "FACTORIZE_CONSTS_LEFT_QCONV collecting:",tm);
+             trace_production(2,tm,"FACTORIZE_CONSTS_LEFT_QCONV",collector tm))
+       in CONVQ (AC_SORT_QCONV {assoc=assoc,comm=comm} equiv traced_collector)
+       end
+   end;
+
+fun FACTORIZE_CONSTS_LEFT_CONV thms adder = 
+    QCONV o (FACTORIZE_CONSTS_LEFT_QCONV thms (CONVQ adder));
+
+
+
+end;
+
+
+
+open AC;
+@
+
+
+1.1
+log
+@Preterm and other changes, see 7.changes
+@
+text
+@@

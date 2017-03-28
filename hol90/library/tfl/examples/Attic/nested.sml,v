@@ -1,0 +1,127 @@
+head	1.1;
+access;
+symbols
+	HOL97:1.1.2.2.0.2
+	bpHOL97:1.1.2.2
+	hol90_9_alpha:1.1.2.2
+	TFL_1:1.1.2.1
+	hol90_pre8_for_multiple_compilers:1.1.0.2;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	96.06.29.15.08.22;	author rjb;	state dead;
+branches
+	1.1.2.1;
+next	;
+
+1.1.2.1
+date	96.06.29.15.08.23;	author rjb;	state Exp;
+branches;
+next	1.1.2.2;
+
+1.1.2.2
+date	96.08.05.15.40.43;	author rjb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@file nested.sml was initially added on branch hol90_pre8_for_multiple_compilers.
+@
+text
+@@
+
+
+1.1.2.1
+log
+@TFL version 1 for HOL: A well-founded recursive function definition package.
+@
+text
+@a0 54
+(*----------------------------------------------------------------------------
+ * Nesting poses extra problems. Here we look at two ways to solve the
+ * termination condition for a simple nested function. The first way is to 
+ * blindly prove the given termination condition (by recursion induction).
+ * The second is to see that a lemma, in fact the "specification" of the 
+ * function, provides an easy route to eliminating the termination condition. 
+ *---------------------------------------------------------------------------*)
+
+new_theory"nested" handle _ => ();
+
+val LESS_SUC_REFL = theorem"prim_rec" "LESS_SUC_REFL";
+val LESS_0 = theorem "prim_rec" "LESS_0";
+val LESS_MONO = theorem "prim_rec" "LESS_MONO";
+val LESS_TRANS = theorem "arithmetic" "LESS_TRANS";
+
+(* Define the function *)
+
+val Gdef = 
+Rfunction `$<`  `(G 0 = 0) /\ 
+                 (G(SUC x) = G(G x))`;
+
+
+val Gterminates = save_thm("Gterminates",
+Q.prove `!x. G x < SUC x`
+(REC_INDUCT_TAC (#induction Gdef) 
+   THEN RW_TAC[#rules Gdef, LESS_SUC_REFL]
+   THEN REPEAT STRIP_TAC THEN IMP_RES_TAC LESS_MONO 
+   THEN RES_TAC THEN IMP_RES_TAC LESS_TRANS));
+
+
+val Geqns = RW_RULE[Gterminates] (#rules Gdef);
+val Ginduction = RW_RULE[Gterminates] (#induction Gdef);
+
+
+val Gcorrect = Q.prove`!x. G x = 0`
+(REC_INDUCT_TAC Ginduction 
+   THEN RW_TAC[Geqns]);
+
+
+(*---------------------------------------------------------------------------
+ * Using the following partial correctness route seems easier, but you 
+ * have to know what the correctness is! (Unlike the previous approach, 
+ * where the necessary goal is automatically computed.) Of course, this
+ * example is so trivial, that there's no difficulty either way.
+ *---------------------------------------------------------------------------*)
+val lemma = 
+Q.prove `!x. G x = 0`
+(INDUCT_TAC 
+   THEN ASM_RW_TAC[#rules Gdef,LESS_0]);
+
+val Geqns2 = RW_RULE [Q.prove`!x. G x < SUC x` (RW_TAC[lemma,LESS_0])]
+                     (#rules Gdef);
+
+val _ = html_theory"-";
+@
+
+
+1.1.2.2
+log
+@Updated to TFL release 4.
+@
+text
+@d12 1
+d25 4
+a28 7
+(REC_INDUCT_TAC (#induction Gdef)
+  THEN RW_TAC[#rules Gdef, LESS_SUC_REFL] (* Unroll def; eliminate base case *)
+  THEN REPEAT STRIP_TAC 
+  THEN RES_TAC                  (* Expose nested IH *)
+  THEN MATCH_MP_TAC LESS_TRANS  (* Use transitivity *)
+  THEN Q.EXISTS_TAC`SUC(G x)`   (* Instantiate nested IH to goal *)
+  THEN ASM_CRW_TAC[LESS_MONO])) (* Instantiate inner IH to goal, then done *);
+d37 1
+a37 1
+  THEN RW_TAC[Geqns]);
+a45 3
+
+val LESS_0 = theorem "prim_rec" "LESS_0";
+
+@

@@ -1,0 +1,450 @@
+head	1.3;
+access;
+symbols
+	HOL97:1.2.0.4
+	bpHOL97:1.2
+	hol90_9_alpha:1.2
+	hol90_pre8_for_multiple_compilers:1.2.0.2
+	hol90_pre8_after_donalds_separate_compilation_changes:1.2
+	hol90_8_after_merging_Konrad_Elsa:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.3
+date	96.02.08.00.36.09;	author drs1004;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	95.10.31.15.05.21;	author drs1004;	state Exp;
+branches
+	1.2.4.1;
+next	1.1;
+
+1.1
+date	95.10.16.13.30.18;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.30.18;	author rjb;	state Exp;
+branches
+	1.1.1.1.2.1;
+next	;
+
+1.1.1.1.2.1
+date	95.10.18.10.09.25;	author drs1004;	state Exp;
+branches;
+next	;
+
+1.2.4.1
+date	97.07.11.15.16.08;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.3
+log
+@New theory mechanism, code reorganisation and other enhancements by Don Syme.
+@
+text
+@(* ===================================================================== 
+ * FILE          : rewrite.sig                                           
+ * DESCRIPTION   : Signature for the rewriting routines. Translated from 
+ *                 hol88.                                                
+ *                                                                       
+ * AUTHOR        : (c) Larry Paulson, University of Cambridge, for hol88 
+ * TRANSLATOR    : Konrad Slind, University of Calgary                   
+ * DATE          : September 11, 1991                                    
+ * REVISED       : November 1994, to encapsulate the type of rewrite     
+ *                 rules. (KLS)                                          
+ *
+ * Revised January 1996, DRS.  Now called "Plain Rewriting" to 
+ * distinguish from higher order rewriting and simplification.
+ * ===================================================================== *)
+
+
+signature Plain_rewrite_sig =
+sig
+
+	type thm sharing type thm = Thm.thm
+	type term sharing type term = Term.term
+
+(*---------------------------------------------------------------------
+ * structure Base_logic : Base_logic_sig 
+ * 
+ * structure Thm : Thm_sig 
+ * 
+ * type rewrites
+ * val mk_rewrites : thm -> thm list
+ * val add_rewrites : rewrites -> thm list -> rewrites
+ * val dest_rewrites : rewrites -> thm list
+ * val empty_rewrites : rewrites
+ * 
+ * val implicit_rewrites : unit -> rewrites
+ * val set_implicit_rewrites : rewrites -> unit
+ * val add_implicit_rewrites : thm list -> unit
+ * 
+ * 
+ * 
+ *  
+ * val pp_rewrites : PP.ppstream -> rewrites -> unit
+ *  val bool_rewrites : rewrites 
+ * 
+ * 
+ *  val REWRITES_CONV : rewrites -> Abbrev.conv 
+ * 
+ *  val GEN_REWRITE_CONV : (Abbrev.conv -> Abbrev.conv)
+ *                          -> rewrites -> thm list -> Abbrev.conv
+ * val GEN_REWRITE_RULE : (Abbrev.conv -> Abbrev.conv) 
+ *                          -> rewrites -> thm list
+ *                              -> thm -> thm
+ * val GEN_REWRITE_TAC : (Abbrev.conv -> Abbrev.conv) 
+ *                         -> rewrites -> thm list -> Abbrev.tactic
+ * 
+ * -------------------------------------------------------------------*)
+
+    val implicit_rewrites : unit -> thm list
+    val set_implicit_rewrites : thm list -> unit
+    val add_implicit_rewrites : thm list -> unit
+
+    val mk_rewrites : thm -> thm list;
+	
+
+    val PURE_REWRITE_CONV : thm list -> Abbrev.conv
+    val REWRITE_CONV : thm list -> Abbrev.conv
+    val PURE_ONCE_REWRITE_CONV : thm list -> Abbrev.conv
+    val ONCE_REWRITE_CONV : thm list -> Abbrev.conv
+	
+    val PURE_REWRITE_RULE : thm list -> thm -> thm
+    val REWRITE_RULE : thm list -> thm -> thm
+    val PURE_ONCE_REWRITE_RULE : thm list -> thm -> thm
+    val ONCE_REWRITE_RULE : thm list -> thm -> thm
+    val PURE_ASM_REWRITE_RULE : thm list -> thm -> thm
+    val ASM_REWRITE_RULE : thm list -> thm -> thm
+    val PURE_ONCE_ASM_REWRITE_RULE : thm list -> thm -> thm
+    val ONCE_ASM_REWRITE_RULE : thm list -> thm -> thm
+	
+    val PURE_REWRITE_TAC : thm list -> Abbrev.tactic
+    val REWRITE_TAC : thm list -> Abbrev.tactic
+    val PURE_ONCE_REWRITE_TAC : thm list -> Abbrev.tactic
+    val ONCE_REWRITE_TAC : thm list -> Abbrev.tactic
+    val PURE_ASM_REWRITE_TAC : thm list -> Abbrev.tactic
+    val ASM_REWRITE_TAC : thm list -> Abbrev.tactic
+    val PURE_ONCE_ASM_REWRITE_TAC : thm list -> Abbrev.tactic
+    val ONCE_ASM_REWRITE_TAC : thm list -> Abbrev.tactic
+	
+    val FILTER_PURE_ASM_REWRITE_RULE :(term -> bool) -> thm list -> thm -> thm
+    val FILTER_ASM_REWRITE_RULE :(term -> bool) -> thm list -> thm -> thm
+    val FILTER_PURE_ONCE_ASM_REWRITE_RULE :(term -> bool) -> thm list -> thm -> thm
+    val FILTER_ONCE_ASM_REWRITE_RULE :(term -> bool) -> thm list -> thm -> thm
+    val FILTER_PURE_ASM_REWRITE_TAC :(term -> bool) -> thm list -> Abbrev.tactic
+    val FILTER_ASM_REWRITE_TAC :(term -> bool) -> thm list -> Abbrev.tactic
+    val FILTER_PURE_ONCE_ASM_REWRITE_TAC :(term -> bool) -> 
+	thm list -> Abbrev.tactic
+    val FILTER_ONCE_ASM_REWRITE_TAC :(term -> bool) -> thm list -> Abbrev.tactic
+	
+    val SUBST_MATCH : thm -> thm -> thm
+    val TAUT : term -> thm
+end;
+@
+
+
+1.2
+log
+@First phase of hol90.8 development.  hol90 now compiles using NJSML-CM
+108.5, with separate compilation of libraries.  System dependencies
+have been isolated in the makefiles and "portable.sml".
+
+This involved a large number of enhancments to the source files,
+most of which are documented in the 7.changes file (or will be shortly).
+See also the correpsonding email corrspondence between RJB, KLS, TFM,
+JRH and DRS that happened during this development.
+@
+text
+@d1 14
+a14 11
+(* ===================================================================== *)
+(* FILE          : rewrite.sig                                           *)
+(* DESCRIPTION   : Signature for the rewriting routines. Translated from *)
+(*                 hol88.                                                *)
+(*                                                                       *)
+(* AUTHOR        : (c) Larry Paulson, University of Cambridge, for hol88 *)
+(* TRANSLATOR    : Konrad Slind, University of Calgary                   *)
+(* DATE          : September 11, 1991                                    *)
+(* REVISED       : November 1994, to encapsulate the type of rewrite     *)
+(*                 rules. (KLS)                                          *)
+(* ===================================================================== *)
+d17 1
+a17 1
+signature Rewrite_sig =
+a18 1
+(* structure Base_logic : Base_logic_sig *)
+d20 2
+a21 1
+structure Thm : Thm_sig
+d23 76
+a98 77
+type rewrites
+val mk_rewrites : Thm.thm -> Thm.thm list
+val add_rewrites : rewrites -> Thm.thm list -> rewrites
+val dest_rewrites : rewrites -> Thm.thm list
+val empty_rewrites : rewrites
+
+val implicit_rewrites : unit -> rewrites
+val set_implicit_rewrites : rewrites -> unit
+val add_implicit_rewrites : Thm.thm list -> unit
+
+val pp_rewrites : PP.ppstream -> rewrites -> unit
+val bool_rewrites : rewrites
+
+val REWRITES_CONV : rewrites -> Abbrev.conv
+
+val GEN_REWRITE_CONV : (Abbrev.conv -> Abbrev.conv)
+                         -> rewrites -> Thm.thm list -> Abbrev.conv
+val GEN_REWRITE_RULE : (Abbrev.conv -> Abbrev.conv) 
+                         -> rewrites -> Thm.thm list
+                             -> Thm.thm -> Thm.thm
+val GEN_REWRITE_TAC : (Abbrev.conv -> Abbrev.conv) 
+                        -> rewrites -> Thm.thm list -> Abbrev.tactic
+
+val PURE_REWRITE_CONV : Thm.thm list -> Abbrev.conv
+val REWRITE_CONV : Thm.thm list -> Abbrev.conv
+val PURE_ONCE_REWRITE_CONV : Thm.thm list -> Abbrev.conv
+val ONCE_REWRITE_CONV : Thm.thm list -> Abbrev.conv
+
+val PURE_REWRITE_RULE : Thm.thm list -> 
+                        Thm.thm -> Thm.thm
+val REWRITE_RULE : Thm.thm list -> 
+                   Thm.thm -> Thm.thm
+val PURE_ONCE_REWRITE_RULE : Thm.thm list -> 
+                             Thm.thm -> Thm.thm
+val ONCE_REWRITE_RULE : Thm.thm list -> 
+                        Thm.thm -> Thm.thm
+val PURE_ASM_REWRITE_RULE : Thm.thm list -> 
+                            Thm.thm -> Thm.thm
+val ASM_REWRITE_RULE : Thm.thm list -> 
+                       Thm.thm -> Thm.thm
+val PURE_ONCE_ASM_REWRITE_RULE : Thm.thm list -> 
+                                 Thm.thm -> Thm.thm
+val ONCE_ASM_REWRITE_RULE : Thm.thm list -> 
+                            Thm.thm -> Thm.thm
+
+val PURE_REWRITE_TAC : Thm.thm list -> Abbrev.tactic
+val REWRITE_TAC : Thm.thm list -> Abbrev.tactic
+val PURE_ONCE_REWRITE_TAC : Thm.thm list -> Abbrev.tactic
+val ONCE_REWRITE_TAC : Thm.thm list -> Abbrev.tactic
+val PURE_ASM_REWRITE_TAC : Thm.thm list -> Abbrev.tactic
+val ASM_REWRITE_TAC : Thm.thm list -> Abbrev.tactic
+val PURE_ONCE_ASM_REWRITE_TAC : Thm.thm list -> Abbrev.tactic
+val ONCE_ASM_REWRITE_TAC : Thm.thm list -> Abbrev.tactic
+
+val FILTER_PURE_ASM_REWRITE_RULE :(Thm.Term.term -> bool) -> 
+                                   Thm.thm list -> 
+                                   Thm.thm -> Thm.thm
+val FILTER_ASM_REWRITE_RULE :(Thm.Term.term -> bool) -> 
+                             Thm.thm list -> Thm.thm ->
+                             Thm.thm
+val FILTER_PURE_ONCE_ASM_REWRITE_RULE :(Thm.Term.term -> bool) -> 
+                                       Thm.thm list -> 
+                                       Thm.thm -> Thm.thm
+val FILTER_ONCE_ASM_REWRITE_RULE :(Thm.Term.term -> bool) -> 
+                                  Thm.thm list -> 
+                                  Thm.thm -> Thm.thm
+val FILTER_PURE_ASM_REWRITE_TAC :(Thm.Term.term -> bool) -> 
+                                 Thm.thm list -> Abbrev.tactic
+val FILTER_ASM_REWRITE_TAC :(Thm.Term.term -> bool) -> 
+                            Thm.thm list -> Abbrev.tactic
+val FILTER_PURE_ONCE_ASM_REWRITE_TAC :(Thm.Term.term -> bool) -> 
+                                      Thm.thm list -> Abbrev.tactic
+val FILTER_ONCE_ASM_REWRITE_TAC :(Thm.Term.term -> bool) -> 
+                                 Thm.thm list -> Abbrev.tactic
+
+val SUBST_MATCH : Thm.thm -> 
+                  Thm.thm -> Thm.thm
+@
+
+
+1.2.4.1
+log
+@Minor changes to make HOL CM-friendly.
+@
+text
+@d16 1
+d34 1
+d38 2
+a39 1
+                         -> rewrites -> Thm.thm list -> Thm.thm -> Thm.thm
+d48 16
+a63 8
+val PURE_REWRITE_RULE : Thm.thm list -> Thm.thm -> Thm.thm
+val REWRITE_RULE : Thm.thm list -> Thm.thm -> Thm.thm
+val PURE_ONCE_REWRITE_RULE : Thm.thm list -> Thm.thm -> Thm.thm
+val ONCE_REWRITE_RULE : Thm.thm list -> Thm.thm -> Thm.thm
+val PURE_ASM_REWRITE_RULE : Thm.thm list -> Thm.thm -> Thm.thm
+val ASM_REWRITE_RULE : Thm.thm list -> Thm.thm -> Thm.thm
+val PURE_ONCE_ASM_REWRITE_RULE : Thm.thm list -> Thm.thm -> Thm.thm
+val ONCE_ASM_REWRITE_RULE : Thm.thm list -> Thm.thm -> Thm.thm
+d74 20
+a93 16
+val FILTER_PURE_ASM_REWRITE_RULE 
+    :(Thm.Term.term -> bool) -> Thm.thm list -> Thm.thm -> Thm.thm
+val FILTER_ASM_REWRITE_RULE 
+    :(Thm.Term.term -> bool) -> Thm.thm list -> Thm.thm -> Thm.thm
+val FILTER_PURE_ONCE_ASM_REWRITE_RULE 
+    :(Thm.Term.term -> bool) -> Thm.thm list -> Thm.thm -> Thm.thm
+val FILTER_ONCE_ASM_REWRITE_RULE 
+    :(Thm.Term.term -> bool) -> Thm.thm list -> Thm.thm -> Thm.thm
+val FILTER_PURE_ASM_REWRITE_TAC 
+    :(Thm.Term.term -> bool) -> Thm.thm list -> Abbrev.tactic 
+val FILTER_ASM_REWRITE_TAC 
+    :(Thm.Term.term -> bool) -> Thm.thm list -> Abbrev.tactic
+val FILTER_PURE_ONCE_ASM_REWRITE_TAC 
+    :(Thm.Term.term -> bool) -> Thm.thm list -> Abbrev.tactic
+val FILTER_ONCE_ASM_REWRITE_TAC 
+    :(Thm.Term.term -> bool) -> Thm.thm list -> Abbrev.tactic
+d95 2
+a96 1
+val SUBST_MATCH : Thm.thm -> Thm.thm -> Thm.thm
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d9 2
+d16 1
+a16 1
+structure Base_logic : Base_logic_sig
+d18 2
+d21 3
+d25 5
+a29 4
+val add_rewrites : rewrites -> Base_logic.Thm.thm list -> rewrites
+val set_base_rewrites : rewrites -> unit
+val base_rewrites : unit -> rewrites
+val add_base_rewrites : Base_logic.Thm.thm list -> unit
+d31 1
+d33 1
+a33 1
+val REWRITES_CONV : rewrites -> conv
+d35 59
+a93 59
+val GEN_REWRITE_CONV : (conv -> conv)
+                         -> rewrites -> Base_logic.Thm.thm list -> conv
+val GEN_REWRITE_RULE : (conv -> conv) 
+                         -> rewrites -> Base_logic.Thm.thm list
+                             -> Base_logic.Thm.thm -> Base_logic.Thm.thm
+val GEN_REWRITE_TAC : (conv -> conv) 
+                        -> rewrites -> Base_logic.Thm.thm list -> tactic
+
+val PURE_REWRITE_CONV : Base_logic.Thm.thm list -> conv
+val REWRITE_CONV : Base_logic.Thm.thm list -> conv
+val PURE_ONCE_REWRITE_CONV : Base_logic.Thm.thm list -> conv
+val ONCE_REWRITE_CONV : Base_logic.Thm.thm list -> conv
+
+val PURE_REWRITE_RULE : Base_logic.Thm.thm list -> 
+                        Base_logic.Thm.thm -> Base_logic.Thm.thm
+val REWRITE_RULE : Base_logic.Thm.thm list -> 
+                   Base_logic.Thm.thm -> Base_logic.Thm.thm
+val PURE_ONCE_REWRITE_RULE : Base_logic.Thm.thm list -> 
+                             Base_logic.Thm.thm -> Base_logic.Thm.thm
+val ONCE_REWRITE_RULE : Base_logic.Thm.thm list -> 
+                        Base_logic.Thm.thm -> Base_logic.Thm.thm
+val PURE_ASM_REWRITE_RULE : Base_logic.Thm.thm list -> 
+                            Base_logic.Thm.thm -> Base_logic.Thm.thm
+val ASM_REWRITE_RULE : Base_logic.Thm.thm list -> 
+                       Base_logic.Thm.thm -> Base_logic.Thm.thm
+val PURE_ONCE_ASM_REWRITE_RULE : Base_logic.Thm.thm list -> 
+                                 Base_logic.Thm.thm -> Base_logic.Thm.thm
+val ONCE_ASM_REWRITE_RULE : Base_logic.Thm.thm list -> 
+                            Base_logic.Thm.thm -> Base_logic.Thm.thm
+
+val PURE_REWRITE_TAC : Base_logic.Thm.thm list -> tactic
+val REWRITE_TAC : Base_logic.Thm.thm list -> tactic
+val PURE_ONCE_REWRITE_TAC : Base_logic.Thm.thm list -> tactic
+val ONCE_REWRITE_TAC : Base_logic.Thm.thm list -> tactic
+val PURE_ASM_REWRITE_TAC : Base_logic.Thm.thm list -> tactic
+val ASM_REWRITE_TAC : Base_logic.Thm.thm list -> tactic
+val PURE_ONCE_ASM_REWRITE_TAC : Base_logic.Thm.thm list -> tactic
+val ONCE_ASM_REWRITE_TAC : Base_logic.Thm.thm list -> tactic
+
+val FILTER_PURE_ASM_REWRITE_RULE :(Base_logic.Net.Term.term -> bool) -> 
+                                   Base_logic.Thm.thm list -> 
+                                   Base_logic.Thm.thm -> Base_logic.Thm.thm
+val FILTER_ASM_REWRITE_RULE :(Base_logic.Net.Term.term -> bool) -> 
+                             Base_logic.Thm.thm list -> Base_logic.Thm.thm ->
+                             Base_logic.Thm.thm
+val FILTER_PURE_ONCE_ASM_REWRITE_RULE :(Base_logic.Net.Term.term -> bool) -> 
+                                       Base_logic.Thm.thm list -> 
+                                       Base_logic.Thm.thm -> Base_logic.Thm.thm
+val FILTER_ONCE_ASM_REWRITE_RULE :(Base_logic.Net.Term.term -> bool) -> 
+                                  Base_logic.Thm.thm list -> 
+                                  Base_logic.Thm.thm -> Base_logic.Thm.thm
+val FILTER_PURE_ASM_REWRITE_TAC :(Base_logic.Net.Term.term -> bool) -> 
+                                 Base_logic.Thm.thm list -> tactic
+val FILTER_ASM_REWRITE_TAC :(Base_logic.Net.Term.term -> bool) -> 
+                            Base_logic.Thm.thm list -> tactic
+val FILTER_PURE_ONCE_ASM_REWRITE_TAC :(Base_logic.Net.Term.term -> bool) -> 
+                                      Base_logic.Thm.thm list -> tactic
+val FILTER_ONCE_ASM_REWRITE_TAC :(Base_logic.Net.Term.term -> bool) -> 
+                                 Base_logic.Thm.thm list -> tactic
+d95 2
+a96 2
+val SUBST_MATCH : Base_logic.Thm.thm -> 
+                  Base_logic.Thm.thm -> Base_logic.Thm.thm
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@
+
+
+1.1.1.1.2.1
+log
+@	Konrad's bug fixes and further development to hol90.7 after it's release.
+	Checked n on a side branch for later merging with the main trunk
+	(Elsa's revisions).  See doc/7.changes for details.
+@
+text
+@a8 2
+(* REVISED       : November 1994, to encapsulate the type of rewrite     *)
+(*                 rules. (KLS)                                          *)
+d17 1
+a17 1
+val mk_rewrites : Base_logic.Thm.thm -> Base_logic.Thm.thm list
+d19 3
+a21 7
+val dest_rewrites : rewrites -> Base_logic.Thm.thm list
+val empty_rewrites : rewrites
+
+val implicit_rewrites : unit -> rewrites
+val set_implicit_rewrites : rewrites -> unit
+val add_implicit_rewrites : Base_logic.Thm.thm list -> unit
+
+a22 1
+val bool_rewrites : rewrites
+@

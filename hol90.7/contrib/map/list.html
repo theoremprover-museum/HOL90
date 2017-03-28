@@ -1,0 +1,306 @@
+<TITLE>Theory: list</TITLE>
+<H1>Theory: list</H1>
+<H1>Parents</H1>
+    <UL>
+    <LI><A HREF = "arithmetic.html"><STRONG>arithmetic</STRONG></A>
+    </UL>
+
+
+<HR>
+<H1>Type constants</H1>
+    <UL>
+    <LI><STRONG>list</STRONG>(Arity = 1)
+    </UL>
+
+
+<HR>
+<H1>Term constants</H1>
+    <UL>
+    <LI><STRONG>IS_list_REP</STRONG><EM>:(num -> 'a) # num -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>REP_list</STRONG><EM>:'a list -> (num -> 'a) # num</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>ABS_list</STRONG><EM>:(num -> 'a) # num -> 'a list</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>NIL</STRONG><EM>:'a list</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>CONS</STRONG><EM>:'a -> 'a list -> 'a list</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>NULL</STRONG><EM>:'a list -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>HD</STRONG><EM>:'a list -> 'a</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>TL</STRONG><EM>:'a list -> 'a list</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>SUM</STRONG><EM>:num list -> num</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>APPEND</STRONG><EM>:'a list -> 'a list -> 'a list</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>FLAT</STRONG><EM>:'a list list -> 'a list</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>LENGTH</STRONG><EM>:'a list -> num</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>MAP</STRONG><EM>:('a -> 'b) -> 'a list -> 'b list</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>MAP2</STRONG><EM>:('a -> 'b -> 'c) -> 'a list -> 'b list ->
+                                  'c list</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>EL</STRONG><EM>:num -> 'a list -> 'a</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>EVERY</STRONG><EM>:('a -> bool) -> 'a list -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    </UL>
+
+
+<HR>
+<H1>Axioms</H1>
+<DL>
+
+</DL>
+
+
+<HR>
+<H1>Definitions</H1>
+<DL>
+<DT><STRONG>IS_list_REP</STRONG>
+<DD>
+<PRE>
+|- !r. IS_list_REP r = (?f n. r = ((\m. (m < n) => (f m) | (@x. T)),n))
+</PRE>
+
+<DT><STRONG>list_TY_DEF</STRONG>
+<DD>
+<PRE>
+|- ?rep. TYPE_DEFINITION IS_list_REP rep
+</PRE>
+
+<DT><STRONG>list_ISO_DEF</STRONG>
+<DD>
+<PRE>
+|- (!a. ABS_list (REP_list a) = a) /\
+   (!r. IS_list_REP r = REP_list (ABS_list r) = r)
+</PRE>
+
+<DT><STRONG>NIL_DEF</STRONG>
+<DD>
+<PRE>
+|- [] = ABS_list ((\n. @e. T),0)
+</PRE>
+
+<DT><STRONG>CONS_DEF</STRONG>
+<DD>
+<PRE>
+|- !h t.
+     CONS h t =
+     ABS_list
+       ((\m. (m = 0) => h | (FST (REP_list t) (PRE m))),
+        SUC (SND (REP_list t)))
+</PRE>
+
+<DT><STRONG>NULL_DEF</STRONG>
+<DD>
+<PRE>
+|- (NULL [] = T) /\ (!t h. NULL (CONS h t) = F)
+</PRE>
+
+<DT><STRONG>HD</STRONG>
+<DD>
+<PRE>
+|- !t h. HD (CONS h t) = h
+</PRE>
+
+<DT><STRONG>TL</STRONG>
+<DD>
+<PRE>
+|- !t h. TL (CONS h t) = t
+</PRE>
+
+<DT><STRONG>SUM</STRONG>
+<DD>
+<PRE>
+|- (SUM [] = 0) /\ (!h t. SUM (CONS h t) = h + SUM t)
+</PRE>
+
+<DT><STRONG>APPEND</STRONG>
+<DD>
+<PRE>
+|- (!l. APPEND [] l = l) /\
+   (!l1 l2 h. APPEND (CONS h l1) l2 = CONS h (APPEND l1 l2))
+</PRE>
+
+<DT><STRONG>FLAT</STRONG>
+<DD>
+<PRE>
+|- (FLAT [] = []) /\ (!h t. FLAT (CONS h t) = APPEND h (FLAT t))
+</PRE>
+
+<DT><STRONG>LENGTH</STRONG>
+<DD>
+<PRE>
+|- (LENGTH [] = 0) /\ (!h t. LENGTH (CONS h t) = SUC (LENGTH t))
+</PRE>
+
+<DT><STRONG>MAP</STRONG>
+<DD>
+<PRE>
+|- (!f. MAP f [] = []) /\ (!f h t. MAP f (CONS h t) = CONS (f h) (MAP f t))
+</PRE>
+
+<DT><STRONG>MAP2</STRONG>
+<DD>
+<PRE>
+|- (!f. MAP2 f [] [] = []) /\
+   (!f h1 t1 h2 t2.
+     MAP2 f (CONS h1 t1) (CONS h2 t2) = CONS (f h1 h2) (MAP2 f t1 t2))
+</PRE>
+
+<DT><STRONG>EL</STRONG>
+<DD>
+<PRE>
+|- (!l. EL 0 l = HD l) /\ (!l n. EL (SUC n) l = EL n (TL l))
+</PRE>
+
+<DT><STRONG>EVERY_DEF</STRONG>
+<DD>
+<PRE>
+|- (!P. EVERY P [] = T) /\ (!P h t. EVERY P (CONS h t) = P h /\ EVERY P t)
+</PRE>
+
+</DL>
+
+
+<HR>
+<H1>Theorems</H1>
+<DL>
+<DT><STRONG>list_Axiom</STRONG>
+<DD>
+<PRE>
+|- !x f. ?!fn1. (fn1 [] = x) /\ (!h t. fn1 (CONS h t) = f (fn1 t) h t)
+</PRE>
+
+<DT><STRONG>NULL</STRONG>
+<DD>
+<PRE>
+|- NULL [] /\ (!h t. ~(NULL (CONS h t)))
+</PRE>
+
+<DT><STRONG>list_INDUCT</STRONG>
+<DD>
+<PRE>
+|- !P. P [] /\ (!t. P t ==> (!h. P (CONS h t))) ==> (!l. P l)
+</PRE>
+
+<DT><STRONG>list_CASES</STRONG>
+<DD>
+<PRE>
+|- !l. (l = []) \/ (?t h. l = CONS h t)
+</PRE>
+
+<DT><STRONG>CONS_11</STRONG>
+<DD>
+<PRE>
+|- !h t h' t'. (CONS h t = CONS h' t') = (h = h') /\ (t = t')
+</PRE>
+
+<DT><STRONG>NOT_NIL_CONS</STRONG>
+<DD>
+<PRE>
+|- !t h. ~([] = CONS h t)
+</PRE>
+
+<DT><STRONG>NOT_CONS_NIL</STRONG>
+<DD>
+<PRE>
+|- !t h. ~(CONS h t = [])
+</PRE>
+
+<DT><STRONG>LIST_NOT_EQ</STRONG>
+<DD>
+<PRE>
+|- !l1 l2. ~(l1 = l2) ==> (!h1 h2. ~(CONS h1 l1 = CONS h2 l2))
+</PRE>
+
+<DT><STRONG>NOT_EQ_LIST</STRONG>
+<DD>
+<PRE>
+|- !h1 h2. ~(h1 = h2) ==> (!l1 l2. ~(CONS h1 l1 = CONS h2 l2))
+</PRE>
+
+<DT><STRONG>EQ_LIST</STRONG>
+<DD>
+<PRE>
+|- !h1 h2. (h1 = h2) ==> (!l1 l2. (l1 = l2) ==> (CONS h1 l1 = CONS h2 l2))
+</PRE>
+
+<DT><STRONG>CONS</STRONG>
+<DD>
+<PRE>
+|- !l. ~(NULL l) ==> (CONS (HD l) (TL l) = l)
+</PRE>
+
+<DT><STRONG>APPEND_ASSOC</STRONG>
+<DD>
+<PRE>
+|- !l1 l2 l3. APPEND l1 (APPEND l2 l3) = APPEND (APPEND l1 l2) l3
+</PRE>
+
+<DT><STRONG>LENGTH_APPEND</STRONG>
+<DD>
+<PRE>
+|- !l1 l2. LENGTH (APPEND l1 l2) = LENGTH l1 + LENGTH l2
+</PRE>
+
+<DT><STRONG>MAP_APPEND</STRONG>
+<DD>
+<PRE>
+|- !f l1 l2. MAP f (APPEND l1 l2) = APPEND (MAP f l1) (MAP f l2)
+</PRE>
+
+<DT><STRONG>LENGTH_MAP</STRONG>
+<DD>
+<PRE>
+|- !l f. LENGTH (MAP f l) = LENGTH l
+</PRE>
+
+<DT><STRONG>EVERY_EL</STRONG>
+<DD>
+<PRE>
+|- !l P. EVERY P l = (!n. n < LENGTH l ==> P (EL n l))
+</PRE>
+
+<DT><STRONG>EVERY_CONJ</STRONG>
+<DD>
+<PRE>
+|- !l. EVERY (\x. P x /\ Q x) l = EVERY P l /\ EVERY Q l
+</PRE>
+
+<DT><STRONG>LENGTH_NIL</STRONG>
+<DD>
+<PRE>
+|- !l. (LENGTH l = 0) = l = []
+</PRE>
+
+<DT><STRONG>LENGTH_CONS</STRONG>
+<DD>
+<PRE>
+|- !l n. (LENGTH l = SUC n) = (?h l'. (LENGTH l' = n) /\ (l = CONS h l'))
+</PRE>
+
+<DT><STRONG>LENGTH_EQ_CONS</STRONG>
+<DD>
+<PRE>
+|- !P n.
+     (!l. (LENGTH l = SUC n) ==> P l) =
+     (!l. (LENGTH l = n) ==> (\l. !x. P (CONS x l)) l)
+</PRE>
+
+<DT><STRONG>LENGTH_EQ_NIL</STRONG>
+<DD>
+<PRE>
+|- !P. (!l. (LENGTH l = 0) ==> P l) = P []
+</PRE>
+
+</DL>
+
+
+<HR>

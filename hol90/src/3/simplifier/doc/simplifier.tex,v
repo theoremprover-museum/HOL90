@@ -1,0 +1,816 @@
+head	1.1;
+access;
+symbols;
+locks; strict;
+comment	@% @;
+
+
+1.1
+date	95.12.18.11.38.58;	author drs1004;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@Preterm and other changes, see 7.changes
+@
+text
+@\documentstyle{book}
+\bibliographystyle{plain}
+
+\title{A Simplifier/Programmable Grinder for hol90}
+\author{Donald Syme}
+
+\begin{document}
+\maketitle
+\tableofcontents
+
+\chapter{Overview}
+
+In the last two weeks I have implemented a contextual, conditional
+simplifier for hol90.  This was inspired by reading about the simplifier
+in Isabelle (by Tobias Nipkow), which I think is great.  I have
+taken the main ideas (and some of the code) from there 
+and added a few more of my own.
+
+The simplifier combines contextual/conditional rewriting 
+along with the efficient application of arbitrary user conversions.  
+It is a powerful new
+proof tool for HOL, and has the potential to automatically
+prove alot of the trivial
+proofs that people get bogged down with.  It should also
+eliminate the need for frequent use of a large number of HOL
+tactics, since they are subsumed within simplification.
+
+At the moment this is strictly pre-release, but I have done enough
+tests to know that 90\% of the code works very well.  
+I need people to help test this code, give me feedback,
+and check that it is efficient and helpful in 
+real proofs.  All the tests I have done so far
+indicate that it's efficiency is never substantially than traditional
+ways of performing HOL proofs, in terms of CPU cycles, but that it
+consistently saves time overall
+
+This simplifier is capable of doing alot.  However this also
+means it is difficult to know exactly what it is doing, or why it stops
+working.  Because of this, I have added extensive tracing to the simplifier.  
+I am considering adding facilities to TkHolWorkbench to allow
+interactive tracing as well, though this would be strictly experimental.
+
+This simplifier is based largely
+on the Isabelle simplifier, in concept and also in code.
+I did this because I was inspired by reading the Isabelle
+reference manual (chapter 10) and wanted to see how easy such
+a simplifier would be to implement in HOL.  It turned out
+easier than I thought, so I've decided to clean it up
+and release it.  I plan to support it and use it in my future 
+work.  With any luck it will make it into a future release of hol90.
+
+So what does a powerful simplifier give you?
+\begin{description}
+    \item[Normal rewriting] Just like REWRITE\_TAC, ASM\_REWRITE\_TAC etc.
+
+    \item[Simpsets] These are a very useful way to organise
+your rewrites.  You can consider the ``basic rewrites'' in HOL
+to be one small simpset.  The simplifier comes
+with simpsets for all the core and several libraries.  You
+can create your own simpsets easily, and add things to them
+on the fly.
+
+Because HOL has quite a rich quite of theories and libraries, 
+this means that it is easy to create simpsets for these which automate
+alot of tedious reasoning.  This release comes with many built
+in simpsets which are explained below.
+
+    \item[Contextual Rewriting] For example, when rewriting 
+		P ==> Q
+      the simplifier can assume P when rewriting Q, and
+      thus collect new rewites from P to apply to Q.
+
+    \item[Conditional Rewriting].  This is a bit different to what
+	you find in the res\_quan library, but often more
+	powerful.  Conditional rewriting means you can rewrite 
+        with theorems such as
+\begin{verbatim}
+               |- (m <= x) ==> ((x - m) + m = x)
+\end{verbatim}
+	The rewrite will only be applied if the conditions (here m <= x) can
+	be solved by the simplifier in the current
+        context.  The simplifier can use the current context to help
+    	solve the conditions.
+
+    \item[Permutative/AC Normalization]
+
+        You can rewrite with theorems such as:
+\begin{verbatim}
+|- (x + y) = (y + x)
+|- s INSERT x INSERT y = s INSERT y INSERT x
+|- ~(x1 = x2) ==> (fin EXT (x1,y1) EXT (x2,y2) = fin EXT (x2,y2) (x1,y1))
+\end{verbatim}
+	These are theorems where the lhs of the rewrite is a permutation
+	of the rhs, ignoring the conditionals.  The rewrite is
+	applied only if it decreases the value of the term in a global
+	term ordering.  The term ordering used is such that constants
+	are always puched one way, and variables the other.
+
+	Adding the right mix of associativity and commutativity theorems
+	to the simplifier gives you AC-normalization for free.
+
+    \item[Simplify with arbitrary extra conversions]
+
+        You can add arbitrary conversions to the simplifier, to be
+	applied to all relevant sub-terms.  See ``Arithmetic Grinding''
+	below for an example where two conversions based
+        on {\tt ARITH\_CONV} are used to create {\tt arith\_ss}
+        The application of conversions
+	is keyed by a termnet, which dramatically improves the
+	efficiency of conversion application.
+
+        Another example is {\tt BETA\_CONV}, which is added by default 
+        to the simpset {\tt hol\_ss}.  This simpset
+ 	contains most the useful rewrites from the 
+	vanilla hol90 system.
+
+	{\tt TAUT\_CONV} is added in {\tt taut\_ss}.
+
+	{\tt SINGLE\_POINT\_CONV}, a safe conversion to remove
+	trivial existential quantifiers, is included in {\tt hol\_ss}.
+
+	Other conversions you might want to add are the ones to move
+	! and ? quantifiers in and out of scope.  This can turn the
+	simplifier into a normalizer for quantifier movements.
+
+    \item[Arithmetic Grinding]
+
+	The simplifier comes with {\tt arith\_ss}, a simpset
+        containing two conversions based on {\tt ARITH\_CONV}.
+        These conversions prove linear (in)equalities and
+        perform linear arithmetic reduction (for instance
+        collecting like terms) over the natural numbers.
+
+        These conversions work in the ``current context'', which
+	means they work inside binders.  They pass all the
+	arithmetic context information available to {\tt ARITH\_CONV}.
+	
+	These conversions cache their results.  This is totally
+	experimental but is looking promising.
+
+	Arithmetic grinding can also be used to discharge 
+	conditions in conditional rewrites, because the	
+	same simpset that is being used to trigger
+	the conditional rewrite is used to perform the proofs
+	of the conditions.  
+
+    \item[Grinding Over Other Domains]
+
+ 	Merely adding an appropriate set of rewrites to a simpset
+	can often transform it into an efficient grinder
+	over particular problem domains.  I have done this
+	for:
+	\begin{description}
+            \item[Sets] This creates a grinder for constructs
+         containing {\tt INTER}, {\tt UNION}, {\tt FINITE}, {\tt INSERT},
+         set-equality, {\tt IN} and {\tt SUBSET}, and possibly the
+	other set constructs too.  The simpset also needs to contain
+	conversions or theorems which can test for equality over
+	the domain of the sets.
+            \item[Polynomials] I designed the term ordering (or
+	I should say I modified the ordering found in Isabelle) to
+	cope especially with polynonial reduction (though it should work
+	for other applications as well).  Thus with {\tt reduce\_ss} you
+	effectively get a polynomial reducer/normalizer.  There
+	is an extended example below relating to this.
+	    \item[Lists]  By adding the appropriate rewrites to a simpset
+	you get a grinder for lists constructs.
+	    \item[Maps and Finite Maps] The forthcoming release of the
+	maps and finite maps library by Graham Collins and myself will 
+	contain code to create simpsets for these constructs.  These
+	will allow grinding over set constructs.
+            \item[Words] Paul Curzon is working on a simpset for the
+	word library.
+        \end{description}
+
+    \item[Efficiency]
+
+        I've put alot of work into making the simplifier efficient.
+        I've used the usual range of tricks found in HOL to do this
+	(pre-evaluation, termnets and so on.)
+        On the examples we've been working on, the simplifier
+	has been easily fast enough (and this was without caching
+	results).  See below for some simple efficiency tests 
+	I've been doing.
+
+    \item[Extensibility for advanced users]  For example:
+    \begin{itemize}
+        \item More contextual rewriting can be added. For example
+	to pick up context when moving inside different kinds
+	of binders, or constructs such as ``sum'' in the reals library.
+	
+        \item The method by which rewrites are constructed can be specified.
+        \item The looping strategies can be changed.
+        \item In the next release it will be possible to rewrite
+	over other reflexive, transitive relations like implication
+	or refinement.
+    \end{itemize}
+
+\end{description}
+Some of this is old hat for Isabelle users, but it should be a powerful
+tool for HOL users.  
+
+
+\chapter{Using the Simplifier}
+
+
+The simplifier needs data to work with.  This is specified in 
+{\em simpsets}. Simpsets are an extremely useful way to organize
+your work and group theorems together.  You should make it your 
+aim to develop good simpsets at the end of some proof.
+
+A simpset contains:
+\begin{itemize}
+    \item A set of rewrite theorems, some of which may be conditional.
+    \item A set of congruence rules (theorems) which specify
+          contextual rewriting information.
+    \item A set of conversions, keyed by termnets, which get applied
+to relevant terms.
+    \item A function to make rewrites given an arbitrary theorem.  This
+rarely needs to be changed.
+\end{itemize}
+
+
+\section{The Simpset Conversions and Tactics}
+
+\begin{description}
+    \item[{\tt SIMP\_CONV}]
+    \item[{\tt SIMP\_RULE}]
+    \item[{\tt ASM\_SIMP\_TAC}]
+    \item[{\tt FULL\_SIMP\_TAC}]
+    \item[{\tt STEP\_SIMP\_CONV}]
+    \item[{\tt STEP\_SIMP\_RULE}]
+    \item[{\tt STEP\_SIMP\_TAC}]
+    \item[{\tt STEP\_FULL\_SIMP\_TAC}]
+    \item[{\tt ONCE\_SIMP\_CONV}]
+    \item[{\tt ONCE\_SIMP\_RULE}]
+    \item[{\tt ONCE\_SIMP\_TAC}]
+    \item[{\tt ONCE\_FULL\_SIMP\_TAC}]
+\end{description}
+
+\section{Adding rewrites to simpsets}
+Rewrites are added to simpsets using the infix function {\tt addrewrs}:
+\begin{verbatim}
+- val summ_ss = arith_ss addrewrs [SUMM_DEF,summ_THM];
+- e (SIMP_TAC summ_ss);
+or just
+- e (SIMP_TAC (arith_ss addrewrs [SUMM_DEF,summ_THM]));
+\end{verbatim}
+In general you should consider building new simpsets which solve/normalize a
+particular class of terms rather than rely on creating simpsets on-the-fly.
+
+\section{Adding conversions to simpsets}
+
+Adding new conversions to a simpset is more difficult, as the simpset
+needs data for tracing and prioritorizing operations. See the 
+numerous examples in the built-in simpsets for more information.
+
+\begin{verbatim}
+hol_ss
+addconvs [("num_EQ_CONV",SOME([],--`a:num = b`--),REDUCER,1,K num_EQ_CONV)]
+\end{verbatim}
+
+\section{Merging Simpsets}
+Simpsets may be merged:
+\begin{verbatim}
+combin_ss merge_ss arithmetic_ss
+\end{verbatim}
+NOTE: The rewrite maker is taken from the {\em first} simpset!
+
+\section{Deleting things from simpsets}
+
+You can't do this yet.
+
+\section{Organising and naming simpsets}
+
+I have chosen to use the following naming convention for simpsets:
+\begin{itemize}
+    \item Simpsets are organised on a per-theory or 
+per-library basis, and take their
+name from that theory or library.  Thus the simpset for boolean constructs 
+is {\tt bool\_ss} \footnote{roughly equivalent to the {\tt basic\_rewrites} in the rewriter}, and the simpset for the {\tt arith} library is {\tt arith\_ss}.\footnote{Do not confuse this with the arithmetic theory.  The simpset for
+that is, of course, called {\tt arithmetic\_ss}.}
+     \item  If this is not sufficient, simpsets are named
+after the kind of normalization they perform, e.g. {\tt ac\_arithmetic\_ss}
+for AC-normalization of arithmetic constructs.
+    \item For each theory or library, there are actually two simpsets:
+       \begin{itemize}
+         \item The first (named using capitals, 
+            as in {\tt BOOL\_ss} or {\tt ARITH\_ss}.
+            \end{itemize}) is the ``simpset fragment'' 
+             which contains information
+             for that theory or library only, and not for any of its ancestors.
+             This will rarely be used on its own, but is useful
+	     for creating new simpsets.
+         \item The second is the one you will use most often.  It is named
+           in lower case, as in  {\tt bool\_ss} or {\tt arith\_ss},
+           and contains all the rewrites and rules for that theory/library
+	   and all its parents
+        \end{itemize}
+
+
+
+\section{*Priorities in simpsets}
+
+See the notes in simplifier.sml for more details on this.  This is still
+experimental, though I'm getting more convinced it works well.
+
+\section{*Context rewrites}
+
+Rewrites are actually divided into two classes:
+   - plain rewrites
+   - context rewrites
+Plain rewrites are general theorems, which will be of no
+help or interest to decision procedures.  Context rewrites
+are either general theorems which have been instantiated 
+to a particular case, or are assumptions brought in from
+the context or the assumption list (in ASM\_SIMP\_TAC).
+Generally you don't need to worry about context rewrites - they
+get automatically added.
+
+
+\section{*Adding More Contextual Rewriting}
+
+Arbitrary extra contextual rewrites can be introduced by
+using "congurence rules".  These are theorems of a particular
+shape.
+
+The general form must be:
+\begin{verbatim}
+|- !x1 x1' ... xn xn'.
+     (!v11...v1m. x1 v11 ... v1m = x1' v11 ... v1m) ==>
+     (!v21...v2m. [P[x1,v21,...v2m] ==>] x2 v21 ... v2m = x2' v21 ... v2m) ==>
+     ...
+     F[x1,x2,..,xn] = F[x1',x2',..,xn']
+\end{verbatim}
+That probably doesn't make much sense.  Think of F as the construct
+over which you are expressing the congruence.  Think of x1,x2,...xn
+as the sub-constructs which are being rewritten, some of them under
+additional assumptions.  The implications (one on each line in the 
+sample above) state the necessary results which need to be derived 
+about the subcomponents before the congruence can be deduced.  Some
+of these subcomponenets may be rewritten with extra assumpions - this
+is indicated by P[x1] above.
+
+Some subcomponents may also be functions - in this case we want
+to rewrite them as applied to sets of variables v1...v1m etc.
+See the rule for restricted quantifiers for examples.
+The simplifier does a degree of higher order matching when
+these variables are specified.
+
+Some examples:
+\begin{verbatim}
+ |- !g g' t t' e e'.
+       (g = g') ==>
+       (g ==> (t = t')) ==>
+       (~g ==> (e = e')) ==>
+       ((g => t | e) = (g' => t' | e')) : thm
+
+  |- !P P' Q Q'.
+       (!x. P x = P' x) ==>
+       (!x. P x ==> (Q x = Q' x)) ==>
+       (RES_EXISTS P Q = RES_EXISTS P' Q') : thm
+\end{verbatim}
+
+\section{*Using the simplifier with other relations}
+
+
+Without too much hacking of the code, it should be possible to use
+the simplifier with other transitive and reflexive relations besides
+equality.  Refinement is an obvious example.
+The congruence rules then correspond to the
+opening rules of window inference.  This might allow automated
+top-down refinement using theorems such as:
+	|- (a SEQ skip) refinesto a
+to eliminate all skip statements from a refinement program.  Other
+laws, including contextual ones, could also be specified.  This
+is a research area which could be well worth investigating!
+
+
+
+
+
+
+
+\chapter{Built In Simpsets}
+
+    
+Several powerful simpsets come ready-to-use.  These are based on existing
+HOL theories.  These simpsets should be used in conjunction
+with {\tt SIMP\_CONV}, {\tt ASM\_SIMP\_TAC} and 
+the other  simplification strategies.  They often
+end up automating a large amount of ``trivial reasoning'' about
+HOL constructs that previously needed special conversions.
+
+
+\section{\tt hol\_ss}  Contains all the useful rewrites from the vanilla
+HOL, including arithmetic, list, boolean logic, combinator, sum and pair
+rewrites.  It is the merge of these simpsets:
+    \begin{description}
+      \item[{\tt bool\_ss}]
+            The basic rewrites normally used with {\tt REWRITE\_TAC []}
+            plus automatic beta conversion, and a couple of other trivial
+            theorems that should have been in the basic rewrites anyway.
+	    Also includes {\tt SINGLE\_POINT\_CONV} for eliminating
+	    trivial existential quantifications.
+
+      \item[{\tt combin\_ss}]
+            Standard theorems about K, S, I, o from the ``combin'' theory.
+
+
+      \item[{\tt arithmetic\_ss}]
+
+            A fairly adhoc selection of theorems from the arithmetic theory.
+            This could be made extremely powerful using 
+	the binary numerals implemented by John Harrison.
+
+      \item[{\tt list\_ss}]
+         The most useful rewrites from the ``list'' library.  Will
+         reduce {\tt MAP}, {\tt APPEND}, {\tt EVERY} and so on, 
+         where they are applied
+         to concrete lists.
+
+
+      \item[{\tt sum\_ss}]
+         The useful rewrites from the ``sum'' theory, including 
+	 conditional rewrites for {\tt INR} and {\tt OUTR}.
+
+
+      \item[{\tt pair\_ss}]
+            The useful rewrites from the core ``pair'' theory.
+    \end{description}
+
+
+\section{\tt arith\_ss} 
+
+This is the most powerful of the built in simpsets.  It has
+the following features:
+\begin{itemize}
+    \item {\tt ARITH\_CONV} is applied as a decision procedure
+on all propositions that it may solve.  
+    \item This application of {\tt ARITH\_CONV} is 
+``context-aware'', in the sense that any context from the assumption
+list (when using {\tt ASM\_SIMP\_TAC}) or that has been collected
+via congurence rules (e.g from the left-hand-side of an
+implication) which is arithmetic is given to {\tt ARITH\_CONV}
+as well.
+    \item {\tt ARITH\_CONV} is also used to collect linear like-terms
+together within formulae.  This is implemented via first symbolically
+evaluating the formulae with an ML calculator, then using {\tt ARITH\_CONV}
+to prove that the original formula equals this result.
+\end{itemize}
+
+See the appendix for an extended example where some
+goals that would be basically impossible to prove in raw HOL
+are proved using {\tt arith\_ss} and AC-arithmetic normalization.
+
+
+\section{\tt List\_ss} 
+            Simpset based on the ``List'' library. Needs more work.
+
+
+\section{\tt res\_quan\_ss} 
+            Simpset for restricted quantifiers.  Adds
+contextual rewriting for restricted quantifiers, and adjusts the rewrite maker
+to include restricted quantifications as conditions to rewrites.
+\section{\tt set\_ss, predset\_ss, ac\_set\_ss, ac\_predset\_ss} 
+            Simpsets for the set library.  The ``ac'' simpsets
+            so AC rewriting for set operations that are AC - e.g. INSERT,
+            and UNION.
+
+\section{\tt taut\_ss} 
+        Solve tautologies, utilising the context at point with in the
+	goal to do so.  Also case split over existentially quantified
+        boolean variables (this should probably be in TAUT\_CONV
+        anyway).  This includes some experimental caching.
+	Using this simpset allows the following 
+	goal (courtesy of John Van Tassel via Mike Gordon) 
+        to be proved automatically:
+\begin{verbatim}
+!inp out.
+     (?p1 p2.
+       (p1 = T) /\
+       (~inp ==> (p1 = out)) /\
+       (inp ==> (p2 = out)) /\
+       (p2 = F)) ==>
+     (out = ~inp)
+\end{verbatim}
+
+
+\section{Contextual Rewriting}
+
+Contextual rewriting lets you add assumptions to your rewrite
+set as you descend into a term.
+
+The most obvious contextual rewrite is for terms of the form:
+\begin{verbatim}
+		P ==> Q
+\end{verbatim}
+The simplifier can use any rewrites that come from P
+when rewriting Q.  
+
+Other contextual rewrites included are:
+\begin{verbatim}
+	      P => T1 | T2  (assume P when rewriting T1, ~P when rewriting T2)
+	      !x::P. T1[x]  (assume "P x" when rewriting T1[x])
+	      ?x::P. T1[x]  (assume "P x" when rewriting T1[x])
+	      \x::P. T1[x]  (assume "P x" when rewriting T1[x])
+\end{verbatim}
+
+
+\section{Conditional Rewriting}
+
+Any theorem which can be converted to the form
+\begin{verbatim}
+	|- P1[x1...xm] ==> ... Pm[x1...xm] ==> (T1[x1...xm] = T2 [x1...xm])
+\end{verbatim}
+can potentially be used as a conditional rewrite.  This is 
+like the existing conditional rewriting in HOL.  However, the process
+of producing conditional rewrites is automated by setting the "rewrite
+maker" in your simpset.  For example, res\_quan\_ss (the simpset
+for the res\_quan library) extends the rewrite maker to be able to convert
+theorems such as:
+\begin{verbatim}
+|- !n. !w ::(PWORDLEN n). NBWORD n (BNVAL w) = w : thm
+\end{verbatim}
+into conditional rewrites.  The above theorem will become:
+\begin{verbatim}
+|- PWORDLEN n w ==> (NBWORD n (BNVAL w) = w)
+\end{verbatim}
+and will only be applied if "PWORDLEN n w" can be solved in the
+context-of-application.  Here "n" and "w" will be instantiated
+to the correct arguments.
+
+\section{Adding Arbitrary Conversions}
+
+You can add conversions to the simpset which might (potentially)
+get applied at every point in the term. 
+
+Simpsets can contain arbitrary user conversions, as well as
+rewrites and contextual-rewrites.  Conversions are keyed by
+term patterns (implemented using termnets).  Thus a conversion
+won't even be called if the target term doesn't match 
+(in the termnet sense of matching) it's key.  This just acts
+as a simple optimization/filter.
+
+For example, BETA\_CONV is keyed on the term 
+\begin{verbatim}
+(--`(\x. t) y`--).  
+\end{verbatim}
+\footnote{I'm not sure if the HOL implementation of term nets handles keys
+which contain abstractions efficiently}
+
+
+\section{AC Rewriting/Rewritng with Permutative Theorems}
+
+Normally, these rewrites such as:
+\begin{verbatim}
+ADD_SYM |- !x y. x + y = y + x
+\end{verbatim}
+cause {\tt REWRITE\_TAC} to loop.  However, the simplifier only applies
+them in certain situations, namely when the term they produce
+is strictly less than the original term according to a built in
+term ordering.  \footnote{Note that the term ordering in hol90
+is broken, so a much less efficient term ordering is defined in
+the simplifier.  This should be fixed in the next release of hol90.}
+
+By putting three theorems in your simpset: associativity, commutativity and
+left-commutativity, you get AC-normalization for free.  You
+have to be careful about this:
+\begin{itemize}
+   \item The associative laws must always be oriented from left
+   to right, as in {\tt |- f(f(x,y),z)) = f(x,f(y,z))}.  Otherwise
+   HOL will loop.
+   \item You need to add left-commutativity to get full normalization:
+   {\tt |- f(x,f(y,z)) = f(y,f(x,z))}.  This follows easily
+   from associativity and commutativity.
+\end{itemize}
+
+AC normalization with the simplifier is comparatively expensive.
+Terms of  20 or more operations can take a long time to
+normalize.  Smaller terms are OK, but in general it may be a problem
+to include AC normalization in all your simpsets.  Experiment
+and see!
+
+See the Isabelle reference manual chapter 10 for more details on
+AC normalization.
+
+\subsection{Examples of AC Normalization}
+
+\begin{verbatim}
+- SIMP_CONV ac_arithmetic_ss (--`(x + 3) + 4 + (y + 2)`--);
+val it = |- (x + 3) + 4 + y + 2 = 2 + 3 + 4 + x + y : thm
+\end{verbatim}
+
+
+\chapter{Efficiency and Memory Usage}
+
+\section{Memory Usage}
+
+After loading hol\_ss, arith\_ss,reduce\_ss, taut\_ss,
+res\_quan\_ss, and pred\_set\_ss:
+\begin{verbatim}
+[Major collection... 99% used (11674608/11678744), 2300 msec]
+\end{verbatim}
+Without these:
+\begin{verbatim}
+[Major collection... 99% used (10103312/10108132), 1950 msec]
+\end{verbatim}
+
+
+
+\chapter{An extended example}
+
+\begin{verbatim}
+
+val summ_DEF = new_recursive_definition {  
+    def=(--`(summ f 0 = 0) /\
+        (summ f (SUC n) = f n + summ f n)`--),  
+    fixity=Prefix,  
+    name="summ_DEF",  
+    rec_axiom=theorem "prim_rec" "num_Axiom"  };
+
+(* now define the normal notion of summation *)
+
+val SUMM_DEF = new_definition("SUMM_DEF",
+    (--`SUMM f n m = summ (\k. f(n+k)) ((m+1)-n)`--));
+
+(* summ_DEF is not in a very good form for arithmetic.  The following
+is a much better version once real arithmetic decision procedures
+are available.  The proof is not easily simplified since it is working 
+``the wrong way'' for the simpsets.  *)
+
+val fix_summ_ss = 
+     hol_ss addrewrs [SUMM_DEF,summ_DEF, 
+              definition "arithmetic" "GREATER",
+              GSYM (theorem "arithmetic" "ADD1")];
+val summ_ZERO = CONJUNCT1 summ_DEF;
+val summ_TAKE_RIGHT = profile prove(
+    (--`!f n. n > 0 ==> (summ f n = f (n-1) + summ f (n-1))`--),
+    SIMP_TAC fix_summ_ss
+    THEN REPEAT STRIP_TAC
+    THEN IMP_RES_TAC (theorem "arithmetic" "LESS_ADD_1")
+    THEN FULL_SIMP_TAC fix_summ_ss
+    THEN SIMP_TAC arith_ss
+);
+val fix_summ_arith_ss = fix_summ_ss merge_ss ARITH_ss;
+val summ_TAKE_LEFT = profile prove(
+    (--`!f n. n > 0 ==> (summ f n = f 0 + (summ (\k. f (k+1)) (n-1)))`--),
+    GEN_TAC THEN INDUCT_TAC
+    THENL [
+       SIMP_TAC arith_ss,
+       FULL_SIMP_TAC fix_summ_ss
+       THEN ASM_CASES_TAC (--`0 < n`--)
+       THENL [
+          FULL_SIMP_TAC fix_summ_ss
+          THEN FULL_SIMP_TAC (fix_summ_arith_ss addrewrs [summ_TAKE_RIGHT]),
+          FULL_SIMP_TAC (fix_summ_arith_ss addrewrs [theorem "arithmetic" "NOT_LESS"])
+       ]
+    ]
+);
+
+
+
+
+val fix_SUMM_ss = arith_ss 
+         addrewrs [SUMM_DEF,summ_ZERO];
+val SUMM_0 = prove((--`!f n m. (n = m + 1) ==> (SUMM f n m = 0)`--),
+    SIMP_TAC fix_SUMM_ss
+);
+val SUMM_1 = profile prove((--`!f n m. (n = m) ==> (SUMM f n m = f n)`--),
+    SIMP_TAC (fix_SUMM_ss addrewrs [summ_TAKE_LEFT])
+);
+val SUMM_TAKE_RIGHT = profile prove((--`!f n m. (n < m) ==> (SUMM f n m = f m + SUMM f n (m-1))`--),
+    SIMP_TAC (fix_SUMM_ss addrewrs [summ_TAKE_RIGHT])
+);
+
+
+val SUMM_TAKE_LEFT = profile prove((--`!f n m. (n < m) ==> (SUMM f n m = f n + SUMM f (n+1) m)`--),
+    SIMP_TAC (fix_SUMM_ss addrewrs [summ_TAKE_LEFT])
+);
+
+
+(* sum from left - much more efficient as it uses addition not subtraction *)
+val SUMML_ss = pure_ss addrewrs [SUMM_TAKE_LEFT, SUMM_1,SUMM_0];
+val summl_ss = arith_ss merge_ss reduce_ss merge_ss SUMML_ss;
+
+(* sum from right - need to USe this after an induction. *)
+val SUMMR_ss = pure_ss addrewrs [SUMM_TAKE_RIGHT, SUMM_1,SUMM_0];
+val summr_ss = arith_ss merge_ss reduce_ss merge_ss SUMMR_ss;
+
+
+(*-------------------------------------------------------------------------
+ * SUMM_x = |- !n. n >= 1 ==> (2 * SUMM (\x. x) 1 n = (n + 1) * n) : thm
+ *-----------------------------------------------------------------------*)
+
+val SUMM_x = profile prove(
+    (--`!n. n >= 1 ==> (2*(SUMM (\x.x) 1 n) = (n + 1) * n)`--),
+    INDUCT_TAC
+    THENL [
+       FULL_SIMP_TAC summr_ss,
+       ASM_CASES_TAC (--`n=0`--) THEN FULL_SIMP_TAC summr_ss
+    ]
+);
+
+
+(*------------------------------------------------------------------------- 
+ * SUMM_x3 = |- !n. 4 * SUMM (\x. x * x * x) 1 n = n * n * (n + 1) * (n + 1)
+ *-----------------------------------------------------------------------*)
+
+
+val SUMM_x3 = profile prove((--`!n. 4 * SUMM (\x. x * x * x) 1 n = n * n * (n + 1) * (n + 1)`--),
+    INDUCT_TAC
+    THENL [
+       SIMP_TAC summr_ss,
+       ASM_CASES_TAC (--`n = 0`--)
+       THENL [
+          FULL_SIMP_TAC summr_ss,
+          FULL_SIMP_TAC summr_ss
+          THEN SIMP_TAC ac_reduce_ss	 (* sort like terms and reduce multiplicative constants *)
+          THEN SIMP_TAC num_poly_ss  (* collect like terms *)
+       ]
+    ]
+);
+
+(* Total runtime: 17.991799 
+   ABS: 182
+   ASSUME: 183
+   BETA_CONV: 5
+   DISCH: 736
+   INST_TYPE: 190
+   MP: 589
+   REFL: 175
+   SUBST: 103
+   drule: 14989
+   Total: 17152
+*)
+
+(*------------------------------------------------------------------------- 
+ * Using SIMP_CONV as a calculator for Sum
+ *-----------------------------------------------------------------------*)
+
+delete_arith_caches();
+profile (SIMP_CONV summl_ss) (--`2 * SUMM (\x. x) 1 10`--);
+(* Total runtime: 1.550155 *)
+profile (SIMP_CONV summl_ss) (--`2 * SUMM (\x. x) 1 15`--);
+(* Total runtime: 3.430343 *)
+profile (SIMP_CONV summl_ss) (--`2 * SUMM (\x. x) 1 20`--);
+TkHol - (* Total runtime: 5.890589 *)
+profile (SIMP_CONV summl_ss) (--`2 * SUMM (\x. x) 1 30`--);
+(* Total runtime: 13.081308 *)
+profile (SIMP_CONV summl_ss) (--`2 * SUMM (\x. x) 1 40`--);
+
+
+profile (SIMP_CONV summl_ss) (--`SUMM (\x. x*x*x) 1 2`--);
+(* Total runtime: 0.160016 *)
+profile (SIMP_CONV summl_ss) (--`SUMM (\x. x*x*x) 1 3`--);
+TkHol - (* Total runtime: 0.620062 *)
+profile (SIMP_CONV summl_ss) (--`SUMM (\x. x*x*x) 1 4`--);
+TkHol - (* Total runtime: 1.660166 *)
+profile (SIMP_CONV summl_ss) (--`SUMM (\x. x*x*x) 1 5`--);
+TkHol - (* Total runtime: 3.680368 *)
+profile (SIMP_CONV summl_ss) (--`SUMM (\x. x*x*x) 1 6`--);
+TkHol - (* Total runtime: 7.270727 *)
+profile (SIMP_CONV summl_ss) (--`SUMM (\x. x*x*x) 1 7`--);
+TkHol - (* Total runtime: 12.841284 *)
+
+profile (SIMP_CONV (reduce_ss addrewrs [SUMM_x])) (--`2 * SUMM (\x. x) 1 20`--);
+(* Total runtime: 1.020102 *)
+profile (SIMP_CONV (reduce_ss addrewrs [SUMM_x])) (--`2 * SUMM (\x. x) 1 30`--);
+(* Total runtime: 1.890189 *)
+profile (SIMP_CONV (reduce_ss addrewrs [SUMM_x])) (--`2 * SUMM (\x. x) 1 40`--);
+(* Total runtime: 3.290329 *)
+profile (SIMP_CONV (reduce_ss addrewrs [SUMM_x])) (--`2 * SUMM (\x. x) 1 50`--);
+(* Total runtime: 5.100510 *)
+val it = |- 2 * SUMM (\x. x) 1 50 = 2550 : thm
+
+profile (SIMP_CONV summl_ss) (--`SUMM (\x. x*y*y) 1 3`--);
+(* Total runtime: 0.720072 *)
+val it = |- SUMM (\x. x * y * y) 1 3 = 6 * y * y : thm
+profile (SIMP_CONV summl_ss) (--`SUMM (\x. x*y*y) 1 10`--);
+(* Total runtime: 5.220522 *)
+val it = |- SUMM (\x. x * y * y) 1 10 = 55 * y * y : thm
+
+
+(*------------------------------------------------------------------------- 
+ *
+ *-----------------------------------------------------------------------*)
+
+
+\end{verbatim}
+
+
+\end{document}
+@

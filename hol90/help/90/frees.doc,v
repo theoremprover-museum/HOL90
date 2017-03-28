@@ -1,0 +1,107 @@
+head	1.1;
+branch	1.1.1;
+access;
+symbols
+	HOL97:1.1.1.1.0.6
+	bpHOL97:1.1.1.1
+	hol90_9_alpha:1.1.1.1
+	hol90_pre8_for_multiple_compilers:1.1.1.1.0.4
+	hol90_pre8_after_donalds_separate_compilation_changes:1.1.1.1
+	hol90_8_after_merging_Konrad_Elsa:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	95.10.16.13.35.44;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.35.44;	author rjb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@\DOC frees
+
+\TYPE {Compat.frees : term -> term list}
+
+\SYNOPSIS
+Returns a list of the variables which are free in a term.
+
+\DESCRIBE
+Found in the hol88 library. When applied to a term, {frees} returns a
+list of the free variables in that term. There are no repetitions in the
+list produced even if there are multiple free instances of some
+variables.
+
+\FAILURE
+Never fails, unless the hol88 library has not been loaded.
+
+\EXAMPLE
+Clearly in the following term, {x} and {y} are free, whereas {z} is bound:
+{
+   - frees (--`(x=1) /\ (y=2) /\ (!z. z >= 0)`--);
+   val it = [(--`x`--),(--`y`--)] : term list
+}
+
+\COMMENTS
+{frees} is not in hol90; the function {free_vars} is used instead.
+WARNING: the order of the list returned by {frees} and {free_vars} is 
+different. 
+
+    - val tm = (--`x (y:num):bool`--);
+    val tm = (--`x y`--) : term
+    - free_vars tm
+    val it = [(--`y`--),(--`x`--)] : term list
+    - frees tm;
+    val it = [(--`x`--),(--`y`--)] : term list
+
+It ought to be the case that the result of a call to {frees} (or {free_vars}) 
+is treated as a set, that is, the order of the free variables should be 
+immaterial. This is sometimes not possible; for example the result of gen_all
+(and hence the results of GEN_ALL and new_axiom) necessarily depends on the
+order of the variables returned from {frees}. The problem comes when users
+write code that depends on the order of quantification. For example, contrary 
+to some expectations, it is not the case that (tm being a closed term already)
+
+    GEN_ALL (SPEC_ALL tm) = tm
+
+where "=" is interpreted as identity or alpha-convertibility.
+
+\SEEALSO
+freesl, free_in, thm_frees.
+
+\ENDDOC
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

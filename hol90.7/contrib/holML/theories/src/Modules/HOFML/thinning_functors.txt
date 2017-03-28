@@ -1,0 +1,64 @@
+Thinning functors
+-----------------
+
+Interfaces (int_h) now have a new component - a list of what I will call 
+"functor interfaces".  Functor interfaces record information that will be 
+used in thinning functor closures.  So what does it mean to thin a functor 
+closure?
+
+Functor closures are thinned in a manner prescribed by functor 
+specifications*.  Functor specifications provide us with two interfaces
+(signatures) : one describing the input taken by a functor and another
+describing the structures produced by a functor.  There are three 
+possibilities for using these interfaces in thinning.
+
+The first possibility is to replace the first interface component of
+a functor closure by the (larger) first interface component of the 
+functor specification.  This has the effect of producing a functor which
+requires _input_ structures to have _more_ components than the inputs
+needed by the unthinned functor.  The structures that _result_ from
+applying the thinned functor will have exactly the _same_ components
+as those produced by the unthinned functor. 
+
+The second possibility is to replace the second interface component of 
+a functor closure by the (smaller) second interface component of the
+functor specification.  Functors thinned in this manner will take exactly
+the _same_ _inputs_ as they did before thinning.  However when applied,
+the _resulting_ structure will have _fewer_ components than structures
+produced by applying the unthinned versions. 
+
+The third possibility is to combine both the first and the second definitions
+of thinning.
+
+I think that the second definition of thinning is the correct one.
+If you allow the first possibility (possibly in conjunction with the
+second), then the wrong environment can end up being used for final
+computations.  Consider the example:
+
+val x = 5;
+functor F(I:sig end) = struct open I val z = x end
+signature SIG = sig functor F(I:sig val x : int end) : sig val z:int end end
+structure A = struct functor F = F end
+structure B:SIG = A
+structure I = struct val x = 6 end
+structure A1 = A.F(I)
+structure A2 = B.F(I)
+val test = A1.z = A2.z
+
+If we use the first method of thinning, we should find that A1.z = 5
+and A2.z = 6, whereas it should be the case that A1.z = 5 = A2.z.  For
+the computation of z, F requires the x in the top-level environment be
+used, and this should remain the case, even if we subsequently thin F.
+Thinning should only change the visibility of identifiers, not the
+underlying computations, and hence not the environments used for
+identifier lookup.
+
+My choice is therefore to record in the functor interface only the second 
+(i.e. output) interface provided by a functor specification.
+
+* A functor specification is a specification (spec_h) of the form 
+  (FUNCTORspec funid strid sigexp sigexp').
+
+
+
+

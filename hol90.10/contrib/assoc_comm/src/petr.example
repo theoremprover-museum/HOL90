@@ -1,0 +1,127 @@
+(*
+ *   "((x1 pow 2) + (x2 pow 2) + (x3 pow 2) + (x4 pow 2)) *
+ *    ((y1 pow 2) + (y2 pow 2) + (y3 pow 2) + (y4 pow 2)) =
+ *      (((((x1*y1) - (x2*y2)) - (x3*y3)) - (x4*y4)) pow 2)  +
+ *      (((((x1*y2) + (x2*y1)) + (x3*y4)) - (x4*y3)) pow 2)  +
+ *      (((((x1*y3) - (x2*y4)) + (x3*y1)) + (x4*y2)) pow 2)  +
+ *      (((((x1*y4) + (x2*y3)) - (x3*y2)) + (x4*y1)) pow 2)",
+ ******)
+load_library{lib = real_lib, theory = "petr"};
+map add_theory_to_sml ["REALAX","REAL"];
+val ACthms = [{A=REAL_MUL_ASSOC,C=REAL_MUL_SYM},
+              {A=REAL_ADD_ASSOC,C=REAL_ADD_SYM}];
+load_library{lib = find_library "assoc_comm", theory = "-"};
+
+val ac_consts = [--`$real_mul`--,  --`real_add`--];
+val REAL_AC_REWR_CONV = Ac_tools.AC_REWR_CONV ACthms;
+val REAL_AC_CANCEL = Ac_tools.AC_CANCEL_TAC ACthms;
+
+(* Note left assoc. of subtraction! Should add leftishness to infixes in 
+ * hol90? *)
+val tm =
+(--`(x1 pow 2 real_add x2 pow 2 real_add x3 pow 2 real_add x4 pow 2) real_mul
+      (y1 pow 2 real_add y2 pow 2 real_add y3 pow 2 real_add y4 pow 2) =
+      (((x1 real_mul y1 real_sub x2 real_mul y2) real_sub
+        x3 real_mul y3) real_sub
+       x4 real_mul y4) pow
+      2 real_add
+      (((x1 real_mul y2 real_add x2 real_mul y1) real_add
+        x3 real_mul y4) real_sub
+       x4 real_mul y3) pow
+      2 real_add
+      (((x1 real_mul y3 real_sub x2 real_mul y4) real_add
+        x3 real_mul y1) real_add
+       x4 real_mul y2) pow
+      2 real_add
+      (((x1 real_mul y4 real_add x2 real_mul y3) real_sub
+        x3 real_mul y2) real_add
+       x4 real_mul y1) pow
+      2`--);
+
+set_goal([],tm);
+REWRITE_TAC[POW_2, REAL_LDISTRIB, real_sub, REAL_RDISTRIB,
+            REAL_NEG_ADD, REAL_NEGNEG,
+            GSYM REAL_NEG_LMUL, GSYM REAL_NEG_RMUL,
+            GSYM REAL_MUL_ASSOC, GSYM REAL_ADD_ASSOC] ;
+
+e it;
+
+e (PURE_ONCE_REWRITE_TAC[EQ_SYM_EQ]);
+
+val ac_consts = [--`$real_mul`--,  --`real_add`--];
+val REAL_AC_REWR_CONV = Ac_tools.AC_REWR_CONV ACthms;
+val REAL_AC_CANCEL = Ac_tools.AC_CANCEL_TAC ACthms;
+
+(* A variable extension proof showing how it's done underneath a non-AC
+ * symbol ("=" in this case)
+ ***) 
+
+
+(* N.B. - "RATOR_CONV o RAND_CONV" gets read left-to-right because of
+ * some slick coding in RATOR_CONV and RAND_CONV. It's exactly opposite of 
+ * "rator o rand", for instance.
+ ***)
+
+Tactical.prove
+(--`!x y z. (x real_add -- y real_add v = z) = x real_add v = z real_add y`--,
+REPEAT GEN_TAC 
+THEN EQ_TAC
+THENL
+[DISCH_THEN 
+   (ASSUME_TAC 
+     o CONV_RULE ((RATOR_CONV o RAND_CONV)
+                 (REAL_AC_REWR_CONV REAL_ADD_LID))
+     o CONV_RULE((RATOR_CONV o RAND_CONV)
+                 (REAL_AC_REWR_CONV (var_extension ac_consts REAL_ADD_LINV)))
+     o AP_TERM (--`$real_add y`--)) THEN
+ ASM_REWRITE_TAC[] THEN REAL_AC_CANCEL,
+ DISCH_THEN 
+   (ASSUME_TAC 
+     o SYM
+     o CONV_RULE (RAND_CONV (REAL_AC_REWR_CONV REAL_ADD_LID))
+     o CONV_RULE(RAND_CONV
+                 (REAL_AC_REWR_CONV (var_extension ac_consts REAL_ADD_LINV)))
+     o AP_TERM (--`$real_add (--y)`--)) THEN
+ ASM_REWRITE_TAC[] THEN REAL_AC_CANCEL]);
+
+
+(* The LP version. Dies during normalization.
+ * CLEAR
+ * DECLARE SORTS s
+ * DECLARE OPERATORS
+ *   n: s -> s
+ *   +,*,**,-: s,s->s
+ *   0,2: -> s
+ * ..
+ * ASSERT AC +
+ * ASSERT AC *
+ * 
+ * set ord l-t-r
+ * 
+ * DECLARE VARIABLES x1,x2,x3,x4,y1,y2,y3,y4: s
+ * ASSERT
+ * x1 - y1 -> x1 + n(y1)
+ * x1 ** 2 -> x1 * x1
+ * x1*(x2+x3) -> (x1*x2)+(x1*x3)
+ * 0*x1 -> 0
+ * 0+x1 -> x1
+ * x1 + n(x1) -> 0
+ * n(x1) * n(x2) -> x1 * x2
+ * n(x1) * x2 -> n(x1*x2)
+ * ..
+ * prove
+ * ((x1 ** 2) + (x2 ** 2) + (x3 ** 2) + (x4 ** 2)) *
+ *     ((y1 ** 2) + (y2 ** 2) + (y3 ** 2) + (y4 ** 2)) ==
+ *       (((((x1*y1) - (x2*y2)) - (x3*y3)) - (x4*y4)) ** 2)  +
+ *       (((((x1*y2) + (x2*y1)) + (x3*y4)) - (x4*y3)) ** 2)  +
+ *       (((((x1*y3) - (x2*y4)) + (x3*y1)) + (x4*y2)) ** 2)  +
+ *       (((((x1*y4) + (x2*y3)) - (x3*y2)) + (x4*y1)) ** 2)
+ * ..
+ * show norm
+ *       (((((x1*y1) - (x2*y2)) - (x3*y3)) - (x4*y4)) ** 2)  +
+ *       (((((x1*y2) + (x2*y1)) + (x3*y4)) - (x4*y3)) ** 2)  +
+ *       (((((x1*y3) - (x2*y4)) + (x3*y1)) + (x4*y2)) ** 2)  +
+ *       (((((x1*y4) + (x2*y3)) - (x3*y2)) + (x4*y1)) ** 2)
+ * ..
+ *
+ *****) 

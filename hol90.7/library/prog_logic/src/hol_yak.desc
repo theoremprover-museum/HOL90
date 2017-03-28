@@ -1,0 +1,2202 @@
+
+state 0:
+
+	START : . PTRM 
+	START : . colon TYPE 
+	START : . colon TYPE_SPEC 
+
+	ident	shift 17
+	symbolic_ident	shift 16
+	binder	shift 15
+	aq	shift 14
+	lparen	shift 13
+	lbracket	shift 12
+	lbrace	shift 11
+	colon	shift 10
+	eq	shift 9
+	let_	shift 8
+	string_	shift 7
+	hoare_lbracket	shift 6
+	hoare_lbrace	shift 5
+
+	START	goto 157
+	PTRM	goto 4
+	APP_EXP	goto 3
+	AEXP	goto 2
+	SUFFIX	goto 1
+
+	.	error
+
+
+state 1:
+
+	PTRM : SUFFIX .  (reduce by rule 3)
+
+
+
+	.	reduce by rule 3
+
+
+state 2:
+
+	APP_EXP : AEXP . colon TYPE 
+	APP_EXP : AEXP .  (reduce by rule 12)
+
+	colon	shift 18
+
+
+	.	reduce by rule 12
+
+
+state 3:
+
+	PTRM : APP_EXP . SUFFIX 
+	PTRM : APP_EXP . eq_gt PTRM bar PTRM 
+	PTRM : APP_EXP .  (reduce by rule 8)
+	APP_EXP : APP_EXP . AEXP colon TYPE 
+	APP_EXP : APP_EXP . AEXP 
+
+	ident	shift 17
+	symbolic_ident	shift 16
+	binder	shift 15
+	aq	shift 14
+	lparen	shift 13
+	lbracket	shift 12
+	lbrace	shift 11
+	eq_gt	shift 21
+	eq	shift 9
+	let_	shift 8
+	string_	shift 7
+
+	AEXP	goto 20
+	SUFFIX	goto 19
+
+	.	reduce by rule 8
+
+
+state 4:
+
+	START : PTRM .  (reduce by rule 0)
+
+
+
+	.	reduce by rule 0
+
+
+state 5:
+
+	PTRM : hoare_lbrace . PTRM hoare_rbrace COMMAND_LIST hoare_lbrace PTRM hoare_rbrace 
+
+	ident	shift 17
+	symbolic_ident	shift 16
+	binder	shift 15
+	aq	shift 14
+	lparen	shift 13
+	lbracket	shift 12
+	lbrace	shift 11
+	eq	shift 9
+	let_	shift 8
+	string_	shift 7
+	hoare_lbracket	shift 6
+	hoare_lbrace	shift 5
+
+	PTRM	goto 22
+	APP_EXP	goto 3
+	AEXP	goto 2
+	SUFFIX	goto 1
+
+	.	error
+
+
+state 6:
+
+	PTRM : hoare_lbracket . PTRM hoare_rbracket COMMAND_LIST hoare_lbracket PTRM hoare_rbracket 
+
+	ident	shift 17
+	symbolic_ident	shift 16
+	binder	shift 15
+	aq	shift 14
+	lparen	shift 13
+	lbracket	shift 12
+	lbrace	shift 11
+	eq	shift 9
+	let_	shift 8
+	string_	shift 7
+	hoare_lbracket	shift 6
+	hoare_lbrace	shift 5
+
+	PTRM	goto 23
+	APP_EXP	goto 3
+	AEXP	goto 2
+	SUFFIX	goto 1
+
+	.	error
+
+
+state 7:
+
+	AEXP : string_ .  (reduce by rule 16)
+
+
+
+	.	reduce by rule 16
+
+
+state 8:
+
+	SUFFIX : let_ . BINDING_LIST in_ PTRM 
+
+	ident	shift 29
+	aq	shift 28
+	lparen	shift 27
+
+	BV_LIST	goto 26
+	BV	goto 25
+	BINDING_LIST	goto 24
+
+	.	error
+
+
+state 9:
+
+	AEXP : eq .  (reduce by rule 17)
+
+
+
+	.	reduce by rule 17
+
+
+state 10:
+
+	START : colon . TYPE 
+	START : colon . TYPE_SPEC 
+
+	ident	shift 43
+	type_ident	shift 42
+	type_var_ident	shift 41
+	aq	shift 40
+	type_lparen	shift 39
+
+	TYPE	goto 38
+	HASH_TYPE	goto 37
+	PLUS_TYPE	goto 36
+	APP_TYPE	goto 35
+	TYPE_ARG	goto 34
+	BASIC_TYPE_ARG	goto 33
+	BASIC	goto 32
+	TYPE_SPEC	goto 31
+	TYI	goto 30
+
+	.	error
+
+
+state 11:
+
+	AEXP : lbrace . LIST rbrace 
+	AEXP : lbrace . PTRM bar PTRM rbrace 
+
+	ident	shift 17
+	symbolic_ident	shift 16
+	binder	shift 15
+	aq	shift 14
+	lparen	shift 13
+	lbracket	shift 12
+	lbrace	shift 11
+	eq	shift 9
+	let_	shift 8
+	string_	shift 7
+	hoare_lbracket	shift 6
+	hoare_lbrace	shift 5
+
+	PTRM	goto 45
+	APP_EXP	goto 3
+	AEXP	goto 2
+	SUFFIX	goto 1
+	LIST	goto 44
+
+	.	reduce by rule 33
+
+
+state 12:
+
+	AEXP : lbracket . LIST rbracket 
+
+	ident	shift 17
+	symbolic_ident	shift 16
+	binder	shift 15
+	aq	shift 14
+	lparen	shift 13
+	lbracket	shift 12
+	lbrace	shift 11
+	eq	shift 9
+	let_	shift 8
+	string_	shift 7
+	hoare_lbracket	shift 6
+	hoare_lbrace	shift 5
+
+	PTRM	goto 47
+	APP_EXP	goto 3
+	AEXP	goto 2
+	SUFFIX	goto 1
+	LIST	goto 46
+
+	.	reduce by rule 33
+
+
+state 13:
+
+	AEXP : lparen . PTRM rparen 
+
+	ident	shift 17
+	symbolic_ident	shift 16
+	binder	shift 15
+	aq	shift 14
+	lparen	shift 13
+	lbracket	shift 12
+	lbrace	shift 11
+	eq	shift 9
+	let_	shift 8
+	string_	shift 7
+	hoare_lbracket	shift 6
+	hoare_lbrace	shift 5
+
+	PTRM	goto 48
+	APP_EXP	goto 3
+	AEXP	goto 2
+	SUFFIX	goto 1
+
+	.	error
+
+
+state 14:
+
+	AEXP : aq .  (reduce by rule 15)
+
+
+
+	.	reduce by rule 15
+
+
+state 15:
+
+	SUFFIX : binder . BV_LIST dot PTRM 
+
+	ident	shift 29
+	aq	shift 28
+	lparen	shift 27
+
+	BV_LIST	goto 49
+	BV	goto 25
+
+	.	error
+
+
+state 16:
+
+	AEXP : symbolic_ident .  (reduce by rule 14)
+
+
+
+	.	reduce by rule 14
+
+
+state 17:
+
+	AEXP : ident .  (reduce by rule 13)
+
+
+
+	.	reduce by rule 13
+
+
+state 18:
+
+	APP_EXP : AEXP colon . TYPE 
+
+	type_ident	shift 42
+	type_var_ident	shift 41
+	aq	shift 40
+	type_lparen	shift 39
+
+	TYPE	goto 50
+	HASH_TYPE	goto 37
+	PLUS_TYPE	goto 36
+	APP_TYPE	goto 35
+	TYPE_ARG	goto 34
+	BASIC_TYPE_ARG	goto 33
+	BASIC	goto 32
+
+	.	error
+
+
+state 19:
+
+	PTRM : APP_EXP SUFFIX .  (reduce by rule 4)
+
+
+
+	.	reduce by rule 4
+
+
+state 20:
+
+	APP_EXP : APP_EXP AEXP . colon TYPE 
+	APP_EXP : APP_EXP AEXP .  (reduce by rule 10)
+
+	colon	shift 51
+
+
+	.	reduce by rule 10
+
+
+state 21:
+
+	PTRM : APP_EXP eq_gt . PTRM bar PTRM 
+
+	ident	shift 17
+	symbolic_ident	shift 16
+	binder	shift 15
+	aq	shift 14
+	lparen	shift 13
+	lbracket	shift 12
+	lbrace	shift 11
+	eq	shift 9
+	let_	shift 8
+	string_	shift 7
+	hoare_lbracket	shift 6
+	hoare_lbrace	shift 5
+
+	PTRM	goto 52
+	APP_EXP	goto 3
+	AEXP	goto 2
+	SUFFIX	goto 1
+
+	.	error
+
+
+state 22:
+
+	PTRM : hoare_lbrace PTRM . hoare_rbrace COMMAND_LIST hoare_lbrace PTRM hoare_rbrace 
+
+	hoare_rbrace	shift 53
+
+
+	.	error
+
+
+state 23:
+
+	PTRM : hoare_lbracket PTRM . hoare_rbracket COMMAND_LIST hoare_lbracket PTRM hoare_rbracket 
+
+	hoare_rbracket	shift 54
+
+
+	.	error
+
+
+state 24:
+
+	SUFFIX : let_ BINDING_LIST . in_ PTRM 
+
+	in_	shift 55
+
+
+	.	error
+
+
+state 25:
+
+	BV_LIST : BV . BV_LIST 
+	BV_LIST : BV .  (reduce by rule 39)
+	BV : BV . colon TYPE 
+
+	ident	shift 29
+	aq	shift 28
+	lparen	shift 27
+	colon	shift 57
+
+	BV_LIST	goto 56
+	BV	goto 25
+
+	.	reduce by rule 39
+
+
+state 26:
+
+	BINDING_LIST : BV_LIST . eq PTRM 
+	BINDING_LIST : BV_LIST . eq PTRM and_ BINDING_LIST 
+
+	eq	shift 58
+
+
+	.	error
+
+
+state 27:
+
+	BV : lparen . BV rparen 
+	BV : lparen . BV COMMA VSTRUCT rparen 
+
+	ident	shift 29
+	aq	shift 28
+	lparen	shift 27
+
+	BV	goto 59
+
+	.	error
+
+
+state 28:
+
+	BV : aq .  (reduce by rule 42)
+
+
+
+	.	reduce by rule 42
+
+
+state 29:
+
+	BV : ident .  (reduce by rule 41)
+
+
+
+	.	reduce by rule 41
+
+
+state 30:
+
+	TYPE_SPEC : TYI . eq TYPE_CLAUSES 
+
+	eq	shift 60
+
+
+	.	error
+
+
+state 31:
+
+	START : colon TYPE_SPEC .  (reduce by rule 2)
+
+
+
+	.	reduce by rule 2
+
+
+state 32:
+
+	APP_TYPE : BASIC .  (reduce by rule 57)
+	BASIC_TYPE_ARG : BASIC .  (reduce by rule 61)
+
+	ident	reduce by rule 57
+	symbolic_ident	reduce by rule 57
+	type_ident	reduce by rule 61
+	binder	reduce by rule 57
+	aq	reduce by rule 57
+	lparen	reduce by rule 57
+	rparen	reduce by rule 57
+	type_rparen	reduce by rule 57
+	lbracket	reduce by rule 57
+	rbracket	reduce by rule 57
+	lbrace	reduce by rule 57
+	rbrace	reduce by rule 57
+	type_comma	reduce by rule 57
+	colon	reduce by rule 57
+	dot	reduce by rule 57
+	semi_colon	reduce by rule 57
+	type_right_arrow	reduce by rule 57
+	eq_gt	reduce by rule 57
+	eq	reduce by rule 57
+	type_hash	reduce by rule 57
+	type_plus	reduce by rule 57
+	bar	reduce by rule 57
+	let_	reduce by rule 57
+	and_	reduce by rule 57
+	in_	reduce by rule 57
+	string_	reduce by rule 57
+	EOLEX	reduce by rule 57
+	EOF	reduce by rule 57
+	hoare_lbracket	reduce by rule 57
+	hoare_rbracket	reduce by rule 57
+	hoare_lbrace	reduce by rule 57
+	hoare_rbrace	reduce by rule 57
+	hoare_then	reduce by rule 57
+	hoare_else	reduce by rule 57
+	hoare_fi	reduce by rule 57
+	hoare_do	reduce by rule 57
+	hoare_done	reduce by rule 57
+
+
+	.	error
+
+
+state 33:
+
+	TYPE_ARG : BASIC_TYPE_ARG .  (reduce by rule 59)
+
+
+
+	.	reduce by rule 59
+
+
+state 34:
+
+	APP_TYPE : TYPE_ARG . type_ident 
+	TYPE_ARG : TYPE_ARG . type_ident 
+
+	type_ident	shift 61
+
+
+	.	error
+
+
+state 35:
+
+	HASH_TYPE : APP_TYPE . type_hash HASH_TYPE 
+	HASH_TYPE : APP_TYPE .  (reduce by rule 55)
+
+	type_hash	shift 62
+
+
+	.	reduce by rule 55
+
+
+state 36:
+
+	TYPE : PLUS_TYPE . type_right_arrow TYPE 
+	TYPE : PLUS_TYPE .  (reduce by rule 51)
+
+	type_right_arrow	shift 63
+
+
+	.	reduce by rule 51
+
+
+state 37:
+
+	PLUS_TYPE : HASH_TYPE . type_plus PLUS_TYPE 
+	PLUS_TYPE : HASH_TYPE .  (reduce by rule 53)
+
+	type_plus	shift 64
+
+
+	.	reduce by rule 53
+
+
+state 38:
+
+	START : colon TYPE .  (reduce by rule 1)
+
+
+
+	.	reduce by rule 1
+
+
+state 39:
+
+	BASIC_TYPE_ARG : type_lparen . TYPE type_comma TYPE_LIST type_rparen 
+	BASIC : type_lparen . TYPE type_rparen 
+
+	type_ident	shift 42
+	type_var_ident	shift 41
+	aq	shift 40
+	type_lparen	shift 39
+
+	TYPE	goto 65
+	HASH_TYPE	goto 37
+	PLUS_TYPE	goto 36
+	APP_TYPE	goto 35
+	TYPE_ARG	goto 34
+	BASIC_TYPE_ARG	goto 33
+	BASIC	goto 32
+
+	.	error
+
+
+state 40:
+
+	BASIC : aq .  (reduce by rule 66)
+
+
+
+	.	reduce by rule 66
+
+
+state 41:
+
+	BASIC : type_var_ident .  (reduce by rule 64)
+
+
+
+	.	reduce by rule 64
+
+
+state 42:
+
+	BASIC : type_ident .  (reduce by rule 65)
+
+
+
+	.	reduce by rule 65
+
+
+state 43:
+
+	TYI : ident .  (reduce by rule 69)
+
+
+
+	.	reduce by rule 69
+
+
+state 44:
+
+	AEXP : lbrace LIST . rbrace 
+
+	rbrace	shift 66
+
+
+	.	error
+
+
+state 45:
+
+	AEXP : lbrace PTRM . bar PTRM rbrace 
+	LIST : PTRM .  (reduce by rule 34)
+	LIST : PTRM . semi_colon LIST 
+
+	semi_colon	shift 68
+	bar	shift 67
+
+
+	.	reduce by rule 34
+
+
+state 46:
+
+	AEXP : lbracket LIST . rbracket 
+
+	rbracket	shift 69
+
+
+	.	error
+
+
+state 47:
+
+	LIST : PTRM .  (reduce by rule 34)
+	LIST : PTRM . semi_colon LIST 
+
+	semi_colon	shift 68
+
+
+	.	reduce by rule 34
+
+
+state 48:
+
+	AEXP : lparen PTRM . rparen 
+
+	rparen	shift 70
+
+
+	.	error
+
+
+state 49:
+
+	SUFFIX : binder BV_LIST . dot PTRM 
+
+	dot	shift 71
+
+
+	.	error
+
+
+state 50:
+
+	APP_EXP : AEXP colon TYPE .  (reduce by rule 11)
+
+
+
+	.	reduce by rule 11
+
+
+state 51:
+
+	APP_EXP : APP_EXP AEXP colon . TYPE 
+
+	type_ident	shift 42
+	type_var_ident	shift 41
+	aq	shift 40
+	type_lparen	shift 39
+
+	TYPE	goto 72
+	HASH_TYPE	goto 37
+	PLUS_TYPE	goto 36
+	APP_TYPE	goto 35
+	TYPE_ARG	goto 34
+	BASIC_TYPE_ARG	goto 33
+	BASIC	goto 32
+
+	.	error
+
+
+state 52:
+
+	PTRM : APP_EXP eq_gt PTRM . bar PTRM 
+
+	bar	shift 73
+
+
+	.	error
+
+
+state 53:
+
+	PTRM : hoare_lbrace PTRM hoare_rbrace . COMMAND_LIST hoare_lbrace PTRM hoare_rbrace 
+
+	ident	shift 83
+	hoare_skip	shift 82
+	hoare_abort	shift 81
+	hoare_if	shift 80
+	hoare_assert	shift 79
+	hoare_invariant	shift 78
+	hoare_variant	shift 77
+	hoare_while	shift 76
+
+	COMMAND_LIST	goto 75
+	COMMAND	goto 74
+
+	.	error
+
+
+state 54:
+
+	PTRM : hoare_lbracket PTRM hoare_rbracket . COMMAND_LIST hoare_lbracket PTRM hoare_rbracket 
+
+	ident	shift 83
+	hoare_skip	shift 82
+	hoare_abort	shift 81
+	hoare_if	shift 80
+	hoare_assert	shift 79
+	hoare_invariant	shift 78
+	hoare_variant	shift 77
+	hoare_while	shift 76
+
+	COMMAND_LIST	goto 84
+	COMMAND	goto 74
+
+	.	error
+
+
+state 55:
+
+	SUFFIX : let_ BINDING_LIST in_ . PTRM 
+
+	ident	shift 17
+	symbolic_ident	shift 16
+	binder	shift 15
+	aq	shift 14
+	lparen	shift 13
+	lbracket	shift 12
+	lbrace	shift 11
+	eq	shift 9
+	let_	shift 8
+	string_	shift 7
+	hoare_lbracket	shift 6
+	hoare_lbrace	shift 5
+
+	PTRM	goto 85
+	APP_EXP	goto 3
+	AEXP	goto 2
+	SUFFIX	goto 1
+
+	.	error
+
+
+state 56:
+
+	BV_LIST : BV BV_LIST .  (reduce by rule 38)
+
+
+
+	.	reduce by rule 38
+
+
+state 57:
+
+	BV : BV colon . TYPE 
+
+	type_ident	shift 42
+	type_var_ident	shift 41
+	aq	shift 40
+	type_lparen	shift 39
+
+	TYPE	goto 86
+	HASH_TYPE	goto 37
+	PLUS_TYPE	goto 36
+	APP_TYPE	goto 35
+	TYPE_ARG	goto 34
+	BASIC_TYPE_ARG	goto 33
+	BASIC	goto 32
+
+	.	error
+
+
+state 58:
+
+	BINDING_LIST : BV_LIST eq . PTRM 
+	BINDING_LIST : BV_LIST eq . PTRM and_ BINDING_LIST 
+
+	ident	shift 17
+	symbolic_ident	shift 16
+	binder	shift 15
+	aq	shift 14
+	lparen	shift 13
+	lbracket	shift 12
+	lbrace	shift 11
+	eq	shift 9
+	let_	shift 8
+	string_	shift 7
+	hoare_lbracket	shift 6
+	hoare_lbrace	shift 5
+
+	PTRM	goto 87
+	APP_EXP	goto 3
+	AEXP	goto 2
+	SUFFIX	goto 1
+
+	.	error
+
+
+state 59:
+
+	BV : lparen BV . rparen 
+	BV : BV . colon TYPE 
+	BV : lparen BV . COMMA VSTRUCT rparen 
+
+	symbolic_ident	shift 90
+	rparen	shift 89
+	colon	shift 57
+
+	COMMA	goto 88
+
+	.	error
+
+
+state 60:
+
+	TYPE_SPEC : TYI eq . TYPE_CLAUSES 
+
+	ident	shift 95
+	symbolic_ident	shift 94
+	string_	shift 93
+
+	TYPE_CLAUSES	goto 92
+	TYPE_CLAUSE	goto 91
+
+	.	error
+
+
+state 61:
+
+	APP_TYPE : TYPE_ARG type_ident .  (reduce by rule 56)
+	TYPE_ARG : TYPE_ARG type_ident .  (reduce by rule 58)
+
+	ident	reduce by rule 56
+	symbolic_ident	reduce by rule 56
+	type_ident	reduce by rule 58
+	binder	reduce by rule 56
+	aq	reduce by rule 56
+	lparen	reduce by rule 56
+	rparen	reduce by rule 56
+	type_rparen	reduce by rule 56
+	lbracket	reduce by rule 56
+	rbracket	reduce by rule 56
+	lbrace	reduce by rule 56
+	rbrace	reduce by rule 56
+	type_comma	reduce by rule 56
+	colon	reduce by rule 56
+	dot	reduce by rule 56
+	semi_colon	reduce by rule 56
+	type_right_arrow	reduce by rule 56
+	eq_gt	reduce by rule 56
+	eq	reduce by rule 56
+	type_hash	reduce by rule 56
+	type_plus	reduce by rule 56
+	bar	reduce by rule 56
+	let_	reduce by rule 56
+	and_	reduce by rule 56
+	in_	reduce by rule 56
+	string_	reduce by rule 56
+	EOLEX	reduce by rule 56
+	EOF	reduce by rule 56
+	hoare_lbracket	reduce by rule 56
+	hoare_rbracket	reduce by rule 56
+	hoare_lbrace	reduce by rule 56
+	hoare_rbrace	reduce by rule 56
+	hoare_then	reduce by rule 56
+	hoare_else	reduce by rule 56
+	hoare_fi	reduce by rule 56
+	hoare_do	reduce by rule 56
+	hoare_done	reduce by rule 56
+
+
+	.	error
+
+
+state 62:
+
+	HASH_TYPE : APP_TYPE type_hash . HASH_TYPE 
+
+	type_ident	shift 42
+	type_var_ident	shift 41
+	aq	shift 40
+	type_lparen	shift 39
+
+	HASH_TYPE	goto 96
+	APP_TYPE	goto 35
+	TYPE_ARG	goto 34
+	BASIC_TYPE_ARG	goto 33
+	BASIC	goto 32
+
+	.	error
+
+
+state 63:
+
+	TYPE : PLUS_TYPE type_right_arrow . TYPE 
+
+	type_ident	shift 42
+	type_var_ident	shift 41
+	aq	shift 40
+	type_lparen	shift 39
+
+	TYPE	goto 97
+	HASH_TYPE	goto 37
+	PLUS_TYPE	goto 36
+	APP_TYPE	goto 35
+	TYPE_ARG	goto 34
+	BASIC_TYPE_ARG	goto 33
+	BASIC	goto 32
+
+	.	error
+
+
+state 64:
+
+	PLUS_TYPE : HASH_TYPE type_plus . PLUS_TYPE 
+
+	type_ident	shift 42
+	type_var_ident	shift 41
+	aq	shift 40
+	type_lparen	shift 39
+
+	HASH_TYPE	goto 37
+	PLUS_TYPE	goto 98
+	APP_TYPE	goto 35
+	TYPE_ARG	goto 34
+	BASIC_TYPE_ARG	goto 33
+	BASIC	goto 32
+
+	.	error
+
+
+state 65:
+
+	BASIC_TYPE_ARG : type_lparen TYPE . type_comma TYPE_LIST type_rparen 
+	BASIC : type_lparen TYPE . type_rparen 
+
+	type_rparen	shift 100
+	type_comma	shift 99
+
+
+	.	error
+
+
+state 66:
+
+	AEXP : lbrace LIST rbrace .  (reduce by rule 20)
+
+
+
+	.	reduce by rule 20
+
+
+state 67:
+
+	AEXP : lbrace PTRM bar . PTRM rbrace 
+
+	ident	shift 17
+	symbolic_ident	shift 16
+	binder	shift 15
+	aq	shift 14
+	lparen	shift 13
+	lbracket	shift 12
+	lbrace	shift 11
+	eq	shift 9
+	let_	shift 8
+	string_	shift 7
+	hoare_lbracket	shift 6
+	hoare_lbrace	shift 5
+
+	PTRM	goto 101
+	APP_EXP	goto 3
+	AEXP	goto 2
+	SUFFIX	goto 1
+
+	.	error
+
+
+state 68:
+
+	LIST : PTRM semi_colon . LIST 
+
+	ident	shift 17
+	symbolic_ident	shift 16
+	binder	shift 15
+	aq	shift 14
+	lparen	shift 13
+	lbracket	shift 12
+	lbrace	shift 11
+	eq	shift 9
+	let_	shift 8
+	string_	shift 7
+	hoare_lbracket	shift 6
+	hoare_lbrace	shift 5
+
+	PTRM	goto 47
+	APP_EXP	goto 3
+	AEXP	goto 2
+	SUFFIX	goto 1
+	LIST	goto 102
+
+	.	reduce by rule 33
+
+
+state 69:
+
+	AEXP : lbracket LIST rbracket .  (reduce by rule 19)
+
+
+
+	.	reduce by rule 19
+
+
+state 70:
+
+	AEXP : lparen PTRM rparen .  (reduce by rule 18)
+
+
+
+	.	reduce by rule 18
+
+
+state 71:
+
+	SUFFIX : binder BV_LIST dot . PTRM 
+
+	ident	shift 17
+	symbolic_ident	shift 16
+	binder	shift 15
+	aq	shift 14
+	lparen	shift 13
+	lbracket	shift 12
+	lbrace	shift 11
+	eq	shift 9
+	let_	shift 8
+	string_	shift 7
+	hoare_lbracket	shift 6
+	hoare_lbrace	shift 5
+
+	PTRM	goto 103
+	APP_EXP	goto 3
+	AEXP	goto 2
+	SUFFIX	goto 1
+
+	.	error
+
+
+state 72:
+
+	APP_EXP : APP_EXP AEXP colon TYPE .  (reduce by rule 9)
+
+
+
+	.	reduce by rule 9
+
+
+state 73:
+
+	PTRM : APP_EXP eq_gt PTRM bar . PTRM 
+
+	ident	shift 17
+	symbolic_ident	shift 16
+	binder	shift 15
+	aq	shift 14
+	lparen	shift 13
+	lbracket	shift 12
+	lbrace	shift 11
+	eq	shift 9
+	let_	shift 8
+	string_	shift 7
+	hoare_lbracket	shift 6
+	hoare_lbrace	shift 5
+
+	PTRM	goto 104
+	APP_EXP	goto 3
+	AEXP	goto 2
+	SUFFIX	goto 1
+
+	.	error
+
+
+state 74:
+
+	COMMAND_LIST : COMMAND .  (reduce by rule 22)
+	COMMAND_LIST : COMMAND . semi_colon COMMAND_LIST 
+
+	semi_colon	shift 105
+
+
+	.	reduce by rule 22
+
+
+state 75:
+
+	PTRM : hoare_lbrace PTRM hoare_rbrace COMMAND_LIST . hoare_lbrace PTRM hoare_rbrace 
+
+	hoare_lbrace	shift 106
+
+
+	.	error
+
+
+state 76:
+
+	COMMAND : hoare_while . PTRM hoare_do COMMAND_LIST hoare_done 
+
+	ident	shift 17
+	symbolic_ident	shift 16
+	binder	shift 15
+	aq	shift 14
+	lparen	shift 13
+	lbracket	shift 12
+	lbrace	shift 11
+	eq	shift 9
+	let_	shift 8
+	string_	shift 7
+	hoare_lbracket	shift 6
+	hoare_lbrace	shift 5
+
+	PTRM	goto 107
+	APP_EXP	goto 3
+	AEXP	goto 2
+	SUFFIX	goto 1
+
+	.	error
+
+
+state 77:
+
+	COMMAND : hoare_variant . hoare_lbrace PTRM hoare_rbrace 
+
+	hoare_lbrace	shift 108
+
+
+	.	error
+
+
+state 78:
+
+	COMMAND : hoare_invariant . hoare_lbrace PTRM hoare_rbrace 
+
+	hoare_lbrace	shift 109
+
+
+	.	error
+
+
+state 79:
+
+	COMMAND : hoare_assert . hoare_lbrace PTRM hoare_rbrace 
+
+	hoare_lbrace	shift 110
+
+
+	.	error
+
+
+state 80:
+
+	COMMAND : hoare_if . PTRM hoare_then COMMAND hoare_fi 
+	COMMAND : hoare_if . PTRM hoare_then COMMAND hoare_else COMMAND hoare_fi 
+
+	ident	shift 17
+	symbolic_ident	shift 16
+	binder	shift 15
+	aq	shift 14
+	lparen	shift 13
+	lbracket	shift 12
+	lbrace	shift 11
+	eq	shift 9
+	let_	shift 8
+	string_	shift 7
+	hoare_lbracket	shift 6
+	hoare_lbrace	shift 5
+
+	PTRM	goto 111
+	APP_EXP	goto 3
+	AEXP	goto 2
+	SUFFIX	goto 1
+
+	.	error
+
+
+state 81:
+
+	COMMAND : hoare_abort .  (reduce by rule 25)
+
+
+
+	.	reduce by rule 25
+
+
+state 82:
+
+	COMMAND : hoare_skip .  (reduce by rule 24)
+
+
+
+	.	reduce by rule 24
+
+
+state 83:
+
+	COMMAND : ident . hoare_assign PTRM 
+
+	hoare_assign	shift 112
+
+
+	.	error
+
+
+state 84:
+
+	PTRM : hoare_lbracket PTRM hoare_rbracket COMMAND_LIST . hoare_lbracket PTRM hoare_rbracket 
+
+	hoare_lbracket	shift 113
+
+
+	.	error
+
+
+state 85:
+
+	SUFFIX : let_ BINDING_LIST in_ PTRM .  (reduce by rule 37)
+
+
+
+	.	reduce by rule 37
+
+
+state 86:
+
+	BV : BV colon TYPE .  (reduce by rule 43)
+
+
+
+	.	reduce by rule 43
+
+
+state 87:
+
+	BINDING_LIST : BV_LIST eq PTRM .  (reduce by rule 47)
+	BINDING_LIST : BV_LIST eq PTRM . and_ BINDING_LIST 
+
+	and_	shift 114
+
+
+	.	reduce by rule 47
+
+
+state 88:
+
+	BV : lparen BV COMMA . VSTRUCT rparen 
+
+	ident	shift 29
+	aq	shift 28
+	lparen	shift 27
+
+	BV	goto 116
+	VSTRUCT	goto 115
+
+	.	error
+
+
+state 89:
+
+	BV : lparen BV rparen .  (reduce by rule 40)
+
+
+
+	.	reduce by rule 40
+
+
+state 90:
+
+	COMMA : symbolic_ident .  (reduce by rule 49)
+
+
+
+	.	reduce by rule 49
+
+
+state 91:
+
+	TYPE_CLAUSES : TYPE_CLAUSE .  (reduce by rule 70)
+	TYPE_CLAUSES : TYPE_CLAUSE . bar TYPE_CLAUSES 
+
+	bar	shift 117
+
+
+	.	reduce by rule 70
+
+
+state 92:
+
+	TYPE_SPEC : TYI eq TYPE_CLAUSES .  (reduce by rule 68)
+
+
+
+	.	reduce by rule 68
+
+
+state 93:
+
+	TYPE_CLAUSE : string_ .  (reduce by rule 72)
+
+
+
+	.	reduce by rule 72
+
+
+state 94:
+
+	TYPE_CLAUSE : symbolic_ident .  (reduce by rule 74)
+	TYPE_CLAUSE : symbolic_ident . of_ C_ARG_LIST 
+
+	of_	shift 118
+
+
+	.	reduce by rule 74
+
+
+state 95:
+
+	TYPE_CLAUSE : ident .  (reduce by rule 73)
+	TYPE_CLAUSE : ident . of_ C_ARG_LIST 
+
+	of_	shift 119
+
+
+	.	reduce by rule 73
+
+
+state 96:
+
+	HASH_TYPE : APP_TYPE type_hash HASH_TYPE .  (reduce by rule 54)
+
+
+
+	.	reduce by rule 54
+
+
+state 97:
+
+	TYPE : PLUS_TYPE type_right_arrow TYPE .  (reduce by rule 50)
+
+
+
+	.	reduce by rule 50
+
+
+state 98:
+
+	PLUS_TYPE : HASH_TYPE type_plus PLUS_TYPE .  (reduce by rule 52)
+
+
+
+	.	reduce by rule 52
+
+
+state 99:
+
+	BASIC_TYPE_ARG : type_lparen TYPE type_comma . TYPE_LIST type_rparen 
+
+	type_ident	shift 42
+	type_var_ident	shift 41
+	aq	shift 40
+	type_lparen	shift 39
+
+	TYPE	goto 121
+	HASH_TYPE	goto 37
+	PLUS_TYPE	goto 36
+	APP_TYPE	goto 35
+	TYPE_ARG	goto 34
+	BASIC_TYPE_ARG	goto 33
+	TYPE_LIST	goto 120
+	BASIC	goto 32
+
+	.	error
+
+
+state 100:
+
+	BASIC : type_lparen TYPE type_rparen .  (reduce by rule 67)
+
+
+
+	.	reduce by rule 67
+
+
+state 101:
+
+	AEXP : lbrace PTRM bar PTRM . rbrace 
+
+	rbrace	shift 122
+
+
+	.	error
+
+
+state 102:
+
+	LIST : PTRM semi_colon LIST .  (reduce by rule 35)
+
+
+
+	.	reduce by rule 35
+
+
+state 103:
+
+	SUFFIX : binder BV_LIST dot PTRM .  (reduce by rule 36)
+
+
+
+	.	reduce by rule 36
+
+
+state 104:
+
+	PTRM : APP_EXP eq_gt PTRM bar PTRM .  (reduce by rule 5)
+
+
+
+	.	reduce by rule 5
+
+
+state 105:
+
+	COMMAND_LIST : COMMAND semi_colon . COMMAND_LIST 
+
+	ident	shift 83
+	hoare_skip	shift 82
+	hoare_abort	shift 81
+	hoare_if	shift 80
+	hoare_assert	shift 79
+	hoare_invariant	shift 78
+	hoare_variant	shift 77
+	hoare_while	shift 76
+
+	COMMAND_LIST	goto 123
+	COMMAND	goto 74
+
+	.	error
+
+
+state 106:
+
+	PTRM : hoare_lbrace PTRM hoare_rbrace COMMAND_LIST hoare_lbrace . PTRM hoare_rbrace 
+
+	ident	shift 17
+	symbolic_ident	shift 16
+	binder	shift 15
+	aq	shift 14
+	lparen	shift 13
+	lbracket	shift 12
+	lbrace	shift 11
+	eq	shift 9
+	let_	shift 8
+	string_	shift 7
+	hoare_lbracket	shift 6
+	hoare_lbrace	shift 5
+
+	PTRM	goto 124
+	APP_EXP	goto 3
+	AEXP	goto 2
+	SUFFIX	goto 1
+
+	.	error
+
+
+state 107:
+
+	COMMAND : hoare_while PTRM . hoare_do COMMAND_LIST hoare_done 
+
+	hoare_do	shift 125
+
+
+	.	error
+
+
+state 108:
+
+	COMMAND : hoare_variant hoare_lbrace . PTRM hoare_rbrace 
+
+	ident	shift 17
+	symbolic_ident	shift 16
+	binder	shift 15
+	aq	shift 14
+	lparen	shift 13
+	lbracket	shift 12
+	lbrace	shift 11
+	eq	shift 9
+	let_	shift 8
+	string_	shift 7
+	hoare_lbracket	shift 6
+	hoare_lbrace	shift 5
+
+	PTRM	goto 126
+	APP_EXP	goto 3
+	AEXP	goto 2
+	SUFFIX	goto 1
+
+	.	error
+
+
+state 109:
+
+	COMMAND : hoare_invariant hoare_lbrace . PTRM hoare_rbrace 
+
+	ident	shift 17
+	symbolic_ident	shift 16
+	binder	shift 15
+	aq	shift 14
+	lparen	shift 13
+	lbracket	shift 12
+	lbrace	shift 11
+	eq	shift 9
+	let_	shift 8
+	string_	shift 7
+	hoare_lbracket	shift 6
+	hoare_lbrace	shift 5
+
+	PTRM	goto 127
+	APP_EXP	goto 3
+	AEXP	goto 2
+	SUFFIX	goto 1
+
+	.	error
+
+
+state 110:
+
+	COMMAND : hoare_assert hoare_lbrace . PTRM hoare_rbrace 
+
+	ident	shift 17
+	symbolic_ident	shift 16
+	binder	shift 15
+	aq	shift 14
+	lparen	shift 13
+	lbracket	shift 12
+	lbrace	shift 11
+	eq	shift 9
+	let_	shift 8
+	string_	shift 7
+	hoare_lbracket	shift 6
+	hoare_lbrace	shift 5
+
+	PTRM	goto 128
+	APP_EXP	goto 3
+	AEXP	goto 2
+	SUFFIX	goto 1
+
+	.	error
+
+
+state 111:
+
+	COMMAND : hoare_if PTRM . hoare_then COMMAND hoare_fi 
+	COMMAND : hoare_if PTRM . hoare_then COMMAND hoare_else COMMAND hoare_fi 
+
+	hoare_then	shift 129
+
+
+	.	error
+
+
+state 112:
+
+	COMMAND : ident hoare_assign . PTRM 
+
+	ident	shift 17
+	symbolic_ident	shift 16
+	binder	shift 15
+	aq	shift 14
+	lparen	shift 13
+	lbracket	shift 12
+	lbrace	shift 11
+	eq	shift 9
+	let_	shift 8
+	string_	shift 7
+	hoare_lbracket	shift 6
+	hoare_lbrace	shift 5
+
+	PTRM	goto 130
+	APP_EXP	goto 3
+	AEXP	goto 2
+	SUFFIX	goto 1
+
+	.	error
+
+
+state 113:
+
+	PTRM : hoare_lbracket PTRM hoare_rbracket COMMAND_LIST hoare_lbracket . PTRM hoare_rbracket 
+
+	ident	shift 17
+	symbolic_ident	shift 16
+	binder	shift 15
+	aq	shift 14
+	lparen	shift 13
+	lbracket	shift 12
+	lbrace	shift 11
+	eq	shift 9
+	let_	shift 8
+	string_	shift 7
+	hoare_lbracket	shift 6
+	hoare_lbrace	shift 5
+
+	PTRM	goto 131
+	APP_EXP	goto 3
+	AEXP	goto 2
+	SUFFIX	goto 1
+
+	.	error
+
+
+state 114:
+
+	BINDING_LIST : BV_LIST eq PTRM and_ . BINDING_LIST 
+
+	ident	shift 29
+	aq	shift 28
+	lparen	shift 27
+
+	BV_LIST	goto 26
+	BV	goto 25
+	BINDING_LIST	goto 132
+
+	.	error
+
+
+state 115:
+
+	BV : lparen BV COMMA VSTRUCT . rparen 
+
+	rparen	shift 133
+
+
+	.	error
+
+
+state 116:
+
+	BV : BV . colon TYPE 
+	VSTRUCT : BV .  (reduce by rule 45)
+	VSTRUCT : BV . COMMA VSTRUCT 
+
+	symbolic_ident	shift 90
+	colon	shift 57
+
+	COMMA	goto 134
+
+	.	reduce by rule 45
+
+
+state 117:
+
+	TYPE_CLAUSES : TYPE_CLAUSE bar . TYPE_CLAUSES 
+
+	ident	shift 95
+	symbolic_ident	shift 94
+	string_	shift 93
+
+	TYPE_CLAUSES	goto 135
+	TYPE_CLAUSE	goto 91
+
+	.	error
+
+
+state 118:
+
+	TYPE_CLAUSE : symbolic_ident of_ . C_ARG_LIST 
+
+	type_ident	shift 42
+	type_var_ident	shift 41
+	aq	shift 40
+	type_lparen	shift 39
+
+	TYPE	goto 137
+	HASH_TYPE	goto 37
+	PLUS_TYPE	goto 36
+	APP_TYPE	goto 35
+	TYPE_ARG	goto 34
+	BASIC_TYPE_ARG	goto 33
+	BASIC	goto 32
+	C_ARG_LIST	goto 136
+
+	.	error
+
+
+state 119:
+
+	TYPE_CLAUSE : ident of_ . C_ARG_LIST 
+
+	type_ident	shift 42
+	type_var_ident	shift 41
+	aq	shift 40
+	type_lparen	shift 39
+
+	TYPE	goto 137
+	HASH_TYPE	goto 37
+	PLUS_TYPE	goto 36
+	APP_TYPE	goto 35
+	TYPE_ARG	goto 34
+	BASIC_TYPE_ARG	goto 33
+	BASIC	goto 32
+	C_ARG_LIST	goto 138
+
+	.	error
+
+
+state 120:
+
+	BASIC_TYPE_ARG : type_lparen TYPE type_comma TYPE_LIST . type_rparen 
+
+	type_rparen	shift 139
+
+
+	.	error
+
+
+state 121:
+
+	TYPE_LIST : TYPE . type_comma TYPE_LIST 
+	TYPE_LIST : TYPE .  (reduce by rule 63)
+
+	type_comma	shift 140
+
+
+	.	reduce by rule 63
+
+
+state 122:
+
+	AEXP : lbrace PTRM bar PTRM rbrace .  (reduce by rule 21)
+
+
+
+	.	reduce by rule 21
+
+
+state 123:
+
+	COMMAND_LIST : COMMAND semi_colon COMMAND_LIST .  (reduce by rule 23)
+
+
+
+	.	reduce by rule 23
+
+
+state 124:
+
+	PTRM : hoare_lbrace PTRM hoare_rbrace COMMAND_LIST hoare_lbrace PTRM . hoare_rbrace 
+
+	hoare_rbrace	shift 141
+
+
+	.	error
+
+
+state 125:
+
+	COMMAND : hoare_while PTRM hoare_do . COMMAND_LIST hoare_done 
+
+	ident	shift 83
+	hoare_skip	shift 82
+	hoare_abort	shift 81
+	hoare_if	shift 80
+	hoare_assert	shift 79
+	hoare_invariant	shift 78
+	hoare_variant	shift 77
+	hoare_while	shift 76
+
+	COMMAND_LIST	goto 142
+	COMMAND	goto 74
+
+	.	error
+
+
+state 126:
+
+	COMMAND : hoare_variant hoare_lbrace PTRM . hoare_rbrace 
+
+	hoare_rbrace	shift 143
+
+
+	.	error
+
+
+state 127:
+
+	COMMAND : hoare_invariant hoare_lbrace PTRM . hoare_rbrace 
+
+	hoare_rbrace	shift 144
+
+
+	.	error
+
+
+state 128:
+
+	COMMAND : hoare_assert hoare_lbrace PTRM . hoare_rbrace 
+
+	hoare_rbrace	shift 145
+
+
+	.	error
+
+
+state 129:
+
+	COMMAND : hoare_if PTRM hoare_then . COMMAND hoare_fi 
+	COMMAND : hoare_if PTRM hoare_then . COMMAND hoare_else COMMAND hoare_fi 
+
+	ident	shift 83
+	hoare_skip	shift 82
+	hoare_abort	shift 81
+	hoare_if	shift 80
+	hoare_assert	shift 79
+	hoare_invariant	shift 78
+	hoare_variant	shift 77
+	hoare_while	shift 76
+
+	COMMAND	goto 146
+
+	.	error
+
+
+state 130:
+
+	COMMAND : ident hoare_assign PTRM .  (reduce by rule 32)
+
+
+
+	.	reduce by rule 32
+
+
+state 131:
+
+	PTRM : hoare_lbracket PTRM hoare_rbracket COMMAND_LIST hoare_lbracket PTRM . hoare_rbracket 
+
+	hoare_rbracket	shift 147
+
+
+	.	error
+
+
+state 132:
+
+	BINDING_LIST : BV_LIST eq PTRM and_ BINDING_LIST .  (reduce by rule 48)
+
+
+
+	.	reduce by rule 48
+
+
+state 133:
+
+	BV : lparen BV COMMA VSTRUCT rparen .  (reduce by rule 44)
+
+
+
+	.	reduce by rule 44
+
+
+state 134:
+
+	VSTRUCT : BV COMMA . VSTRUCT 
+
+	ident	shift 29
+	aq	shift 28
+	lparen	shift 27
+
+	BV	goto 116
+	VSTRUCT	goto 148
+
+	.	error
+
+
+state 135:
+
+	TYPE_CLAUSES : TYPE_CLAUSE bar TYPE_CLAUSES .  (reduce by rule 71)
+
+
+
+	.	reduce by rule 71
+
+
+state 136:
+
+	TYPE_CLAUSE : symbolic_ident of_ C_ARG_LIST .  (reduce by rule 76)
+
+
+
+	.	reduce by rule 76
+
+
+state 137:
+
+	C_ARG_LIST : TYPE . eq_gt C_ARG_LIST 
+	C_ARG_LIST : TYPE .  (reduce by rule 78)
+
+	eq_gt	shift 149
+
+
+	.	reduce by rule 78
+
+
+state 138:
+
+	TYPE_CLAUSE : ident of_ C_ARG_LIST .  (reduce by rule 75)
+
+
+
+	.	reduce by rule 75
+
+
+state 139:
+
+	BASIC_TYPE_ARG : type_lparen TYPE type_comma TYPE_LIST type_rparen .  (reduce by rule 60)
+
+
+
+	.	reduce by rule 60
+
+
+state 140:
+
+	TYPE_LIST : TYPE type_comma . TYPE_LIST 
+
+	type_ident	shift 42
+	type_var_ident	shift 41
+	aq	shift 40
+	type_lparen	shift 39
+
+	TYPE	goto 121
+	HASH_TYPE	goto 37
+	PLUS_TYPE	goto 36
+	APP_TYPE	goto 35
+	TYPE_ARG	goto 34
+	BASIC_TYPE_ARG	goto 33
+	TYPE_LIST	goto 150
+	BASIC	goto 32
+
+	.	error
+
+
+state 141:
+
+	PTRM : hoare_lbrace PTRM hoare_rbrace COMMAND_LIST hoare_lbrace PTRM hoare_rbrace .  (reduce by rule 6)
+
+
+
+	.	reduce by rule 6
+
+
+state 142:
+
+	COMMAND : hoare_while PTRM hoare_do COMMAND_LIST . hoare_done 
+
+	hoare_done	shift 151
+
+
+	.	error
+
+
+state 143:
+
+	COMMAND : hoare_variant hoare_lbrace PTRM hoare_rbrace .  (reduce by rule 28)
+
+
+
+	.	reduce by rule 28
+
+
+state 144:
+
+	COMMAND : hoare_invariant hoare_lbrace PTRM hoare_rbrace .  (reduce by rule 27)
+
+
+
+	.	reduce by rule 27
+
+
+state 145:
+
+	COMMAND : hoare_assert hoare_lbrace PTRM hoare_rbrace .  (reduce by rule 26)
+
+
+
+	.	reduce by rule 26
+
+
+state 146:
+
+	COMMAND : hoare_if PTRM hoare_then COMMAND . hoare_fi 
+	COMMAND : hoare_if PTRM hoare_then COMMAND . hoare_else COMMAND hoare_fi 
+
+	hoare_else	shift 153
+	hoare_fi	shift 152
+
+
+	.	error
+
+
+state 147:
+
+	PTRM : hoare_lbracket PTRM hoare_rbracket COMMAND_LIST hoare_lbracket PTRM hoare_rbracket .  (reduce by rule 7)
+
+
+
+	.	reduce by rule 7
+
+
+state 148:
+
+	VSTRUCT : BV COMMA VSTRUCT .  (reduce by rule 46)
+
+
+
+	.	reduce by rule 46
+
+
+state 149:
+
+	C_ARG_LIST : TYPE eq_gt . C_ARG_LIST 
+
+	type_ident	shift 42
+	type_var_ident	shift 41
+	aq	shift 40
+	type_lparen	shift 39
+
+	TYPE	goto 137
+	HASH_TYPE	goto 37
+	PLUS_TYPE	goto 36
+	APP_TYPE	goto 35
+	TYPE_ARG	goto 34
+	BASIC_TYPE_ARG	goto 33
+	BASIC	goto 32
+	C_ARG_LIST	goto 154
+
+	.	error
+
+
+state 150:
+
+	TYPE_LIST : TYPE type_comma TYPE_LIST .  (reduce by rule 62)
+
+
+
+	.	reduce by rule 62
+
+
+state 151:
+
+	COMMAND : hoare_while PTRM hoare_do COMMAND_LIST hoare_done .  (reduce by rule 31)
+
+
+
+	.	reduce by rule 31
+
+
+state 152:
+
+	COMMAND : hoare_if PTRM hoare_then COMMAND hoare_fi .  (reduce by rule 29)
+
+
+
+	.	reduce by rule 29
+
+
+state 153:
+
+	COMMAND : hoare_if PTRM hoare_then COMMAND hoare_else . COMMAND hoare_fi 
+
+	ident	shift 83
+	hoare_skip	shift 82
+	hoare_abort	shift 81
+	hoare_if	shift 80
+	hoare_assert	shift 79
+	hoare_invariant	shift 78
+	hoare_variant	shift 77
+	hoare_while	shift 76
+
+	COMMAND	goto 155
+
+	.	error
+
+
+state 154:
+
+	C_ARG_LIST : TYPE eq_gt C_ARG_LIST .  (reduce by rule 77)
+
+
+
+	.	reduce by rule 77
+
+
+state 155:
+
+	COMMAND : hoare_if PTRM hoare_then COMMAND hoare_else COMMAND . hoare_fi 
+
+	hoare_fi	shift 156
+
+
+	.	error
+
+
+state 156:
+
+	COMMAND : hoare_if PTRM hoare_then COMMAND hoare_else COMMAND hoare_fi .  (reduce by rule 30)
+
+
+
+	.	reduce by rule 30
+
+
+state 157:
+
+
+	EOLEX	accept
+	EOF	accept
+
+
+	.	error
+
+204 of 680 action table entries left after compaction
+216 goto table entries

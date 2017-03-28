@@ -1,0 +1,73 @@
++ =====================================================================	+
+|									|
+| LIBRARY	: fixpoints						|
+|									|
+| DESCRIPTION   : Definition of a fixedpoint operator and derivation    |
+|		  of Scott Induction (Computation Induction).           |
+|									|
+| AUTHOR	: M. Gordon						|
+| DATE		: 3 April 1989  					|
+|									|
+| CONVERSION TO HOL90 : Chris Toshok                                    |
+| DATE                : 27 Nov 1993                                     |
++ =====================================================================	+
+
+
++ --------------------------------------------------------------------- +
+|									|
+| FILES:								|
+|									|
++ --------------------------------------------------------------------- +
+
+   theories/src/mk_fixpoint.sml  - code to create the fixpoint theory
+   make_fixpoint                 - shell script to build the theory
+
++ --------------------------------------------------------------------- +
+|									|
+| DOCUMENTATION:							|
+|									|
++ --------------------------------------------------------------------- +
+
+The concepts of monotonicity, continuity, fixedpoints
+and chain-completeness (i.e. admitting induction) are defined
+for polymorphic predicates. Various basic lemmas are proved, 
+concluding with the validity of Scott induction (also called 
+fixedpoint induction and computation induction) in the following form:
+
+    |- !(p:('a->bool)->bool) fun.
+        ADMITS_INDUCTION p /\ 
+        CONTINUOUS fun     /\
+        p BOT              /\ 
+        (!f. p f ==> p(fun f)) 
+        ==> 
+        p(FIX fun)
+
+See the comments in theories/src/mk_fixpoint.ml for more details.
+
++ --------------------------------------------------------------------- +
+|									|
+| TO REBUILD THE LIBRARY:						|
+|									|
++ --------------------------------------------------------------------- +
+
+  type 'make_fixpoint <whatever your hol executable is called>'
+
+  for example,
+  
+    "make_fixpoint hol90.mipsel"
+
++ --------------------------------------------------------------------- +
+|									|
+| TO USE THE LIBRARY:							|
+|									|
++ --------------------------------------------------------------------- +
+
+If you are in draft_mode:
+
+   load_library {lib = find_library "fixpoint", theory = "-"};
+
+
+If you are not in draft_mode, load_library tries to declare a new
+theory, and so you have to supply a name:
+
+   load_library {lib = find_library "fixpoint", theory = <name>};

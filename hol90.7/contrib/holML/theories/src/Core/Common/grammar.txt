@@ -1,0 +1,47 @@
+(* STRUCTURE IDENTIFIERS *)
+   strid ::= STRID string
+
+(* LONG IDENTIFIERS*)
+   'a long ::= BASE 'a | QUALIFIED strid ('a long)
+
+(* VARIABLES *)
+   var ::= VAR string
+
+(* VALUE CONSTRUCTORS like nil, ::, true, false, ref *)
+   con ::= CON string
+
+(* SPECIAL CONSTANTS -- like numbers or strings *)
+   scon ::= SCINT integer | SCSTR string
+
+(* EXCEPTION CONSTRUCTORS *)
+   excon ::= EXCON string
+
+(* record LABELS *)
+   label ::= LABEL string
+
+(* definition for phrase type EXBIND *)
+   exbind ::= EXBIND1 excon (exbind option) |
+              EXBIND2 excon (excon long) (exbind option)
+
+(* definition for phrase types ATPAT, PATROW, PAT *)
+   atpat ::= WILDCARDatpat | SCONatpat scon | VARatpat var |
+             CONatpat (con long) | EXCONatpat (excon long) |
+             RECORDatpat (patrow option) | PARatpat pat
+   patrow ::= DOTDOTDOT | PATROW label pat (patrow option)
+   pat ::= ATPATpat atpat | CONpat (con long) atpat |
+           EXCONpat (excon long) atpat | LAYEREDpat var pat
+
+(* definitions for phrase types ATEXP, EXPROW, EXP, MATCH, MRULE, 
+                                DEC, VALBIND *)
+   atexp ::= SCONatexp scon | VARatexp (var long) | CONatexp (con long) |
+             EXCONatexp (excon long) | LETatexp dec exp | PARatexp exp |
+             RECORDatexp (exprow option)
+   exprow ::= EXPROW label exp (exprow option)
+   exp ::= ATEXPexp atexp | APPexp exp atexp | HANDLEexp exp match |
+           RAISEexp exp | FNexp match
+   match ::= MATCH mrule (match option)
+   mrule ::= MRULE pat exp
+   dec ::= VALdec valbind | EXCEPTdec exbind | LOCALdec dec dec |
+           OPENdec (strid long) nonemptylist | SEQdec dec dec | EMPTYdec
+   valbind ::= PLAINvalbind pat exp (valbind option) |
+               RECvalbind valbind

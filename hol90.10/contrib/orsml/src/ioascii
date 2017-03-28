@@ -1,0 +1,97 @@
+(*******************************************)
+(*                                         *)
+(*          ASCII-I/O                      *)
+(*                                         *)
+(*******************************************)
+
+signature ioasciisig = 
+  sig
+    structure Parser : parsersig
+    structure Print : ppsig
+    structure Common : commonsig 
+    sharing Print.Type = Parser.Make.Type
+    sharing Print.Type.Common = Common
+    val retrieve_db : string -> Common.co list
+    val store_db : Common.co list * string -> unit
+  end
+
+
+functor IO_ASCII (structure Print : ppsig 
+                  structure Parser : parsersig 
+                  sharing Print.Type = Parser.Make.Type)
+        : ioasciisig  =
+
+struct 
+
+structure Print = Print
+structure Parser = Parser 
+structure Common = Parser.Make.Type.Common
+
+local open Print Parser Parser.Make Parser.Make.Type
+           Common System.PrettyPrint 
+in 
+
+fun with_ppstream ppstrm = 
+    {add_string     = add_string ppstrm, 
+     add_break      = add_break  ppstrm,
+     begin_block    = begin_block ppstrm,
+     end_block      = fn () => end_block ppstrm,
+     flush_ppstream = fn () => flush_ppstream ppstrm}
+
+
+(* writing using 1st pretty printer. between objects put commas, after 
+all of them close the list. NB: in the output we never opened the list;
+hence we can use elements to parse it and get the objects *)
+
+fun write_data(output_stm, db_data) =
+   let val ppstrm = mk_ppstream {linewidth=70,consumer=outputc output_stm,
+                            flush=fn() => flush_out output_stm}
+       val {add_string, 
+             add_break, 
+             begin_block,
+             end_block,
+             flush_ppstream} = with_ppstream ppstrm
+       fun write_list [] = add_string "]" |
+           write_list (a::nil) = (pp_co ppstrm a; add_string "]") |
+           write_list (a::x) = (pp_co ppstrm a; 
+                                add_string ",";
+                                write_list x)
+   in
+	write_list db_data; 
+	flush_ppstream ()
+   end
+
+(* now store in a file using write_data *)
+
+fun store_db (db_data,filename) =
+let val output_stm = open_out filename
+in
+    write_data (output_stm, db_data); 
+    close_out output_stm
+end
+
+fun remove_newline z = let fun rm_enter [] = [] |
+                               rm_enter (a::x) = if a = "\n" then
+                                     rm_enter x else a::(rm_enter x)
+in 
+   implode(rm_enter(explode z))
+end
+
+fun retrieve_db filename =
+    let val input_stm = open_in filename
+	fun get_str str =
+	    let val newstr = str ^
+		(remove_newline (input_line input_stm)) 
+	    in if end_of_stream input_stm
+		   then ((close_in input_stm); newstr)
+	       else get_str newstr
+	    end
+	val string_to_parse = get_str ""
+    in
+	map create (elements((explode string_to_parse),"]"))
+    end
+
+end 
+
+end (* Functor IO_ASCII *)
+

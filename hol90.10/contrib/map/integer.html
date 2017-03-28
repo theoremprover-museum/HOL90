@@ -1,0 +1,658 @@
+<TITLE>Theory: integer</TITLE>
+<H1>Theory: integer</H1>
+<H1>Parents</H1>
+    <UL>
+    <LI><A HREF = "elt_gp.html"><STRONG>elt_gp</STRONG></A>
+    </UL>
+
+
+<HR>
+<H1>Type constants</H1>
+    <UL>
+    <LI><STRONG>integer</STRONG>(Arity = 0)
+    </UL>
+
+
+<HR>
+<H1>Term constants</H1>
+    <UL>
+    <LI><STRONG>REP_integer</STRONG><EM>:integer -> num # num</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>ABS_integer</STRONG><EM>:num # num -> integer</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>proj</STRONG><EM>:num # num -> integer</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>INT</STRONG><EM>:num -> integer</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>plus</STRONG><EM>:integer -> integer -> integer</EM>
+        <STRONG>{</STRONG>fixity  = Infix 500<STRONG>}</STRONG>
+    <LI><STRONG>neg</STRONG><EM>:integer -> integer</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>minus</STRONG><EM>:integer -> integer -> integer</EM>
+        <STRONG>{</STRONG>fixity  = Infix 500<STRONG>}</STRONG>
+    <LI><STRONG>times</STRONG><EM>:integer -> integer -> integer</EM>
+        <STRONG>{</STRONG>fixity  = Infix 600<STRONG>}</STRONG>
+    <LI><STRONG>POS</STRONG><EM>:integer -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>NEG</STRONG><EM>:integer -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>below</STRONG><EM>:integer -> integer -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Infix 450<STRONG>}</STRONG>
+    <LI><STRONG>integer_abs</STRONG><EM>:integer -> integer</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>mod</STRONG><EM>:integer -> integer -> integer</EM>
+        <STRONG>{</STRONG>fixity  = Infix 650<STRONG>}</STRONG>
+    <LI><STRONG>div</STRONG><EM>:integer -> integer -> integer</EM>
+        <STRONG>{</STRONG>fixity  = Infix 650<STRONG>}</STRONG>
+    </UL>
+
+
+<HR>
+<H1>Axioms</H1>
+<DL>
+
+</DL>
+
+
+<HR>
+<H1>Definitions</H1>
+<DL>
+<DT><STRONG>integer_TY_DEF</STRONG>
+<DD>
+<PRE>
+|- ?rep. TYPE_DEFINITION (\X. (?p. (p,0) = X) \/ (?n. (0,n) = X)) rep
+</PRE>
+
+<DT><STRONG>integer_ISO_DEF</STRONG>
+<DD>
+<PRE>
+|- (!a. ABS_integer (REP_integer a) = a) /\
+   (!r.
+     (\X. (?p. (p,0) = X) \/ (?n. (0,n) = X)) r =
+     REP_integer (ABS_integer r) =
+     r)
+</PRE>
+
+<DT><STRONG>PROJ_DEF</STRONG>
+<DD>
+<PRE>
+|- !p n.
+     proj (p,n) =
+     ((n < p)
+      => (@N. REP_integer N = (p - n,0))
+      | (@N. REP_integer N = (0,n - p)))
+</PRE>
+
+<DT><STRONG>INT_DEF</STRONG>
+<DD>
+<PRE>
+|- !p. INT p = proj (p,0)
+</PRE>
+
+<DT><STRONG>PLUS_DEF</STRONG>
+<DD>
+<PRE>
+|- !M N.
+     M plus N =
+     proj
+       (FST (REP_integer M) + FST (REP_integer N),
+        SND (REP_integer M) + SND (REP_integer N))
+</PRE>
+
+<DT><STRONG>neg_DEF</STRONG>
+<DD>
+<PRE>
+|- neg = INV ((\N. T),$plus)
+</PRE>
+
+<DT><STRONG>MINUS_DEF</STRONG>
+<DD>
+<PRE>
+|- !M N. M minus N = M plus neg N
+</PRE>
+
+<DT><STRONG>TIMES_DEF</STRONG>
+<DD>
+<PRE>
+|- !M N.
+     M times N =
+     proj
+       (FST (REP_integer M) * FST (REP_integer N) +
+        SND (REP_integer M) * SND (REP_integer N),
+        FST (REP_integer M) * SND (REP_integer N) +
+        SND (REP_integer M) * FST (REP_integer N))
+</PRE>
+
+<DT><STRONG>POS_DEF</STRONG>
+<DD>
+<PRE>
+|- !M. POS M = (?n. M = INT (SUC n))
+</PRE>
+
+<DT><STRONG>NEG_DEF</STRONG>
+<DD>
+<PRE>
+|- !M. NEG M = POS (neg M)
+</PRE>
+
+<DT><STRONG>BELOW_DEF</STRONG>
+<DD>
+<PRE>
+|- !M N. M below N = POS (N minus M)
+</PRE>
+
+<DT><STRONG>abs_DEF</STRONG>
+<DD>
+<PRE>
+|- !N. integer_abs N = ((~(NEG N)) => N | (neg N))
+</PRE>
+
+<DT><STRONG>mod_div_DEF</STRONG>
+<DD>
+<PRE>
+|- !D X.
+     ~(D = INT 0) ==>
+     (X = X div D times D plus X mod D) /\
+     ((POS D)
+      => (~(NEG (X mod D)) /\ X mod D below D)
+      | (~(POS (X mod D)) /\ D below X mod D))
+</PRE>
+
+</DL>
+
+
+<HR>
+<H1>Theorems</H1>
+<DL>
+<DT><STRONG>PROJ_ONTO</STRONG>
+<DD>
+<PRE>
+|- !M. ?n p. M = proj (p,n)
+</PRE>
+
+<DT><STRONG>PROJ_REP</STRONG>
+<DD>
+<PRE>
+|- !N. proj (REP_integer N) = N
+</PRE>
+
+<DT><STRONG>REP_PROJ</STRONG>
+<DD>
+<PRE>
+|- (!p. REP_integer (proj (p,0)) = (p,0)) /\
+   (!n. REP_integer (proj (0,n)) = (0,n))
+</PRE>
+
+<DT><STRONG>PROJ_EQ</STRONG>
+<DD>
+<PRE>
+|- !p n p' n'. (proj (p,n) = proj (p',n')) = p + n' = p' + n
+</PRE>
+
+<DT><STRONG>INT_ONE_ONE</STRONG>
+<DD>
+<PRE>
+|- !m n. (INT m = INT n) = m = n
+</PRE>
+
+<DT><STRONG>PROJ_PLUS</STRONG>
+<DD>
+<PRE>
+|- !p n p' n'. proj (p,n) plus proj (p',n') = proj (p + p',n + n')
+</PRE>
+
+<DT><STRONG>NUM_ADD_IS_INT_ADD</STRONG>
+<DD>
+<PRE>
+|- !m n. INT m plus INT n = INT (m + n)
+</PRE>
+
+<DT><STRONG>ASSOC_PLUS</STRONG>
+<DD>
+<PRE>
+|- !M N P. M plus N plus P = (M plus N) plus P
+</PRE>
+
+<DT><STRONG>COMM_PLUS</STRONG>
+<DD>
+<PRE>
+|- !M N. M plus N = N plus M
+</PRE>
+
+<DT><STRONG>PROJ_ZERO</STRONG>
+<DD>
+<PRE>
+|- !m. proj (m,m) = INT 0
+</PRE>
+
+<DT><STRONG>PLUS_ID</STRONG>
+<DD>
+<PRE>
+|- !M. INT 0 plus M = M
+</PRE>
+
+<DT><STRONG>PLUS_INV</STRONG>
+<DD>
+<PRE>
+|- !M. ?N. N plus M = INT 0
+</PRE>
+
+<DT><STRONG>integer_as_GROUP</STRONG>
+<DD>
+<PRE>
+|- GROUP ((\N. T),$plus)
+</PRE>
+
+<DT><STRONG>ID_EQ_0</STRONG>
+<DD>
+<PRE>
+|- ID ((\N. T),$plus) = INT 0
+</PRE>
+
+<DT><STRONG>PLUS_GROUP_ASSOC</STRONG>
+<DD>
+<PRE>
+|- !x y z. (x plus y) plus z = x plus y plus z
+</PRE>
+
+<DT><STRONG>PLUS_ID_LEMMA</STRONG>
+<DD>
+<PRE>
+|- (!x. INT 0 plus x = x) /\
+   (!x. x plus INT 0 = x) /\
+   (!x. ?y. y plus x = INT 0)
+</PRE>
+
+<DT><STRONG>PLUS_LEFT_RIGHT_INV</STRONG>
+<DD>
+<PRE>
+|- !x y. (y plus x = INT 0) ==> (x plus y = INT 0)
+</PRE>
+
+<DT><STRONG>PLUS_INV_LEMMA</STRONG>
+<DD>
+<PRE>
+|- !x. (neg x plus x = INT 0) /\ (x plus neg x = INT 0)
+</PRE>
+
+<DT><STRONG>PLUS_LEFT_CANCELLATION</STRONG>
+<DD>
+<PRE>
+|- !x y z. (x plus y = x plus z) ==> (y = z)
+</PRE>
+
+<DT><STRONG>PLUS_RIGHT_CANCELLATION</STRONG>
+<DD>
+<PRE>
+|- !x y z. (y plus x = z plus x) ==> (y = z)
+</PRE>
+
+<DT><STRONG>PLUS_RIGHT_ONE_ONE_ONTO</STRONG>
+<DD>
+<PRE>
+|- !x y. ?z. (x plus z = y) /\ (!u. (x plus u = y) ==> (u = z))
+</PRE>
+
+<DT><STRONG>PLUS_LEFT_ONE_ONE_ONTO</STRONG>
+<DD>
+<PRE>
+|- !x y. ?z. (z plus x = y) /\ (!u. (u plus x = y) ==> (u = z))
+</PRE>
+
+<DT><STRONG>PLUS_UNIQUE_ID</STRONG>
+<DD>
+<PRE>
+|- !e. (?x. e plus x = x) \/ (?x. x plus e = x) ==> (e = INT 0)
+</PRE>
+
+<DT><STRONG>PLUS_UNIQUE_INV</STRONG>
+<DD>
+<PRE>
+|- !x u. (u plus x = INT 0) ==> (u = neg x)
+</PRE>
+
+<DT><STRONG>PLUS_INV_ID_LEMMA</STRONG>
+<DD>
+<PRE>
+|- neg (INT 0) = INT 0
+</PRE>
+
+<DT><STRONG>PLUS_INV_INV_LEMMA</STRONG>
+<DD>
+<PRE>
+|- !x. neg (neg x) = x
+</PRE>
+
+<DT><STRONG>PLUS_DIST_INV_LEMMA</STRONG>
+<DD>
+<PRE>
+|- !x y. neg x plus neg y = neg (y plus x)
+</PRE>
+
+<DT><STRONG>PROJ_neg</STRONG>
+<DD>
+<PRE>
+|- !p n. neg (proj (p,n)) = proj (n,p)
+</PRE>
+
+<DT><STRONG>PROJ_TIMES</STRONG>
+<DD>
+<PRE>
+|- !p n p' n'.
+     proj (p,n) times proj (p',n') = proj (p * p' + n * n',p * n' + n * p')
+</PRE>
+
+<DT><STRONG>NUM_MULT_IS_INT_MULT</STRONG>
+<DD>
+<PRE>
+|- !m n. INT m times INT n = INT (m * n)
+</PRE>
+
+<DT><STRONG>ASSOC_TIMES</STRONG>
+<DD>
+<PRE>
+|- !M N P. M times N times P = (M times N) times P
+</PRE>
+
+<DT><STRONG>COMM_TIMES</STRONG>
+<DD>
+<PRE>
+|- !M N. M times N = N times M
+</PRE>
+
+<DT><STRONG>TIMES_IDENTITY</STRONG>
+<DD>
+<PRE>
+|- !M. (M times INT 1 = M) /\ (INT 1 times M = M)
+</PRE>
+
+<DT><STRONG>RIGHT_PLUS_DISTRIB</STRONG>
+<DD>
+<PRE>
+|- !M N P. (M plus N) times P = M times P plus N times P
+</PRE>
+
+<DT><STRONG>LEFT_PLUS_DISTRIB</STRONG>
+<DD>
+<PRE>
+|- !M N P. M times (N plus P) = M times N plus M times P
+</PRE>
+
+<DT><STRONG>TIMES_ZERO</STRONG>
+<DD>
+<PRE>
+|- !M. (M times INT 0 = INT 0) /\ (INT 0 times M = INT 0)
+</PRE>
+
+<DT><STRONG>TIMES_neg</STRONG>
+<DD>
+<PRE>
+|- (!M N. M times neg N = neg (M times N)) /\
+   (!M N. neg M times N = neg (M times N))
+</PRE>
+
+<DT><STRONG>neg_IS_TIMES_neg1</STRONG>
+<DD>
+<PRE>
+|- !M. neg M = M times neg (INT 1)
+</PRE>
+
+<DT><STRONG>neg_ONE_ONE</STRONG>
+<DD>
+<PRE>
+|- !x y. (neg x = neg y) = x = y
+</PRE>
+
+<DT><STRONG>POS_INT</STRONG>
+<DD>
+<PRE>
+|- !n. POS (INT (SUC n))
+</PRE>
+
+<DT><STRONG>NEG_neg_INT</STRONG>
+<DD>
+<PRE>
+|- !n. NEG (neg (INT (SUC n)))
+</PRE>
+
+<DT><STRONG>POS_PLUS_POS_IS_POS</STRONG>
+<DD>
+<PRE>
+|- !M N. POS M /\ POS N ==> POS (M plus N)
+</PRE>
+
+<DT><STRONG>NEG_PLUS_NEG_IS_NEG</STRONG>
+<DD>
+<PRE>
+|- !M N. NEG M /\ NEG N ==> NEG (M plus N)
+</PRE>
+
+<DT><STRONG>ZERO_NOT_POS</STRONG>
+<DD>
+<PRE>
+|- ~(POS (INT 0))
+</PRE>
+
+<DT><STRONG>ZERO_NOT_NEG</STRONG>
+<DD>
+<PRE>
+|- ~(NEG (INT 0))
+</PRE>
+
+<DT><STRONG>TRICHOTOMY</STRONG>
+<DD>
+<PRE>
+|- !M.
+     (POS M \/ NEG M \/ (M = INT 0)) /\
+     ~(POS M /\ NEG M) /\
+     ~(POS M /\ (M = INT 0)) /\
+     ~(NEG M /\ (M = INT 0))
+</PRE>
+
+<DT><STRONG>POS_TIMES_NON_NEG_IS_POS</STRONG>
+<DD>
+<PRE>
+|- !M N. POS M /\ ~(NEG N) ==> POS (M plus N)
+</PRE>
+
+<DT><STRONG>NEG_PLUS_NON_POS_IS_NEG</STRONG>
+<DD>
+<PRE>
+|- !M N. NEG M /\ ~(POS N) ==> NEG (M plus N)
+</PRE>
+
+<DT><STRONG>POS_TIMES_POS_IS_POS</STRONG>
+<DD>
+<PRE>
+|- !M N. POS M /\ POS N ==> POS (M times N)
+</PRE>
+
+<DT><STRONG>POS_TIMES_NEG_IS_NEG</STRONG>
+<DD>
+<PRE>
+|- !M N. POS M /\ NEG N ==> NEG (M times N)
+</PRE>
+
+<DT><STRONG>NEG_TIMES_NEG_IS_POS</STRONG>
+<DD>
+<PRE>
+|- !M N. NEG M /\ NEG N ==> POS (M times N)
+</PRE>
+
+<DT><STRONG>INT_INTEGRAL_DOMAIN</STRONG>
+<DD>
+<PRE>
+|- !x y. (x times y = INT 0) ==> (x = INT 0) \/ (y = INT 0)
+</PRE>
+
+<DT><STRONG>TIMES_LEFT_CANCELLATION</STRONG>
+<DD>
+<PRE>
+|- !x y z. ~(x = INT 0) ==> (x times y = x times z) ==> (y = z)
+</PRE>
+
+<DT><STRONG>TIMES_RIGHT_CANCELLATION</STRONG>
+<DD>
+<PRE>
+|- !x y z. ~(x = INT 0) ==> (y times x = z times x) ==> (y = z)
+</PRE>
+
+<DT><STRONG>NON_NEG_INT_IS_NUM</STRONG>
+<DD>
+<PRE>
+|- !N. ~(NEG N) = (?n. N = INT n)
+</PRE>
+
+<DT><STRONG>NOT_NEG_INT</STRONG>
+<DD>
+<PRE>
+|- !n. ~(NEG (INT n))
+</PRE>
+
+<DT><STRONG>NEG_IS_neg_INT</STRONG>
+<DD>
+<PRE>
+|- !N. NEG N = (?n. N = neg (INT (SUC n)))
+</PRE>
+
+<DT><STRONG>NON_POS_INT_IS_neg_NUM</STRONG>
+<DD>
+<PRE>
+|- !N. ~(POS N) = (?n. N = neg (INT n))
+</PRE>
+
+<DT><STRONG>NOT_POS_neg_INT</STRONG>
+<DD>
+<PRE>
+|- !n. ~(POS (neg (INT n)))
+</PRE>
+
+<DT><STRONG>INT_CASES</STRONG>
+<DD>
+<PRE>
+|- !P. (!m. P (INT m)) /\ (!m. P (neg (INT m))) ==> (!M. P M)
+</PRE>
+
+<DT><STRONG>POS_IS_ZERO_BELOW</STRONG>
+<DD>
+<PRE>
+|- !N. POS N = INT 0 below N
+</PRE>
+
+<DT><STRONG>NEG_IS_BELOW_ZERO</STRONG>
+<DD>
+<PRE>
+|- !N. NEG N = N below INT 0
+</PRE>
+
+<DT><STRONG>NUM_LESS_IS_INT_BELOW</STRONG>
+<DD>
+<PRE>
+|- !m n. m < n = INT m below INT n
+</PRE>
+
+<DT><STRONG>neg_REV_BELOW</STRONG>
+<DD>
+<PRE>
+|- !M N. neg M below neg N = N below M
+</PRE>
+
+<DT><STRONG>POS_MULT_PRES_BELOW</STRONG>
+<DD>
+<PRE>
+|- !M N P. POS M ==> (N below P = M times N below M times P)
+</PRE>
+
+<DT><STRONG>NEG_MULT_REV_BELOW</STRONG>
+<DD>
+<PRE>
+|- !M N P. NEG M ==> (N below P = M times P below M times N)
+</PRE>
+
+<DT><STRONG>ANTISYM</STRONG>
+<DD>
+<PRE>
+|- !M. ~(M below M)
+</PRE>
+
+<DT><STRONG>TRANSIT</STRONG>
+<DD>
+<PRE>
+|- !M N P. M below N /\ N below P ==> M below P
+</PRE>
+
+<DT><STRONG>COMPAR</STRONG>
+<DD>
+<PRE>
+|- !M N. M below N \/ N below M \/ (M = N)
+</PRE>
+
+<DT><STRONG>DOUBLE_INF</STRONG>
+<DD>
+<PRE>
+|- !M. (?N. N below M) /\ (?P. M below P)
+</PRE>
+
+<DT><STRONG>PLUS_BELOW_TRANSL</STRONG>
+<DD>
+<PRE>
+|- !M N P. M below N = M plus P below N plus P
+</PRE>
+
+<DT><STRONG>DISCRETE</STRONG>
+<DD>
+<PRE>
+|- !IntSet.
+     (?M. IntSet M) ==>
+     ((?LB. !N. N below LB ==> ~(IntSet N)) ==>
+      (?GLB. IntSet GLB /\ (!N. N below GLB ==> ~(IntSet N)))) /\
+     ((?UB. !N. UB below N ==> ~(IntSet N)) ==>
+      (?LUB. IntSet LUB /\ (!N. LUB below N ==> ~(IntSet N))))
+</PRE>
+
+<DT><STRONG>ABS_NOT_NEG</STRONG>
+<DD>
+<PRE>
+|- !N. ~(NEG (integer_abs N))
+</PRE>
+
+<DT><STRONG>ABS_ABS</STRONG>
+<DD>
+<PRE>
+|- !N. integer_abs (integer_abs N) = integer_abs N
+</PRE>
+
+<DT><STRONG>ABS_ZERO</STRONG>
+<DD>
+<PRE>
+|- integer_abs (INT 0) = INT 0
+</PRE>
+
+<DT><STRONG>ABS_POS</STRONG>
+<DD>
+<PRE>
+|- !N. POS N ==> (integer_abs N = N)
+</PRE>
+
+<DT><STRONG>ABS_NEG</STRONG>
+<DD>
+<PRE>
+|- !N. NEG N ==> (integer_abs N = neg N)
+</PRE>
+
+<DT><STRONG>ABS_TIMES_IS_ABS_TIMES_ABS</STRONG>
+<DD>
+<PRE>
+|- !M N. integer_abs (M times N) = integer_abs M times integer_abs N
+</PRE>
+
+<DT><STRONG>ABS_SQUARE</STRONG>
+<DD>
+<PRE>
+|- !N. integer_abs (N times N) = N times N
+</PRE>
+
+</DL>
+
+
+<HR>

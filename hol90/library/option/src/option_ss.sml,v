@@ -1,0 +1,136 @@
+head	1.1;
+branch	1.1.1;
+access;
+symbols
+	HOL97:1.1.1.1.2.1.0.2
+	bpHOL97:1.1.1.1.2.1
+	hol90_9_alpha:1.1.1.1.2.1
+	hol90_pre8_for_multiple_compilers:1.1.1.1.0.2
+	hol90_pre8_after_donalds_separate_compilation_changes:1.1.1.1
+	hol90_option_donalds_first_version:1.1.1.1
+	hol90_option_donalds_first_version:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	95.10.25.14.07.41;	author drs1004;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.25.14.07.41;	author drs1004;	state Exp;
+branches
+	1.1.1.1.2.1;
+next	;
+
+1.1.1.1.2.1
+date	96.08.23.09.39.25;	author rjb;	state Exp;
+branches
+	1.1.1.1.2.1.2.1;
+next	;
+
+1.1.1.1.2.1.2.1
+date	97.06.11.18.32.24;	author kxs;	state Exp;
+branches;
+next	1.1.1.1.2.1.2.2;
+
+1.1.1.1.2.1.2.2
+date	97.07.14.17.22.14;	author kxs;	state dead;
+branches;
+next	;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@
+
+signature Option_ss_sig = sig
+ 	val OPTION_ss : simpset
+	val option_ss : simpset
+end;
+
+
+structure Option_ss : Option_ss_sig = struct
+
+val OPTION_ss = pure_ss addrewrs [theorem "option" "option_CLAUSES"];
+val option_ss = hol_ss merge_ss OPTION_ss;
+
+end;
+
+open Option_ss;
+
+
+@
+
+
+1.1.1.1
+log
+@This is the first import of the "option" library, written by
+Donald Syme for hol90.7.
+@
+text
+@@
+
+
+1.1.1.1.2.1
+log
+@Modified to suit new version of the simplifier.
+@
+text
+@d11 2
+a12 1
+local
+d14 1
+a14 12
+open Simplifier;
+infix ++;
+
+val OPTION_data =
+   rewrites
+      (map ((fn th => if (is_neg (concl th)) then EQF_INTRO th else th) o
+            SPEC_ALL)
+           (CONJUNCTS (theorem "option" "option_CLAUSES")));
+
+in
+
+val OPTION_ss = mk_simpset [OPTION_data];
+d16 1
+a16 1
+val option_ss = hol_ss ++ OPTION_data;
+a17 3
+end;
+
+end;
+@
+
+
+1.1.1.1.2.1.2.1
+log
+@Changes to accomodate move to SML/NJ 109.26.
+@
+text
+@d1 2
+d4 2
+a5 2
+ 	val OPTION_ss : Simplifier.simpset
+	val option_ss : Simplifier.simpset
+@
+
+
+1.1.1.1.2.1.2.2
+log
+@The option library now builds under CM. Also, the entrypoint has been named
+"optionLib" and its filename has been changed to reflect this.
+@
+text
+@@

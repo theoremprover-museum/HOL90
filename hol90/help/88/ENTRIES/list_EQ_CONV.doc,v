@@ -1,0 +1,102 @@
+head	1.1;
+branch	1.1.1;
+access;
+symbols
+	HOL97:1.1.1.1.0.6
+	bpHOL97:1.1.1.1
+	hol90_9_alpha:1.1.1.1
+	hol90_pre8_for_multiple_compilers:1.1.1.1.0.4
+	hol90_pre8_after_donalds_separate_compilation_changes:1.1.1.1
+	hol90_8_after_merging_Konrad_Elsa:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	95.10.16.13.34.59;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.34.59;	author rjb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@\DOC list_EQ_CONV
+
+\TYPE {list_EQ_CONV : (conv -> conv)}
+
+\SYNOPSIS
+Prove equality or inequality of two lists.
+
+\KEYWORDS
+conversion.
+
+\DESCRIBE
+{list_EQ_CONV c} implements a decision procedure for equality of lists of type
+{(ty)list} where the conversion {c} decides equality of values of type {ty}.
+More precisely, the argument to {list_EQ_CONV} is expected to be a conversion
+{c} which implements a decision procedure for values of some base type {ty}, in
+the sense that {c "t1 = t2"} returns {|- (t1 = t2) = T} if {t1} denotes the
+same value as {t2} and {|- (t1 = t2) = F} if {t1} and {t2} denote different
+values.  Given such a conversion {c}, evaluating:
+{
+   list_EQ_CONV c "[t1;...;tn] = [u1;...;um]"
+}
+\noindent where all the {ti} and {ui} have type {ty}, returns:
+{
+   |- ([t1;...;tn] = [u1;...;um]) = F
+}
+\noindent if {n} is not equal to {m} (i.e. if the two lists have different
+lengths) or if {n} = {m} and the conversion {c} proves {|- (ti = ui) = F} for
+some {i} between {1} and {n}. The theorem:
+{
+   |- ([t1;...;tn] = [u1;...;um]) = T
+}
+\noindent is returned if {n} equals {m} and for all {i} from {1} to {n} either
+{ti} is syntactically identical to {ui} or {c} proves {|- (ti = ui) = T}
+
+\FAILURE
+{list_EQ_CONV t} fails if {t} is not a term of the form
+{"[t1;...;tn] = [u1;...;um]"}, or if {n} equals {m} and some {ti} is not
+syntactically identical to {ui} but {c} fails to prove either of the
+theorems {|- (ti = ui) = T} or {|- (ti = ui) = F} when applied to {"ti = ui"}.
+
+\EXAMPLE
+{
+#list_EQ_CONV num_EQ_CONV "[1;SUC 1;3] = [1;2;3]";;
+|- ([1;SUC 1;3] = [1;2;3]) = T
+}
+\ENDDOC
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

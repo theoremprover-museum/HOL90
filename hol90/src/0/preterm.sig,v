@@ -1,0 +1,386 @@
+head	1.5;
+access;
+symbols
+	HOL97:1.2.0.4
+	bpHOL97:1.2
+	hol90_9_alpha:1.2
+	hol90_pre8_for_multiple_compilers:1.2.0.2
+	hol90_pre8_after_donalds_separate_compilation_changes:1.2
+	hol90_8_after_merging_Konrad_Elsa:1.2
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.5
+date	96.02.08.00.31.49;	author drs1004;	state Exp;
+branches;
+next	1.4;
+
+1.4
+date	96.01.04.13.45.42;	author drs1004;	state Exp;
+branches;
+next	1.3;
+
+1.3
+date	95.12.18.11.35.08;	author drs1004;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	95.10.18.16.37.12;	author drs1004;	state Exp;
+branches
+	1.2.4.1;
+next	1.1;
+
+1.1
+date	95.10.16.13.29.56;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.29.56;	author rjb;	state Exp;
+branches
+	1.1.1.1.2.1;
+next	;
+
+1.1.1.1.2.1
+date	95.10.17.18.43.04;	author drs1004;	state Exp;
+branches;
+next	;
+
+1.2.4.1
+date	97.06.11.17.24.32;	author kxs;	state Exp;
+branches;
+next	1.2.4.2;
+
+1.2.4.2
+date	97.07.10.20.37.54;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.5
+log
+@New theory mechanism, by Donald Syme, and many other enhancements.
+@
+text
+@(*======================================================================
+ * $Id: preterm.sig,v 1.4 1996/01/04 13:45:42 drs1004 Exp $
+ *
+ * By Konrad Slind.
+ * MODIFICATIONS:  
+ *    - Removed the distinction between public and private preterms 
+ * signatures since the facilities in the private signature were not used.
+ *                                           DRS, December 95
+ *=====================================================================*)
+
+signature Preterm_sig = 
+sig
+  structure Term : Public_term_sig
+
+  datatype pretype = 
+      Stv of int     (* System generated type variables *)
+    | Utv of string  (* User-given type variables *)
+    | Link of pretype ref (* Modifiable pointers *)
+    | Tyapp of (string * pretype list)
+
+(*----------------------------------------------------------------------
+ * Preterm values are used at different stages of parsing:
+ *    Level 1. As basic AST's (including bindings).  
+ *         - No Const nodes
+ *         - No Constrained Nodes except where explicit
+ *    Level 2. As ground-attributed ASTs 
+ *         - All free "variables" which are constants become Const
+ *           nodes.
+ *         - Some Var nodes have been interpreted as Const nodes.  Exactly
+ *           how this is done depends on the form of constant resolution
+ *           being used.
+ *         - All Var nodes have types attributed by wrapping a Constrained ()
+ *           wrapper around them
+ *         - All variables with the same name in the same scope have
+ *           the same type attributed. This is by wrapping
+ *           a Constrained (..., ty) around the Var.
+ *    Level 3. Ultimately as preterms having had full type inference performed
+ *       on them.
+ * --------------------------------------------------------------------*)
+
+  datatype preterm = 
+      Var of   string
+    | Const of (string * pretype)
+    | Comb of  (preterm * preterm)
+    | Abs of   (preterm * preterm)
+    | Constrained of (preterm * pretype)
+    | Antiq of Term.term
+
+  val new_type_var : unit -> pretype
+  val reset_type_num: unit -> unit
+  val rename_tv : pretype -> pretype
+  val pretype_eq : pretype * pretype -> bool
+  val shrink_pretype : pretype -> pretype
+  exception SHRINK_PRETYPE
+  val unify : pretype -> pretype -> unit
+  exception UNIFY of string
+  val type_to_pretype : Term.Type.typ -> pretype
+
+(*----------------------------------------------------------------------
+ * Print preterms/pretypes
+ * --------------------------------------------------------------------*)
+
+  val pretype_to_type : pretype -> Term.Type.typ
+  val print_pretype : pretype -> unit
+  val pretype_to_string : pretype -> string
+  val pp_preterm : PP.ppstream -> preterm -> unit
+  val pp_pretype : PP.ppstream -> pretype -> int -> unit
+  val print_preterm : preterm -> unit
+  val preterm_to_string : preterm -> string
+
+(*----------------------------------------------------------------------
+ * Normal HOL type checking
+ *
+ * type_inference
+ *   This side-effects the input type, instantiating links/system type
+ *   vars to necessary values.  Outputs errors if term dos not typecheck.
+ *   Called automatically by "typecheck", but can be useful to call before
+ *   doing other perterm hacking operations (like type maximization
+ *   and sticky types).
+ *
+ *   Note the action of type_inference is purely side effecting on
+ *   the links within a preterm, but the resulting preterm is
+ *   returned to maintain uniformity with other preterm processing
+ *   functions like maximize_types (and the ones used for the Z
+ *   embedding).
+ *
+ * typecheck
+ *   This is how you get terms out of preterms.  Checks preterm by type 
+ *   inference then creates the term. Unbound type variables give an error.
+ *   Could be called preterm_to_term since that's what it's doing.
+ * --------------------------------------------------------------------*)
+
+  val type_inference : preterm -> preterm
+  val typecheck : preterm -> Term.term
+
+
+end;
+
+
+@
+
+
+1.4
+log
+@Fixed types, pretypes, fixities, parsing.
+@
+text
+@d2 1
+a2 1
+ * $Id: preterm.sig,v 1.3 1995/12/18 11:35:08 drs1004 Exp $
+d21 20
+d42 1
+a42 1
+      Var of   (string * pretype)
+@
+
+
+1.3
+log
+@Preterm and other changes, see 7.changes
+@
+text
+@d2 1
+a2 1
+ * $Id$
+a10 17
+(*
+signature Private_preterm_sig =
+sig
+  structure Term : Private_term_sig
+  datatype preterm = Var of {Name : string, Ty : Term.Type.typ}
+                   | Const of {Name : string, Ty : Term.Type.typ}
+                   | Comb of {Rator : preterm, Rand : preterm}
+                   | Abs of {Bvar : preterm, Body : preterm}
+                   | Constrained of (preterm * Term.Type.typ)
+                   | Antiq of Term.term
+
+  val typecheck : preterm -> Term.term
+  val preterm_to_term : preterm -> Term.term
+end;
+
+*)
+
+d19 1
+a19 1
+    | Tyapp of {Tyop : string, Args : pretype list}
+d22 4
+a25 4
+      Var of   {Name : string, Ty : pretype}
+    | Const of {Name : string, Ty : pretype}
+    | Comb of  {Rator: preterm, Rand : preterm}
+    | Abs of   {Bvar : preterm, Body : preterm}
+d77 2
+a79 1
+end;
+@
+
+
+1.2
+log
+@Check in after merging in Konrad's changes made after
+the release of hol90.7.  This involved creating a side branch
+in which to check in Konrad's changes, then merging in that
+side branch into the main development (which contains changes
+made by Elsa Gunter).
+
+Some other small modification have been made to the source code,
+as I begun to try to make this version into a working version:
+	- hol90 will now be compiled in an environment were no
+structures can be considered opn.  This means many structures
+now need "open Lib" and other such commands at their head.
+This has not yet been completed, but has been begun.
+	- "rotl" and "rotr" have been added to Lib, something
+which I just did impulsively.   Documentation files
+have also been added in help/90.
+@
+text
+@d1 12
+a12 1
+signature Preterm_sig =
+d14 3
+a16 3
+  structure Term : Term_sig
+  datatype preterm = Var of {Name : string, Ty : Term.Type.hol_type}
+                   | Const of {Name : string, Ty : Term.Type.hol_type}
+d19 1
+a19 1
+                   | Constrained of (preterm * Term.Type.hol_type)
+d22 1
+a22 1
+  val typecheck :preterm -> Term.term
+d26 1
+d28 1
+a28 1
+signature Public_preterm_sig = 
+d31 63
+a93 6
+  datatype preterm = Var of   {Name : string, Ty : Term.Type.hol_type}
+                   | Const of {Name : string, Ty : Term.Type.hol_type}
+                   | Comb of  {Rator: preterm, Rand : preterm}
+                   | Abs of   {Bvar : preterm, Body : preterm}
+                   | Constrained of (preterm * Term.Type.hol_type)
+                   | Antiq of Term.term
+a94 1
+  val typecheck :preterm -> Term.term
+@
+
+
+1.2.4.1
+log
+@Removed files are parse files and portability files that have
+effectively been moved elsewhere.
+
+Modified files are up to date for ML 109.26.
+@
+text
+@d11 1
+a11 6
+  val TC :(int,Term.Type.hol_type)istream -> preterm -> unit
+  val shrink_type : (Term.Type.hol_type * Term.Type.hol_type) list 
+                    -> Term.Type.hol_type -> Term.Type.hol_type
+  val tyVars : preterm -> Term.Type.hol_type list
+  val cleanup : preterm -> Term.term
+  val typecheck :(int,Term.Type.hol_type)istream -> preterm -> Term.term
+d23 1
+a23 1
+                   | Constrained of preterm * Term.Type.hol_type
+d26 1
+a26 1
+  val typecheck :(int,Term.Type.hol_type)istream -> preterm -> Term.term
+@
+
+
+1.2.4.2
+log
+@Minor editing for CM-friendliness.
+@
+text
+@d11 1
+a11 1
+  val TC :(int,Term.Type.hol_type)Lib.istream -> preterm -> unit
+d16 1
+a16 1
+  val typecheck :(int,Term.Type.hol_type)Lib.istream -> preterm -> Term.term
+d31 1
+a31 1
+  val typecheck :(int,Term.Type.hol_type)Lib.istream -> preterm -> Term.term
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d11 1
+a11 2
+  val typecheck :preterm -> preterm
+  val typecheck_cleanup : preterm -> Term.term
+d16 1
+a16 1
+signature Public_preterm_sig =
+d19 8
+a26 4
+  type preterm
+  val typecheck :preterm -> preterm
+  val typecheck_cleanup : preterm -> Term.term
+  val preterm_to_term : preterm -> Term.term
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@
+
+
+1.1.1.1.2.1
+log
+@Konrad's bug fixes up to start of serious
+hol90.8 devel;opment.  Checked into branch revision for
+later merging with trunk (elsa's work).  See
+doc/7.chages for a full description of what's been done.
+@
+text
+@d11 2
+a12 1
+  val typecheck :preterm -> Term.term
+d17 1
+a17 1
+signature Public_preterm_sig = 
+d20 4
+a23 8
+  datatype preterm = Var of   {Name : string, Ty : Term.Type.hol_type}
+                   | Const of {Name : string, Ty : Term.Type.hol_type}
+                   | Comb of  {Rator: preterm, Rand : preterm}
+                   | Abs of   {Bvar : preterm, Body : preterm}
+                   | Constrained of (preterm * Term.Type.hol_type)
+                   | Antiq of Term.term
+
+  val typecheck :preterm -> Term.term
+@

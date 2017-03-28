@@ -1,0 +1,494 @@
+head	1.1;
+access;
+symbols
+	HOL97:1.1.2.3.0.2
+	bpHOL97:1.1.2.3
+	hol90_9_alpha:1.1.2.3
+	hol90_pre8_for_multiple_compilers:1.1.0.2;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	96.06.25.15.40.41;	author rjb;	state dead;
+branches
+	1.1.2.1;
+next	;
+
+1.1.2.1
+date	96.06.25.15.40.42;	author rjb;	state Exp;
+branches;
+next	1.1.2.2;
+
+1.1.2.2
+date	96.06.27.15.56.56;	author rjb;	state Exp;
+branches;
+next	1.1.2.3;
+
+1.1.2.3
+date	96.08.23.16.23.11;	author rjb;	state Exp;
+branches
+	1.1.2.3.2.1;
+next	;
+
+1.1.2.3.2.1
+date	97.06.11.18.09.32;	author kxs;	state dead;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@file Makefile.polyml was initially added on branch hol90_pre8_for_multiple_compilers.
+@
+text
+@@
+
+
+1.1.2.1
+log
+@The core of hol90.9.alpha now builds successfully with SML/NJ 109,
+SML/NJ 108.5 (using CM), SML/NJ 0.93, and Poly/ML 3.0.
+I have not yet tried rebuilding the theory files.
+@
+text
+@a0 94
+#-------------------------------------------------------------------------
+# Makefile for HOL90
+#
+# Standard ML Version: Poly/ML
+# Compilation done using: use
+#-------------------------------------------------------------------------
+
+#-------------------------------------------------------------------------
+# parameters
+#-------------------------------------------------------------------------
+
+SML_IMPL=polyml
+ARCH=unknown
+HOL_DIR=..
+THEORY_TYPE=ascii
+# File to `use' before dumping HOL executable/heap/database
+USE_FILE=
+
+HEAP_SIZE=10000
+
+#-------------------------------------------------------------------------
+# computed macros
+#-------------------------------------------------------------------------
+
+MAKE_IMPL=$(MAKE) -f Makefile.$(SML_IMPL)
+
+BIN_DIR=$(HOL_DIR)/bin/$(SML_IMPL)
+THEORY_SRC=$(HOL_DIR)/theories/src
+THMS_DIR=$(HOL_DIR)/theories/$(THEORY_TYPE)
+HOLSIG_DIR=$(HOL_DIR)/theories/$(THEORY_TYPE)
+
+SML=$(BIN_DIR)/sml.$(ARCH) -noDisplay -h $(HEAP_SIZE)
+
+ML_DBASE=$(BIN_DIR)/ML_dbase.$(ARCH)
+HOL90_DBASE=$(BIN_DIR)/hol90_dbase.$(ARCH)
+
+#-------------------------------------------------------------------------
+# all
+#-------------------------------------------------------------------------
+
+all: check_sources $(HOL90_DBASE)
+
+#-------------------------------------------------------------------------
+# check_sources
+#-------------------------------------------------------------------------
+
+check_sources:
+	@@-mkdir $(BIN_DIR) 2> /dev/null
+	@@if test -f $(BIN_DIR)/sml.$(ARCH); \
+	 then echo \"sml.$(ARCH)\" found; \
+	 else echo \"sml.$(ARCH)\" not found in $(BIN_DIR)/; \
+	      echo Put a symbolic link to the Poly/ML executable there.; \
+	      exit 1; \
+	 fi
+	@@if test -f $(BIN_DIR)/ML_dbase.$(ARCH); \
+	 then echo \"ML_dbase.$(ARCH)\" found; \
+	 else echo \"ML_dbase.$(ARCH)\" not found in $(BIN_DIR)/; \
+	      echo Put a symbolic link to the Poly/ML database there.; \
+	      exit 1; \
+	 fi
+
+#-------------------------------------------------------------------------
+# HOL90
+#-------------------------------------------------------------------------
+
+$(HOL90_DBASE): 0/* 0/library/* 0/theory/* 1/* 2/* 3/* sources.sml
+	echo 'PolyML.make_database "$@@";'\
+	     'PolyML.quit();'\
+	   | $(SML) -r $(ML_DBASE)
+	echo 'PolyML.use "0/portable.polyml.sig";'\
+	     'PolyML.use "0/portable.polyml.sml";'\
+	     'val use = Portable.use;'\
+	     'open Portable.General;'\
+	     'PolyML.use "sources.sml";'\
+	     'if not ("$(USE_FILE)" = "") andalso' \
+	     '   Portable.file_exists_for_reading "$(USE_FILE)"'\
+	     'then use "$(USE_FILE)"'\
+	     'else ();'\
+	     'Globals.use_init_file := true;'\
+	     'Save_hol.save_hol "";'\
+	     'PolyML.quit();'\
+	   | $(SML) $@@ 2>&1 | tee $(BIN_DIR)/log.$(ARCH)
+	chmod ugo+r $@@
+
+#-------------------------------------------------------------------------
+# cleaning
+#-------------------------------------------------------------------------
+
+clean:
+	rm -f $(HOL90_DBASE)
+
+clobber: clean
+	rm -f $(HOLSIG_DIR)/*.holsig $(THMS_DIR)/*.thms
+
+@
+
+
+1.1.2.2
+log
+@Theory files now build with SML/NJ 109, SML/NJ 108.5 (using CM), SML/NJ 0.93,
+and Poly/ML 3.0.
+The quotation filter has been modified so that antiquotation works correctly
+in old-style quotations.
+The quotation filter is now compiled using flex and gcc (by default).
+The arguments to the script for running hol90 have been changed.
+@
+text
+@a5 12
+#
+# One Poly/ML database has to be used for all four stages of the build.
+# There are two reasons for this:
+#
+# 1. Updates to mutable objects that reside in a parent database do not
+#    persist when the child is committed.
+# 2. There is a limit (3) on the number of levels of database hierarchy
+#    that Poly/ML can create.
+#
+# Dummy files are left in place of the intermediate databases so that make
+# does not try to rebuild unnecessarily. However, this means that the bin
+# directory should be cleaned before attempting a rebuild.
+d25 1
+a25 6
+MAKE_IMPL=$(MAKE) -f Makefile.$(SML_IMPL) \
+		  HOL90_VERSION=$(HOL90_VERSION) \
+		  ARCH=$(ARCH) \
+		  HOL_DIR=$(HOL_DIR) \
+		  THEORY_TYPE=$(THEORY_TYPE) \
+		  USE_FILE=$(USE_FILE)
+d33 1
+d35 1
+a35 5
+
+HOL0_DBASE=$(BIN_DIR)/hol0_dbase.$(ARCH)
+HOL1_DBASE=$(BIN_DIR)/hol1_dbase.$(ARCH)
+HOL2_DBASE=$(BIN_DIR)/hol2_dbase.$(ARCH)
+HOL3_DBASE=$(BIN_DIR)/hol90_dbase.$(ARCH)
+a36 3
+#fragments of ML code
+HANDLE_HOL_ERR=handle e => (print_HOL_ERR e; PolyML.quit ())
+
+d41 1
+a41 1
+all: check_sources hol
+d63 1
+a63 1
+# hol0
+d66 1
+a66 2
+$(HOL0_DBASE): 0/* 0/library/* 0/theory/*
+	@@-mkdir $(BIN_DIR) 2> /dev/null
+d69 1
+a69 1
+	| $(SML) -r $(ML_DBASE)
+d74 1
+a74 229
+	     'use "0/sources.sml";'\
+	     'use "0/hol0.sml";'\
+	     'Portable.export "";'\
+	     'PolyML.quit();' \
+	| $(SML) $@@ 2>&1 | tee $(BIN_DIR)/log.$(ARCH).0
+	echo >$@@.blank
+
+#-------------------------------------------------------------------------
+# Theories built after hol0
+#
+# How we ensure theory files don't get rebuilt
+# --------------------------------------------
+#
+# We carefully make the theories dependent only on their source,
+# not on the executable which is used to process the source.
+# This takes the optimistic approach that if a theory file
+# is up-to-date with respect to its source then it is correct - even
+# though it is possible the executable has changed the theory file format.
+#
+# To remake the theory files, go "make clobber" before you begin.
+#
+# Making the theory files not dependent on the executable 
+# stops theory files getting rebuilt unnecessarily.
+# However, we still need to force the make of the executable
+# which processes the theory file if it doesn't exist at all!
+# We do this by running a shell "if" command to do a
+# make in the case where no executable is available.  
+# Shell wizardry courtesy of Michael Norrish. 
+#
+#                                                  DRS
+#-------------------------------------------------------------------------
+
+$(HOLSIG_DIR)/min.holsig: \
+		$(THEORY_SRC)/min.sig \
+		$(THEORY_SRC)/mk_min.sml
+	@@-mkdir $(HOLSIG_DIR) 2> /dev/null
+	@@if test ! -f $(HOL0_DBASE); then $(MAKE_IMPL) $(HOL0_DBASE); fi
+	echo 'use "$(THEORY_SRC)/min.sig" $(HANDLE_HOL_ERR);' \
+	     'use "$(THEORY_SRC)/mk_min.sml" $(HANDLE_HOL_ERR);' \
+	     'PolyML.quit();' \
+	| $(SML) -r $(HOL0_DBASE) 2>&1 | tee -a $(BIN_DIR)/log.$(ARCH).0
+
+$(HOLSIG_DIR)/bool.holsig:  \
+		$(HOLSIG_DIR)/min.holsig \
+		$(THEORY_SRC)/exists.sig \
+		$(THEORY_SRC)/mk_exists.sml \
+		$(THEORY_SRC)/bool.sig \
+		$(THEORY_SRC)/mk_bool.sml
+	@@-mkdir $(HOLSIG_DIR) 2> /dev/null
+	@@if test ! -f $(HOL0_DBASE); then $(MAKE_IMPL) $(HOL0_DBASE); fi
+	echo 'use "$(THEORY_SRC)/min.sig" $(HANDLE_HOL_ERR);' \
+	     'use "$(THEORY_SRC)/ld_min.sml" $(HANDLE_HOL_ERR);' \
+	     'use "$(THEORY_SRC)/exists.sig" $(HANDLE_HOL_ERR);' \
+	     'use "$(THEORY_SRC)/mk_exists.sml" $(HANDLE_HOL_ERR);' \
+	     'use "$(THEORY_SRC)/bool.sig" $(HANDLE_HOL_ERR);' \
+	     'use "$(THEORY_SRC)/mk_bool.sml" $(HANDLE_HOL_ERR);' \
+	     'PolyML.quit();' \
+	| $(SML) -r $(HOL0_DBASE) 2>&1 | tee -a $(BIN_DIR)/log.$(ARCH).0
+
+#-------------------------------------------------------------------------
+# hol1
+#-------------------------------------------------------------------------
+
+$(HOL1_DBASE): $(HOL0_DBASE) 1/* $(HOLSIG_DIR)/bool.holsig
+	@@-mkdir $(BIN_DIR) 2> /dev/null
+	mv $(HOL0_DBASE) $@@
+	mv $(HOL0_DBASE).blank $(HOL0_DBASE)
+	echo 'use "1/sources.sml";'\
+	     'use "1/hol1.sml";'\
+	     'Portable.export "";'\
+	     'PolyML.quit();' \
+	| $(SML) $@@ 2>&1 | tee $(BIN_DIR)/log.$(ARCH).1
+	echo >$@@.blank
+
+#-------------------------------------------------------------------------
+# Theories built after hol1
+#-------------------------------------------------------------------------
+
+$(HOLSIG_DIR)/combin.holsig: \
+		$(HOLSIG_DIR)/bool.holsig \
+		$(THEORY_SRC)/mk_combin.sml
+	@@if test ! -f $(HOL1_DBASE); then $(MAKE_IMPL) $(HOL1_DBASE); fi
+	echo 'use "$(THEORY_SRC)/mk_combin.sml" $(HANDLE_HOL_ERR);' \
+	     'PolyML.quit();' \
+	| $(SML) -r $(HOL1_DBASE) 2>&1 | tee -a $(BIN_DIR)/log.$(ARCH).1
+
+$(HOLSIG_DIR)/num.holsig:  \
+		$(HOLSIG_DIR)/bool.holsig \
+		$(THEORY_SRC)/mk_num.sml
+	@@if test ! -f $(HOL1_DBASE); then $(MAKE_IMPL) $(HOL1_DBASE); fi
+	echo 'use "$(THEORY_SRC)/mk_num.sml" $(HANDLE_HOL_ERR);' \
+	     'PolyML.quit();' \
+	| $(SML) -r $(HOL1_DBASE) 2>&1 | tee -a $(BIN_DIR)/log.$(ARCH).1
+
+$(HOLSIG_DIR)/one.holsig:  \
+		$(HOLSIG_DIR)/bool.holsig \
+		$(THEORY_SRC)/mk_one.sml
+	@@if test ! -f $(HOL1_DBASE); then $(MAKE_IMPL) $(HOL1_DBASE); fi
+	echo 'use "$(THEORY_SRC)/mk_one.sml" $(HANDLE_HOL_ERR);' \
+	     'PolyML.quit();' \
+	| $(SML) -r $(HOL1_DBASE) 2>&1 | tee -a $(BIN_DIR)/log.$(ARCH).1
+
+$(HOLSIG_DIR)/sum.holsig:  \
+		$(HOLSIG_DIR)/bool.holsig \
+		$(HOLSIG_DIR)/combin.holsig \
+		$(THEORY_SRC)/mk_sum.sml
+	@@if test ! -f $(HOL1_DBASE); then $(MAKE_IMPL) $(HOL1_DBASE); fi
+	echo 'use "$(THEORY_SRC)/mk_sum.sml" $(HANDLE_HOL_ERR);' \
+	     'PolyML.quit();' \
+	| $(SML) -r $(HOL1_DBASE) 2>&1 | tee -a $(BIN_DIR)/log.$(ARCH).1
+
+$(HOLSIG_DIR)/restr_binder.holsig:  \
+		$(HOLSIG_DIR)/bool.holsig \
+		$(THEORY_SRC)/mk_restr_binder.sml
+	@@if test ! -f $(HOL1_DBASE); then $(MAKE_IMPL) $(HOL1_DBASE); fi
+	echo 'use "$(THEORY_SRC)/mk_restr_binder.sml" $(HANDLE_HOL_ERR);' \
+	     'PolyML.quit();' \
+	| $(SML) -r $(HOL1_DBASE) 2>&1 | tee -a $(BIN_DIR)/log.$(ARCH).1
+
+$(HOLSIG_DIR)/pair.holsig:  \
+		$(HOLSIG_DIR)/bool.holsig \
+		$(THEORY_SRC)/mk_pair.sml
+	@@if test ! -f $(HOL1_DBASE); then $(MAKE_IMPL) $(HOL1_DBASE); fi
+	echo 'use "$(THEORY_SRC)/mk_pair.sml" $(HANDLE_HOL_ERR);' \
+	     'PolyML.quit();' \
+	| $(SML) -r $(HOL1_DBASE) 2>&1 | tee -a $(BIN_DIR)/log.$(ARCH).1
+
+$(HOLSIG_DIR)/BASIC_HOL.holsig:  \
+		$(THEORY_SRC)/mk_BASIC_HOL.sml \
+		$(HOLSIG_DIR)/bool.holsig \
+		$(HOLSIG_DIR)/restr_binder.holsig \
+		$(HOLSIG_DIR)/pair.holsig \
+		$(HOLSIG_DIR)/sum.holsig \
+		$(HOLSIG_DIR)/one.holsig \
+		$(HOLSIG_DIR)/num.holsig
+	@@if test ! -f $(HOL1_DBASE); then $(MAKE_IMPL) $(HOL1_DBASE); fi
+	echo 'use "$(THEORY_SRC)/mk_BASIC_HOL.sml" $(HANDLE_HOL_ERR);' \
+	     'PolyML.quit();' \
+	| $(SML) -r $(HOL1_DBASE) 2>&1 | tee -a $(BIN_DIR)/log.$(ARCH).1
+
+#-------------------------------------------------------------------------
+# hol2
+#-------------------------------------------------------------------------
+
+$(HOL2_DBASE): $(HOL1_DBASE) 2/* $(HOLSIG_DIR)/BASIC_HOL.holsig
+	@@-mkdir $(BIN_DIR) 2> /dev/null
+	mv $(HOL1_DBASE) $@@
+	mv $(HOL1_DBASE).blank $(HOL1_DBASE)
+	echo 'use "2/sources.sml";' \
+	     'use "2/hol2.sml";'\
+	     'Portable.export "";' \
+	     'PolyML.quit();' \
+	| $(SML) $@@ 2>&1 | tee $(BIN_DIR)/log.$(ARCH).2
+	echo >$@@.blank
+
+#-------------------------------------------------------------------------
+# Theories built after hol2
+#-------------------------------------------------------------------------
+
+$(HOLSIG_DIR)/prim_rec.holsig:  \
+		$(THEORY_SRC)/mk_prim_rec.sml
+	@@if test ! -f $(HOL2_DBASE); then $(MAKE_IMPL) $(HOL2_DBASE); fi
+	echo 'use "$(THEORY_SRC)/mk_prim_rec.sml" $(HANDLE_HOL_ERR);' \
+	     'PolyML.quit();' \
+	| $(SML) -r $(HOL2_DBASE) 2>&1 | tee -a $(BIN_DIR)/log.$(ARCH).2
+
+$(HOLSIG_DIR)/arithmetic.holsig:  \
+		$(HOLSIG_DIR)/prim_rec.holsig \
+		$(THEORY_SRC)/mk_arithmetic.sml
+	@@if test ! -f $(HOL2_DBASE); then $(MAKE_IMPL) $(HOL2_DBASE); fi
+	echo 'use "$(THEORY_SRC)/mk_arithmetic.sml" $(HANDLE_HOL_ERR);' \
+	     'PolyML.quit();' \
+	| $(SML) -r $(HOL2_DBASE) 2>&1 | tee -a $(BIN_DIR)/log.$(ARCH).2
+
+$(HOLSIG_DIR)/list.holsig:  \
+		$(HOLSIG_DIR)/arithmetic.holsig \
+		$(THEORY_SRC)/mk_list.sml \
+		$(THEORY_SRC)/mk_list_thms.sml
+	@@if test ! -f $(HOL2_DBASE); then $(MAKE_IMPL) $(HOL2_DBASE); fi
+	echo 'use "$(THEORY_SRC)/mk_list.sml" $(HANDLE_HOL_ERR);' \
+	     'use "$(THEORY_SRC)/mk_list_thms.sml" $(HANDLE_HOL_ERR);' \
+	     'PolyML.quit();' \
+	| $(SML) -r $(HOL2_DBASE) 2>&1 | tee -a $(BIN_DIR)/log.$(ARCH).2
+
+$(HOLSIG_DIR)/tree.holsig:  \
+		$(HOLSIG_DIR)/list.holsig \
+		$(THEORY_SRC)/mk_tree.sml
+	@@if test ! -f $(HOL2_DBASE); then $(MAKE_IMPL) $(HOL2_DBASE); fi
+	echo 'use "$(THEORY_SRC)/mk_tree.sml" $(HANDLE_HOL_ERR);' \
+	     'PolyML.quit();' \
+	| $(SML) -r $(HOL2_DBASE) 2>&1 | tee -a $(BIN_DIR)/log.$(ARCH).2
+
+$(HOLSIG_DIR)/ltree.holsig:  \
+		$(HOLSIG_DIR)/tree.holsig \
+		$(THEORY_SRC)/mk_ltree.sml
+	@@if test ! -f $(HOL2_DBASE); then $(MAKE_IMPL) $(HOL2_DBASE); fi
+	echo 'use "$(THEORY_SRC)/mk_ltree.sml" $(HANDLE_HOL_ERR);' \
+	     'PolyML.quit();' \
+	| $(SML) -r $(HOL2_DBASE) 2>&1 | tee -a $(BIN_DIR)/log.$(ARCH).2
+
+$(HOLSIG_DIR)/rec_type.holsig:  \
+		$(HOLSIG_DIR)/ltree.holsig \
+		$(THEORY_SRC)/mk_rec_type.sml
+	@@if test ! -f $(HOL2_DBASE); then $(MAKE_IMPL) $(HOL2_DBASE); fi
+	echo 'use "$(THEORY_SRC)/mk_rec_type.sml" $(HANDLE_HOL_ERR);' \
+	     'PolyML.quit();' \
+	| $(SML) -r $(HOL2_DBASE) 2>&1 | tee -a $(BIN_DIR)/log.$(ARCH).2
+
+$(HOLSIG_DIR)/HOL.holsig:  \
+		$(HOLSIG_DIR)/rec_type.holsig \
+		$(HOLSIG_DIR)/sum.holsig \
+		$(HOLSIG_DIR)/restr_binder.holsig \
+		$(HOLSIG_DIR)/one.holsig \
+		$(THEORY_SRC)/mk_HOL.sml
+	@@if test ! -f $(HOL2_DBASE); then $(MAKE_IMPL) $(HOL2_DBASE); fi
+	echo 'use "$(THEORY_SRC)/mk_HOL.sml" $(HANDLE_HOL_ERR);' \
+	     'PolyML.quit();' \
+	| $(SML) -r $(HOL2_DBASE) 2>&1 | tee -a $(BIN_DIR)/log.$(ARCH).2
+
+#-------------------------------------------------------------------------
+# hol3
+#-------------------------------------------------------------------------
+
+$(HOL3_DBASE): $(HOL2_DBASE) 3/* $(HOLSIG_DIR)/HOL.holsig
+	@@-mkdir $(BIN_DIR) 2> /dev/null
+	mv $(HOL2_DBASE) $@@
+	mv $(HOL2_DBASE).blank $(HOL2_DBASE)
+	echo 'PolyML.use "3/sources.sml";'\
+	     'PolyML.use "3/hol3.sml";'\
+d82 1
+a82 1
+	| $(SML) $@@ 2>&1 | tee $(BIN_DIR)/log.$(ARCH).3
+a85 6
+# HOL90
+#-------------------------------------------------------------------------
+
+hol: $(HOL3_DBASE)
+
+#-------------------------------------------------------------------------
+d90 1
+a90 1
+	rm -f $(HOL0_DBASE) $(HOL1_DBASE) $(HOL2_DBASE) $(HOL3_DBASE)
+@
+
+
+1.1.2.3
+log
+@Added parameter PRE_LOAD for specifying whcih libraries to load before
+dumping the core system.
+@
+text
+@a27 2
+# Libraries to load before dumping HOL executable/heap/database
+PRE_LOAD=
+a326 2
+	     'map (load_library_in_place o find_library)'\
+	     '   (Lib.words2 " " "$(PRE_LOAD)");'\
+@
+
+
+1.1.2.3.2.1
+log
+@Many minor changes in order to get HOL to build on SML/NJ 109.26. There are
+several real changes, however.
+
+  1. The reliance on hacked ML-Yacc support files is gone.
+
+  2. After type inference, there is now a pass where new names are guessed for
+     unconstrained type variables. This is experimental.
+
+  3. All the grammars used in the basic HOL system are put in one place
+     (the "src/Grammars" directory).
+
+  4. The implementations of the "Portable" structure have been moved to
+      src/portableML.
+
+  5. All the makefiles used to build the system are in src/Makefiles.
+@
+text
+@@

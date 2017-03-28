@@ -1,0 +1,449 @@
+head	1.1;
+access;
+symbols;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	96.02.08.00.30.48;	author drs1004;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@New theory mechanism, by Donald Syme, and many other enhancements.
+@
+text
+@(* ===================================================================== 
+ * FILE          : defext.sml
+ * DESCRIPTION   : Primitive mechanisms for extending the logic.  Should be
+ *                 in thm.sml
+ *                                                                       
+ * AUTHOR        : (c) Mike Gordon, University of Cambridge              
+ * TRANSLATOR    : Konrad Slind, University of Calgary                   
+ * DATE          : September 11, 1991                                    
+ * ===================================================================== *)
+
+functor EXTENSION (structure Theory : Theory_sig
+		   structure Dsyntax : Dsyntax_sig
+		   sharing
+		       Dsyntax.Term = Theory.Thm.Term) : Extension_sig =
+struct
+structure Thm = Theory.Thm;
+open Theory;
+open Thm;
+open Thm.Term;
+open Thm.Term.Type;
+open Dsyntax;
+infix 3 -->
+open Lib;
+
+val ERR = Exception.ERR "Extension";
+val WRAP_ERR = Exception.WRAP_ERR "Extension";
+
+(*======================================================================
+ * new_axiom
+ * 
+ * Non definitional.
+ *
+ *=====================================================================*)
+
+val new_axiom =
+    let fun check_bool s tm = 
+	if (type_of tm = bool_ty) then () 
+	else ERR (s, "not a formula")
+    in fn tm => 
+	(check_bool "new_open_axiom" tm;
+	 the (new_extension {tyc=[],
+			     tmc=[],
+			     mk_axiom=fn () => SOME (mk_axiom_thm ([],tm))}))
+	handle e => WRAP_ERR("new_axiom",e)
+    end;
+
+
+(*======================================================================
+ * new_simple_definition
+ * 
+ * check_lhs
+ *    check that tm is a <lhs> where:
+ * 
+ *        <lhs> ::= <var> | <lhs> <var> 
+ * 
+ *     and that no variables are repeated. Return list of variables.
+ *
+ * get_type
+ *     if "C ... = (...:ty)" then  (get_type "C ..." ty) gives the
+ *     type of C.
+ *
+ * DESCRIPTION   : An embarrassment, somewhat hidden in hol88, made      
+ *                 public in hol90. There is an attempt to reduce the    
+ *                 principle of definition to the principle of constant  
+ *                 specification. This falls down when trying to define  
+ *                 the existential quantifier with a constant spec.,     
+ *                 which requires an existence theorem. I could do as    
+ *                 in hol88 - just grandfather in "?" as a definition -  
+ *                 but I provide a separate principle of definition, that
+ *                 just gets used once, to define "?".                   
+ *                                                                       
+ *                 Uses the "pre-constant spec" principle of definition  
+ *                 from hol88.                                           
+ *
+ * A reiteration.
+ * 
+ *    There are actually two principles of definition operating in the system:
+ * 
+ *        1. The one used here to define ?.
+ *        2. The one used everywhere else. It is a special version
+ *           of the principle of constant specification. 
+ * 
+ *    It is not possible to use the principle of constant specification
+ *    to define ?, for the PCS uses mk_exists, which will fail since we
+ *    have not defined the existential quantifier yet.
+ *=====================================================================*)
+
+local
+
+fun check_lhs tm =
+   if (is_var tm)
+   then [tm]
+   else if (is_const tm)
+        then ERR("check_lhs","attempt to redefine constant")
+        else if (is_comb tm)
+             then let val {Rator,Rand} = dest_comb tm
+                      val l1 = check_lhs Rator
+                      and l2 = [Rand]
+                  in
+                  if (null_intersection l1 l2)
+                  then (l1@@l2)
+                  else ERR("check_lhs","bad lhs in def")
+                  end
+             else ERR("check_lhs","bad lhs in def");
+
+
+fun get_type tm rightty = 
+   if (is_var tm)
+   then rightty
+   else if (is_comb tm)
+   then let val {Rator,Rand} = dest_comb tm
+        in get_type Rator (type_of Rand --> rightty)
+        end
+   else ERR("get_type","bad lhs in def");
+in
+
+fun new_simple_definition tm =
+ let val (vars,tm') = strip_forall tm
+     val {lhs,rhs} = dest_eq tm'
+     val leftvars  = check_lhs lhs
+     and ty        = get_type lhs (type_of rhs)
+     and rightvars = free_vars rhs
+ in
+ if not(set_eq(intersect leftvars rightvars)rightvars)
+ then ERR("new_simple_definition","unbound var in rhs")
+ else if (mem (hd leftvars) rightvars)
+ then ERR("new_simple_definition","def would be recursive")
+ else let val v  = hd leftvars
+	  val Name = #Name(dest_var v)
+	  val c = {Name = Name, Ty = ty}
+	  fun mk_axiom () = 
+	      SOME (mk_definition_thm([],list_mk_forall(vars, mk_eq{lhs = subst [v |-> mk_const c] lhs,rhs = rhs})))
+      in the (new_extension{tyc=[], tmc=[c], mk_axiom=mk_axiom})
+      end
+ end;
+
+
+end; (* EXISTS_DEF *)
+
+
+(*======================================================================
+ * new_specification
+ * 
+ * 
+ *  Added on 25/11/1988 for HOL88:
+ *   new_specification "flag" "name" "C" |- ?x. ... x ...
+ *   declares C as a new constant and then does
+ *   new_axiom("name", `... C ...`)  "flag" must be one of "constant",
+ *   "infix" or "binder" and determines the syntactic status of C.
+ *   To avoid Roger Jones type problems, it is required that there be
+ *   no type variables in types of subterms of
+ * 
+ *      `... C ...`
+ *   that do not occur in the type of C. This rules out, for example,
+ *  
+ *      new_specification(tok, "Wonk", |- ?b:bool. b = !x y:*. x=y)
+ * 
+ *   The specification above was amended on 8/2/89 to the following:
+ * 
+ *      new_specification
+ *       name 
+ *       ["flag1","C1"; ... ; "flagn,Cn"] 
+ *       |- ?x1 ... xn. ... x1 ... xn ...
+ *   declares C1, ... ,Cn as a new constants and then does
+ *   new_axiom("name", `... C1 ... Cn ...`);  "flagi" must be one of "constant",
+ *   "infix" or "binder" and determines the syntactic status of Ci.
+ *   To avoid Roger Jones type problems, it is required that there be no 
+ *   type variables in types of subterms of  `... C1 ... Cn ...` that do not 
+ *   occ	ur in the types of any Ci (1 <= i <= n). This rules out, for example,
+ *   
+ *      new_specification
+ *       ("Wonk_DEF", ["constant","Wonk"], |- ?b:bool. b = !x y:*. x=y)
+ * 
+ *   which would define a constant `Wonk` of type `:bool` by
+ *   the inconsistent axiom:
+ * 
+ *      |- Wonk = !x y:*. x=y
+ * 
+ * Actually, it doesn't do an "new_axiom", but a "new_extension" -KLS
+ * Fixity nonsense removed by DRS - now managed at a higher level.  -DRS
+ *=====================================================================*)
+
+
+
+local
+
+    fun ERR s = Exception.ERR "Extension" ("new_specification",s);
+	
+fun n_strip_quant dest_fn 0 t = ([],t) |
+    n_strip_quant dest_fn n t =
+    let val {Bvar, Body} = dest_fn t
+	val (l,t'') = n_strip_quant dest_fn (n-1) Body
+    in (Bvar::l, t'')
+    end;
+    
+    
+fun check_specification (th,consts) =
+    if not(null(hyp th)) then 
+	ERR "no assumptions to theorem allowed in specifications"
+    else if not(null(free_vars(concl th))) then 
+	ERR (itlist (fn t => fn s => "\""^(#Name(dest_var t))^"\" "^s)
+	     (free_vars(concl th))
+	     "is (are) unbound variable(s) in specification")
+     else 
+	 let val (vars,body) = n_strip_quant dest_exists
+	     (length consts) 
+	     (concl th)
+	     handle _ => 
+		 ERR "too few existentially quantified variables"
+		 
+	     fun check var =
+		 if not(null(set_diff (type_vars_in_term body) (type_vars_in_term var)))
+		     then (ERR(itlist (fn vty => fn s => 
+				       ((dest_vartype vty)^" "^s))
+			       (set_diff (type_vars_in_term body) 
+				(type_vars_in_term var))
+			       ("should occur in the type of "^(#Name(dest_var var)))))
+		 else ()
+	     val _ = map check vars
+	 in (vars,body)
+	 end;
+	 
+in 
+
+fun new_specification (consts, sat_thm) =
+    let val (vars,body) = check_specification (sat_thm,consts)
+	fun mk_axiom () = 
+	    let fun mk_subst v c = (v |-> mk_const {Name=c, Ty=type_of v}) 
+		val tmsubst = map2 mk_subst vars consts
+	    in SOME (mk_definition_thm([],subst tmsubst body))
+	    end
+	fun mk_tmc v c = {Name=c,Ty=type_of v}
+    in
+	the (new_extension{tyc=[], 
+			   tmc=map2 mk_tmc vars consts, 
+			   mk_axiom=mk_axiom})
+    end
+    handle e => Exception.Raise e;
+end; (* local *)
+
+
+
+
+(*======================================================================
+ * new_definition
+ *
+ * Implemented in terms of new_specification.
+ *
+ * The derived rule
+ *
+ *   DEF_EXISTS_RULE : term -> thm 
+ *
+ * proves that a function defined by a definitional equation exists.
+ * The implementation below uses mk_thm, but this will be changed eventually.
+ *=====================================================================*)
+
+
+local
+
+    fun check_varstruct tm =
+	if (is_var tm)
+	    then [tm]
+	else let val {fst,snd} = dest_pair tm
+		 val l1 = check_varstruct fst
+		 and l2 = check_varstruct snd
+	     in if (null_intersection l1 l2)
+		    then (l1@@l2)
+		else ERR("check_varstruct","bad varstruct")
+	     end handle _ => ERR("check_varstruct","bad varstruct")
+
+    fun check_lhs tm =
+	if (is_var tm) then [tm]
+	else if (is_const tm)
+		 then ERR("check_lhs","attempt to redefine constant")
+	else if (is_comb tm)
+		 then let val {Rator,Rand} = dest_comb tm
+			  val l1 = check_lhs Rator
+			  and l2 = check_varstruct Rand
+		      in if (null_intersection l1 l2) then (l1@@l2)
+			 else ERR("check_lhs","bad lhs in def")
+		      end
+        else ERR("check_lhs","bad lhs in def")
+
+    fun get_type tm rightty = 
+	if (is_var tm) then rightty
+	else if (is_comb tm)
+		 then let val {Rator,Rand} = dest_comb tm
+		      in get_type Rator (type_of Rand --> rightty)
+		      end
+        else ERR("get_type","bad lhs in def");
+
+
+fun DEF_EXISTS_RULE tm =
+ let val (vars,body) = strip_forall tm
+     val (eq as {lhs,rhs}) = dest_eq body handle _ => 
+             ERR("DEF_EXISTS_RULE","definition is not an equation")
+     val lhsvars  = check_lhs lhs
+     and ty       = get_type lhs (type_of rhs)
+     and rhsvars  = free_vars rhs
+ in
+ if not(set_eq (intersect lhsvars rhsvars) rhsvars)
+ then raise(ERR("DEF_EXISTS_RULE","unbound var in rhs"))
+ else if (mem (hd lhsvars) rhsvars)
+ then ERR("DEF_EXISTS_RULE", "recursive definitions not allowed")
+ else let val name = #Name(dest_var(hd lhsvars))
+	  and v    = hd lhsvars
+      in
+	  if not(null(set_diff (type_vars_in_term rhs) 
+				    (type_vars_in_term v)))
+	  then ERR("DEF_EXISTS_RULE",
+		       (dest_vartype
+			(hd (set_diff(type_vars_in_term rhs)
+			     (type_vars_in_term v)))
+			^" is an unbound type variable in definition"))
+	  else if not(Lexis.allowed_term_constant name)
+                then ERR("DEF_EXISTS_RULE",
+                    (name^" is not allowed as a constant name"))
+                else mk_drule_thm([],mk_exists{Bvar = v,
+						   Body=list_mk_forall
+						   (union vars (tl lhsvars),
+						    mk_eq eq)})
+           end
+ end;
+
+in
+
+fun new_definition def =
+    let val def_thm = DEF_EXISTS_RULE def
+	val cname = #Name (dest_var (#Bvar (dest_exists (concl def_thm))))
+    in new_specification ([cname],def_thm)
+    end
+    handle e => Exception.Raise e;
+
+end (* local *)
+	
+    
+(* ===================================================================== *)
+(* new_type_definition: define a new logical type.                       *)
+(*                                                                       *)
+(* USAGE: new_type_definition(name, pred, thm)  (DRAFT MODE ONLY)        *)
+(*                                                                       *)
+(* ARGUMENTS: name --- a string giving the name of the new type or       *)
+(*                     type operator that is to be defined.              *)
+(*                                                                       *)
+(*            pred --- a term denoting a predicate which is to           *)
+(*                     define a subset of an existing type (ty say)      *)
+(*                     that is to represent the new type.  The type      *)
+(*                     of pred must be "ty -> bool" and pred must        *)
+(*                     must contain no free variables.                   *)
+(*                                                                       *)
+(*            thm  --- a theorem asserting the existence of some         *)
+(*                     object of type ty that satisfies pred.  The       *)
+(*                     theorem must be of the form "|- ?x. pred x" for   *)
+(*                     some variable x. The theorem must have no         *)
+(*                     assumptions.                                      *)
+(*                                                                       *)
+(* SIDE EFFECTS: 1) Introduces a new type (type operator) with the       *)
+(*                  given name. The arity of the new type operator       *)
+(*                  is the same as the number of type variables in the   *)
+(*                  predicate pred. Fails if name is already the name of *)
+(*                  an existing type.                                    *)
+(*                                                                       *)
+(*               2) Asserts an axiom stating that there is an isomorphism*)
+(*                  from the new type to the subset of ty defined by the *)
+(*                  predicate pred.                                      *)
+(*                                                                       *)
+(*                  The form of the axiom asserted will be as follows:   *)
+(*                                                                       *)
+(*                     new_type_definition(`ty`, "P", |- ?x. P x)        *)
+(*                                                                       *)
+(*                  yields the theorem:                                  *)
+(*                                                                       *)
+(*                     |- ?rep. TYPE_DEFINITION P rep                    *)
+(*                                                                       *)
+(*                  I.e. there is a function rep from the new type to    *)
+(*                  the representing type ty that is one to one and onto *)
+(*                  the subset defined by P.                             *)
+(*                                                                       *)
+(* RETURNS: the axiom as a theorem.                                      *)
+(*                                                                       *)
+(* ===================================================================== *)
+
+local
+    fun ERR s = Exception.ERR "Type_def" ("new_type_definition",s)
+in
+fun new_type_definition {name,pred,inhab_thm} =
+     if not(null(free_vars pred)) 
+     then ERR "subset predicate must be a closed term"
+     else if (not (is_fun_ty(type_of pred)))
+     then ERR "pred has the wrong type - it must be a function"
+     else if (#ran (dest_fun_ty(type_of pred)) <> bool_ty)
+     then ERR "pred has the wrong type - its range must be :bool"
+     else if not(null(hyp inhab_thm)) 
+     then ERR "existence theorem must have no assumptions"
+     else if not((pred = rator(#Body(dest_exists(concl inhab_thm))))
+                        handle _ => false)
+     then ERR "existence theorem must match subset predicate"
+     else let val {Args = [ty,_],...} = dest_type(type_of pred) 
+	      and evar = #Bvar(dest_exists(concl inhab_thm))
+	      val tyvarsl = type_vars_in_term pred 
+	      val recd = {Name = name, Arity = length tyvarsl}
+	      fun mk_axiom () =
+		  let val newty  = mk_type{Tyop = name,Args = tyvarsl}
+		      val repty  = newty --> ty
+		      val rep    = mk_primed_var{Name="rep", Ty=repty}
+		      val TYDEF_ty = (ty-->bool_ty) --> (repty-->bool_ty)
+		      val TYDEF = mk_const{Name = "TYPE_DEFINITION",
+					   Ty = TYDEF_ty}
+		      val bd = mk_exists{Bvar=rep, 
+					 Body=list_mk_comb(TYDEF,[pred,rep])}
+		  in 
+		      SOME (mk_definition_thm([],bd))
+		  end
+			   
+	  in
+	      the (new_extension {tyc=[recd], tmc=[], mk_axiom=mk_axiom})
+	  end
+      handle e => Exception.Raise e;
+
+
+end;  (* local *)    
+
+end; (* EXTENSIONS *)
+
+
+
+@

@@ -1,0 +1,2971 @@
+\chapter{ML Functions in the window Library}
+\input{entries-intro}
+\DOC{add\_relation}
+
+\TYPE {\small\verb%add_relation : ((thm * thm) -> unit)%}\egroup
+
+\SYNOPSIS
+Declares a new relation for use with the window system.
+
+\DESCRIBE
+Before the window inference system can be used to preserve a given
+relation, the system must know that the relation is reflexive and
+transitive. Initially the system knows about the reflexivity and
+transitivity of equality, implication and backward implication. To
+inform the system of the reflexivity and transitivity of some new
+relation, {\small\verb%NEW%}, the user should first prove to new theorems
+{\small\verb%NEW_REFL_THM%} and {\small\verb%NEW_TRANS_THM%}. These theorems should have a form
+analogous to that of {\small\verb%IMP_REFL_THM%} and {\small\verb%IMP_TRANS_THM%} respectively.
+The user should then execute the following command:
+
+\noindent{\small\verb%add_relation (NEW_REFL_THM,NEW_TRANS_THM)%}.
+
+\FAILURE
+{\small\verb%add_relation%} will fail if the theorems suplied are not of the
+correct form.
+
+\SEEALSO
+EQ_REFL, EQ_TRANS, IMP_REFL_THM, IMP_TRANS_THM, PMI_REFL_THM,
+PMI_TRANS_THM
+
+\ENDDOC
+\DOC{ADD\_SUPPOSE}
+
+\TYPE {\small\verb%ADD_SUPPOSE : (goal -> win_stack -> win_stack)%}\egroup
+
+\SYNOPSIS
+Add a supposition to the set associated with a window stack.
+
+\DESCRIBE
+{\small\verb%ADD_SUPPOSE (p ?- c)%} adds the supposition {\small\verb%(p ?- c)%} to the set of
+suppositions associated with the window stack.  The supposition will
+not be added if some stronger (alpha equivalent conclusion, fewer
+assumptions) theorem or supposition is already held by the stack.
+A limited amount of resolution is also performed on the theorems and
+supposition of a window after each addition.  For example, if
+{\small\verb%(q ?- p)%} were already a supposition and the supposition {\small\verb%(p ?- c)%}
+was added, then the supposition {\small\verb%(q ?- c)%} would be inferred.
+
+\SEEALSO
+add_suppose, CONJECTURE, ADD_THEOREM, ESTABLISH
+
+\ENDDOC
+\DOC{add\_suppose}
+
+\TYPE {\small\verb%add_suppose : (goal -> window -> window)%}\egroup
+
+\SYNOPSIS
+Window library internal use only.
+
+\ENDDOC
+\DOC{ADD\_THEOREM}
+
+\TYPE {\small\verb%ADD_THEOREM : (thm -> win_stack -> win_stack)%}\egroup
+
+\SYNOPSIS
+Add a theorem to the set of theorems relevant to a window stack.
+
+\DESCRIBE
+{\small\verb%ADD_THEOREM (a |- c)%} adds the theorem {\small\verb%(a |- c)%} to the set of
+theorems considered relevant to the window stack.  The theorem will
+not be added if a stronger (alpha-equivalent conclusion, subset of
+assumptions) theorem is already held by the stack. When each theorem
+is added, a limited amount of resolution is performed.  For example
+if the theorem {\small\verb%(b |- a)%} is already held by the system, and the
+theorem {\small\verb%(a |- c)%} was added, then the theorem {\small\verb%(b |- c)%} would be
+inferred.
+
+\SEEALSO
+add_theorem
+
+\ENDDOC
+\DOC{add\_theorem}
+
+\TYPE {\small\verb%add_theorem : (thm -> window -> window)%}\egroup
+
+\SYNOPSIS
+Window library internal use only.
+
+\ENDDOC
+\DOC{add\_weak}
+
+\TYPE {\small\verb%add_weak : (thm -> unit)%}\egroup
+
+\SYNOPSIS
+Adds a weakening rule to the window system tables.
+
+\DESCRIBE
+The window inference system can compensate for a missing window rule
+in its database by substituting a rule which preserves a relation
+which is stronger than the one the user wanted to preserve. To do
+this, the system must know how to weaken a theorem where two terms
+are related by the stronger relation to a theorem where the two terms are
+related by the required relation.
+
+The system already knows that equality is stronger than any reflexive
+relation, and how to weaken a theorem which relates terms by equality
+to a theorem which relates the terms by any reflexive relation.
+Suppose you would like the system to know that the relation {\small\verb%"S"%} is
+stronger than the relation {\small\verb%"R"%}. First you should define the
+following theorem:
+{\par\samepage\setseps\small
+\begin{verbatim}
+   WEAK_SR |- !x y. (x S y) ==> (x R y)
+\end{verbatim}
+}
+\noindent Next you add this theorem with the command
+{\small\verb%add_weak WEAK_SR%}. From this information system maintains lists of
+which relationships may be substituted for which. Suppose we had
+added to the system rules for weakening {\small\verb%"S"%} to {\small\verb%"R"%} and {\small\verb%"R"%} to
+{\small\verb%"Q"%}, the system can infer that both {\small\verb%"R"%} and {\small\verb%"S"%} can be used as
+substitutes for {\small\verb%"Q"%}, but {\small\verb%"R"%} is preferable since it is the weaker
+of the two relations.
+
+\FAILURE
+{\small\verb%add_weak%} will fail if you try to add a rule which duplicates
+information already stored or inferred by the system. {\small\verb%add_weak%} will
+fail if you try to add a rule which would create a cycle in the list
+of possible substitutes for a relation. {\small\verb%add_weak%} will fail if you
+try to add a rule which would create a branch in the list of possible
+substitutes for a relation.
+
+\SEEALSO
+add_relation
+
+\ENDDOC
+\DOC{after}
+
+\TYPE {\small\verb%after : (''a list -> ''a list -> ''a list)%}\egroup
+
+Finds the difference between two lists.
+
+\SYNOPSIS
+{\small\verb%after l1 l2%} is the list {\small\verb%l%} such that {\small\verb%(l1 @ l) = l2%}.
+
+\FAILURE
+{\small\verb%after l1 l2%} fails if {\small\verb%l1%} is not a prefix of {\small\verb%l2%}.
+
+\EXAMPLE
+{\par\samepage\setseps\small
+\begin{verbatim}
+- after [1,2] [1,2,3];
+val it = [3] : int list
+\end{verbatim}
+}
+
+\SEEALSO
+prefix, suffix, before
+
+\ENDDOC
+\DOC{all\_hypotheses}
+
+\TYPE {\small\verb%all_hypotheses : (window -> term list)%}\egroup
+
+\SYNOPSIS
+The hypotheses of a window - in all their forms.
+
+\DESCRIBE
+This is the list of things that may be assumed in the context of a
+window. {\small\verb%all_hypotheses%} returns the hypotheses in both the form in
+which they are stored and the form in which they are presented to the
+user.
+
+\EXAMPLE
+{\par\samepage\setseps\small
+\begin{verbatim}
+- BEGIN_STACK "hyp-ex" (--`($=) ((A /\ B) /\ C)`--) [] [];
+
+= * (A /\ B) /\ C
+val it = () : unit
+- DO (OPEN_WIN [RAND]);
+
+  ! B
+  ! A
+= * C
+val it = () : unit
+- all_hypotheses (top_window (CURRENT_STACK ()));
+val it = [(--`A /\ B`--),(--`A`--),(--`B`--)] : term list
+\end{verbatim}
+}
+
+\FAILURE
+Never fails.
+
+\SEEALSO
+context, disp_hypotheses, hypotheses, hyp_thms
+
+\ENDDOC
+\DOC{ALL\_STACKS}
+
+\TYPE {\small\verb%ALL_STACKS : (unit -> string list)%}\egroup
+
+\SYNOPSIS
+Lists all the available stacks.
+
+\DESCRIBE
+{\small\verb%ALL_STACKS ()%} lists the names of all the stacks recorded in
+the system.  That is, all those stacks created by {\small\verb%BEGIN_STACK%}
+and {\small\verb%BEGIN_STACK_TAC%}, and not yet destroyed by {\small\verb%END_STACK%} or
+{\small\verb%END_STACK_TAC%}.  You may use {\small\verb%SET_STACK%} to make any one of
+these stacks the current stack.
+
+\FAILURE
+Never fails.
+
+\SEEALSO
+BEGIN_STACK, END_STACK, GET_STACK, SET_STACK, CURRENT_NAME
+
+\ENDDOC
+\DOC{ASM\_REWRITE\_WIN}
+
+\TYPE {\small\verb%ASM_REWRITE_WIN :  (thm list -> win_stack -> win_stack)%}\egroup
+
+\SYNOPSIS
+Repeatedly rewrite focus with context, theorems and basic rewrites.
+
+\FAILURE
+{\small\verb%ASM_REWRITE_WIN thms%} will fail if the hypotheses of any of the
+theorems in {\small\verb%thms%} are not a subset of the context of the window.
+This function may fail to terminate if {\small\verb%thms%} describe a circular
+rewriting.
+
+\SEEALSO
+GEN_REWRITE_WIN, REWRITE_WIN, PURE_REWRITE_WIN, PURE_ONCE_REWRITE_WIN,
+ONCE_REWRITE_WIN, PURE_ASM_REWRITE_WIN, PURE_ONCE_ASM_REWRITE_WIN,
+ONCE_ASM_REWRITE_WIN, FILTER_PURE_ASM_REWRITE_WIN,
+FILTER_ASM_REWRITE_WIN, FILTER_PURE_ONCE_ASM_REWRITE_WIN,
+FILTER_ONCE_ASM_REWRITE_WIN
+
+\ENDDOC
+\DOC{bad\_conjectures}
+
+\TYPE {\small\verb%bad_conjectures : (win_stack -> term list)%}\egroup
+
+\SYNOPSIS
+Window library internal use only.
+
+\ENDDOC
+\DOC{BEGIN\_STACK}
+
+\TYPE {\small\verb%BEGIN_STACK : (string -> term -> term list -> thm list -> unit)%}\egroup
+
+\SYNOPSIS
+Create a window stack.
+
+\DESCRIBE
+{\small\verb%BEGIN_STACK "name" `r f` hyps thms%} creates a new window stack
+containing a single window with: focus {\small\verb%`f`%}, relation {\small\verb%`r`%},
+hypotheses {\small\verb%hyps%}, relevant theorems {\small\verb%thms%} and suppositions {\small\verb%[]%}.
+The new stack has the name {\small\verb%"name"%} and is made the current stack.
+
+\FAILURE
+{\small\verb%BEGIN_STACK "name" `r f` hyps thms%} fails if there already exists
+a window stack called {\small\verb%"name"%}.  It will also fail if the term it is
+passed is not of the form `r f` where `r` is one of the relations that
+have been declared to the window inference system.
+
+\USES
+Use this command to start an interactive reasoning session.
+
+\SEEALSO
+create_win, END_STACK, SET_STACK, ALL_STACKS, CURRENT_NAME,
+CURRENT_STACK
+
+\ENDDOC
+\DOC{BEGIN\_STACK\_TAC}
+
+\TYPE {\small\verb%BEGIN_STACK_TAC : (thm list -> tactic)%}\egroup
+
+\SYNOPSIS
+Open a subwindow on the current goal of the subgoals package.
+
+\DESCRIBE
+The tactic {\small\verb%BEGIN_STACK_TAC thms%} leaves the current goal unchanged,
+but as a side-effect it creates a new window stack called
+{\small\verb%"TACTIC STACK"%}.  The focus of the top (and only) window of this new
+stack is the goal.  The window will have the assumptions of the goal
+as it's assumptions.  The window will have {\small\verb%thms%} as it's set of
+relevant theorems. The relation preserved by the window will be {\small\verb%<==%}
+so that the window can be used to transform {\small\verb%goal%} to {\small\verb%goal'%},
+generating the theorem {\small\verb%(H |- goal <== goal')%}.  When the stack is
+ended with {\small\verb%END_STACK_TAC ()%} the goal will be transformed from {\small\verb%goal%}
+to {\small\verb%goal'%}.
+
+\FAILURE
+{\small\verb%BEGIN_STACK_TAC thms%} will fail if the goal stack is empty, or if
+these already exists a window stack called {\small\verb%"TACTIC STACK"%}.
+
+\EXAMPLE
+{\par\samepage\setseps\small
+\begin{verbatim}
+   - set_goal ([], --`A /\ (A = B)`--);
+   (--`A /\ (A = B)`--)
+   =============================
+   
+   
+   val it = () : unit
+   - e (BEGIN_STACK_TAC []);
+   OK..
+   
+   <== * A /\ (A = B)
+   1 subgoal:
+   (--`A /\ (A = B)`--)
+   =============================
+   
+   
+   val it = () : unit
+   - DO (OPEN_WIN [RAND]);
+   
+       ! A
+   <== * A = B
+   val it = () : unit
+      - DO (ASM_REWRITE_WIN []);
+   
+       ! A
+   <== * B
+   val it = () : unit
+   - DO CLOSE_WIN;
+   
+   <== * A /\ B
+   val it = () : unit
+   - e (END_STACK_TAC ());
+   OK..
+   1 subgoal:
+   (--`A /\ B`--)
+   =============================
+   
+   
+   val it = () : unit
+\end{verbatim}
+}
+
+\SEEALSO
+END_STACK_TAC
+
+\ENDDOC
+\DOC{beg\_stack\_sig}
+
+\TYPE {\small\verb%beg_stack_sig : string signal%}\egroup
+
+\SYNOPSIS
+Raised after a new window stack is begun.
+
+\DESCRIBE
+The signal {\small\verb%beg_stack_sig%} is raised after a new stack is created.
+The signal is raised with the name of the new stack.
+
+When the window library is first loaded a handler is associated with
+this signal that will print the window on top of the new stack.
+Loading the xlabel component associates another handler with this
+signal that sets the label on the xterminal in which HOL is running
+to the name of the new stack.
+
+\FAILURE
+Never fails.
+
+\SEEALSO
+end_stack_sig, set_stack_sig, cng_win_sig, pop_win_sig, psh_win_sig
+
+\ENDDOC
+\DOC{best}
+
+\TYPE {\small\verb%best : (('a * 'a -> bool) -> 'a list -> 'a)%}\egroup
+
+\SYNOPSIS
+Choses the best elemet from a list using a given ordering relation.
+
+\DESCRIBE
+{\small\verb%best f l%} choses the best element in {\small\verb%l%} according to the ordering
+{\small\verb%f%}.
+
+\FAILURE
+Never fails.
+
+\EXAMPLE
+{\par\samepage\setseps\small
+\begin{verbatim}
+- best (fn (a,b) => a >= b) [1,10,2,9,3,8,4,7,5,6];
+val it = 10 : int
+\end{verbatim}
+}
+
+\SEEALSO
+sort, merge.
+
+\ENDDOC
+\DOC{better\_goal}
+
+\TYPE {\small\verb%better_goal : (goal -> goal -> bool)%}\egroup
+
+\SYNOPSIS
+Window library internal use only.
+
+\ENDDOC
+\DOC{better\_thm}
+
+\TYPE {\small\verb%better_thm : (thm -> thm -> bool)%}\egroup
+
+\SYNOPSIS
+Window library internal use only.
+
+\ENDDOC
+\DOC{bndvar}
+
+\TYPE {\small\verb%bndvar : term -> term%}\egroup
+
+\SYNOPSIS
+Window library internal use only.
+
+\ENDDOC
+\DOC{bound}
+
+\TYPE {\small\verb%bound : (window -> term list)%}\egroup
+
+\SYNOPSIS
+Window library internal use only.
+
+\ENDDOC
+\DOC{DEFINED}
+
+\TYPE {\small\verb%DEFINED : (path -> term -> term list)%}\egroup
+
+\SYNOPSIS
+Window library internal use only.
+
+\ENDDOC
+\DOC{catch\_signal}
+
+\TYPE {\small\verb%catch_signal : ('a signal -> ('a -> unit) -> unit)%}\egroup
+
+\SYNOPSIS
+Associate a function with a signal.
+
+\DESCRIBE
+Evaluating the function {\small\verb%catch_signal sig fun%} means that in future
+whenever signal {\small\verb%sig%} is raised with argument {\small\verb%a%}, the expression
+{\small\verb%fun a%} will be evaluated.
+
+\SEEALSO
+clear_signal, new_signal
+
+\ENDDOC
+\DOC{catch\_signal}
+
+\TYPE {\small\verb%catch_signal : ('a signal -> unit)%}\egroup
+
+\SYNOPSIS
+Clear all the functions from a signal.
+
+\DESCRIBE
+Evaluating the expression {\small\verb%clear_signal sig%} will mean that in 
+future raising the signal {\small\verb%sig%} will not result in any functions
+being called.
+
+\SEEALSO
+catch_signal, new_signal
+
+\ENDDOC
+\DOC{CLOSE\_WIN}
+
+\TYPE {\small\verb%CLOSE_WIN : (win_stack -> win_stack)%}\egroup
+
+\SYNOPSIS
+Pop the top window from the stack and transform the parent window.
+
+\DESCRIBE
+{\small\verb%CLOSE_WIN%} removes the top window from a window stack and uses the
+theorem in that window to transform the parent window. {\small\verb%CLOSE_WIN%} is
+used to close subwindows opened by the {\small\verb%OPEN_WIN%}, {\small\verb%OPEN_CONTEXT%} and
+{\small\verb%ESTABLISH%} commands.
+
+\FAILURE
+{\small\verb%CLOSE_WIN%} will fail if the stack is empty or is only one window
+deep. Other possible failures depend on the command used to open the
+window.
+
+\EXAMPLE
+{\par\samepage\setseps\small
+\begin{verbatim}
+   - BEGIN_STACK "example" (--`($<==) (A /\ (B /\ F))`--) [] [];
+   
+   <== * A /\ B /\ F
+   val it = () : unit
+   - DO (OPEN_WIN [RAND]);
+   
+       ! A
+   <== * B /\ F
+   val it = () : unit
+   - DO (REWRITE_WIN []);
+   
+       ! A
+   <== * F
+   val it = () : unit
+   - DO CLOSE_WIN;
+   
+   <== * A /\ F
+   val it = () : unit
+   - END_STACK "example";
+   val it = () : unit
+\end{verbatim}
+}
+
+\SEEALSO
+OPEN_WIN, OPEN_CONTEXT, ESTABLISH
+
+\ENDDOC
+\DOC{cng\_win\_sig}
+
+\TYPE {\small\verb%cng_win_sig : unit signal%}\egroup
+
+\SYNOPSIS
+Raised after the window on top of the current stack is changed.
+
+\DESCRIBE
+When the window library is loaded a handler is associated with this
+signal to reprint the window on top of the current stack every time
+it is changed.
+
+\FAILURE
+Never fails.
+
+\SEEALSO
+beg_stack_sig, set_stack_sig, end_stack_sig, pop_win_sig, psh_win_sig
+
+\ENDDOC
+\DOC{CONJECTURE}
+
+\TYPE {\small\verb%CONJECTURE : (term -> win_stack -> win_stack)%}\egroup
+
+\SYNOPSIS
+Add a conjecture to the top window on a window stack.
+
+\DESCRIBE
+The command {\small\verb%CONJECTURE "c"%} is a short-hand way of adding a
+supposition to the window stack. {\small\verb%CONJECTURE "c"%} works like
+{\small\verb%ADD_SUPPOSE (p ?- c)%} where {\small\verb%"p"%} represents the hypotheses of
+the top window on the stack.
+
+\SEEALSO
+ADD_SUPPOSE, ADD_THEOREM, ESTABLISH
+
+\ENDDOC
+\DOC{conjecture}
+
+\TYPE {\small\verb%conjecture : (term -> window -> window)%}\egroup
+
+\SYNOPSIS
+Window library internal use only.
+
+\ENDDOC
+\DOC{conjectures}
+
+\TYPE {\small\verb%conjectures : (window -> term list)%}\egroup
+
+\SYNOPSIS
+The conjectures of a window.
+
+\DESCRIBE
+These are the conclusions of the suppositions of the window which
+are applicable in the context of the window. The conjectures of a
+window are a set of terms which the user believes to the true in the
+context of the window, but which have not yet been proved.
+
+\FAILURE
+Never fails.
+
+\SEEALSO
+BAD_CONJECTURES, used_conjectures
+
+\ENDDOC
+\DOC{context}
+
+\TYPE {\small\verb%context : (window -> term list)%}\egroup
+
+\SYNOPSIS
+The context of a window.
+
+\DESCRIBE
+{\small\verb%context w%} retuns all the hypotheses, lemmas, and conjectures that
+may be assumed in the context of the window {\small\verb%w%}.
+
+\FAILURE
+Never fails.
+
+\SEEALSO
+all_hypotheses, conjectures, lemmas
+
+\ENDDOC
+\DOC{CONTEXT\_LIST}
+
+\TYPE {\small\verb%CONTEXT_LIST : ((thm list -> win_stack -> win_stack) -> win_stack -> win_stack)%}\egroup
+
+\SYNOPSIS
+Supply the context to a window transformation function.
+
+\DESCRIBE
+If {\small\verb%f%} is a function that takes a list of theorems and transforms a
+window stack, then {\small\verb%CONTEXT_LIST f%} is a function that transforms a
+window stack. It supplies {\small\verb%f%} with the context of the window stack as
+its list of theorems.
+
+\ENDDOC
+\DOC{CONVERT\_WIN}
+
+\TYPE {\small\verb%CONVERT_WIN :  (conv -> win_stack -> win_stack)%}\egroup
+
+\SYNOPSIS
+Apply a conversion to the focus of the top window.
+
+\DESCRIBE
+If the focus of the top window of the stack {\small\verb%s%} is {\small\verb%`f`%}, and
+applying a conversion {\small\verb%c%} to {\small\verb%`f`%} yields the theorem {\small\verb%(|- f = f')%},
+then {\small\verb%CONVERT_WIN c s%} transforms the focus of the top window from
+{\small\verb%`f`%} to {\small\verb%`f'`%}.
+
+\FAILURE
+{\small\verb%CONVERT_WIN c s%} will fail if the hypotheses of the theorem returned
+when {\small\verb%c%} is applied to the focus of the top window are not a subset of
+the context of the window.
+
+\SEEALSO
+TRANSFORM_WIN, RULE_WIN, THM_RULE_WIN, FOC_RULE_WIN, TACTIC_WIN,
+REWRITE_WIN
+
+\ENDDOC
+\DOC{convert\_win}
+
+\TYPE {\small\verb%convert_win : (conv -> window -> window)%}\egroup
+
+\SYNOPSIS
+Window library internal use only.
+
+\ENDDOC
+\DOC{create\_stack}
+
+\TYPE {\small\verb%create_stack : (window -> win_stack)%}\egroup
+
+\SYNOPSIS
+Window library internal use only.
+
+\ENDDOC
+\DOC{create\_win}
+
+\TYPE {\small\verb%create_win : (term -> term list -> thm list -> window)%}\egroup
+
+\SYNOPSIS
+Window library internal use only.
+
+\ENDDOC
+\DOC{CURRENT\_NAME}
+
+\TYPE {\small\verb%CURRENT_NAME : (unit -> string)%}\egroup
+
+\SYNOPSIS
+Returns the name of the current window stack.
+
+\FAILURE
+Fails if there is no current window stack.
+
+\SEEALSO
+BEGIN_STACK, CURRENT_STACK, END_STACK, SET_STACK, ALL_STACKS
+
+\ENDDOC
+\DOC{CURRENT\_STACK}
+
+\TYPE {\small\verb%CURRENT_STACK : (unit -> win_stack)%}\egroup
+
+\SYNOPSIS
+Returns the current window stack.
+
+\FAILURE
+Fails if there is no current window stack.
+
+\SEEALSO
+CURRENT_NAME, SET_STACK
+
+\ENDDOC
+\DOC{DEFINED}
+
+\TYPE {\small\verb%DEFINED : ('a -> 'a or_undefined)%}\egroup
+
+\SYNOPSIS
+Window library internal use only.
+
+\ENDDOC
+\DOC{depth\_stack}
+
+\TYPE {\small\verb%depth_stack : (win_stack -> int)%}\egroup
+
+\SYNOPSIS
+Window library internal use only.
+
+\ENDDOC
+\DOC{dest\_pmi}
+
+\TYPE {\small\verb%dest_pmi : (term -> {ant:term, conseq:term})%}\egroup
+
+\SYNOPSIS
+Breaks apart a backward implication into antecedent and consequent.
+
+\DESCRIBE
+{\small\verb%dest_pmi%} is a term destructor for backward implication, its funtion
+is similar to {\small\verb%dest_imp%} for forward implications.
+
+\COMMENTS
+Unlike {\small\verb%dest_imp%}, {\small\verb%dest_pmi%} does not consider negation to be a
+special case of implication.
+
+\FAILURE
+Fails if the term is not a backward implication.
+
+\SEEALSO
+dest_imp, PMI_DEF
+
+\ENDDOC
+\DOC{disp\_hypotheses}
+
+\TYPE {\small\verb%disp_hypotheses : (window -> term list)%}\egroup
+
+\SYNOPSIS
+The hypotheses of a window - as displayed interactively.
+
+\DESCRIBE
+This is the list of things that may be assumed in the context of a
+window. {\small\verb%disp_hypotheses%} returns the hypotheses in the form that
+they will be printed when the window library is used interactively.
+
+\EXAMPLE
+{\par\samepage\setseps\small
+\begin{verbatim}
+- BEGIN_STACK "hyp-ex" (--`($=) ((A /\ B) /\ C)`--) [] [];
+
+= * (A /\ B) /\ C
+val it = () : unit
+- DO (OPEN_WIN [RAND]);
+
+ ! B
+ ! A
+= * C
+val it = () : unit
+- disp_hypotheses (top_window (CURRENT_STACK ()));
+val it = [(--`A`--),(--`B`--)] : term list
+\end{verbatim}
+}
+
+\FAILURE
+Never fails.
+
+\SEEALSO
+hyp_thms, hypotheses, all_hypotheses, context
+
+\ENDDOC
+\DOC{DO}
+
+\TYPE {\small\verb%DO: ((win_stack -> win_stack) -> unit)%}\egroup
+
+\SYNOPSIS
+Applys a window stack transformation to the current window stack.
+
+\DESCRIBE
+
+{\small\verb%DO f%} applies the window stack transformation function {\small\verb%f%} to the 
+current window stack.
+
+\FAILURE
+{\small\verb%DO f%} will fail if there is no current stack, or if the function {\small\verb%f%}
+fails when applied to the current stack.
+
+\SEEALSO
+CURRENT_STACK, REDO, SET_MAX_HIST, UNDO
+
+\ENDDOC
+\DOC{dodo}
+
+\TYPE {\small\verb%dodo : ('a history -> ('a -> 'a) -> unit)%}\egroup
+
+\SYNOPSIS
+Place an event in the history.
+
+\DESCRIBE
+
+{\small\verb%dodo h f%} updates the history {\small\verb%h%} with {\small\verb%f (present h)%} as its
+present. {\small\verb%present h%} will be the first recorded event in the past of
+the updated {\small\verb%h%}, except of course if the size of the history is 1.
+
+\SEEALSO
+new_history, present, redo, set_size, undo
+\ENDDOC
+\DOC{dom}
+
+\TYPE {\small\verb%dom : (term -> hol_type)%}\egroup
+
+\SYNOPSIS
+Finds the domain of a function.
+
+\FAILURE
+Fails if the argument is not a function.
+
+\EXAMPLE
+{\par\samepage\setseps\small
+\begin{verbatim}
+- dom  (--`f:'a->'b`--);
+val it = (==`:'a`==) : hol_type
+\end{verbatim}
+}
+
+\SEEALSO
+is_fun, ran
+
+\ENDDOC
+\DOC{END\_STACK}
+
+\TYPE {\small\verb%END_STACK : (string -> unit)%}\egroup
+
+\SYNOPSIS
+Destroys a window stack.
+
+\DESCRIBE
+{\small\verb%END_STACK "name"%} destroyes the window stack with name {\small\verb%`name`%}.
+If {\small\verb%"name"%} is the name of the current stack, then 
+{\small\verb%END_STACK "name"%} leaves you with no current stack.
+
+\FAILURE
+{\small\verb%END_STACK "name"%} fails if there is no stack called {\small\verb%"name"%}.
+
+\SEEALSO
+ALL_STACKS, BEGIN_STACK, CURRENT_NAME, SET_STACK
+
+\ENDDOC
+\DOC{end\_stack\_sig}
+
+\TYPE {\small\verb%end_stack_sig : string signal%}\egroup
+
+\SYNOPSIS
+Raised after a window stack is ended.
+
+\DESCRIBE
+This signal is raised after a window stack is ended.  It is raised
+with the name of the window stack that was just ended.
+
+\FAILURE
+Never fails.
+
+\SEEALSO
+beg_stack_sig, cng_win_sig, pop_win_sig, psh_win_sig, set_stack_sig
+
+\ENDDOC
+\DOC{END\_STACK\_TAC}
+
+\TYPE {\small\verb%END_STACK_TAC : (unit -> tactic)%}\egroup
+
+\SYNOPSIS
+Closes a subwindow opened on the current goal of the subgoals package.
+
+\DESCRIBE
+{\small\verb%END_STACK_TAC%} name closes all the subwindows on the window stack
+called {\small\verb%"TACTIC STACK"%} and returns to the parent window of the stack.
+The theorem in this window is used to generate a theorem of the form
+{\small\verb%(H |- goal' ==> goal)%} where {\small\verb%goal%} is the current goal of the
+subgoal package.  The current goal is transformed from {\small\verb%goal%} to
+{\small\verb%goal'%} and the stack named {\small\verb%"TACTIC STACK"%} is ended.
+
+\FAILURE
+{\small\verb%END_STACK_TAC%} will fail if you have done any other tactical
+reasoning since opening the window with {\small\verb%BEGIN_STACK_TAC%}.
+{\small\verb%END_STACK_TAC%} will also fail if there are any used conjectures in
+the current window.
+
+\SEEALSO
+BEGIN_STACK_TAC
+
+\ENDDOC
+\DOC{equiv\_tm}
+
+\TYPE {\small\verb%equiv_tm : term%}\egroup
+
+\SYNOPSIS
+The relation `=:bool -> (bool -> bool)`.
+
+\SEEALSO
+imp_tm, pmi_tm
+
+\ENDDOC
+\DOC{ESTABLISH}
+
+\TYPE {\small\verb%ESTABLISH : (term -> win_stack -> win_stack)%}\egroup
+
+\SYNOPSIS
+Prove a new lemma, or establish a conjecture.
+
+\DESCRIBE
+{\small\verb%ESTABLISH tm%} pushes a subwindow with focus {\small\verb%tm%} onto a window stack.
+If {\small\verb%tm%} is a conjecture in the parent window, it (and any lemmas that
+depend on it) will be removed from the subwindow.  The relationship
+preserved in the subwindow is {\small\verb%`<==`%}.  The user should then transform
+the focus of the subwindow from {\small\verb%tm%} to {\small\verb%`T`%}(true).  The subwindow
+should then be closed making {\small\verb%tm%} a lemma of the parent window.
+
+\FAILURE
+{\small\verb%ESTABLISH%} will fail if the window stack is empty.
+
+\noindent Attempts to use {\small\verb%CLOSE_WIN%} on a window opened by
+{\small\verb%ESTABLISH%} and whose focus has not been transformed to {\small\verb%`T`%} will
+fail.  If the focus can not be proved you can abandon the proof
+attempt with {\small\verb%UNDO_WIN%}.
+
+\EXAMPLE
+{\par\samepage\setseps\small
+\begin{verbatim}
+   = * f
+   val it = () : unit
+   - DO (ESTABLISH (--`A \/ ~A`--));
+   
+   <== * A \/ ~A
+   val it = () : unit
+   - DO (REWRITE_WIN [EXCLUDED_MIDDLE]);
+   
+   <== * T
+   val it = () : unit
+   - DO CLOSE_WIN;
+   
+     | A \/ ~A
+   = * f
+   val it = () : unit
+\end{verbatim}
+}
+
+\SEEALSO
+CLOSE_WIN, OPEN_CONTEXT, OPEN_WIN
+
+\ENDDOC
+\DOC{EXISTS\_PMI}
+
+\TYPE {\small\verb%EXISTS_PMI : (term -> thm -> thm)%}\egroup
+
+\SYNOPSIS
+Existentially quantifies the clauses of a backward implication.
+
+\DESCRIBE
+When applied to a variable {\small\verb%`x`%} and a theorem {\small\verb%A |- t1 <== t2%}, the
+{\small\verb%EXISTS_PMI%} inference rule returns the theorem
+{\small\verb%A |- (?x. t1) <== (?x. t2)%}, provided {\small\verb%`x`%} is not free in the
+assumptions.
+{\par\samepage\setseps\small
+\begin{verbatim}
+         A |- t1 <== t2
+    ------------------------ EXISTS_IMP `x` [where x is not free in A]
+    A |- (?x.t1) <== (?x.t2)
+\end{verbatim}
+}
+
+\FAILURE
+Fails if the theorem is not a backward implication, or if the term is
+not a variable, or if the term is a variable but is free in the
+assumption list.
+
+\SEEALSO
+EXISTS_EQ, EXISTS_IMP, PMI_DEF.
+
+\ENDDOC
+\DOC{fail}
+
+\TYPE {\small\verb%fail : (unit -> 'a)%}\egroup
+
+\SYNOPSIS
+Window library internal use only.
+
+\ENDDOC
+\DOC{false\_tm}
+
+\TYPE {\small\verb%false_tm : term%}\egroup
+
+\SYNOPSIS
+The boolean constant `{\small\verb%T%}`.
+
+\SEEALSO
+true_tm
+
+\ENDDOC
+\DOC{FILTER\_ASM\_REWRITE\_WIN}
+
+{\small
+\begin{verbatim}
+FILTER_ASM_REWRITE_WIN : (term -> bool) -> thm list ->
+win_stack -> win_stack
+\end{verbatim}
+}\egroup
+
+\SYNOPSIS
+Selectively rewrite the focus with context, theorems, basic rewrites.
+
+\DESCRIBE
+{\small\verb%FILTER_ASM_REWRITE_WIN p thms%} repeatedly rewrites the focus of the
+top window on the stack with {\small\verb%thms%}, the list of basic rewritings and
+those theorems in the context of the window, the conclusions of which
+satisfy the predicate {\small\verb%p%}.
+
+\FAILURE
+{\small\verb%FILTER_ASM_REWRITE_WIN p thms%} will fail if the hypotheses of any of
+the theorems in {\small\verb%thms%} are not a subset of the conjectures of the
+window.  This function may fail to terminate if {\small\verb%thms%}, or the
+selected terms in the context, describe a circular rewriting.
+
+\SEEALSO
+ASM_REWRITE_WIN, FILTER_ONCE_ASM_REWRITE_WIN,
+FILTER_PURE_ASM_REWRITE_WIN, FILTER_PURE_ONCE_ASM_REWRITE_WIN,
+GEN_REWRITE_WIN, ONCE_ASM_REWRITE_WIN, ONCE_REWRITE_WIN,
+PURE_ASM_REWRITE_WIN, PURE_ONCE_ASM_REWRITE_WIN,
+PURE_ONCE_REWRITE_WIN, PURE_REWRITE_WIN, REWRITE_WIN
+
+\ENDDOC
+\DOC{FILTER\_ONCE\_ASM\_REWRITE\_WIN}
+
+{\small
+\begin{verbatim}
+FILTER_ONCE_ASM_REWRITE_WIN : (term -> bool) -> thm list ->
+win_stack -> win_stack
+\end{verbatim}
+}\egroup
+
+\SYNOPSIS
+Rewrite focus with selected context, theorems and basic rewrites.
+
+\DESCRIBE
+{\small\verb%FILTER_ONCE_ASM_REWRITE_WIN p thms%} rewrites the focus of a window
+with {\small\verb%thms%}, those theorems in the context of the window, the
+conclusions of which satisfy the predicate {\small\verb%p%}, and the list of basic
+rewrites.
+
+\FAILURE
+{\small\verb%FILTER_ONCE_ASM_REWRITE_WIN p thms%} will fail if the hypotheses of
+any of the theorems in {\small\verb%thms%} are not a subset of the conjectures of
+the window.
+
+\SEEALSO
+ASM_REWRITE_WIN, FILTER_ASM_REWRITE_WIN, FILTER_PURE_ASM_REWRITE_WIN,
+FILTER_PURE_ONCE_ASM_REWRITE_WIN, GEN_REWRITE_WIN,
+ONCE_ASM_REWRITE_WIN, ONCE_REWRITE_WIN, PURE_ASM_REWRITE_WIN,
+PURE_ONCE_ASM_REWRITE_WIN, PURE_ONCE_REWRITE_WIN, PURE_REWRITE_WIN,
+REWRITE_WIN
+
+\ENDDOC
+\DOC{FILTER\_PURE\_ASM\_REWRITE\_WIN}
+
+{\small
+\begin{verbatim}
+FILTER_PURE_ASM_REWRITE_WIN : (term -> bool) -> thm list ->
+win_stack -> win_stack
+\end{verbatim}
+}\egroup
+
+\SYNOPSIS
+Repeatedly rewrite the focus with selected context and theorems.
+
+\DESCRIBE
+{\small\verb%FILTER_PURE_ASM_REWRITE_WIN p thms%} repeatedly rewrites the focus of
+the top window with {\small\verb%thms%} and those theorems in the context of the
+window, the conclusions of which satisfy the predicate {\small\verb%p%}.
+
+\FAILURE
+{\small\verb%FILTER_PURE_ASM_REWRITE_WIN p thms%} will fail if the hypotheses of
+any of the theorems in {\small\verb%thms%} are not a subset of the conjectures of
+the window. This function may fail to terminate if {\small\verb%thms%}, or the
+selected terms in the context, describe a circular rewriting.
+
+\SEEALSO
+ASM_REWRITE_WIN, FILTER_ASM_REWRITE_WIN, FILTER_ONCE_ASM_REWRITE_WIN,
+FILTER_PURE_ONCE_ASM_REWRITE_WIN, GEN_REWRITE_WIN,
+ONCE_ASM_REWRITE_WIN, ONCE_REWRITE_WIN, PURE_ASM_REWRITE_WIN,
+PURE_ONCE_ASM_REWRITE_WIN, PURE_ONCE_REWRITE_WIN, PURE_REWRITE_WIN,
+REWRITE_WIN
+
+\ENDDOC
+\DOC{FILTER\_PURE\_ONCE\_ASM\_REWRITE\_WIN}
+
+{\small
+\begin{verbatim}
+FILTER_PURE_ONCE_ASM_REWRITE_WIN : (term -> bool) -> thm list ->
+win_stack -> win_stack
+\end{verbatim}
+}\egroup
+
+\SYNOPSIS
+Rewrite the focus with selected context and a list of theorems.
+
+\DESCRIBE
+{\small\verb%FILTER_PURE_ONCE_ASM_REWRITE_WIN p thms%} rewrites the focus of the
+top window with {\small\verb%thms%} and those theorems in the context of the
+window, the conclusions of which satisfy the predicate {\small\verb%p%}.
+
+\FAILURE
+{\small\verb%FILTER_PURE_ONCE_ASM_REWRITE_WIN p thms%} will fail if the hypotheses
+of any of the theorems in {\small\verb%thms%} are not a subset of the conjectures
+of the window.
+
+\SEEALSO
+ASM_REWRITE_WIN, FILTER_ASM_REWRITE_WIN, FILTER_PURE_ASM_REWRITE_WIN,
+FILTER_ONCE_ASM_REWRITE_WIN, GEN_REWRITE_WIN, ONCE_ASM_REWRITE_WIN,
+ONCE_REWRITE_WIN, PURE_ASM_REWRITE_WIN, PURE_ONCE_ASM_REWRITE_WIN,
+PURE_ONCE_REWRITE_WIN, PURE_REWRITE_WIN, REWRITE_WIN
+
+\ENDDOC
+\DOC{focus}
+
+\TYPE {\small\verb%focus : (window -> term)%}\egroup
+
+\SYNOPSIS
+The focus of a window.
+
+\FAILURE
+
+\ENDDOC
+\DOC{FOC\_RULE\_WIN}
+
+\TYPE {\small\verb%FOC_RULE_WIN :  ((term -> thm) -> win_stack -> win_stack)%}\egroup
+
+\SYNOPSIS
+Apply an inference rule to the focus of the top window.
+
+\DESCRIBE
+Assuming {\small\verb%RULE%} is an inference rule of the following form:
+{\par\samepage\setseps\small
+\begin{verbatim}
+   ------------- RULE `f`
+    H |- f' R f
+\end{verbatim}
+}
+\noindent {\small\verb%FOC_RULE_WIN RULE%} can be used to transform the focus of
+the top window from {\small\verb%f%} to {\small\verb%f'%}, providing the window is supposed to
+preserve {\small\verb%`R`%} or some weaker relation.
+
+\FAILURE
+{\small\verb%FOC_RULE_WIN r%} will fail if the assumpitions of the theorem
+generated by {\small\verb%r%} are not a subset of the context of the top window.
+
+\noindent {\small\verb%RULE_WIN r%} will fail if the top window is not supposed to
+preserve some relation which is equal to or weaker than {\small\verb%`R`%}.
+
+\SEEALSO
+CONVERT_WIN, REWRITE_WIN, RULE_WIN, TACTIC_WIN, THM_RULE_WIN,
+TRANSFORM_WIN
+
+\ENDDOC
+\DOC{foc\_rule\_win}
+
+\TYPE {\small\verb%foc_rule_win : ((term -> thm) -> window -> window)%}\egroup
+
+\SYNOPSIS
+Window library internal use only.
+
+\ENDDOC
+\DOC{front}
+
+\TYPE {\small\verb%front : (int -> 'a list -> 'a list)%}\egroup
+
+\SYNOPSIS
+Returns the first n elements of a list.
+
+\DESCRIBE
+{\small\verb%first n l%} returns the first {\small\verb%n%} elements of the list {\small\verb%l%}.  If {\small\verb%l%}
+is less than {\small\verb%n%} long, then the whole of {\small\verb%l%} is returned.
+
+\FAILURE
+Fails if given a negative length.
+
+\EXAMPLE
+{\par\samepage\setseps\small
+\begin{verbatim}
+- front 5 [1,2,3,4,5,6,7,8,9,0];
+val it = [1,2,3,4,5] : int list
+\end{verbatim}
+}
+
+\ENDDOC
+\DOC{fun\_type}
+
+\TYPE {\small\verb%fun_type : (hol_type list -> hol_type)%}\egroup
+
+\SYNOPSIS
+Window library internal use only.
+
+\ENDDOC
+\DOC{GEN\_REWRITE\_WIN}
+
+{\small
+\begin{verbatim}
+GEN_REWRITE_WIN : (conv -> conv) -> rewrites -> thm list ->
+win_stack -> win_stack
+\end{verbatim}
+}\egroup
+
+\SYNOPSIS
+Rewrites a window, selecting terms according to a specified strategy.
+
+\DESCRIBE
+Rewriting in HOL is based on the use of equational theorems as
+left-to-right replacements on the subterms of an object theorem. This
+replacement is mediated by the use of {\small\verb%REWR_CONV%}, which finds
+matches between left-hand sides of given equations in a term and
+applies the substitution.
+
+Equations used in rewriting are obtained from the theorem lists given
+as arguments to the function. These are first transformed into a form
+suitable for rewriting. Conjunctions are separated into individual
+rewrites. Theorems with conclusions of the form {\small\verb%"~t"%} are
+transformed into the corresponding equations {\small\verb%"t = F"%}. Theorems {\small\verb%"t"%}
+ which are not equations are cast as equations of form {\small\verb%"t = T"%}.
+
+If a theorem is used to rewrite the object theorem, its assumptions
+are added to the assumptions of the returned theorem, unless they
+are alpha-convertible to existing assumptions.  The matching
+involved uses variable instantiation. Thus, all free variables are
+generalized, and terms are instantiated before substitution.
+Theorems may have universally quantified variables.
+
+The theorems with which rewriting is done are divided into two groups,
+to facilitate implementing other rewriting tools. However, they are
+considered in an order-independent fashion. (That is, the ordering is
+an implementation detail which is not specified.)
+
+The search strategy for finding matching subterms is the first
+argument to the rule. Matching and substitution may occur at any
+level of the term, according to the specified search strategy: the
+whole term, or starting from any subterm. The search strategy also
+specifies the depth of the search: recursively up to an arbitrary
+depth until no matches occur, once over the selected subterm, or any
+more complex scheme.
+
+\FAILURE
+{\small\verb%GEN_REWRITE_WIN%} fails if the search strategy fails. It may also
+cause a nonterminating sequence of rewrites, depending on the search
+strategy used.
+
+\USES
+This rule is used in the system to implement all other window
+rewriting, and may provide a user with a method to fine-tune rewriting
+of windows.
+
+\EXAMPLE
+
+As an example, {\small\verb%REWRITE_WIN%} could be implemented as
+{\par\samepage\setseps\small
+\begin{verbatim}
+    GEN_REWRITE_WIN TOP_DEPTH_CONV basic_rewrites
+\end{verbatim}
+}
+\noindent which specifies that matches should be searched recursively
+starting from the whole term of the theorem, and {\small\verb%basic_rewrites%} must
+be added to the user defined set of theorems employed in rewriting.
+
+\SEEALSO
+ASM_REWRITE_WIN, FILTER_ASM_REWRITE_WIN, FILTER_ONCE_ASM_REWRITE_WIN,
+FILTER_PURE_ASM_REWRITE_WIN, FILTER_PURE_ONCE_ASM_REWRITE_WIN,
+ONCE_ASM_REWRITE_WIN, ONCE_REWRITE_WIN, PURE_ASM_REWRITE_WIN,
+PURE_ONCE_ASM_REWRITE_WIN, PURE_ONCE_REWRITE_WIN, PURE_REWRITE_WIN,
+REWRITE_WIN
+
+\ENDDOC
+\DOC{GET\_STACK}
+
+\TYPE {\small\verb%GET_STACK : (string -> window_stack)%}\egroup
+
+\SYNOPSIS
+Window library internal use only.
+
+\ENDDOC
+\DOC{get\_thm}
+
+\TYPE {\small\verb%get_thm : (term -> window -> thm)%}\egroup
+
+\SYNOPSIS
+Window library internal use only.
+
+\ENDDOC
+\DOC{goal\_setify}
+
+\TYPE {\small\verb%goal_setify :  (goal list -> goal list)%}\egroup
+
+\SYNOPSIS
+Window library internal use only.
+
+\ENDDOC
+\DOC{goal\_set\_equal}
+
+\TYPE {\small\verb%goal_set_equal : (goal list -> goal list -> bool)%}\egroup
+
+\SYNOPSIS
+Window library internal use only.
+
+\ENDDOC
+\DOC{goal\_subset}
+
+\TYPE {\small\verb%goal_subset : (goal list -> goal list -> bool)%}\egroup
+
+\SYNOPSIS
+Window library internal use only.
+
+\ENDDOC
+\DOC{goal\_subtract}
+
+\TYPE {\small\verb%goal_subtract : (goal list -> goal list -> goal list)%}\egroup
+
+\SYNOPSIS
+Window library internal use only.
+
+\ENDDOC
+\DOC{hypotheses}
+
+\TYPE {\small\verb%hypotheses : (window -> term list)%}\egroup
+
+\SYNOPSIS
+The set of hypotheses of a window.
+
+\DESCRIBE
+This is the list of things that may be assumed in the context of a
+window.  {\small\verb%hypotheses%} may not present these things in the same way
+as they are printed interactively.   Use {\small\verb%disp_hyposesthese%} to get
+the set of hypotheses that are printed for interactive use.
+
+\EXAMPLE
+{\par\samepage\setseps\small
+\begin{verbatim}
+- BEGIN_STACK "hyp-ex" (--`($=) ((A /\ B) /\ C)`--) [] [];
+
+= * (A /\ B) /\ C
+val it = () : unit
+- DO (OPEN_WIN [RAND]);
+
+  ! B
+  ! A
+= * C
+val it = () : unit
+- hypotheses (top_window (CURRENT_STACK ()));
+val it = [(--`A /\ B`--)] : term list
+\end{verbatim}
+}
+
+\FAILURE
+Never fails.
+
+\SEEALSO
+all_hypotheses, context, disp_hypotheses, hyp_thms
+
+\ENDDOC
+\DOC{hyp\_thms}
+
+\TYPE {\small\verb%hyp_thms : (window -> thm list)%}\egroup
+
+\SYNOPSIS
+The theorems infered from the context of a window.
+
+\DESCRIBE
+{\small\verb%hyp_thms w%} is the list of theorems which are infered from the
+context of {\small\verb%w%}.  The conclusions of these theorems are the
+hypotheses of the window.
+
+\EXAMPLE
+{\par\samepage\setseps\small
+\begin{verbatim}
+- BEGIN_STACK "hyp-ex" (--`($=) ((A /\ B) /\ C)`--) [] [];
+
+= * (A /\ B) /\ C
+val it = () : unit
+- DO (OPEN_WIN [RAND]);
+
+  ! B
+  ! A
+= * C
+val it = () : unit
+- hyp_thms (top_window (CURRENT_STACK ()));
+val it = [[A /\ B] |- A,[A /\ B] |- B] : thm list
+\end{verbatim}
+}
+
+\FAILURE
+Never fails.
+
+\SEEALSO
+all_hypothese, disp_hypotheses, hypotheses
+
+\ENDDOC
+\DOC{IMP\_PMI}
+
+\TYPE {\small\verb%IMP_PMI : (thm -> thm)%}\egroup
+
+\SYNOPSIS
+Changes a forward implication into a backward implication.
+
+\DESCRIBE
+{\par\samepage\setseps\small
+\begin{verbatim}
+ H |- t ==> u
+--------------  IMP_PMI
+ H |- u <== t
+\end{verbatim}
+}
+
+\FAILURE
+{\small\verb%IMP_PMI%} will fail if its argument is not an implication.
+
+
+\SEEALSO
+PMI_IMP, PMI_DEF
+
+\ENDDOC
+\DOC{IMP\_PMI\_CONV}
+
+\TYPE {\small\verb%IMP_PMI_CONV : (term -> thm)%}\egroup
+
+\SYNOPSIS
+Changes a forward implication into a backward implication.
+
+\EXAMPLE
+{\par\samepage\setseps\small
+\begin{verbatim}
+   - IMP_PMI_CONV (--`A ==> B`--);
+   val it = |- A ==> B = B <== A : thm
+\end{verbatim}
+}
+
+\FAILURE
+{\small\verb%IMP_PMI_CONV%} will fail if its argument is not an implication.
+
+\SEEALSO
+IMP_PMI, PMI_DEF, PMI_IMP, PMI_IMP_CONV
+
+\ENDDOC
+\DOC{imp\_tm}
+
+\TYPE {\small\verb%imp_tm : term%}\egroup
+
+\SYNOPSIS
+The relation `==>`.
+
+\SEEALSO
+equiv_tm, pmi_tm
+
+\ENDDOC
+\DOC{is\_fun}
+
+\TYPE {\small\verb%is_fun : (term -> bool)%}\egroup
+
+\SYNOPSIS
+Check if a term is a function.
+
+\FAILURE
+Never fails.
+
+\EXAMPLE
+{\par\samepage\setseps\small
+\begin{verbatim}
+- is_fun (--`f:'a->'a`--);
+val it = true : bool
+- is_fun (--`f:'a`--);
+val it = false : bool
+\end{verbatim}
+}
+
+\SEEALSO
+dom, ran
+
+\ENDDOC
+\DOC{is\_pmi}
+
+\TYPE {\small\verb%is_pmi : (term -> bool)%}\egroup
+
+\SYNOPSIS
+Tests a term to see if it is a backward implication.
+
+\DESCRIBE
+{\small\verb%is_pmi (--`t1 <== t2`--)%} returns {\small\verb%true%}.  If the argument is not a
+backward implication it returns {\small\verb%false%}.
+
+\COMMENTS
+Unlike {\small\verb%is_imp%}, {\small\verb%is_pmi%} does not consider negation to be a special
+case of implication.
+
+\FAILURE
+Never fails.
+
+\SEEALSO
+is_imp, PMI_DEF
+
+\ENDDOC
+\DOC{is\_trueimp}
+
+\TYPE {\small\verb%is_trueimp : (term -> bool)%}\egroup
+
+\SYNOPSIS
+Tests a term to see if it is an implication.
+
+\DESCRIBE
+{\small\verb%is_trueimp (--`t1 ==> t2`--)%} returns {\small\verb%true%}.  If the argument is
+not an implication it returns {\small\verb%false%}.
+
+\FAILURE
+Never fails.
+
+\SEEALSO
+is_imp, is_pmi
+
+\ENDDOC
+\DOC{is\_weaker}
+
+\TYPE {\small\verb%is_weaker : (term -> term -> bool)%}\egroup
+
+\SYNOPSIS
+Window library internal use only.
+
+\ENDDOC
+\DOC{kill\_rule}
+
+\TYPE {\small\verb%kill_rule : (rule_id -> unit)%}\egroup
+
+\SYNOPSIS
+Removes a window rule from the system.
+
+\DESCRIBE
+When a window rule is added to the system with {\small\verb%store_rule%}, it is
+assigned an identifier. {\small\verb%kill_rule%} can then then be used to delete
+that rule from the system.
+
+\FAILURE
+Fails if there is no rule in the system with the specified identifier.
+
+\SEEALSO
+store_rule
+
+\ENDDOC
+\DOC{lemmas}
+
+\TYPE {\small\verb%lemmas : (window -> term list)%}\egroup
+
+\SYNOPSIS
+The lemmas of a window.
+
+\DESCRIBE
+The list of conclusions of those theorems which are relevant to the
+window and the assumptions of which are a subset of the hypotheses
+of the window.  The lemmas of a window are a list of terms which are
+known to be true in the context of the window.
+
+\FAILURE
+Never fails.
+
+\SEEALSO
+lemma_thms
+
+\ENDDOC
+\DOC{lemma\_thms}
+
+\TYPE {\small\verb%lemma_thms : (window -> thm list)%}\egroup
+
+\SYNOPSIS
+The set of theorems recorded as being relevant to this window.
+
+\FAILURE
+Never fails.
+
+\SEEALSO
+lemmas
+
+\ENDDOC
+\DOC{make\_win}
+
+\TYPE {\small\verb%make_win : (term -> ... window)%}\egroup
+
+\SYNOPSIS
+Window library internal use only.
+
+\ENDDOC
+\DOC{MATCH\_TRANSFORM\_WIN}
+
+\TYPE {\small\verb%MATCH_TRANSFORM_WIN : (thm -> thm -> win_stack -> win_stack)%}\egroup
+
+\SYNOPSIS
+Transform the focus of a window.
+
+\DESCRIBE
+{\small\verb%MATCH_TRANSFORM_WIN (H |- !x1...xn. g R f)%} specialises the
+quantified variables {\small\verb%x1%} ... {\small\verb%xn%} and then instantiates the free
+variables so that {\small\verb%f%} matches the focus of the current window. The
+focus is then transformed to {\small\verb%g%} (with the same substitutions
+applied).
+
+\FAILURE
+{\small\verb%TRANSFORM_WIN (H |- g R f) s%} will fail if {\small\verb%f%} can not be
+instantiated to the focus of the the top window of {\small\verb%s%}.
+{\small\verb%TRANSFORM_WIN (H |- g R f) s%} will fail if {\small\verb%H%} is not a subset of
+the context of the top window of {\small\verb%s%}.
+{\small\verb%TRANSFORM_WIN (H |- g R f) s%} will fail if {\small\verb%R%} is not equal to or
+stronger than the relation that the top window of {\small\verb%s%} is supposed to
+maintain.
+
+\SEEALSO
+CONVERT_WIN, FOC_RULE_WIN, REWRITE_WIN, RULE_WIN, TACTIC_WIN,
+THM_RULE_WIN, TRANSFORM_WIN
+
+\ENDDOC
+\DOC{match\_transform\_win}
+
+\TYPE {\small\verb%match_transform_win : (thm -> window -> window)%}\egroup
+
+\SYNOPSIS
+Window library internal use only.
+
+\ENDDOC
+\DOC{merge}
+
+\TYPE {\small\verb%merge : (('a -> 'a -> bool) -> 'a list -> 'a list -> 'a list)%}\egroup
+
+\SYNOPSIS
+Merges two sorted lists according to a given ordering relation.
+
+\DESCRIBE
+{\small\verb%merge r l1 l2%} merges the two sorted lists {\small\verb%l1%} and {\small\verb%l2%} to produce
+one sorted list containing the the elements of both {\small\verb%l1%} and {\small\verb%l2%}.
+This function will not work if {\small\verb%l1%} and {\small\verb%l2%} are not sorted according
+to {\small\verb%r%}.
+
+\FAILURE
+Never fails.
+
+\EXAMPLE
+{\par\samepage\setseps\small
+\begin{verbatim}
+- merge (fn a => fn b => b >= a) [1,3,5,7,9] [2,4,6,8,10];
+val it = [1,2,3,4,5,6,7,8,9,10] : int list
+\end{verbatim}
+}
+
+\SEEALSO
+best, sort
+
+\ENDDOC
+\DOC{new\_history}
+
+\TYPE {\small\verb%new_history : (int -> '2a -> '2a history)%}\egroup
+
+\SYNOPSIS
+Creates a new history.
+
+\DESCRIBE
+{\small\verb%new_history n a%} creates a new history with present state {\small\verb%a%}, 
+and which can record a total of {\small\verb%n%} events.
+
+\FAILURE
+
+\SEEALSO
+dodo, present, redo, set_size, undo
+
+\ENDDOC
+\DOC{new\_signal}
+
+\TYPE {\small\verb%new_signal : (unit -> '1a signal)%}\egroup
+
+\SYNOPSIS
+Creates a new signal.
+
+\DESCRIBE
+The function {\small\verb%new_signal%} is used to creat new signals.  These
+signals can then have functions associated with them that will be
+evaluated whenever the signal is raised.
+
+\FAILURE
+Never fails.
+
+\EXAMPLE
+The signals used by the window inference library are declared as
+follows:
+{\par\samepage\setseps\small
+\begin{verbatim}
+(* This signal should be raised when a new stack is begun.          *)
+val beg_stack_sig : string signal = new_signal ()
+(* This signal should be raised when a stack is killed.             *)
+and end_stack_sig : string signal = new_signal ()
+(* This signal should be raised when the current stack is changed.  *)
+and set_stack_sig : string signal = new_signal ();
+
+(* This signal should be raised when window is pushed on the stack. *)
+val psh_win_sig : unit signal = new_signal ()
+(* This signal is raised when a window is popped off the stack.     *)
+and pop_win_sig : unit signal = new_signal ()
+(* This signal should be raised whener the top window is changed.   *)
+and cng_win_sig : unit signal = new_signal ();
+\end{verbatim}
+}
+
+\SEEALSO
+catch_signal, clear_signal, signal
+
+\ENDDOC
+\DOC{ONCE\_ASM\_REWRITE\_WIN}
+
+\TYPE {\small\verb%ONCE_ASM_REWRITE_WIN :  (thm list -> win_stack -> win_stack)%}\egroup
+
+\SYNOPSIS
+Rewrite the focus with context, a list of theorems, basic rewrites.
+
+\FAILURE
+{\small\verb%ONCE_ASM_REWRITE_WIN thms s%} will fail if the hypotheses of any of
+the theorems in {\small\verb%thms%} are not a subset of the context of the top
+window of {\small\verb%s%}.
+
+\SEEALSO
+ASM_REWRITE_WIN, FILTER_ASM_REWRITE_WIN, FILTER_PURE_ASM_REWRITE_WIN,
+FILTER_PURE_ONCE_ASM_REWRITE_WIN, FILTER_ONCE_ASM_REWRITE_WIN,
+GEN_REWRITE_WIN, ONCE_REWRITE_WIN, PURE_ASM_REWRITE_WIN,
+PURE_ONCE_ASM_REWRITE_WIN, PURE_ONCE_REWRITE_WIN, PURE_REWRITE_WIN,
+REWRITE_WIN
+
+\ENDDOC
+\DOC{ONCE\_REWRITE\_WIN}
+
+\TYPE {\small\verb%ONCE_REWRITE_WIN :  (thm list -> win_stack -> win_stack)%}\egroup
+
+\SYNOPSIS
+Rewrite the focus with a list of theorems and basic rewritings.
+
+\FAILURE
+{\small\verb%ONCE_REWRITE_WIN thms s%} will fail if the hypotheses of any of the
+theorems in {\small\verb%thms%} are not a subset of the context of the top window
+of the stack {\small\verb%s%}.
+
+\SEEALSO
+ASM_REWRITE_WIN, FILTER_ASM_REWRITE_WIN, FILTER_ONCE_ASM_REWRITE_WIN,
+FILTER_PURE_ASM_REWRITE_WIN, FILTER_PURE_ONCE_ASM_REWRITE_WIN,
+GEN_REWRITE_WIN, ONCE_ASM_REWRITE_WIN, PURE_ASM_REWRITE_WIN,
+PURE_ONCE_ASM_REWRITE_WIN, PURE_ONCE_REWRITE_WIN, PURE_REWRITE_WIN,
+REWRITE_WIN
+
+\ENDDOC
+\DOC{OPEN\_CONTEXT}
+
+\TYPE {\small\verb%OPEN_CONTEXT : (term * path -> win_stack -> win_stack)%}\egroup
+
+\SYNOPSIS
+Open a subwindow for deriving a new lemma.
+
+\DESCRIBE
+{\small\verb%OPEN_CONTEXT tm path s%} opens a subwindow on the assumption, lemma
+or conjecture {\small\verb%tm%} at the position described by {\small\verb%path%}. The subwindow
+is pushed onto the window stack {\small\verb%s%}. The relationship preserved by
+the subwindow will be chosen so that transforming the subwindow will
+transform {\small\verb%tm%} to {\small\verb%tm'%} generating the theorem {\small\verb%(..|- tm ==> tm')%}.
+When the subwindow is closed, {\small\verb%tm'%} becomes a new lemma in the parent
+window.
+
+\FAILURE
+{\small\verb%OPEN_CONTEXT tm paths %} will fail if {\small\verb%tm%} is not an assumption,
+lemma or conjecture of the top window of {\small\verb%s%}. This function will also
+fail if {\small\verb%path%} describes a position which is not present in {\small\verb%tm%}.
+
+\EXAMPLE
+{\par\samepage\setseps\small
+\begin{verbatim}
+- BEGIN_STACK "example" (--`($<==) (B /\ C)`--)
+              [(--`A ==> B`--), (--`A /\ C`--)] [];
+
+    ! A ==> B
+    ! A /\ C
+<== * B /\ C
+val it = () : unit
+- DO (OPEN_CONTEXT ((--`A /\ C`--), [RATOR,RAND]));
+
+    ! A ==> B
+    ! A /\ C
+    ! C
+==> * A
+val it = () : unit
+- DO (RULE_WIN (MP (ASSUME (--`A ==> B`--))));
+
+    ! A ==> B
+    ! A /\ C
+    ! C
+==> * B
+val it = () : unit
+- DO CLOSE_WIN;
+
+    ! A ==> B
+    ! A /\ C
+    | B /\ C
+<== * B /\ C
+val it = () : unit
+- DO (REWRITE_WIN [ASSUME (--`B /\ C`--)]);
+
+    ! A ==> B
+    ! A /\ C
+    | B /\ C
+<== * T
+val it = () : unit
+- END_STACK "example";
+val it = () : unit
+\end{verbatim}
+}
+
+\SEEALSO
+CLOSE_WIN, ESTABLISH, GEN_OPEN_WIN, OPEN_WIN 
+
+\ENDDOC
+\DOC{OPEN\_WIN}
+
+\TYPE {\small\verb%OPEN_WIN : (path -> win_stack -> win_stack)%}\egroup
+
+\SYNOPSIS
+Open a subwindow on the focus of the top window.
+
+\DESCRIBE
+{\small\verb%OPEN_WIN path s%} opens a subwindow in the focus of the top window of
+the stack {\small\verb%s%} at the position described by {\small\verb%path%}. The subwindow is
+then pushed onto the top of the window stack.
+
+\FAILURE
+{\small\verb%OPEN_WIN path s%} will fail if {\small\verb%path%} describes a position which
+is not present in the focus of the top window of {\small\verb%s%}.
+
+\EXAMPLE
+{\par\samepage\setseps\small
+\begin{verbatim}
+- BEGIN_STACK "example" (--`($<==) (A /\ (B /\ F))`--) [] []; 
+
+<== * A /\ B /\ F
+val it = () : unit
+- DO (OPEN_WIN [RAND]);
+
+    ! A
+<== * B /\ F
+val it = () : unit
+- DO (REWRITE_WIN []);
+
+    ! A
+<== * F
+val it = () : unit
+- DO CLOSE_WIN;
+
+<== * A /\ F
+val it = () : unit
+- END_STACK "example";
+val it = () : unit
+\end{verbatim}
+}
+
+\SEEALSO
+CLOSE_WIN, ESTABLISH, GEN_OPEN_WIN, OPEN_CONTEXT
+
+\ENDDOC
+\DOC{origin}
+
+\TYPE {\small\verb%origin : (window -> term)%}\egroup
+
+\SYNOPSIS
+The original focus of a window.
+
+\FAILURE
+Never fails.
+
+\ENDDOC
+\DOC{PMI\_IMP}
+
+\TYPE {\small\verb%PMI_IMP : (thm -> thm)%}\egroup
+
+\SYNOPSIS
+Changes a backward implication into a forward implication.
+
+\DESCRIBE
+{\par\samepage\setseps\small
+\begin{verbatim}
+ H |- u <== t
+--------------  PMI_IMP
+ H |- t ==> u
+\end{verbatim}
+}
+\FAILURE
+{\small\verb%PMI_IMP%} will fail if its argument is not a backward implication.
+
+\SEEALSO
+IMP_PMI, PMI_DEF
+
+\ENDDOC
+\DOC{PMI\_IMP\_CONV}
+
+\TYPE {\small\verb%PMI_IMP_CONV : (term -> thm)%}\egroup
+
+\SYNOPSIS
+Changes a backward implication into a forward implication.
+
+\EXAMPLE
+{\par\samepage\setseps\small
+\begin{verbatim}
+- PMI_IMP_CONV (--`A <== B`--);
+val it = |- A <== B = B ==> A : thm
+\end{verbatim}
+}
+\FAILURE
+{\small\verb%IMP_PMI_CONV%} will fail if its argument is not a backward
+implication.
+
+\SEEALSO
+IMP_PMI, IMP_PMI_CONV, PMI_DEF, PMI_IMP
+
+\ENDDOC
+\DOC{pmi\_tm}
+
+\TYPE {\small\verb%pmi_tm : term%}\egroup
+
+\SYNOPSIS
+The relation `<==`.
+
+\SEEALSO
+equiv_tm, imp_tm
+
+\ENDDOC
+\DOC{PMI\_TRANS}
+
+\TYPE {\small\verb%PMI_TRANS : (thm -> thm -> thm)%}\egroup
+
+\SYNOPSIS
+Implements the transitivity of backward implication.
+
+\DESCRIBE
+{\par\samepage\setseps\small
+\begin{verbatim}
+ A1 |- t1 <== t2  A2 |- t2 <== t3
+---------------------------------- PMI_TRANS
+       A1 u A2 |- t1 <== t3
+\end{verbatim}
+}
+
+\SEEALSO
+IMP_TRANS, PMI_DEF, TRANS
+
+\ENDDOC
+\DOC{pop\_win\_sig}
+
+\TYPE {\small\verb%pop_win_sig : unit signal%}\egroup
+
+\SYNOPSIS
+Raised after the top window is popped from the current stack.
+
+\DESCRIBE
+When the window library is first loaded, this signal has associated
+with it the handler {\small\verb%PRINT\_STACK%} which ensures that the top window
+is reprinted every time it is popped.
+
+\FAILURE
+Never fails.
+
+\SEEALSO
+beg_stack_sig, cng_win_sig, end_stack_sig, psh_win_sig, set_stack_sig
+
+\ENDDOC
+\DOC{prefix}
+
+\TYPE {\small\verb%prefix : (''a list -> ''a list -> bool)%}\egroup
+
+\SYNOPSIS
+Check is one list is a prefix of another.
+
+\DESCRIBE
+{\small\verb%prefix l1 l2%} is true iff {\small\verb%l1%} is a prefix of {\small\verb%l2%}; that is, there
+exists some {\small\verb%l%} such that {\small\verb%(l1 @ l) = l2%}.
+
+\FAILURE
+Never fails.
+
+\EXAMPLE
+{\par\samepage\setseps\small
+\begin{verbatim}
+- prefix [1,2] [1,2,3];
+val it = true : bool
+\end{verbatim}
+}
+
+\SEEALSO
+after, before, suffix
+
+\ENDDOC
+\DOC{present}
+
+\TYPE {\small\verb%present : ('a history -> 'a)%}\egroup
+
+\SYNOPSIS
+Return the present state of a history.
+
+\DESCRIBE
+Returns the present state associated with a history.
+
+\FAILURE
+
+\SEEALSO
+dodo, new_history, redo, set_size, undo
+
+\ENDDOC
+\DOC{PRINT\_STACK}
+
+\TYPE {\small\verb%PRINT_WIN : (unit -> unit)%}\egroup
+
+\SYNOPSIS
+Print out the top window of the current window stack.
+
+\DESCRIBE
+{\small\verb%PRINT_STACK%} will print out the top window on the stack according to
+the following format.
+{\par\samepage\setseps\small
+\begin{verbatim}
+     ! "a"
+     | "l"
+     ? "c"
+     $ "u"
+     @ "b"
+   R * "f"
+\end{verbatim}
+}
+That is, {\small\verb%PRINT_STACK%} prints the context of the window followed by
+{\small\verb%R * "f"%} where {\small\verb%R%} is the relation that the window is supposed to
+preserve, and {\small\verb%"f"%} is the focus of the window. Each element in the
+context is preceded by some prefix.
+The prefix {\small\verb%!%} denotes an assumption.
+The prefix {\small\verb%|%} denotes a lemma.
+The prefix {\small\verb%?%} denotes a conjecture.
+The prefix {\small\verb%$%} denotes a used conjecture.
+The prefix {\small\verb%@%} denotes a bad conjecture.
+
+\FAILURE
+{\small\verb%PRINT_STACK ()%} will fail if there is no current window stack.
+
+\ENDDOC
+\DOC{prove\_hyp}
+
+\TYPE {\small\verb%prove_hyp : (goal -> goal -> goal)%}\egroup
+
+\SYNOPSIS
+Window library internal use only.
+
+\ENDDOC
+\DOC{psh\_win\_sig}
+
+\TYPE {\small\verb%psh_win_sig : unit signal%}\egroup
+
+\SYNOPSIS
+Raised after a new window is pushed onto the current stack.
+
+\DESCRIBE
+When the window library is first loaded this signal has associated
+with it the handler {\small\verb%PRINT\_STACK%} which ensures that the top window
+is printed every time a new one is pushed onto the stack.
+
+\FAILURE
+Never fails.
+
+\SEEALSO
+beg_stack_sig, cng_win_sig, end_stack_sig, pop_win_sig, set_stack_sig
+
+\ENDDOC
+\DOC{PURE\_ASM\_REWRITE\_WIN}
+
+\TYPE {\small\verb%PURE_ASM_REWRITE_WIN : (thm list -> win_stack -> win_stack)%}\egroup
+
+\SYNOPSIS
+Repeatedly rewrite the focus with the context and a list of theorems.
+
+\FAILURE
+{\small\verb%PURE_ASM_REWRITE_WIN thms s%} will fail if the hypotheses of any of
+the theorems in {\small\verb%thms%} are not a subset of the context of the top 
+window of {\small\verb%s%}. This function may also fail to terminate if the
+theorems result in a circular rewriting.
+
+\SEEALSO
+ASM_REWRITE_WIN, FILTER_ASM_REWRITE_WIN, FILTER_ONCE_ASM_REWRITE_WIN,
+FILTER_PURE_ASM_REWRITE_WIN, FILTER_PURE_ONCE_ASM_REWRITE_WIN,
+GEN_REWRITE_WIN, ONCE_ASM_REWRITE_WIN, ONCE_REWRITE_WIN,
+PURE_ONCE_ASM_REWRITE_WIN, PURE_ONCE_REWRITE_WIN, PURE_REWRITE_WIN,
+REWRITE_WIN
+
+\ENDDOC
+\DOC{PURE\_ONCE\_ASM\_REWRITE\_WIN}
+
+\TYPE {\small\verb%PURE_ONCE_ASM_REWRITE_WIN : thm list -> win_stack -> win_stack%}\egroup
+
+\SYNOPSIS
+Rewrite the top focus once with the context and a list of theorems.
+
+\FAILURE
+{\small\verb%PURE_ONCE_ASM_REWRITE_WIN thms s%} will fail if the hypotheses of any
+of the theorems in {\small\verb%thms%} are not a subset of the context of the top
+window of {\small\verb%s%}.
+
+\SEEALSO
+ASM_REWRITE_WIN, FILTER_ASM_REWRITE_WIN, FILTER_ONCE_ASM_REWRITE_WIN,
+FILTER_PURE_ASM_REWRITE_WIN, FILTER_PURE_ONCE_ASM_REWRITE_WIN,
+GEN_REWRITE_WIN, ONCE_ASM_REWRITE_WIN, ONCE_REWRITE_WIN,
+PURE_ASM_REWRITE_WIN, PURE_ONCE_REWRITE_WIN, PURE_REWRITE_WIN,
+REWRITE_WIN
+
+\ENDDOC
+\DOC{PURE\_ONCE\_REWRITE\_WIN}
+
+\TYPE {\small\verb%PURE_ONCE_REWRITE_WIN : (thm list -> win_stack -> win_stack)%}\egroup
+
+\SYNOPSIS
+Rewrite the top focus once with a list of theorems.
+
+\FAILURE
+{\small\verb%PURE_ONCE_REWRITE_WIN thms s%} will fail if the hypotheses of any of
+the theorems in {\small\verb%thms%} are not a subset of the context of the top 
+window of {\small\verb%s%}.
+
+\SEEALSO
+ASM_REWRITE_WIN, FILTER_ASM_REWRITE_WIN, FILTER_ONCE_ASM_REWRITE_WIN,
+FILTER_PURE_ASM_REWRITE_WIN, FILTER_PURE_ONCE_ASM_REWRITE_WIN,
+GEN_REWRITE_WIN, ONCE_ASM_REWRITE_WIN, ONCE_REWRITE_WIN,
+PURE_ASM_REWRITE_WIN, PURE_ONCE_ASM_REWRITE_WIN, PURE_REWRITE_WIN,
+REWRITE_WIN
+
+\ENDDOC
+\DOC{PURE\_REWRITE\_WIN}
+
+\TYPE {\small\verb%PURE_REWRITE_WIN : (thm list -> win_stack -> win_stack)%}\egroup
+
+\SYNOPSIS
+Repeatedly rewrite the focus with a list of theorems.
+
+\FAILURE
+{\small\verb%PURE_REWRITE_WIN thms s%} will fail if the hypotheses of any of the
+theorems in {\small\verb%thms%} are not a subset of the context of the top window
+of {\small\verb%s%}. This function may also fail to terminate if the theorems
+result in a circular rewriting.
+
+\SEEALSO
+ASM_REWRITE_WIN, FILTER_ASM_REWRITE_WIN, FILTER_ONCE_ASM_REWRITE_WIN,
+FILTER_PURE_ASM_REWRITE_WIN, FILTER_PURE_ONCE_ASM_REWRITE_WIN,
+GEN_REWRITE_WIN, ONCE_ASM_REWRITE_WIN, ONCE_REWRITE_WIN,
+PURE_ASM_REWRITE_WIN, PURE_ONCE_ASM_REWRITE_WIN,
+PURE_ONCE_REWRITE_WIN, REWRITE_WIN
+
+\ENDDOC
+\DOC{ran}
+
+\TYPE {\small\verb%ran : (term -> hol_type)%}\egroup
+
+\SYNOPSIS
+Finds the range of a function.
+
+\FAILURE
+Fails if the argument is not a function.
+
+\EXAMPLE
+{\par\samepage\setseps\small
+\begin{verbatim}
+- ran (--`f:'a -> 'b`--); 
+val it = (==`:'b`==) : hol_type
+\end{verbatim}
+}
+
+\SEEALSO
+dom, is_fun
+
+\ENDDOC
+\DOC{REDO}
+
+\TYPE {\small\verb%REDO: (unit -> unit)%}\egroup
+
+\SYNOPSIS
+Redoes the last change that was undone.
+
+\DESCRIBE
+Redoes the last change that was undone from the current stack.
+Several {\small\verb%REDO%}s can undo the effect of several {\small\verb%UNDO%}s. It is not
+possible to {\small\verb%REDO%} more {\small\verb%UNDO%}s than are stored in the history of a
+stack. The command {\small\verb%SET_MAX_HIST%} can be used to set the size of
+the history stored for a particular stack.
+
+\FAILURE
+{\small\verb%REDO ()%} will fail if nothing has been undone, or if some other
+change has been made to the stack since the last {\small\verb%UNDO%}.
+
+\SEEALSO
+SET_MAX_HIST, UNDO
+
+\ENDDOC
+\DOC{redo}
+
+\TYPE {\small\verb%redo : ('a history -> unit)%}\egroup
+
+\SYNOPSIS
+Undoes an undo.
+
+\DESCRIBE
+{\small\verb%redo h%} side effects the history{\small\verb%h%} by restoring to the present one
+of the states that has been undone. You can call {\small\verb%redo%} as many times
+as you call {\small\verb%undo%}, unless the size of the history is smaller.
+
+\FAILURE
+Fails if nothing has been undone, or if something else has been done
+since the last {\small\verb%undo%}.
+
+\SEEALSO
+dodo, new_history, present, set_size, undo
+
+\ENDDOC
+\DOC{reflexive}
+
+\TYPE {\small\verb%reflexive : ( term -> thm)%}\egroup
+
+\SYNOPSIS
+Window library internal use only.
+
+\ENDDOC
+\DOC{relation}
+
+\TYPE {\small\verb%relation : (window -> term)%}\egroup
+
+\SYNOPSIS
+The relation preserved by a window.
+
+\DESCRIBE
+Returns the relation which the window is supposed to preserve
+between successive focusses.
+
+\FAILURE
+Never fails.
+
+\ENDDOC
+\DOC{replicate}
+
+\TYPE {\small\verb%replicate : ('a -> int -> 'a list)%}\egroup
+
+\SYNOPSIS
+Replicates several coppies of something.
+
+\DESCRIBE
+{\small\verb%replicate e n%} a list with {\small\verb%n%} coppies of {\small\verb%e%}.
+
+\FAILURE
+Fails if given a negative length.
+
+\EXAMPLE
+{\par\samepage\setseps\small
+\begin{verbatim}
+- replicate 1 3;
+val it = [1,1,1] : int list
+\end{verbatim}
+}
+
+\ENDDOC
+\DOC{REWRITE\_WIN}
+
+\TYPE {\small\verb%REWRITE_WIN : (thm list -> win_stack -> win_stack)%}\egroup
+
+\SYNOPSIS
+Repeatedly rewrite the focus with theorems and basic rewritings.
+
+\FAILURE
+{\small\verb%REWRITE_WIN thms s%} will fail if the hypotheses of any of the
+theorems in {\small\verb%thms%} are not a subset of the context of the top
+window of {\small\verb%s%}. This function may fail to terminate if {\small\verb%thms%}
+describe a circular rewriting.
+
+\SEEALSO
+ASM_REWRITE_WIN, FILTER_ASM_REWRITE_WIN, FILTER_ONCE_ASM_REWRITE_WIN,
+FILTER_PURE_ASM_REWRITE_WIN, FILTER_PURE_ONCE_ASM_REWRITE_WIN,
+GEN_REWRITE_WIN, ONCE_ASM_REWRITE_WIN, ONCE_REWRITE_WIN,
+PURE_ASM_REWRITE_WIN, PURE_ONCE_ASM_REWRITE_WIN,
+PURE_ONCE_REWRITE_WIN, PURE_REWRITE_WIN
+
+\ENDDOC
+\DOC{RULE\_WIN}
+
+\TYPE {\small\verb%RULE_WIN : ((thm -> thm) -> win_stack -> win_stack)%}\egroup
+
+\SYNOPSIS
+Apply an inference rule to the focus of the top window.
+
+\DESCRIBE
+Assuming {\small\verb%RULE%} is an inference rule of the following form:
+{\par\samepage\setseps\small
+\begin{verbatim}
+    H |- c
+   -------- RULE
+    H |- c'
+\end{verbatim}
+}
+\noindent {\small\verb%RULE_WIN RULE s%} can be used to transform the focus of the
+top window of {\small\verb%s%} from {\small\verb%c%} to {\small\verb%c'%}, providing the window is supposed
+to preserve {\small\verb%`<==`%} or some weaker relation.
+
+\FAILURE
+{\small\verb%RULE_WIN r s%} will fail if the top window of {\small\verb%s%} is not supposed to
+preserve some relation which is equal to or weaker than {\small\verb%`<==`%}.
+
+\SEEALSO
+CONVERT_WIN, FOC_RULE_WIN, REWRITE_WIN, TACTIC_WIN, THM_RULE_WIN,
+TRANSFORM_WIN
+
+\ENDDOC
+\DOC{rule\_win}
+
+\TYPE {\small\verb%rule_win : ((thm -> thm) -> window -> window)%}\egroup
+
+\SYNOPSIS
+Window library internal use only.
+
+\ENDDOC
+\DOC{SAVE\_WIN\_THM}
+
+\TYPE {\small\verb%SAVE_WIN_THM : (unit -> thm)%}\egroup
+
+\SYNOPSIS
+Stores the theorem held by the top window of the current stack.
+
+\DESCRIBE
+
+The call {\small\verb%SAVE_WIN_THM ()%} will add the theorem held by the top
+window of the current window stack to the current theory segment
+under the name of the current window stack.
+
+\FAILURE
+Fails if there is no current window stack. Fails if there the name of
+the current window stack is already present in the current theory
+segment. Also fails if the current theory file is read-only.
+
+\SEEALSO
+WIN_THM, save_thm
+
+\ENDDOC
+\DOC{search\_rule}
+
+\TYPE {\small\verb%search_rule : (path -> (window_rule * rule_id) list)%}\egroup
+
+\SYNOPSIS
+Window library internal use only.
+
+\ENDDOC
+\DOC{SET\_MAX\_HIST}
+
+\TYPE {\small\verb%SET_MAX_HIST: (int -> unit)%}\egroup
+
+\SYNOPSIS
+Sets the maximum history size of all the window stacks.
+
+\FAILURE
+Fails if given a history size less than 1.
+
+\SEEALSO
+REDO, UNDO
+
+\ENDDOC
+\DOC{set\_max\_hist}
+
+\TYPE {\small\verb%set_max_hist : ('a history -> int -> unit)%}\egroup
+
+\SYNOPSIS
+Sets the maximum size of a history.
+
+\DESCRIBE
+Sets the maximum number of events that will be stored by a particular
+history.
+
+\FAILURE
+Fails if the size parameter is not at least 1.
+
+\SEEALSO
+dodo, present, redo, undo
+
+\ENDDOC
+\DOC{SET\_STACK}
+
+\TYPE {\small\verb%SET_STACK : (string -> unit)%}\egroup
+
+\SYNOPSIS
+Sets the current stack.
+
+\DESCRIBE
+{\small\verb%SET_STACK "name"%} sets the current stack to the one called {\small\verb%"name"%}.
+
+\FAILURE
+{\small\verb%SET_STACK "name"%} fails if there is no stack called {\small\verb%"name"%}.
+
+\SEEALSO
+ALL_STACKS, BEGIN_STACK, CURRENT_NAME, END_STACK
+
+\ENDDOC
+\DOC{set\_stack\_sig}
+
+\TYPE {\small\verb%set_stack_sig : string signal%}\egroup
+
+\SYNOPSIS
+Raised after the current stack is changed.
+
+\DESCRIBE
+The signal {\small\verb%set_stack_sig%} is raised after the current stack is
+changed.  The signal is raised with the name of the new current stack.
+
+When the window library is first loaded, a handler is associated with
+this signal that will print the window on top of the new current stack.
+
+\FAILURE
+Never fails.
+
+\SEEALSO
+beg_stack_sig, cng_win_sig, end_stack_sig, pop_win_sig, psh_win_sig
+
+\ENDDOC
+\DOC{signal}
+
+\TYPE {\small\verb%signal : ('a signal -> 'a -> unit)%}\egroup
+
+\SYNOPSIS
+Raises a signal.
+
+\DESCRIBE
+{\small\verb%signal s a%} evaluates for their side effects all the signal handler
+functions that have been associate with the signal {\small\verb%s%}.  Each of the
+signal handler functions is invoked with the argument {\small\verb%a%}.
+
+\FAILURE
+Never fails.
+
+\SEEALSO
+catch_signal, clear_signal, new_signal
+
+\ENDDOC
+\DOC{SMASH}
+
+\TYPE {\small\verb%SMASH : (thm -> thm list)%}\egroup
+
+\SYNOPSIS
+Recursively splits a compound theorem into a list of simpler one.
+
+\DESCRIBE
+The operation of {\small\verb%SMASH%} is similar to that of {\small\verb%CONJUNCTS%} except
+that it does not just break apart conjunctions. {\small\verb%SMASH%} recursively
+applies the following inference rules to a theorem to smash it into a
+list of smaller theorems.
+{\par\samepage\setseps\small
+\begin{verbatim}
+       H |- A /\ B         H |- ~(A \/ B)      H |- ~(A ==> B)
+    -----------------    -------------------  ------------------
+     H |- A   H |- B      H |- ~A   H |- ~B    H |- A   H |- ~B
+                                                                   
+     H |- ~(A <== B)      H |- A => B | F
+    ------------------   -----------------
+     H |- ~A   H |- B     H |- A   H |- B
+\end{verbatim}
+}
+
+\FAILURE
+Never Fails.
+
+\USES
+Used in the assumption generating field of a window rule to smash a
+single assumption into a list of assumptions.
+
+\SEEALSO
+CONJUNCTS
+
+\ENDDOC
+\DOC{smash}
+
+\TYPE {\small\verb%smash : (term -> term list)%}\egroup
+
+\SYNOPSIS
+Window library internal use only.
+
+\ENDDOC
+\DOC{store\_rule}
+
+\TYPE {\small\verb%store_rule : (window_rule -> rule_id)%}\egroup
+
+\SYNOPSIS
+Store a window rule for use by the window library.
+
+\DESCRIBE
+{\small\verb%store_rule r%} adds {\small\verb%r%} to the set of rules that the window library
+can use to open a subwindow. The function returns an identifier
+that can be used to remove the rule from the system's database.
+
+\FAILURE
+
+\SEEALSO
+kill_rule
+
+\ENDDOC
+\DOC{suppositions}
+
+\TYPE {\small\verb%suppositions : (window -> goal list)%}\egroup
+
+\SYNOPSIS
+The suppositions of a window.
+
+\DESCRIBE
+The set of suppositions associated with a window that the user
+believes to be theorems.
+
+\FAILURE
+Never fails.
+
+\SEEALSO
+conjectures
+
+\ENDDOC
+\DOC{TACTIC\_WIN}
+
+\TYPE {\small\verb%TACTIC_WIN : (tactic -> win_stack -> win_stack)%}\egroup
+
+\SYNOPSIS
+Apply a tactic to the focus of the top window.
+
+\DESCRIBE
+Assuming {\small\verb%TAC%} is a tactic of the following form:
+{\par\samepage\setseps\small
+\begin{verbatim}
+    H |- c
+   ======== TAC
+    H |- c'
+\end{verbatim}
+}
+\noindent {\small\verb%TACTIC_WIN TAC s%} can be used to transform the focus of
+the top window of {\small\verb%s%} from {\small\verb%c%} to {\small\verb%c'%}, providing the window is
+supposed to preserve {\small\verb%`==>`%} or some weaker relation.
+
+\FAILURE
+{\small\verb%TACTIC_WIN t s%} will fail if the top window of {\small\verb%s%} is not supposed
+to preserve some relation which is equal to or weaker than {\small\verb%`==>`%}.
+
+\noindent {\small\verb%RULE_WIN t%} will fail if the application ot {\small\verb%t%} generates
+more then one subgoal.
+
+\SEEALSO
+CONVERT_WIN, RESULT_RULE_WIN, REWRITE_WIN, RULE_WIN, TRANSFORM_WIN
+
+\ENDDOC
+\DOC{tactic\_win}
+
+\TYPE {\small\verb%tactic_win : (tactic -> window -> window)%}\egroup
+
+\SYNOPSIS
+Window library internal use only.
+
+\ENDDOC
+\DOC{term\_intersect.doc}
+
+\TYPE {\small\verb%term_intersect.doc : (term list -> term list -> term list)%}\egroup
+
+\SYNOPSIS
+Window library internal use only.
+
+\ENDDOC
+\DOC{term\_mem}
+
+\TYPE {\small\verb%term_mem : (term -> term list -> bool)%}\egroup
+
+\SYNOPSIS
+Window library internal use only.
+
+\ENDDOC
+\DOC{term\_setify.doc}
+
+\TYPE {\small\verb%term_setify.doc : (term list -> term list)%}\egroup
+
+\SYNOPSIS
+Window library internal use only.
+
+\ENDDOC
+\DOC{term\_subset}
+
+\TYPE {\small\verb%term_subset : (term list -> term list -> bool)%}\egroup
+
+\SYNOPSIS
+Window library internal use only.
+
+\ENDDOC
+\DOC{term\_subtract}
+
+\TYPE {\small\verb%term_subtract : (term list -> term list -> term list)%}\egroup
+
+\SYNOPSIS
+Window library internal use only.
+
+\ENDDOC
+\DOC{term\_union}
+
+\TYPE {\small\verb%term_union : (term list -> term list -> term list)%}\egroup
+
+\SYNOPSIS
+Window library internal use only.
+
+\ENDDOC
+\DOC{THM\_RULE\_WIN}
+
+\TYPE {\small\verb%THM_RULE_WIN : ((thm -> thm) -> win_stack -> win_stack)%}\egroup
+
+\SYNOPSIS
+Apply an inference to the result of the window on top of the stack.
+
+\DESCRIBE
+Assuming {\small\verb%RULE%} is an inference rule of the following form:
+{\par\samepage\setseps\small
+\begin{verbatim}
+      H |- f R fn
+    ---------------- RULE
+     H' |- f R' fn'
+\end{verbatim}
+}
+If the top window of the current stack holds the theorem
+{\small\verb%H |- f R fn%}, it will transform the window to one which holds the
+theorem {\small\verb%H' |- f R' fn'%}; provided that {\small\verb%H'%} is a subset of the
+context of the window and {\small\verb%R'%} is as strong as {\small\verb%R%}. This will
+transform the focus of the top window of the stack from {\small\verb%fn%} to
+{\small\verb%fn'%}.
+
+\FAILURE
+{\small\verb%THM_RULE_WIN r s%} will fail if {\small\verb%f%} applied to the thorem held by the
+top window of {\small\verb%s%} is not of the form {\small\verb%H' |- f R' fn'%} (note that this
+requires that {\small\verb%r%} does not change {\small\verb%f%}); or if {\small\verb%H'%} is not a subset of
+the context of the window, or {\small\verb%R'%} is not as strong as {\small\verb%R%}.
+
+\SEEALSO
+CONVERT_WIN, FOC_RULE_WIN, RULE_WIN, TACTIC_WIN, TRANSFORM_WIN,
+WIN_THM
+
+\ENDDOC
+\DOC{thm\_rule\_win}
+
+\TYPE {\small\verb%thm_rule_win : ((thm -> thm) -> window -> window)%}\egroup
+
+\SYNOPSIS
+Window library internal use only.
+
+\ENDDOC
+\DOC{thm\_setify}
+
+\TYPE {\small\verb%thm_setify :  (thm list -> thm list)%}\egroup
+
+\SYNOPSIS
+Window library internal use only.
+
+\ENDDOC
+\DOC{thm\_set\_equal}
+
+\TYPE {\small\verb%thm_set_equal : (thm list -> thm list -> bool)%}\egroup
+
+\SYNOPSIS
+Window library internal use only.
+
+\ENDDOC
+\DOC{thm\_subset}
+
+\TYPE {\small\verb%thm_subset : (thm list -> thm list -> bool)%}\egroup
+
+\SYNOPSIS
+Window library internal use only.
+
+\ENDDOC
+\DOC{thm\_subtract}
+
+\TYPE {\small\verb%thm_subtract : (thm list -> thm list -> thm list)%}\egroup
+
+\SYNOPSIS
+Window library internal use only.
+
+\ENDDOC
+\DOC{top\_path}
+
+\TYPE {\small\verb%top_path : (window_stack -> win_path)%}\egroup
+
+\SYNOPSIS
+Window library internal use only.
+
+\ENDDOC
+\DOC{top\_window}
+
+\TYPE {\small\verb%top_window : (window_stack -> window)%}\egroup
+
+\SYNOPSIS
+The top window on a stack of windows.
+
+\ENDDOC
+\DOC{transfer\_sups\_thms}
+
+\TYPE {\small\verb%transfer_sups_thms : (window -> window -> window)%}\egroup
+
+\SYNOPSIS
+Window library internal use only.
+
+\ENDDOC
+\DOC{TRANSFORM\_WIN}
+
+\TYPE {\small\verb%TRANSFORM_WIN : (thm -> win_stack -> win_stack)%}\egroup
+
+\SYNOPSIS
+Transform the focus of the top window.
+
+\DESCRIBE
+{\small\verb%TRANSFORM_WIN (H |- F R F') s%} is used to transform the focus of the
+window on top of the window stack {\small\verb%s%} from {\small\verb%F%} to {\small\verb%F'%}.
+
+\FAILURE
+If {\small\verb%f%} is not the focus of the top window, then 
+{\small\verb%TRANSFORM_WIN (H |- F' R F)%} will fail.
+If {\small\verb%H%} is not a subset of the context of the top window, then
+{\small\verb%TRANSFORM_WIN (H |- F' R F)%} will fail. 
+{\small\verb%TRANSFORM_WIN (H |- F' R F)%} will fail if {\small\verb%R%} is not equal to or
+stronger than the relation that the top window is supposed to
+maintain.
+
+\SEEALSO
+CONVERT_WIN, FOC_RULE_WIN, MATCH_TRANSFORM_WIN, REWRITE_WIN RULE_WIN,
+TACTIC_WIN, THM_RULE_WIN
+
+\ENDDOC
+\DOC{weaken}
+
+\TYPE {\small\verb%weaken : (thm -> window -> window)%}\egroup
+
+\SYNOPSIS
+Window library internal use only.
+
+\ENDDOC
+\DOC{transitive}
+
+\TYPE {\small\verb%transitive : (thm -> thm -> thm)%}\egroup
+
+\SYNOPSIS
+Window library internal use only.
+
+\ENDDOC
+\DOC{traverse}
+
+\TYPE {\small\verb%traverse : (path -> term -> term)%}\egroup
+
+\SYNOPSIS
+Use a path to select a subterm from a term.
+
+\EXAMPLE
+{\par\samepage\setseps\small
+\begin{verbatim}
+- traverse [RATOR,RAND] (--`A /\ B`--);
+val it = (--`A`--) : term
+\end{verbatim}
+}
+
+\FAILURE
+Fails if the path selects a subterm which is not in the term.
+
+\ENDDOC
+\DOC{true\_tm}
+
+\TYPE {\small\verb%true_tm : term%}\egroup
+
+\SYNOPSIS
+The boolean constant `F`.
+
+\SEEALSO
+false_tm
+
+\ENDDOC
+\DOC{tryfirst}
+
+\TYPE {\small\verb%tryfirst : (('a -> 'b) -> 'a list -> 'b)%}\egroup
+
+\SYNOPSIS
+The first element of a list for which a function succeeds.
+
+\DESCRIBE
+{\small\verb%tryfirst f l%} returns {\small\verb%f e%} where {\small\verb%e%} if the first element
+of {\small\verb%l%} for which {\small\verb%f%} succeeds.
+
+\FAILURE
+Fails for {\small\verb%f%} fails for every element of {\small\verb%l%}.
+
+\ENDDOC
+\DOC{UNDEFINED}
+
+\TYPE {\small\verb%UNDEFINED : ('a or_undefined)%}\egroup
+
+\SYNOPSIS
+Window library internal use only.
+
+\ENDDOC
+\DOC{UNDO}
+
+\TYPE {\small\verb%UNDO: (unit -> unit)%}\egroup
+
+\SYNOPSIS
+Undoes the last transformation made to the current window stack.
+
+\DESCRIBE
+
+Every change made to the current window stack is stored in a history.
+The most recent {\small\verb%n%} states of the stack can be retrieved by sucessive
+calls to the {\small\verb%UNDO%} command ({\small\verb%n%} is the number set by {\small\verb%SET_MAX_HIST%}).
+Undoing a window with the {\small\verb%UNDO_WIN%} command counts as a change to
+the stack, and can therefore be undone with {\small\verb%UNDO%}. An {\small\verb%UNDO%}, or
+seqence of {\small\verb%UNDO%}s, can be undone by a {\small\verb%REDO%}, or sequence of {\small\verb%REDO%}s.
+
+\FAILURE
+{\small\verb%UNDO ()%} will fail if no transformations have been made to the stack,
+or if {\small\verb%n%} transformations have already been undone.
+
+\SEEALSO
+UNDO_WIN, REDO, SET_MAX_HIST
+
+\ENDDOC
+\DOC{undo}
+
+\TYPE {\small\verb%undo : ('a history -> unit)%}\egroup
+
+\SYNOPSIS
+Undo the last event in a history.
+
+\DESCRIBE
+
+{\small\verb%undo h%} will side-effect the history {\small\verb%h%} by removing the present
+state and making the fist event in the {\small\verb%h%}'s past its present.
+
+\FAILURE
+Fails if no events are stored in the history.
+
+\SEEALSO
+dodo, new_history, present, redo, set_size
+
+\ENDDOC
+\DOC{UNDO\_WIN}
+
+\TYPE {\small\verb%UNDO_WIN : (win_stack -> win_stack)%}\egroup
+
+\SYNOPSIS
+Pops the window stack.
+
+\DESCRIBE
+{\small\verb%UNDO_WIN%} is used to undo the opening of a subwindow and every
+subsequent transformation performed on the subwindow. {\small\verb%UNDO_WIN%} will
+return the stack with the parent window unchanged.
+
+\FAILURE
+{\small\verb%UNDO_WIN%} will fail no windows have been opened on the window stack.
+
+\SEEALSO
+UNDO
+
+\ENDDOC
+\DOC{used\_conjectures}
+
+\TYPE {\small\verb%used_conjectures : (window -> term list)%}\egroup
+
+\SYNOPSIS
+The conjectures used by a window.
+
+\DESCRIBE
+A list of those conjectures that have actually been used in the
+transformation of the current window.
+
+\FAILURE
+Never fails.
+
+\SEEALSO
+BAD_CONJECTURES, conjectures, used_hypotheses,
+
+\ENDDOC
+\DOC{used\_hypotheses}
+
+\TYPE {\small\verb%used_hypotheses : (window -> term list)%}\egroup
+
+\SYNOPSIS
+The used hypotheses of a window.
+
+\DESCRIBE
+Those hypotheses of a window that have actually been used in the
+transformation of the window.
+
+\FAILURE
+Never fails.
+
+\COMMENTS
+The set returned by {\small\verb%used_hypotheses%} for a given window need not be
+a subset of the set returned by {\small\verb%hypotheses%} for the same window.
+This is because {\small\verb%used_hypotheses%} will also contain any conjectures
+that have been used in the transformation of the window.
+
+\SEEALSO
+used_conjectures
+
+\ENDDOC
+\DOC{value}
+
+\TYPE {\small\verb%value : ('a or_undefined -> 'a)%}\egroup
+
+\SYNOPSIS
+Window library internal use only.
+
+\ENDDOC
+\DOC{weaken}
+
+\TYPE {\small\verb%weaken : (term -> thm -> thm)%}\egroup
+
+\SYNOPSIS
+Window library internal use only.
+
+\ENDDOC
+\DOC{window\_version}
+
+\TYPE {\small\verb%window_version : string%}\egroup
+
+\SYNOPSIS
+The version of the window infernce system you are now using.
+
+\COMMENTS
+Be sure to quote this number when reporting a bug.
+
+\FAILURE
+Never fails.
+
+\SEEALSO
+
+\ENDDOC
+\DOC{WIN\_ERR}
+
+\TYPE {\small\verb%WIN_ERR : ({function:string, message:string} -> 'a)%}\egroup
+
+\SYNOPSIS
+Window library internal use only.
+
+\ENDDOC
+\DOC{WIN\_THM}
+
+\TYPE {\small\verb%WIN_THM : (unit -> thm)%}\egroup
+
+\SYNOPSIS
+Returns the theorem stored in the top window of the current stack.
+
+\DESCRIBE
+Returns the theorem stored in the window on the top of the current
+window stack. The theorem will have the form that assuming some
+subset of the hypotheses and conjectures of the window, the current
+focus is related to the original focus by the relationship the window
+is supposed to preserve.
+
+\FAILURE
+Fails if there is no current window stack.
+
+\ENDDOC
+\DOC{win\_thm}
+
+\TYPE {\small\verb%win_thm : (window -> thm)%}\egroup
+
+\SYNOPSIS
+The theorem stored in a window.
+
+\DESCRIBE
+Returns the theorem stored in a window.  The theorem will have the
+form that assuming some subset of the hypotheses and conjectures of
+the window, the original focus is related to the current focus by the
+relationship the window is supposed to preserve.
+
+\FAILURE
+Never fails.
+
+\SEEALSO
+SAVE_WIN_THM, WIN_THM
+
+\ENDDOC

@@ -1,0 +1,100 @@
+head	1.1;
+branch	1.1.1;
+access;
+symbols
+	HOL97:1.1.1.1.0.6
+	bpHOL97:1.1.1.1
+	hol90_9_alpha:1.1.1.1
+	hol90_pre8_for_multiple_compilers:1.1.1.1.0.4
+	hol90_pre8_after_donalds_separate_compilation_changes:1.1.1.1
+	hol90_8_after_merging_Konrad_Elsa:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	95.10.16.13.35.09;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.35.09;	author rjb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@\DOC mk_thm
+
+\TYPE {mk_thm : (((term list # term) -> thm))}
+
+\SYNOPSIS
+Creates an arbitrary theorem (dangerous!)
+
+\DESCRIBE
+The function {mk_thm} can be used to construct an arbitrary theorem. It is
+applied to a pair consisting of the desired assumption list (possibly empty)
+and conclusion. All the terms therein should be of type {bool}.
+{
+   mk_thm(["a1";...;"an"],"c") = ({{a1,...,an}} |- c)
+}
+\FAILURE
+Fails unless all the terms provided for assumptions and conclusion are of type
+{bool}.
+
+\EXAMPLE
+The following shows how to create a simple contradiction:
+{
+   #mk_thm([],"F");;
+   |- F
+}
+\COMMENTS
+Although {mk_thm} can be useful for experimentation or temporarily plugging
+gaps, its use should be avoided if at all possible in important proofs, because
+it can be used to create theorems leading to contradictions. The example above
+is a trivial case, but it is all too easy to create a contradiction by
+asserting `obviously sound' theorems.
+
+All theorems which are likely to be needed can be derived using only HOL's
+inbuilt 5 axioms and 8 primitive inference rules, which are provably sound (see
+the DESCRIPTION). Basing all proofs, normally via derived rules and tactics, on
+just these axioms and inference rules gives proofs which are (apart from bugs
+in HOL or the underlying system) completely secure. This is one of the great
+strengths of HOL, and it is foolish to sacrifice it to save a little work.
+
+Note that the system shows the type of {mk_thm} as {(goal -> thm)}.
+
+\SEEALSO
+new_axiom.
+
+\ENDDOC
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

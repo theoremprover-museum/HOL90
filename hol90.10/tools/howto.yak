@@ -1,0 +1,291 @@
+	How to Work with Lex and Yacc in NJSML,
+		A Supplement.
+
+           Konrad Slind,
+           University of Calgary
+
+
+
+Although the relevant information is all there in the system
+documentation, I struggled with lex and yacc in NJSML. These are the
+notes I took along the way.  They may be useful for other first time
+users.
+
+				       
+1. We need what the system documentation calls ML-Yacc, but no such
+   beast exists. We have to make it. Since we will be using ML-Lex too, 
+   and probably both at once, we do the following:
+
+       a. There should be a "tools" directory for the installation of
+          NJSML at your site. There should be sub-directories named
+          lexgen and mlyacc.
+
+       b. Make a new directory, yuk say, where we are going to make
+          everything. 
+
+       c. Copy tools/lexgen/lexgen.sml to yuk. (Or link to it.)
+
+       d. Copy the directory tools/mlyacc/src to yuk/src. (Or link to it.)
+          Copy the file tools/mlyacc/Makefile to yuk/Makefile. (Or link to it.)
+
+       e. make vanilla  (There are other options - read the documentation
+          in the Makefile.) This makes the base.sml file.
+ 
+       f. make
+
+       g. Invoke sml.
+ 
+       h. use "lexgen.sml"; 
+
+       i. use "smlyacc.sml";
+
+       j. exportML "yak";
+
+       k. Note: steps h-j take some time. When they are finished,
+          we have our "ML-Yacc" (in the sml image called "yak"). And could
+          delete all the files copied over, if we wanted to.
+
+    There may, of course be smarter ways to produce "ML-Yacc"; this
+    is one (naive) way.
+
+2. Producing a lexer. This is simple. The example in  the system
+   documentation is quite good. We'll do a simple lambda calculus
+   lexer. Let the file "lam_lex" be the following:
+
+       datatype lexresult = IDENT of string
+                          | LAM
+                          | DOT
+                          | LBRACKET
+                          | RBRACKET
+                          | EOF;
+
+       val error = fn x => output(std_out,x^"\n");
+       val eof = fn () => EOF;
+       %%
+       %structure lam_lex
+       ident = [A-Za-z] [A-Za-z0-9_']*;
+       ws = [\ \t];
+       %%
+       \n => (lex());
+       "\\" => (LAM);
+       "(" => (LBRACKET);
+       ")" => (RBRACKET);
+       "." => (DOT);
+       {ws}+ => (lex());
+       {ident} => (IDENT yytext);
+       . => (error ("lexer: ignoring bad character "^yytext); lex());
+
+   Perform the following call in yak:
+
+       LexGen.lexGen "lam_lex";
+
+   This produces a file "lam_lex.sml". Load the file into yak:
+
+       use "lam_lex.sml";
+
+   For my purposes, the following provided a simple test routine:
+
+       - val L = lam_lex.makeLexer (fn _ => input_line std_in);
+       val L = fn : unit -> lam_lex.UserDeclarations.lexresult
+       - L();
+       there\.cdf
+       val it = IDENT "there" : lam_lex.UserDeclarations.lexresult
+       - L();
+       val it = LAM : lam_lex.UserDeclarations.lexresult
+       - L();
+       val it = DOT : lam_lex.UserDeclarations.lexresult
+       - L();
+       val it = IDENT "cdf" : lam_lex.UserDeclarations.lexresult
+   
+3. Once we have satisfied ourselves that the lexer is generating the
+   right tokens, we move on and produce a parser. Unfortunately, the 
+   lexer does not remain unchanged in the move. The notion of `token`
+   is the interface between the lexer and the parser. This is reflected
+   by the lexer now being a functor parameterized over tokens. Concretely,
+   the changes are:
+
+       a. The produced file must now be a functor. This is done with %header:
+
+              %header (functor lam_lex(structure Tokens : lam_TOKENS));
+
+          The signature of the parameter of this functor is "X_TOKENS", where
+          X is determined by  the %name declaration in the corresponding yacc
+          file (lam_yak, in this case).
+
+       b. The datatype lexresult is moved to the parser, going under
+          the %term declaration in lam_yak.
+      
+       c. Every lexeme returned by the lexer has an additional two parameters,
+          which indicate the left and right position of the token. (This can 
+          be used for error messages and the like.) For this simple example, 
+          I set these parameters to 0.
+
+       d. There is some extra boilerplate required in the user declarations 
+          section.
+
+   We now have the following file for "lam_lex":
+
+       type pos = int;
+
+       type svalue = Tokens.svalue;
+       type ('a,'b) token = ('a,'b) Tokens.token;
+       type lexresult = (svalue,pos) token;
+
+       val pos = 0;
+       fun eof() = Tokens.EOF(pos, pos);
+       fun error(err_str,_,_) = output(std_out,("error: "^err_str^"\n"));
+       %%
+       %header (functor lam_lex(structure Tokens : lam_TOKENS));
+       ident = [A-Za-z] [A-Za-z0-9_']*;
+       ws = [\ \t];
+       %%
+       \n => (lex());
+       "\\" => (Tokens.lambda(0,0));
+       "(" => (Tokens.lbracket(0,0));
+       ")" => (Tokens.rbracket(0,0));
+       "." => (Tokens.dot(0,0));
+       {ws}+ => (lex());
+       {ident} => (Tokens.ident(yytext,0,0));
+       . => (error (("lexer: ignoring bad character "^yytext),0,0); lex());
+
+
+   Perform LexGen.lexGen "lam_lex" to produce the new lexer file.
+
+4. On to the parser. The parser will not only check for well-formed
+   lambda terms, but it will construct them. If the datatype of lambda
+   terms is declared in the user declarations section of the yacc file, it
+   will be inaccessible at the top level, so we define it globally. As
+   well, we extend the depth of printing with a system call:
+
+       System.Control.Print.printDepth := 100;
+
+       datatype lambda_term = Var of string
+                            | App of (lambda_term * lambda_term)
+                            | Abs of (lambda_term * lambda_term);
+
+5. Let the file lam_yak be
+
+       (* The simple language of lambda:
+        *    v | (e1 e2) | \v.e
+        ********************************)
+       %%
+       %term ident of string
+           | lambda
+           | dot
+           | lbracket
+           | rbracket
+           | EOF 
+
+       %nonterm START of lambda_term | EXP of lambda_term
+       %eop EOF
+       %pos int
+       %name lam
+       %noshift EOF
+       %nodefault
+       %verbose
+       %%
+       START : EXP (EXP)
+
+       EXP : ident (Var ident)
+             | 
+             lbracket EXP EXP rbracket (App(EXP1,EXP2))
+             |
+             lambda ident dot EXP (Abs(Var(ident),EXP))
+
+6. We perform the following:
+
+       a. ParseGen.parseGen "lam_yak"; This produces two files: 
+
+              lam_yak.sig  and
+              lam_yak.sml
+
+       b. use "lam_yak.sig"; use "lam_yak.sml";
+
+       c. We can now obtain our tokens and the parser tables:
+
+              structure tables_n_tokens = 
+                               lamLrValsFun(structure Token = LrParser.Token);
+
+       d. We now have sufficient information to produce a lexer. Get the 
+          lexer functor:
+
+              use "lam_lex.sml"; 
+
+          This loads in the functor for the lexer. We apply it to get a lexer 
+          structure:
+
+              structure L = lam_lex(structure Tokens = tables_n_tokens.Tokens);
+
+       e. We can now produce the parser structure:
+
+              structure P = 
+                   Join(structure ParserData = tables_n_tokens.ParserData
+                        structure Lex = L
+                        structure LrParser = LrParser);
+
+7. Now we can test the parser, found in P.parse. For my purposes, I found the 
+   following simple program to be useful:
+
+       local
+       fun perror (s,_,_) = output(std_out,s)
+       in fun p() =
+             let val lexer = P.makeLexer(fn _ => input_line std_in)
+                 val (res,_) = P.parse(0,lexer,perror,())
+             in res
+             end
+       end;
+
+   For example:
+
+       - p();
+       \x.x
+       ^D
+       val it = Abs (Var "x",Var "x") : result
+       - -
+
+8. Once you get into a development loop with the parser, starting from a
+   simple language and augmenting the parser until you have what you want, 
+   the following puts together all the preceding and merely needs to be 
+   reloaded each time the parser changes:
+
+       (* Load only once *)
+       System.Control.Print.printDepth := 1000;
+
+       (* Load only once *)
+       datatype lambda_term = Var of string
+                            | App of (lambda_term * lambda_term)
+                            | Abs of (lambda_term * lambda_term);
+
+       (* Load when lexer changes *)
+       LexGen.lexGen "lam_lex";
+
+       (* Load the rest when lam_yak changes *)
+       ParseGen.parseGen "lam_yak";
+       use "lam_yak.sig";
+       use "lam_yak.sml";
+       structure table = lamLrValsFun(structure Token = LrParser.Token);
+       use "lam_lex.sml";
+       structure L = lam_lex(structure Tokens = table.Tokens);
+       structure P = Join(structure ParserData = table.ParserData
+                          structure Lex = L
+                          structure LrParser = LrParser);
+       local
+       fun perror (s,_,_) = output(std_out,s)
+       in
+       fun p() =
+          let val lexer = P.makeLexer(fn _ => input_line std_in)
+              val (res,_) = P.parse(0,lexer,perror,())
+          in
+          res
+          end
+       end;
+
+9. The previous point assumes that development is going on "inside"
+   yak (the "development" environment, if you will). If one is using
+   yak to generate lam_lex.sml, lam_yak.sig, and lam_yak.sml, and a
+   different "production" invocation of sml to compile the files, then
+   the production invocation must have loaded the file 
+
+       base.sml
+
+   produced in step 1.e.

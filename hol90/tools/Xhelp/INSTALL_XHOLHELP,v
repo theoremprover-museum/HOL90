@@ -1,0 +1,116 @@
+head	1.1;
+branch	1.1.1;
+access;
+symbols
+	HOL97:1.1.1.1.0.6
+	bpHOL97:1.1.1.1
+	hol90_9_alpha:1.1.1.1
+	hol90_pre8_for_multiple_compilers:1.1.1.1.0.4
+	hol90_pre8_after_donalds_separate_compilation_changes:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	95.10.16.13.36.03;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.36.03;	author rjb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@#! /bin/sh
+
+# GUIDE FOR INSTALLING XHOLHELP - BROWSER FOR HOL DOCUMENTATION
+
+
+# There are two steps in installing xholhelp: the first one is to set up
+# paths to shell-scripts and documentation files. The second one is to
+# compile the C program.
+
+# STEP 1. Author: Phillip J. Windley, University of Idaho
+#
+# Change the variables XHOLHELP_PATH and HOL_HELP_PATH in the
+# following lines to reflect the location of the xholhelp
+# directory and the HOL help directories, respectively.
+#
+# Note that at a minimum, the folllowing files should live in
+# XHOLHELP_PATH: hol_apro, hol_ref, hol_thm, hol_funs, *.sed and
+# xhelphelp.help (say in the tools directory.)
+#
+
+XHOLHELP_PATH=/usr/wiss/slind/hol/working/tools/Xhelp
+HOL88_HELP_PATH=/usr/wiss/slind/hol/working/help/88
+HOL90_HELP_PATH=/usr/wiss/slind/hol/working/help/90
+
+# Then run the following script (by executing this file):
+
+for f in xholhelp.h hol_apro hol_ref hol_thm hol_funs
+do 
+   sed -e "s:ORIG_DIR:$XHOLHELP_PATH:g;\
+           s:ORIG_HELP_PATH:$HOL88_HELP_PATH:g;\
+           s:HOL90_HELP_PATH:$HOL90_HELP_PATH:g;\
+           s:\:/ENTRIES::g;\
+           s:\:/THEOREMS/\*::g" $f.orig >$f
+   chmod 755 $f
+done
+chmod 644 xholhelp.h
+
+
+
+# STEP2: USING IMAKE
+
+# Imake is a "C preprocessor interface to the make utility".
+# This directory contains a file called Imakefile. It is a template
+# to create a Makefile. "xmkmf" sets parameters regarding the X
+# installation and calls Imake.
+# This step is accomplished by executing this file.
+
+xmkmf
+make clean
+make all
+
+
+
+# The script "xmkmf" should exist in most installations running X11
+# (and OpenWindows). If you cannot find it consult the local Xpert.
+
+# Also feel free to contact me if you still have problems.
+
+
+#						- Sara Kalvala
+#						sk@@cl.cam.ac.uk
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

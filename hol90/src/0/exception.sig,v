@@ -1,0 +1,132 @@
+head	1.2;
+access;
+symbols
+	HOL97:1.1.1.1.0.6
+	bpHOL97:1.1.1.1
+	hol90_9_alpha:1.1.1.1
+	hol90_pre8_for_multiple_compilers:1.1.1.1.0.4
+	hol90_pre8_after_donalds_separate_compilation_changes:1.1.1.1
+	hol90_8_after_merging_Konrad_Elsa:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.2
+date	95.12.18.11.34.17;	author drs1004;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	95.10.16.13.29.51;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.29.51;	author rjb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.2
+log
+@Preterm and other changes, see 7.changes
+@
+text
+@(* ===================================================================== *)
+(* FILE          : exception.sig                                         *)
+(* DESCRIPTION   : Signature for HOL exceptions.                         *)
+(*                                                                       *)
+(* AUTHOR        : (c) Konrad Slind, University of Calgary               *)
+(* DATE          : September 15, 1991                                    *)
+(*                                                                       *)
+(* Modified      : 27 October, 1991, E. L. Gunter                        *)
+(* Modified      : 16 November 1995, D.R. Syme                           *)
+(* ===================================================================== *)
+
+
+(*-----------------------------------------------------------------------
+ * EXAMPLES
+ *
+ * Wrapping information around an existing error:
+ *
+ * val ERR = Exception.ERR "Term"
+ * val WRAP_ERR = Exception.WRAP_ERR "Term"
+ *
+ * fun some_fun = 
+ *      ....       
+ *      handle e => WRAP_ERR ("some_fun",e)
+ *----------------------------------------------------------------------*)
+
+
+signature Exception_sig =
+sig
+    val print_exn : exn -> unit
+    val ERR : string -> (string * string) -> 'a
+    val WRAP_ERR : string -> (string * exn) -> 'a
+    val Raise : exn -> 'a
+
+    (*---------------------------------------------------------------------
+     * Mainly for compatibility and visibilty - try not to use these.  DRS
+     *---------------------------------------------------------------------*)
+
+(*    exception HOL_ERR' of {origin_structure:string,
+			   origin_function:string,
+			   message:string, 
+                           exn:exn option} *)
+
+    exception HOL_ERR of {origin_structure:string,
+			   origin_function:string,
+			   message:string}
+    val print_HOL_ERR : exn -> unit
+
+
+(*    val HOL_ERR : {origin_structure:string,
+                   origin_function:string,
+	           message:string} -> exn *)
+end;
+
+
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d9 1
+d13 14
+d29 14
+d44 2
+a45 2
+			  origin_function:string,
+			  message:string}
+d47 5
+a51 1
+    val Raise : exn -> 'a
+d53 2
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

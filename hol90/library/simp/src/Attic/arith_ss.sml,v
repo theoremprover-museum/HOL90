@@ -1,0 +1,569 @@
+head	1.1;
+access;
+symbols
+	HOL97:1.1.2.5.0.2
+	bpHOL97:1.1.2.5
+	hol90_9_alpha:1.1.2.5
+	hol90_pre8_for_multiple_compilers:1.1.0.2;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	96.08.06.12.24.35;	author rjb;	state dead;
+branches
+	1.1.2.1;
+next	;
+
+1.1.2.1
+date	96.08.06.12.24.36;	author rjb;	state Exp;
+branches;
+next	1.1.2.2;
+
+1.1.2.2
+date	96.08.23.10.24.50;	author rjb;	state Exp;
+branches;
+next	1.1.2.3;
+
+1.1.2.3
+date	96.09.02.21.10.10;	author drs1004;	state Exp;
+branches;
+next	1.1.2.4;
+
+1.1.2.4
+date	96.09.02.21.30.07;	author drs1004;	state Exp;
+branches;
+next	1.1.2.5;
+
+1.1.2.5
+date	96.09.03.16.07.30;	author drs1004;	state Exp;
+branches
+	1.1.2.5.2.1;
+next	;
+
+1.1.2.5.2.1
+date	97.07.01.17.34.33;	author mvi20;	state Exp;
+branches;
+next	1.1.2.5.2.2;
+
+1.1.2.5.2.2
+date	97.07.14.18.08.32;	author kxs;	state Exp;
+branches;
+next	1.1.2.5.2.3;
+
+1.1.2.5.2.3
+date	97.07.16.16.56.08;	author mn200;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@file arith_ss.sml was initially added on branch hol90_pre8_for_multiple_compilers.
+@
+text
+@@
+
+
+1.1.2.1
+log
+@New library simp.
+@
+text
+@a0 243
+(* ---------------------------------------------------------------------
+ * A symbolic calculator for the HOL "num" arithmetic.  Does no proof - it
+ * relies on some other tool to do the proof.  See arith_ss.sml.
+ *
+ * When using this with natural arithmetic, note that 
+ * the fact that m-n=0 for n>m is not taken into account.  It assumes that
+ * subtraction is always being used in a "well behaved" way.
+ * --------------------------------------------------------------------*)
+structure arith_ss : arith_ss_sig =
+struct
+
+open Psyntax LiteLib Arith_cons Arith Simplifier 
+open Equal Traverse Cache Trace;
+
+val _ = say "Loading arithmetic simplification tools...";
+
+(* ---------------------------------------------------------------------
+ * LIN: Linear arithmetic expressions
+ * --------------------------------------------------------------------*)
+
+val mk_numeral = term_of_int;
+val dest_numeral = int_of_term;
+
+datatype lin = LIN of ((term *int) list * int);
+
+fun string_ord (s1:string,s2) =if s1 < s2 then LESS else if s1 > s2 then GREATER else EQUAL;
+
+fun term_ord (t1,t2) = 
+    if is_var t1 then
+	if is_var t2 then (string_ord (fst(dest_var t1),fst(dest_var t2)))
+	else LESS
+    else if is_const t1 then
+	if is_var t2 then GREATER
+	else if is_const t2 then (string_ord (fst(dest_const t1),fst(dest_const t2)))
+	else LESS
+    else if is_comb t1 then
+        if is_var t2 orelse is_const t2 then GREATER
+        else if is_comb t2 then 
+           case term_ord (rator t1,rator t2) of
+	       EQUAL => term_ord (rand t1,rand t2)
+	     | x => x
+	else LESS
+    else if is_abs t1 then
+        if is_var t2 orelse is_const t2 orelse is_comb t2 then GREATER
+        else if is_comb t2 then 
+           case term_ord (bvar t1,bvar t2) of
+	       EQUAL => term_ord (body t1,body t2)
+	     | x => x
+	else LESS
+    else failwith "term_ord";
+
+val zero_tm = (--`0`--);
+fun dest_SUC tm = 
+    if (fst(dest_const(rator tm)) = "SUC") then rand tm else fail();
+val num_ty = (==`:num`==);
+
+val mk_lin =
+  let fun tmord ((term1,n1),(term2,n2)) = 
+      case term_ord (term1,term2) of
+        EQUAL => if n1 < n2 then LESS else if n2 > n1 then GREATER else EQUAL
+      | x => x;
+      val tmlt = lt_of_ord tmord;        
+      fun shrink_likes ((tm1,k1)::(tm2,k2)::rest) =
+        if (tm1 = tm2) then
+          if (k1+k2 = 0) then shrink_likes rest
+          else shrink_likes ((tm1,k1+k2)::rest)
+        else (tm1,k1)::shrink_likes((tm2,k2)::rest)
+        | shrink_likes x = x
+      val canon_tms = shrink_likes o sort (curry tmlt)
+      fun mk_tm (tm,0) = failwith "mk_tm: zero term"
+        | mk_tm (tm,k) = (tm,k)
+  in fn (k,x) => LIN (canon_tms (mapfilter mk_tm k),x)
+  end;
+
+fun dest_lin (LIN p) = p;
+  
+(* ---------------------------------------------------------------------
+ * LIN <--> HOL
+ * --------------------------------------------------------------------*)
+
+fun is_pos_tm (tm,n) = n > 0
+fun is_neg_tm (tm,n) = n < 0
+
+fun term_of_tm (tm,n) =
+   if (abs n = 1) then tm
+   else mk_mult (mk_numeral (abs n),tm);
+
+
+val list_mk_plus = end_foldr mk_plus;
+val list_mk_mult = end_foldr mk_mult;
+
+fun term_of_lin (LIN (tms,k)) =
+  let val pos_terms = map term_of_tm (filter is_pos_tm tms)
+      val neg_terms = 
+        (map term_of_tm (filter is_neg_tm tms))@@
+        (if k < 0 then [mk_numeral (~k)] else [])
+      val const_term = if k > 0 then SOME (mk_numeral k) else NONE
+  in 
+      case const_term of 
+	  SOME x => 
+	      if (null pos_terms) then
+		  if (null neg_terms) then x
+		  else mk_minus(x,list_mk_plus neg_terms)
+	      else if (null neg_terms) then list_mk_plus(pos_terms@@[x])
+		   else mk_minus(list_mk_plus (pos_terms@@[x]),list_mk_plus neg_terms)
+	| NONE => 
+	      if (null pos_terms) then
+		  if (null neg_terms) then zero_tm
+		  else failwith "no positive terms"
+	      else if (null neg_terms) then list_mk_plus pos_terms
+		   else mk_minus(list_mk_plus pos_terms,list_mk_plus neg_terms)
+  end;
+
+fun negate (x,y:int) = (x,~y);
+
+fun lin_of_term tm =
+  let val (t1,t2) = dest_plus tm
+      val (l1,k1) = dest_lin(lin_of_term t1)
+      val (l2,k2) = dest_lin(lin_of_term t2)
+  in mk_lin(l1@@l2,k1+k2)
+  end
+  handle HOL_ERR _ =>
+  let val (t1,t2) = dest_minus tm
+      val (l1,k1) = dest_lin(lin_of_term t1)
+      val (l2,k2) = dest_lin(lin_of_term t2)
+  in mk_lin(l1@@map negate l2,k1 - k2)
+  end
+  handle HOL_ERR _ =>
+  let val (l1,k1) = dest_lin(lin_of_term (dest_SUC tm))
+  in LIN(l1,k1+1)
+  end
+  handle HOL_ERR _ => 
+  mk_lin([],dest_numeral tm)
+  handle HOL_ERR _ =>
+  mk_lin([(tm,1)],0);
+
+
+val linear_reduction = term_of_lin o lin_of_term;
+
+(* ---------------------------------------------------------------------
+ * is_arith
+ *
+ * Decide whether something looks like something which may be
+ * either decideable by ARITH_CONV or useful for ARITH_CONV.
+ *
+ * EXAMPLES 
+ * is_arith (--`~(1 = 2)`--);                      (* true *)
+ * is_arith (--`~(LENGTH [1] = 0)`--);             (* true *)
+ * is_arith (--`~(x:'a = y)`--);                   (* false *)
+ * is_arith (--`!z:num. ~(x:'a = y)`--);           (* false *)
+ * is_arith (--`!z:num. ~(z = y)`--);              (* true *)
+ * is_arith (--`!P. !z:num. ~(z = y) /\ P`--);     (* true *)
+* is_arith (-+`(!i. i < 1 + n' ==> (f i = f' i)) ==> 1 + n > 0`+-);
+
+ * --------------------------------------------------------------------*)
+
+fun is_arith tm = 
+   if (is_forall tm orelse is_exists tm) then
+     (type_of (bvar (rand tm)) = num_ty andalso is_arith (body (rand tm)))
+   else if (is_abs tm) then false
+   else if (is_geq tm) orelse (is_less tm) orelse (is_leq tm) orelse (is_great tm) then
+     true
+   else if (is_conj tm) orelse (is_disj tm) orelse (is_imp tm) 
+     orelse (is_eq tm andalso type_of (rhs tm) = bool_ty) then
+     is_arith (lhand tm) andalso is_arith (rand tm)
+   else if (is_neg tm) then is_arith (dest_neg tm)
+   else if (is_eq tm) then (type_of (rhs tm) = num_ty)
+   else false;
+
+
+fun is_arith_thm thm = (not (null (hyp thm)) andalso is_arith (concl thm));
+
+(* ---------------------------------------------------------------------
+prim_load_library interpret {lib=arith_lib,theory="-"};
+ * --------------------------------------------------------------------*)
+
+type ctxt = thm list;
+val facts = [`1 < 2`,`1 + x = x + 1`,`x < x + 1`];
+
+val ARITH = EQT_ELIM o ARITH_CONV;
+
+fun CTXT_ARITH thms tm =
+  if (type_of tm = bool_ty) andalso (is_arith tm) then
+     let val context = map concl thms
+         fun try gl = 
+           let val gl' = list_mk_imp(context,gl)
+	   in rev_itlist (C MP) thms (ARITH gl')
+           end
+	 val thm = EQT_INTRO (try tm) 
+	     handle HOL_ERR _ => EQF_INTRO (try(mk_neg tm))
+     in trace(1,PRODUCE(tm,"ARITH",thm)); thm
+     end
+   else if (type_of tm = num_ty) then
+     let val reduction = linear_reduction tm
+     in if (reduction = tm)
+        then failwith "CTXT_ARITH: no reduction possible"
+        else 
+          let val context = map concl thms
+              val gl = list_mk_imp(context,mk_eq(tm,reduction))
+	      val thm = rev_itlist (C MP) thms (ARITH gl)
+          in trace(1,PRODUCE(tm,"ARITH",thm)); thm
+          end
+     end
+   else failwith "CTXT_ARITH: not applicable";
+
+val (CACHED_ARITH,arith_cache) =
+  let fun check tm = 
+      let val ty = type_of tm
+      in (ty = num_ty orelse (ty=bool_ty andalso is_arith tm)) 
+      end;
+  in  CACHE (check,CTXT_ARITH)
+  end;
+
+
+(* ---------------------------------------------------------------------
+ * --------------------------------------------------------------------*)
+
+val ARITH_REDUCER = 
+  let exception CTXT of thm list;
+      fun get_ctxt e = (raise e) handle CTXT c => c;
+  in REDUCER {addcontext= fn (ctxt, newthms) => 
+              CTXT ((filter is_arith_thm 
+                     (flatten (map CONJUNCTS newthms)))@@get_ctxt ctxt),
+              apply=fn args => CACHED_ARITH (get_ctxt (#context args)),
+              initial=CTXT []}
+  end;
+    
+val ARITH_ss = dproc_ss ARITH_REDUCER;
+
+fun clear_arith_caches() = clear_cache arith_cache;
+
+open Simpsets;
+val HOL_ss = merge_ss [BOOL_ss,LIST_ss,COMBIN_ss,SATISFY_ss,UNWIND_ss,ARITH_ss];
+val hol_ss = mk_simpset [HOL_ss];;
+
+val _ = say "done!\n";
+
+
+
+end (* struct *)
+
+
+
+@
+
+
+1.1.2.2
+log
+@Added type annotation.
+@
+text
+@d58 1
+a58 1
+  let fun tmord ((term1,n1:int),(term2,n2)) = 
+@
+
+
+1.1.2.3
+log
+@Fixes described in changes file.
+@
+text
+@a155 1
+(* there might still be bugs in this.... DRS 5 Aug 96 *)
+d158 2
+a159 4
+   if (is_forall tm) then
+       (type_of (bvar (rand tm)) = num_ty andalso is_presburger (body (rand tm))
+   else if is_exists tm then
+	(type_of (bvar (rand tm)) = num_ty andalso is_arith (body (rand tm)))
+d233 1
+a233 1
+val HOL_ss = merge_ss [BOOL_ss,LIST_ss,COMBIN_ss,SATISFY_ss,UNWIND_ss,ARITH_ss,PAIR_ss];
+@
+
+
+1.1.2.4
+log
+@stupid bug.
+@
+text
+@d160 1
+a160 1
+       (type_of (bvar (rand tm)) = num_ty andalso is_presburger (body (rand tm)))
+@
+
+
+1.1.2.5
+log
+@Changes to Simplifier:
+  -  REDUCE_CONV is part of arith_ss and is called on multiplication and
+     exponentiation terms.
+  -  SUM_ss is made part of arith_ss too
+  -  A bound variable bug is fixed in opening.sml
+
+Changes to Unwind:
+
+An attempt to be clever here caused UNWIND_EXISTS_CONV to break if the
+first conjunct of the body of the clause was the one with the variable's
+definition, and was also nested.
+
+e.g. ?n. ((n = 3) /\ (n < y)) /\ P n
+failed because CONJ_TO_FRONT_CONV didn't touch the body, thinking it was
+OK, but it wasn't, because this term above doesn't match the rewrite
+theorem (which is: ?x. (x = v) /\ ...., or near enough).
+@
+text
+@d231 1
+a231 4
+fun mk_redconv pat = {name = "REDUCE_CONV (arithmetic reduction)",
+                      trace = 2,
+                      key = SOME([], pat),
+                      conv = K (K (CHANGED_CONV Redconv.REDUCE_CONV))}
+a232 11
+val ARITH_ss = Simplifier.SIMPSET
+    {convs = [mk_redconv (--`a * b`--),
+              mk_redconv (--`a EXP b`--),
+	      mk_redconv (--`a DIV b`--),
+	      mk_redconv (--`a MOD b`--)],
+     rewrs = [ARITH (--`!x y. (x + 1 = y + 1) = (x = y)`--)],
+     congs = [],
+     filter = NONE,
+     ac = [],
+     dprocs = [ARITH_REDUCER]};
+
+d236 1
+a236 1
+val HOL_ss = merge_ss [BOOL_ss,LIST_ss,COMBIN_ss,SATISFY_ss,UNWIND_ss,ARITH_ss,PAIR_ss,SUM_ss];
+@
+
+
+1.1.2.5.2.1
+log
+@Fixed tiny bug in HOL_ss -- Don forgot to include NOT_ss in it. -Myra
+@
+text
+@d250 1
+a250 3
+val HOL_ss = merge_ss 
+    [BOOL_ss, COMBIN_ss, LIST_ss, SUM_ss, NOT_ss, PAIR_ss, UNWIND_ss,
+     SATISFY_ss, ARITH_ss]
+@
+
+
+1.1.2.5.2.2
+log
+@The "simp" library now loads under CM.
+@
+text
+@d12 2
+a13 6
+type conv = Abbrev.conv;
+
+open liteLib arithLib reduceLib;
+open Lib Exception CoreHol;
+open Term Dsyntax Thm Drule Conv Parse Psyntax 
+open LiteLib Arith_cons Arith Simplifier Equal Traverse Cache Trace;
+d24 1
+a24 1
+datatype lin = LIN of ((term * int) list * int);
+d26 1
+a26 3
+fun string_ord (s1:string,s2) = if s1 < s2 then LESS 
+                                else if s1 > s2 then GREATER 
+                                                else EQUAL;
+d32 4
+a35 5
+    else if is_const t1 
+         then if is_var t2 then GREATER
+	      else if is_const t2 
+                   then (string_ord (fst(dest_const t1),fst(dest_const t2)))
+	           else LESS
+d105 1
+a105 2
+		   else mk_minus(list_mk_plus (pos_terms@@[x]),
+                                 list_mk_plus neg_terms)
+d160 1
+a160 1
+       (type_of (bvar (rand tm)) = num_ty andalso is_presburger(body(rand tm)))
+d164 2
+a165 2
+   else if (is_geq tm) orelse (is_less tm) orelse 
+           (is_leq tm) orelse (is_great tm) then  true
+d250 3
+a252 4
+
+val HOL_ss = merge_ss [BOOL_ss, LIST_ss, COMBIN_ss, SATISFY_ss, NOT_ss
+                       UNWIND_ss, ARITH_ss, PAIR_ss, SUM_ss];
+
+@
+
+
+1.1.2.5.2.3
+log
+@Added CONG_ss to Simpsets.{sig,sml}.  This new ssdata contains the
+congruences that have been removed from BOOL_ss.  Both bool_ss and hol_ss
+are unchanged in their behaviour as these both now merge in CONG_ss.
+@
+text
+@d5 1
+a5 1
+ * When using this with natural arithmetic, note that
+d16 1
+a16 1
+open Term Dsyntax Thm Drule Conv Parse Psyntax
+d30 2
+a31 2
+fun string_ord (s1:string,s2) = if s1 < s2 then LESS
+                                else if s1 > s2 then GREATER
+d34 1
+a34 1
+fun term_ord (t1,t2) =
+d38 1
+a38 1
+    else if is_const t1
+d40 1
+a40 1
+	      else if is_const t2
+d45 1
+a45 1
+        else if is_comb t2 then
+d52 1
+a52 1
+        else if is_comb t2 then
+d60 1
+a60 1
+fun dest_SUC tm =
+d65 1
+a65 1
+  let fun tmord ((term1,n1:int),(term2,n2)) =
+d69 1
+a69 1
+      val tmlt = lt_of_ord tmord;
+d83 1
+a83 1
+
+d101 1
+a101 1
+      val neg_terms =
+d105 3
+a107 3
+  in
+      case const_term of
+	  SOME x =>
+d114 1
+a114 1
+	| NONE =>
+d140 1
+a140 1
+  handle HOL_ERR _ =>
+d154 1
+a154 1
+ * EXAMPLES
+d166 1
+a166 1
+fun is_arith tm =
+d172 1
+a172 1
+   else if (is_geq tm) orelse (is_less tm) orelse
+d174 1
+a174 1
+   else if (is_conj tm) orelse (is_disj tm) orelse (is_imp tm)
+d196 1
+a196 1
+         fun try gl =
+d200 1
+a200 1
+	 val thm = EQT_INTRO (try tm)
+d208 1
+a208 1
+        else
+d218 1
+a218 1
+  let fun check tm =
+d220 1
+a220 1
+      in (ty = num_ty orelse (ty=bool_ty andalso is_arith tm))
+d229 1
+a229 1
+val ARITH_REDUCER =
+d232 2
+a233 2
+  in REDUCER {addcontext= fn (ctxt, newthms) =>
+              CTXT ((filter is_arith_thm
+d238 1
+a238 1
+
+d259 2
+a260 2
+val HOL_ss = merge_ss [BOOL_ss, CONG_ss, LIST_ss, COMBIN_ss, SATISFY_ss,
+                       NOT_ss, UNWIND_ss, ARITH_ss, PAIR_ss, SUM_ss];
+@

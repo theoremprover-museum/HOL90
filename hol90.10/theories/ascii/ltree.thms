@@ -1,0 +1,144 @@
+thid = (ltree, 934216775, 653922)
+axioms = []
+definitions =
+[((PART),
+  [],
+  `((/\ ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :'a list list -> 'a list list -> bool)
+   (((PART :num list -> 'a list -> 'a list list) (NIL :num list)) $0))
+   (NIL :'a list list))))) ((! :(num -> bool) -> bool) (\(n :num).
+   ((! :(num list -> bool) -> bool) (\(t :num list).
+   ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :'a list list -> 'a list list -> bool)
+   (((PART :num list -> 'a list -> 'a list list)
+   (((CONS :num -> num list -> num list) $2) $1)) $0))
+   (((CONS :'a list -> 'a list list -> 'a list list)
+   ((FST :'a list # 'a list -> 'a list)
+   (((SPLIT :num -> 'a list -> 'a list # 'a list) $2) $0)))
+   (((PART :num list -> 'a list -> 'a list list) $1)
+   ((SND :'a list # 'a list -> 'a list)
+   (((SPLIT :num -> 'a list -> 'a list # 'a list) $2)
+   $0))))))))))))`),
+ ((SPLIT),
+  [],
+  `((/\ ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :'a list # 'a list -> 'a list # 'a list -> bool)
+   (((SPLIT :num -> 'a list -> 'a list # 'a list) 0) $0))
+   (((, :'a list -> 'a list -> 'a list # 'a list) (NIL :'a list))
+   $0))))) ((! :(num -> bool) -> bool) (\(n :num).
+   ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :'a list # 'a list -> 'a list # 'a list -> bool)
+   (((SPLIT :num -> 'a list -> 'a list # 'a list) (SUC $1)) $0))
+   (((, :'a list -> 'a list -> 'a list # 'a list)
+   (((CONS :'a -> 'a list -> 'a list) ((HD :'a list -> 'a) $0))
+   ((FST :'a list # 'a list -> 'a list)
+   (((SPLIT :num -> 'a list -> 'a list # 'a list) $1)
+   ((TL :'a list -> 'a list) $0)))))
+   ((SND :'a list # 'a list -> 'a list)
+   (((SPLIT :num -> 'a list -> 'a list # 'a list) $1)
+   ((TL :'a list -> 'a list) $0))))))))))`),
+ ((AP),
+  [],
+  `((/\ ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :'b list -> 'b list -> bool)
+   (((AP :('a -> 'b) list -> 'a list -> 'b list)
+   (NIL :('a -> 'b) list)) $0)) (NIL :'b list)))))
+   ((! :(('a -> 'b) -> bool) -> bool) (\(h :'a -> 'b).
+   ((! :(('a -> 'b) list -> bool) -> bool) (\(t :('a -> 'b) list).
+   ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :'b list -> 'b list -> bool)
+   (((AP :('a -> 'b) list -> 'a list -> 'b list)
+   (((CONS :('a -> 'b) -> ('a -> 'b) list -> ('a -> 'b) list) $2) $1))
+   $0)) (((CONS :'b -> 'b list -> 'b list) ($2 ((HD :'a list -> 'a)
+   $0))) (((AP :('a -> 'b) list -> 'a list -> 'b list) $1)
+   ((TL :'a list -> 'a list) $0)))))))))))`),
+ ((Node),
+  [],
+  `((! :('a -> bool) -> bool) (\(v :'a).
+   ((! :('a ltree list -> bool) -> bool) (\(tl :'a ltree list).
+   (((= :'a ltree -> 'a ltree -> bool)
+   (((Node :'a -> 'a ltree list -> 'a ltree) $1) $0))
+   ((ABS_ltree :tree # 'a list -> 'a ltree)
+   (((, :tree -> 'a list -> tree # 'a list) (node
+   (((MAP :('a ltree -> tree) -> 'a ltree list -> tree list)
+   (((o :(tree # 'a list -> tree) -> ('a ltree -> tree # 'a list) ->
+         'a ltree -> tree) (FST :tree # 'a list -> tree))
+   (REP_ltree :'a ltree -> tree # 'a list))) $0)))
+   (((CONS :'a -> 'a list -> 'a list) $1)
+   ((FLAT :'a list list -> 'a list)
+   (((MAP :('a ltree -> 'a list) -> 'a ltree list -> 'a list list)
+   (((o :(tree # 'a list -> 'a list) ->
+         ('a ltree -> tree # 'a list) -> 'a ltree -> 'a list)
+   (SND :tree # 'a list -> 'a list))
+   (REP_ltree :'a ltree -> tree # 'a list))) $0))))))))))`),
+ ((ltree_ISO_DEF),
+  [],
+  `((/\ ((! :('a ltree -> bool) -> bool) (\(a :'a ltree).
+   (((= :'a ltree -> 'a ltree -> bool)
+   ((ABS_ltree :tree # 'a list -> 'a ltree)
+   ((REP_ltree :'a ltree -> tree # 'a list) $0))) $0))))
+   ((! :(tree # 'a list -> bool) -> bool) (\(r :tree # 'a list).
+   (((= :bool -> bool -> bool) ((Is_ltree :tree # 'a list -> bool)
+   $0)) (((= :tree # 'a list -> tree # 'a list -> bool)
+   ((REP_ltree :'a ltree -> tree # 'a list)
+   ((ABS_ltree :tree # 'a list -> 'a ltree) $0))) $0)))))`),
+ ((ltree_TY_DEF),
+  [],
+  `((? :(('a ltree -> tree # 'a list) -> bool) -> bool)
+   (\(rep :'a ltree -> tree # 'a list).
+   (((TYPE_DEFINITION :(tree # 'a list -> bool) ->
+                       ('a ltree -> tree # 'a list) -> bool)
+   (Is_ltree :tree # 'a list -> bool)) $0)))`),
+ ((Is_ltree),
+  [],
+  `((! :(tree -> bool) -> bool) (\(t :tree).
+   ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :bool -> bool -> bool) ((Is_ltree :tree # 'a list -> bool)
+   (((, :tree -> 'a list -> tree # 'a list) $1) $0)))
+   (((= :num -> num -> bool) (size $1)) ((LENGTH :'a list -> num)
+   $0)))))))`),
+ ((size),
+  [],
+  `(((= :(tree -> num) -> (tree -> num) -> bool) size)
+   ((@ :((tree -> num) -> bool) -> tree -> num) (\(fn :tree -> num).
+   ((! :(tree list -> bool) -> bool) (\(tl :tree list).
+   (((= :num -> num -> bool) ($1 (node $0))) (SUC (SUM
+   (((MAP :(tree -> num) -> tree list -> num list) $1) $0)))))))))`)]
+theorems =
+[((Node_onto),
+  [],
+  `((! :('a ltree -> bool) -> bool) (\(l :'a ltree).
+   ((? :('a -> bool) -> bool) (\(v :'a).
+   ((? :('a ltree list -> bool) -> bool) (\(trl :'a ltree list).
+   (((= :'a ltree -> 'a ltree -> bool) $2)
+   (((Node :'a -> 'a ltree list -> 'a ltree) $1) $0))))))))`),
+ ((Node_11),
+  [],
+  `((! :('a -> bool) -> bool) (\(v1 :'a). ((! :('a -> bool) -> bool)
+   (\(v2 :'a). ((! :('a ltree list -> bool) -> bool)
+   (\(trl1 :'a ltree list). ((! :('a ltree list -> bool) -> bool)
+   (\(trl2 :'a ltree list). (((= :bool -> bool -> bool)
+   (((= :'a ltree -> 'a ltree -> bool)
+   (((Node :'a -> 'a ltree list -> 'a ltree) $3) $1))
+   (((Node :'a -> 'a ltree list -> 'a ltree) $2) $0))) ((/\
+   (((= :'a -> 'a -> bool) $3) $2))
+   (((= :'a ltree list -> 'a ltree list -> bool) $1) $0)))))))))))`),
+ ((ltree_Induct),
+  [],
+  `((! :(('a ltree -> bool) -> bool) -> bool) (\(P :'a ltree -> bool).
+   ((==> ((! :('a ltree list -> bool) -> bool) (\(t :'a ltree list).
+   ((==> (((EVERY :('a ltree -> bool) -> 'a ltree list -> bool) $1)
+   $0)) ((! :('a -> bool) -> bool) (\(h :'a). ($2
+   (((Node :'a -> 'a ltree list -> 'a ltree) $0) $1))))))))
+   ((! :('a ltree -> bool) -> bool) (\(l :'a ltree). ($1 $0))))))`),
+ ((ltree_Axiom),
+  [],
+  `((! :(('b list -> 'a -> 'a ltree list -> 'b) -> bool) -> bool)
+   (\(f :'b list -> 'a -> 'a ltree list -> 'b).
+   ((?! :(('a ltree -> 'b) -> bool) -> bool) (\(fn :'a ltree -> 'b).
+   ((! :('a -> bool) -> bool) (\(v :'a).
+   ((! :('a ltree list -> bool) -> bool) (\(tl :'a ltree list).
+   (((= :'b -> 'b -> bool) ($2
+   (((Node :'a -> 'a ltree list -> 'a ltree) $1) $0))) ((($3
+   (((MAP :('a ltree -> 'b) -> 'a ltree list -> 'b list) $2) $0)) $1)
+   $0))))))))))`)]

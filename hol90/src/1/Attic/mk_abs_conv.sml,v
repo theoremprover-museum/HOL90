@@ -1,0 +1,79 @@
+head	1.2;
+access;
+symbols;
+locks; strict;
+comment	@# @;
+
+
+1.2
+date	96.02.08.00.35.55;	author drs1004;	state dead;
+branches;
+next	1.1;
+
+1.1
+date	96.01.04.13.48.46;	author drs1004;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.2
+log
+@New theory mechanism, code reorganisation and other enhancements by Don Syme.
+@
+text
+@
+signature Mk_abs_conv_sig = sig
+  val MK_ABS_CONV : Term.term -> Abbrev.conv
+  val MK_ABSL_CONV : Term.term list -> Abbrev.conv
+end;
+
+structure Mk_abs_conv : Mk_abs_conv_sig = 
+struct
+
+  open Term;
+  open Pterms;
+  open Conv;
+    infix THENC
+  open Thm;
+  open Drule;
+  open Lib;
+      
+  fun MK_ABS_CONV var term = 
+    if (is_comb term andalso rand term = var)
+    then REFL term
+    else 
+       let 
+         val rhs = mk_abs(var,term)
+         val newrhs = mk_comb(rhs,var)
+       in SYM (BETA_CONV newrhs)
+       end;
+       
+  fun MK_ABSL_CONV vars tm = 
+      let val rhs = foldr mk_abs tm vars
+	  val newrhs = list_mk_comb(rhs,vars)
+	  val thm1 = foldr (fn (_,conv) => (RATOR_CONV conv) THENC BETA_CONV) ALL_CONV vars newrhs
+      in SYM thm1
+      end;
+       
+end;
+				      
+
+(*
+ MK_ABS_CONV (--`x:'a`--) truth;
+ MK_ABSL_CONV [] truth;
+ MK_ABSL_CONV [(--`x:'a`--),(--`y:'a`--)] truth;
+ 
+*)
+@
+
+
+1.1
+log
+@Added simplifier components, added drule files, added MK_ABS_CONV, better error messages
+@
+text
+@@

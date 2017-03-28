@@ -1,0 +1,3031 @@
+head	1.3;
+access;
+symbols
+	HOL97:1.3.2.2.0.2
+	bpHOL97:1.3.2.2
+	hol90_9_alpha:1.3.2.2
+	hol90_pre8_for_multiple_compilers:1.3.0.2
+	hol90_manual_after_dons_changes:1.2;
+locks; strict;
+comment	@% @;
+
+
+1.3
+date	96.09.04.19.01.53;	author drs1004;	state dead;
+branches
+	1.3.2.1;
+next	1.2;
+
+1.2
+date	96.09.04.18.46.33;	author drs1004;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	96.02.27.15.12.09;	author drs1004;	state Exp;
+branches;
+next	;
+
+1.3.2.1
+date	96.09.04.19.04.24;	author drs1004;	state Exp;
+branches;
+next	1.3.2.2;
+
+1.3.2.2
+date	96.09.06.09.53.29;	author rjb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.3
+log
+@Moving Manual changes to main devlopment branch (hol0_pre8 etc.)
+@
+text
+@\chapter{Types and Terms of the HOL Logic in ML}\label{TypesTerms}
+
+
+In this chapter, the concrete representation of the 
+syntactic aspects of the \HOL\ logic are described.
+This involves describing the \ML\ functions that comprise the interface to the
+logic (up to and including Section~\ref{avra_terms}); 
+and the quotation, printing and parsing of logical 
+terms (Section~\ref{quotation}).
+It is assumed that the reader is familiar
+with \ML.  If  not, the introduction to \ML\ in {\sl Getting  Started with
+HOL\/} in \TUTORIAL\ should be read first. 
+
+The \HOL\ system provides \ML\ types \ml{typ} and \ml{term} to represent
+types and terms of the \HOL\ logic, as defined in Sections~\ref{types} and
+\ref{terms}, respectively.\footnote{Care must be taken to avoid confusion
+between ML types and types of the HOL logic: the ML type \ml{typ} represents
+types of the HOL logic in ML.} It also provides primitive \ML\ functions for
+creating and manipulating values of these types.  The key idea of the \HOL\
+system, due to Robin Milner\index{Milner, R.}, and discussed in this chapter,
+is that theorems are represented as an abstract \ML\ type whose only
+pre-defined values are axioms, and whose only operations are rules of
+inference. This means that the only way to construct theorems in \HOL\ is
+to apply rules of inference to axioms or existing theorems; hence the
+consistency of the logic is preserved.
+
+The purpose of the meta-language \ML\ is to provide a programming environment
+in which to build theorem proving tools to assist in the construction of
+proofs.  When the \HOL\ system is built, a range of useful theorems are
+pre-proved and a set of tools pre-defined. The basic system thus offers a rich
+initial environment; users can further enrich it by implementing their own
+application specific tools and building their own application specific
+theories.
+
+
+The basic language of the HOL logic is that of a typed lambda
+calculus. This simple syntax is augmented with many constructs that make
+expressions easier to input and to read. In the following, we discuss
+various aspects of the syntax of terms: how to directly construct them
+as well as how to parse and prettyprint them.
+
+\begin{aside}
+This manual assumes you are using the ``paired'' versions
+of the syntax functions in the \HOL\ system.  These are far
+easier to use interactively than the ``recordized'' versions which
+you might be using for backward compatibility reasons.  To switch
+to paired versions, enter:
+\begin{alltt}
+- open Pterms;
+\end{alltt}
+\end{aside}
+
+
+\section{Types}\index{types, in HOL logic@@types, in \HOL\ logic}
+
+
+
+The allowed types\index{type constraint!in HOL logic@@in \HOL\ logic} 
+depend on which type constants\index{type constants, in HOL logic@@type constants, in \HOL\ logic} 
+have been introduced into the
+current theory. See Section~\ref{theoryfns} for details of the
+primitive mechanism for introducing new types.  Section~\ref{types-package}
+decribes a built-in tool for making concrete recursive
+type declarations.  Defining necessary types is an important part
+of a \HOL\ user's work and in some cases may involve some theorem proving.
+
+There are two primitive constructor\index{types, in HOL logic@@types, in \HOL\ logic!constructors for}
+\index{type constructors!in HOL logic@@in \HOL\ logic} functions for values of type
+\ml{typ}:
+
+
+\begin{boxed}
+\index{function types, in HOL logic@@function types, in \HOL\ logic!constructors for}\index{mk_vartype@@\ml{mk\_vartype}|pin}
+\index{mk_type@@\ml{mk\_type}|pin}
+\begin{verbatim}
+   mk_vartype : string -> typ
+   mk_type    : (string * typ list) -> typ
+\end{verbatim}\end{boxed}
+
+The function \ml{mk\_vartype}
+ constructs a type variable\index{type variables, in HOL logic@@type variables, in \HOL\ logic!constructor for} with a given name;
+it fails if the name is not an allowable type variable name (see
+section \ref{HOL-lex}).
+
+The function \ml{mk\_type} constructs a compound type\index{compound types, in HOL logic@@compound types, in \HOL\ logic!constructors for}
+ from a string
+representing the name of the type operator and a list of types representing the
+arguments to   the  operator.     Note function   types  $\sigma_1\fun\sigma_2$  
+of the logic are
+represented in \ML\ as though they were compound types
+$(\sigma_1,\sigma_2)$\ml{fun} (in  Section~\ref{types}, however,
+function types they are not regarded as compound types).
+
+The evaluation of 
+\ml{mk\_type("}$name$\ml{",\ [}$\sigma_1$\ml{,}$\cdots$\ml{,}$\sigma_n$\ml{])}
+fails if
+\begin{myenumerate}
+\item $name$ is not an identifier;
+\item $name$ is not a type operator of the current theory;
+\item $name$ is a type operator of the current theory, 
+but its arity is not $n$.
+\end{myenumerate}
+
+For example, \ml{mk\_type("bool",[])}\index{truth values, in HOL logic@@truth values, in \HOL\ logic}\index{bool, the type in HOL logic@@\ml{bool}, the type in \HOL\ logic} evaluates to
+an \ML\ value of type term representing the type \ty{bool} and
+{\small\verb%mk_type("fun", [mk_type("ind",[]); mk_type("bool",[])])%}
+evaluates to a value representing $\ty{ind}\fun\ty{bool}$.
+
+There are two primitive destructor\index{types, in HOL logic@@types, in
+\HOL\ logic!destructors for}\index{type destructors, in HOL logic@@type destructors, in \HOL\ logic}
+ functions for values of type
+\ml{typ}:
+
+
+\begin{boxed}
+\index{types, in HOL logic@@types, in \HOL\ logic!destructors for}
+\index{dest_vartype@@\ml{dest\_vartype}|pin}
+\index{dest_type@@\ml{dest\_type}|pin}
+\begin{verbatim}
+   dest_vartype : typ -> string
+   dest_type    : typ -> (string * typ list)
+\end{verbatim}\end{boxed}
+
+\noindent The function \ml{dest\_vartype}\index{type variables, in HOL logic@@type variables, in \HOL\ logic!destructors for}\index{compound types, in HOL logic@@compound types, in \HOL\ logic!destructors for}
+ extracts the name of a type variable.
+The function \ml{dest\_type}  destructs a  compound type  into the  name of the
+type operator  and  a  list  of  the  argument  types;  \ml{dest\_vartype}  and
+\ml{dest\_type} are  thus the  inverses of  \ml{mk\_vartype} and \ml{mk\_type},
+respectively.  The destructors fail on arguments of the wrong form.
+
+The following functions and values are available to manipulate
+some basic \HOL\ types:
+\begin{boxed}
+\index{function types, in HOL logic@@function types, in \HOL\ logic!destructors for}
+\index{bool_ty@@\ml{bool\_ty}|pin}
+\index{mk_fun_ty@@\ml{mk\_fun\_ty}|pin}
+\index{dest_fun_ty@@\ml{dest\_fun\_ty}|pin}
+\begin{verbatim}
+   bool_ty      : typ
+   op -->       : (typ * typ) -> typ
+   dest_fun_ty  : typ -> (typ * typ)
+\end{verbatim}\end{boxed}
+
+
+\noindent Types are printed\index{ type constraint, in HOL logic@@\ml{:} (type constraint, in \HOL\ logic)}
+\index{printing, in HOL logic@@printing, in \HOL\ logic!of types} in the form \ml{``:}$\ \cdots\ $\ml{``}
+using the quotation syntax described in Section~\ref{quotation}.
+For example, the \ML\ value of type \ml{typ} representing
+$\ty{ind}\fun(\ty{ind}\fun\ty{bool})$ would be printed
+as \ml{``:ind -> ind -> bool``}.
+
+\section{Terms}
+\label{avra_terms}
+
+The four primitive kinds of  terms of the logic
+are  described in  Section~\ref{terms}.  The
+\ML\ functions for manipulating these are described in this section.  There are
+also various derived terms that are described in Section~\ref{derived-terms}.
+
+The allowed terms depend on which constants have been declared
+in the current theory. See Section~\ref{theoryfns} for details
+of how such declarations are made. Making declarations of new constants
+may involve some theorem proving.
+
+There are four primitive constructor\index{variables, in HOL logic@@variables, in \HOL\ logic!constructor for}\index{terms, in HOL logic@@terms, in \HOL\ logic!constructors for}\index{term constructors, in HOL logic@@term constructors, in \HOL\ logic}
+functions for values of type
+\ml{term}:
+
+\begin{boxed}
+\index{mk_var@@\ml{mk\_var}|pin}
+\index{mk_const@@\ml{mk\_const}|pin}
+\index{mk_comb@@\ml{mk\_comb}|pin}
+\index{mk_abs@@\ml{mk\_abs}|pin}
+\begin{verbatim}
+   mk_var : (string * typ) -> term
+   mk_const : (string * typ) -> term
+   mk_comb : (term * term) -> term
+   mk_abs : (term * term) -> term
+\end{verbatim}\end{boxed}
+
+\noindent\ml{mk\_var(}$x$\ml{,}$\sigma$\ml{)} evaluates to a variable with name
+$x$ and type $\sigma$; it always succeeds.
+
+\noindent\ml{mk\_const(}$c$\ml{,}$\sigma$\ml{)} evaluates to a 
+term representing
+the constant\index{constants, in HOL logic@@constants, in \HOL\ logic!constructor for} with name $c$ and type $\sigma$; it fails if:
+\begin{myenumerate}
+\item $c$ is not an allowable constant name;
+\item $c$ is not the name of a constant in the current theory;
+\item $\sigma$ is not an instance of the generic type of $c$
+(the generic type of a constant is established when the constant is defined;
+see Section~\ref{theoryfns}).
+\end{myenumerate}
+
+\noindent\ml{mk\_comb(}$t_1$\ml{,}$t_2$\ml{)}\index{function application, in HOL logic@@function application, in \HOL\ logic!constructor for} evaluates to a term 
+representing the combination\index{combinations, in HOL logic@@combinations, in \HOL\ logic!constructor for}
+$t_1\ t_2$. It fails if:
+\begin{myenumerate}
+\item the type of $t_1$ does not have the form \ml{$\sigma'$->$\sigma$};
+\item the type of $t_1$ has the form \ml{$\sigma'$->$\sigma$}, but the
+type of $t_2$ is not equal to $\sigma'$.
+\end{myenumerate}
+
+\noindent\ml{mk\_abs(}$x$\ml{,}$t$\ml{)} evaluates to a term representing
+the abstraction\index{function abstraction, in HOL logic@@function abstraction, in \HOL\ logic!constructor for} $\lquant{x}t$; it fails if $x$ is not a variable.
+
+
+There are four primitive destructor\index{term destructors, in HOL logic@@term destructors, in \HOL\ logic}\index{variables, in HOL logic@@variables, in \HOL\ logic!destructor for}\index{constants, in HOL logic@@constants, in \HOL\ logic!destructor for}\index{combinations, in HOL logic@@combinations, in \HOL\ logic!destructor for}\index{function abstraction, in HOL logic@@function abstraction, in \HOL\ logic!destructor for}\index{function application, in HOL logic@@function application, in \HOL\ logic!destructor for} functions on terms:
+
+\begin{boxed}
+
+\index{dest_var@@\ml{dest\_var}|pin
+}\index{dest_const@@\ml{dest\_const}|pin}
+\index{dest_comb@@\ml{dest\_comb}|pin}
+\index{dest_abs@@\ml{dest\_abs}|pin}
+\begin{verbatim}
+   dest_var   : term -> (string * typ)
+   dest_const : term -> (string * typ)
+   dest_comb  : term -> (term * term)
+   dest_abs   : term -> (term * term)
+\end{verbatim}\end{boxed}
+
+These are the inverses of \ml{mk\_var}, \ml{mk\_const},
+\ml{mk\_comb} and \ml{mk\_abs}, respectively. They fail when applied
+to terms of the wrong form. Other useful destructor functions are
+\ml{rator}\index{rator@@\ml{rator}},
+\ml{rand}\index{rand@@\ml{rand}},
+\ml{bvar}\index{bvar@@\ml{bvar}},
+\ml{body}\index{body@@\ml{body}},
+\ml{lhs}\index{lhs@@\ml{lhs}} and
+\ml{rhs}\index{rhs@@\ml{rhs}}.
+See \REFERENCE\ for details.
+
+The function
+\begin{boxed}\index{type_of@@\ml{type\_of}|pin}
+\begin{verbatim}
+   type_of : term -> typ
+\end{verbatim}\end{boxed}
+
+\noindent returns the type\index{types, in HOL logic@@types, in \HOL\ logic!determination of} of a term.
+
+Terms are printed in the form \ml{``}$\ \cdots\ $\ml{``}
+using the quotation syntax\index{quotation, in HOL logic@@quotation, in \HOL\ logic} described in Section~\ref{quotation}.
+For example, the term representing 
+
+\[ \uquant{x\ y}x<y \imp\equant{z}x+z = y \]
+
+\noindent would be printed as:
+
+\[ \ml{``!x y. x < y ==> ?z. x + z = y``} \]
+
+\noindent Note that a colon\index{ type constraint, in HOL logic@@\ml{:} (type constraint, in \HOL\ logic)}
+ is used to distinguish type quotations from term quotations;
+the former have the form \ml{``:}$\ \cdots\ $\ml{``} and the latter have
+ the form \ml{``}$\ \cdots\ $\ml{``}.
+
+
+\section{Quotation}
+\label{quotation}\label{gen-abs}\label{let}
+\index{type checking, in HOL logic@@type checking, in \HOL\ logic!of quotation syntax|(}
+
+\index{quotation, in HOL logic@@quotation, in \HOL\ logic|(}
+\index{ type quotes, in ML@@\ml{``::$\cdots$``} (type quotes, in \ML)|(}
+\index{ term quotes, in ML@@\ml{``$\cdots$``} (term quotes, in \ML)|(}
+\HOL\ types and terms can be input\index{terms, in HOL logic@@terms, in \HOL\ logic!input of} to the system in two ways:  by using
+constructor functions, or by using {\it quotation\/}.  
+
+It is tedious to always have to input types and terms using the
+constructor functions. The \HOL\ system, following \LCF\index{LCF@@\LCF}, has
+term and type quotation
+\index{quotation, in HOL logic@@quotation, in \HOL\ logic!parser for}\index{parsing, of HOL logic@@parsing, of \HOL\ logic!of quotation syntax} 
+parsers that enable terms to be input using a fairly standard syntax.  In
+addition, a type checker ensures that only terms which are type
+correct according to the syntactic rules of the \HOL\ logic can be
+input by this mechanism. The
+\HOL\ type and term pretty-printers also output types and terms using this 
+syntax\index{printing, in HOL logic@@printing, in \HOL\ logic!of quotation syntax}.
+
+For example, the \ML\ expression {\small\verb%``:bool->bool``%} denotes
+exactly the same value (of \ML\ type {\small\verb%type%}) as
+
+\begin{hol}\index{bool, the type in HOL logic@@\ml{bool}, the type in \HOL\ logic}
+\begin{verbatim}
+   mk_type("fun",[mk_type("bool",[]);mk_type("bool",[])])
+\end{verbatim}\end{hol}
+
+\noindent and
+{\small\verb%``\x.x+1``%}\index{function abstraction, in HOL logic@@function abstraction, in \HOL\ logic} 
+can be used instead of
+
+{\small\baselineskip\HOLSpacing\begin{verbatim}
+
+   mk_abs
+    (mk_var("x",mk_type("num",[])),
+     mk_comb
+     (mk_comb
+      (mk_const
+       ("+",
+        mk_type("fun",[mk_type("num",[]);
+                       mk_type("fun",[mk_type("num",[]);
+                                      mk_type("num",[])])])),
+       mk_var("x", mk_type("num",[]))),
+      mk_const("1", mk_type("num",[]))))
+\end{verbatim}}
+
+Using explicit constructors
+allows some terms to be built which cannot be  constructed using quotation.
+For example, a term containing two variables with  the same  name but different
+types, \eg\ the term  $x_{\ty{bool}}=(x_{\ty{num}}=1)$, 
+ can be built only by using constructors.
+ 
+\subsection{Type checking}
+
+\index{type constraint!in HOL logic@@in \HOL\ logic|(}Note 
+there is no  explicit type  information in a term
+such as {\small\verb%``\x.x+1``%}.
+The \HOL\ type checker knows that \ml{1} has type \ml{num} and  \ml{+} has type
+\ml{num->(num->num)}.  From this information it can infer that both occurrences
+of {\small\verb%x%} in {\small\verb%``\x.x+1``%} could have type
+{\small\verb%num%}.  This  is  not  the  only  possible type  assignment;  for
+example, the first occurrence of {\small\verb%x%} could have type \ml{bool} and
+the second one have type {\small\verb%num%}.  In that  case there  would be two
+{\it different\/} variables with name {\small\verb%x%}, namely
+{\small\verb%x%}$_{\tt bool}$ and  {\small\verb%x%}$_{\tt num}$,  the second of
+which is free.  In fact, as mentioned, 
+the only  way to  construct a  term with this
+second type assignment is  by using  constructors, since  the type checker uses
+the heuristic that all variables in a term
+ with the same name  have the  same type.   This is
+illustrated in the following session.
+
+\setcounter{sessioncount}{1}
+\begin{session}\begin{verbatim}
+- ``x = (x = 1)``;
+Badly typed application of:  ``$= x``
+   which has type:           ``:num -> bool``
+to the argument term:        ``x = 1``
+   which has type:           ``:bool``
+
+evaluation failed     mk_comb in quotation
+
+- mk_eq
+=  (mk_var("x",mk_type("bool",[])), 
+=   mk_eq
+=    (mk_var("x",mk_type("num",[])),
+=     mk_const("1",mk_type("num",[]))));
+``x = (x = 1)`` : term
+\end{verbatim}\end{session}
+
+The default quotation type checker
+employs heuristics like  the  one  above  to  infer  a  sensible  type for all
+variables occurring in a term.  
+%If there are not enough clues,  then the system
+%will automatically allocate type variables to ``maximize'' the
+%type of the term.  See Section~\ref{type-maximization} for more details
+%on how this is done.
+
+To give the system a hint, types can be  explicitly indicated  by following any
+subterm with a colon and then a type.  For example,
+{\small\verb%``f(x:num):bool``%} will   type check   with   {\small\verb%f%}   and
+{\small\verb%x%} getting types  {\small\verb%num->bool%} and {\small\verb%num%}
+respectively.  If  there  are polymorphic  constants in  a term,  there must be
+enough type  information  to uniquely  identify a  type instance  for each such
+constant.  
+
+The type checking\index{type checker, for HOL logic vs ML@@type checker, for \HOL\ logic {\it vs} \ML} algorithm used for the \HOL\ logic differs from that used
+for \ML. For example, the \ML\ expression {\small\verb%\x.x%}\index{terms, in HOL logic@@terms, in \HOL\ logic!function abstraction}\index{function abstraction, in HOL logic@@function abstraction, in \HOL\ logic!type checking of}\index{function abstraction, in HOL logic@@function abstraction, in \HOL\ logic!syntax of}
+ will get \ML\
+type {\small\verb%'a->'a%}, but the \HOL\ term {\small\verb%``\x.x``%} will
+fail to type check, as shown in the session below.
+
+\setcounter{sessioncount}{1}
+\begin{session}\begin{verbatim}
+- ``\x. x``;
+Indeterminate types:  ``x:?``
+
+evaluation failed     types indeterminate in quotation
+\end{verbatim}\end{session}
+
+\noindent To get the term {\small\verb%\x.x%} 
+to type check, the type of the variable \ml{x} must be  given explicitly, 
+for example by writing {\small\verb%``\x:'a.x``%}. 
+
+\begin{session}\begin{verbatim}
+- ``\x:'a. x``;
+``\x. x`` : term
+\end{verbatim}\end{session}
+
+\index{type constraint!in HOL logic@@in \HOL\ logic|)}
+\index{ term quotes, in ML@@\ml{``$\cdots$``} (term quotes, in \ML)|)}
+
+%\subsection{Enhanced Type Checking}
+%
+%The \HOL\ term and type parsers are extensively programmable via
+%the preterm mechanism, described further in Section~\ref{preterms}.
+%This has been used to implement two major enhancements to the
+%type checking system described above.  These are optional,
+%though highly recommended:
+%\begin{description}
+%   \item[Type Maximization]  The default \HOL\ parser complains if
+%   type variables are left indeterminate after parsing.  Type
+%   maximization prevents this by allocating type variables \ml{'a1},
+%   \ml{'a2} and so on for indeterminate type variables.  Type
+%   maximization is explained in Section~\ref{type-maximization}
+%   and can be activated using the function \ml{maximize\_types}.
+%   
+%   \item[Autotypes]  It is normal in mathematics to write
+%   `let $i$ and $j$ be integers'.  Using {\em autotypes} allows
+%   such an association between variables such as $i$ and $j$, and
+%   types such as \ml{``:num``}.  For
+%   instance, this means \HOL\ will
+%   then infer the type \ml{``:int -> int``} for the
+%   quotation \verb%``\j. j``%.  Autotypes
+%   are described in full in Section~\ref{autotypes}, and can be activated
+%   by using the function \ml{new\_autotype}.
+%\end{description}   
+%   
+
+\subsection{Type quotation}
+
+\index{type variables, in HOL logic@@type variables, in \HOL\ logic!constructor for}
+\index{type constructors!in HOL logic@@in \HOL\ logic}
+\index{term constructors, in HOL logic@@term constructors, in \HOL\ logic|(}
+\index{terms, in HOL logic@@terms, in \HOL\ logic!constructors for|(}
+The table below shows \ML\ expressions for various kinds of type
+quotations\index{quotation, in HOL logic@@quotation, in \HOL\ logic!of types}.
+The expressions in the same row are equivalent.
+
+\bigskip
+
+
+\begin{center}
+\index{compound types, in HOL logic@@compound types, in \HOL\ logic!constructors for}
+\index{ type variables, in HOL logic@@\ml{'a,\,'b,\,}$\ldots$ (type variables, in \HOL\ logic)}
+\index{types, in HOL logic@@types, in \HOL\ logic!constructors for}
+\index{function type operator, in HOL logic@@\ml{->} (function type operator, in \HOL\ logic)}
+\index{mk_vartype@@\ml{mk\_vartype}}
+\index{mk_type@@\ml{mk\_type}}
+\begin{tabular}{|l|l|l|} \hline
+\multicolumn{3}{|c|}{ } \\
+\multicolumn{3}{|c|}{\bf Types} \\
+\multicolumn{3}{|c|}{ } \\
+{\it Kind of type} & {\it \ML\ quotation} & 
+{\it Constructor expression}  \\ \hline
+ & & \\
+Type variable &
+{\small\verb%``:'a%}$\cdots${\small\verb%``%} & 
+{\small\verb%mk_vartype("'a%}$\cdots${\small\verb%")%}   \\ \hline
+Type constant &
+{\small\verb%``:%}$op${\small\verb%``%} & 
+{\small\verb%mk_type("%}$op${\small\verb%",[])%}   \\ \hline
+Function type &
+{\small\verb%``:%}$\sigma_1${\small\verb%->%}$\sigma_2${\small\verb%``%} &
+{\small\verb%mk_type("fun", [%}$\sigma_1${\small\verb%,%}$\sigma_2${\small\verb%])%} \\ \hline
+Compound type &
+{\small\verb%``:(%}$\sigma_1${\small\verb%,%} $\ldots$ {\small\verb%,%} $\sigma_n${\small\verb%)%}$op${\small\verb%``%} &
+{\small\verb%mk_type("%}$op${\small\verb%", [%}$\sigma_1${\small\verb%,%} $\ldots$ {\small\verb%,%}$\sigma_n${\small\verb%])%}
+\\ \hline
+\end{tabular}
+\end{center}
+
+\index{ type quotes, in ML@@\ml{``:$\cdots$``} (type quotes, in \ML)|)}
+
+\subsection{Term quotation}
+
+\index{terms, in HOL logic@@terms, in \HOL\ logic!syntax of|(}
+Equivalent ways of inputting the four primitive kinds of term are shown in
+the next table.
+
+\bigskip
+
+\begin{center}
+\index{combinations, in HOL logic@@combinations, in \HOL\ logic!quotation of}
+\index{terms, in HOL logic@@terms, in \HOL\ logic!primitive}
+\index{terms, in HOL logic@@terms, in \HOL\ logic!constructors for}
+\index{quotation, in HOL logic@@quotation, in \HOL\ logic!of primitive terms}
+\index{function abstraction, in HOL logic@@function abstraction, in \HOL\ logic!symbol for}
+\index{function application, in HOL logic@@function application, in \HOL\ logic!constructor for}
+\index{function application, in HOL logic@@function application, in \HOL\ logic!syntax of}
+\index{variables, in HOL logic@@variables, in \HOL\ logic!constructor for}
+\index{variables, in HOL logic@@variables, in \HOL\ logic!syntax of} 
+\index{mk_var@@\ml{mk\_var}}
+\index{mk_const@@\ml{mk\_const}}
+\index{mk_comb@@\ml{mk\_comb}}
+\index{mk_abs@@\ml{mk\_abs}}
+\begin{tabular}{|l|l|l|} \hline
+\multicolumn{3}{|c|}{ } \\
+\multicolumn{3}{|c|}{\bf Primitive terms} \\
+\multicolumn{3}{|c|}{ } \\
+{\it Kind of term} & {\it \ML\ quotation} & 
+{\it Constructor expression}  \\ \hline
+ & & \\
+Variable & {\small\verb%``%}$var${\small\verb%:%}$\sigma${\small\verb%``%} &
+{\small\verb%mk_var("%}$var${\small\verb%",%}$\sigma${\small\verb%)%} \\ \hline
+Constant & {\small\verb%``%}$const${\small\verb%:%}$\sigma${\small\verb%``%} &
+{\small\verb%mk_const("%}$const${\small\verb%",%}$\sigma${\small\verb%)%} \\ \hline
+Combination & {\small\verb%``%}$t_1\ t_2${\small\verb%``%} &
+{\small\verb%mk_comb(%}$t_1${\small\verb%,%}$t_2${\small\verb%)%} \\ \hline
+Abstraction & {\small\verb%``\%}$x${\small\verb%.%}$t${\small\verb%``%} &
+{\small\verb%mk_abs(%}$x${\small\verb%,%}$t${\small\verb%)%} \\ \hline
+\end{tabular}
+\end{center}\index{type checking, in HOL logic@@type checking, in \HOL\ logic!of quotation syntax|)}
+
+
+
+\section{Special syntactic forms}
+\label{derived-terms}
+
+\index{type checking, in HOL logic@@type checking, in \HOL\ logic!special forms in|(}
+\index{quotation, in HOL logic@@quotation, in \HOL\ logic!of non-primitive terms|(}
+
+By default, the \HOL\ quotation parser\index{quotation, in HOL logic@@quotation, in \HOL\ logic!parser for} 
+can translate various standard logical
+notations\index{parsing, of HOL logic@@parsing, of \HOL\ logic!of standard notations} into primitive terms. 
+For example, if {\small\verb%+%} has been
+declared an infix\index{infixes, in HOL logic@@infixes, in \HOL\ logic} (as explained in Section~\ref{theoryfns}), then
+{\small\verb%``x+1``%} is translated to {\small\verb%``$+ x 1``%}. The escape
+character {\small\verb%$%}\index{ escape, in HOL logic parser@@{\small\verb+$+} (escape, in \HOL\ logic parser)}\index{declared constants, in HOL logic@@declared constants, in \HOL\ logic}\index{infixes, in HOL logic@@infixes, in \HOL\ logic}
+ suppresses the infix behaviour of
+{\small\verb%+%} and prevents the quotation parser getting confused.  In
+general, {\small\verb%$%} can be used to suppress any special syntactic
+behaviour a constant name\index{constants, in HOL logic@@constants, in \HOL\ logic!supressing parsing behaviour of} might have. This is illustrated in the table
+below, in which the terms in the column headed "{\it \ML\ quotation}' are
+translated by the quotation parser to the corresponding terms in the column
+headed "{\it Primitive term\/}'. Conversely, the terms in the latter
+column are always printed in the form shown in the former one.
+\label{cond}The \ML\ constructor expressions in the rightmost column
+evaluate to the same values (of type {\small\verb%term%}) as the other
+quotations in the same row.
+
+\bigskip
+
+\begin{center}
+\index{choice operator, in HOL logic@@choice operator, in \HOL\ logic!syntax of}
+\index{negation, in HOL logic@@{\small\verb+~+} (negation, in \HOL\ logic)}
+\index{disjunction, in HOL logic@@{\small\verb+\/+} (disjunction, in \HOL\ logic)}
+\index{conjunction, in HOL logic@@{\small\verb+/\+} (conjunction, in \HOL\ logic)}
+\index{implication, in HOL logic@@{\small\verb+==>+} (implication, in \HOL\ logic)}
+\index{equality, in HOL logic@@\ml{=} (equality, in \HOL\ logic)}
+\index{universal quantifier, in HOL logic@@{\small\verb+"!+} (universal quantifier, in \HOL\ logic)}
+\index{existential quantifier, in HOL logic@@{\small\verb+?+} (existential quantifier, in \HOL\ logic)}
+\index{choice function, in HOL logic@@{\small\verb+"@@+} (choice function, in \HOL\ logic)}
+\index{terms, in HOL logic@@terms, in \HOL\ logic!non-primitive}
+\index{terms, in HOL logic@@terms, in \HOL\ logic!constructors for}
+\index{conditional predicate, in HOL logic@@conditional predicate, in \HOL\ logic}
+\index{conditionals, in HOL logic@@conditionals, in \HOL\ logic}
+\index{conjunction, in HOL logic@@conjunction, in \HOL\ logic!constructor for}
+\index{disjunction, in HOL logic@@disjunction, in \HOL\ logic!constructor for}
+\index{equality, in HOL logic@@equality, in \HOL\ logic!syntax of}
+\index{negation, in HOL logic@@negation, in \HOL\ logic!syntax of}
+\index{negation, in HOL logic@@negation, in \HOL\ logic!constructor for}
+\index{existential quantifier, in HOL logic@@existential quantifier, in \HOL\ logic!syntax of}
+\index{universal quantifier, in HOL logic@@universal quantifier, in \HOL\ logic!syntax of}
+\index{implication, in HOL logic@@implication, in \HOL\ logic!syntax of}
+\index{mk_neg@@\ml{mk\_neg}}
+\index{mk_disj@@\ml{mk\_disj}}
+\index{mk_conj@@\ml{mk\_conj}}
+\index{mk_imp@@\ml{mk\_imp}}
+\index{mk_eq@@\ml{mk\_eq}}
+\index{mk_forall@@\ml{mk\_forall}}
+\index{mk_exists@@\ml{mk\_exists}}
+\index{mk_select@@\ml{mk\_select}}
+\index{mk_cond@@\ml{mk\_cond}}
+\index{mk_let@@\ml{mk\_let}}
+\index{conjunction, in HOL logic@@conjunction, in \HOL\ logic!syntax of}
+\begin{tabular}{|l|l|l|l|} \hline
+\multicolumn{4}{|c|}{ } \\
+\multicolumn{4}{|c|}{\bf Non-primitive terms} \\
+\multicolumn{4}{|c|}{ } \\
+{\it Kind of term} & {\it \ML\ quotation} & 
+{\it Primitive term} &
+{\it Constructor expression} \\ \hline
+ & & & \\
+Negation & {\small\verb%``~%}$t${\small\verb%``%} & 
+{\small\verb%$~ %}$t$ & 
+{\small\verb%mk_neg(%}$t${\small\verb%)%} \\ \hline
+Disjunction & {\small\verb%``%}$t_1${\small\verb%\/%}$t_2${\small\verb%``%} & 
+{\small\verb%$\/ %}$t_1\ t_2$ &
+{\small\verb%mk_disj(%}$t_1${\small\verb%,%}$t_2${\small\verb%)%} \\ \hline
+Conjunction & {\small\verb%``%}$t_1${\small\verb%/\%}$t_2${\small\verb%``%} & 
+{\small\verb%$/\ %}$t_1\ t_2$ &
+{\small\verb%mk_conj(%}$t_1${\small\verb%,%}$t_2${\small\verb%)%} \\ \hline
+Implication & {\small\verb%``%}$t_1${\small\verb%==>%}$t_2${\small\verb%``%} & 
+{\small\verb%$==> %}$t_1\ t_2$ &
+{\small\verb%mk_imp(%}$t_1${\small\verb%,%}$t_2${\small\verb%)%} \\ \hline
+Equality & {\small\verb%``%}$t_1${\small\verb%=%}$t_2${\small\verb%``%} & 
+{\small\verb%$= %}$t_1\ t_2$ &
+{\small\verb%mk_eq(%}$t_1${\small\verb%,%}$t_2${\small\verb%)%} \\ \hline
+$\forall$-quantification & \ml{``!$x$.$t$``} &
+{\small\verb%$!(\%}$x${\small\verb%.%}$t${\small\verb%)%} &
+{\small\verb%mk_forall(%}$x${\small\verb%,%}$t${\small\verb%)%} \\ \hline
+$\exists$-quantification & \ml{``?$x$.$t$``} &
+{\small\verb%$?(\%}$x${\small\verb%.%}$t${\small\verb%)%} &
+{\small\verb%mk_exists(%}$x${\small\verb%,%}$t${\small\verb%)%} \\ \hline
+$\hilbert$-term & \ml{``@@$x$.$t$``} &
+{\small\verb%$@@(\%}$x${\small\verb%.%}$t${\small\verb%)%} & 
+{\small\verb%mk_select(%}$x${\small\verb%,%}$t${\small\verb%)%} \\ \hline
+Conditional\index{COND@@\ml{COND}} & {\small\verb%``(%}$t${\small\verb%=>%}$t_1${\small\verb%|%}$t_2${\small\verb%)``%} &
+{\small\verb%COND %}$t\ t_1\ t_2$ & 
+{\small\verb%mk_cond(%}$t${\small\verb%,%}$t_1${\small\verb%,%}$t_2${\small\verb%)%}
+ \\ \hline
+{\small\verb%let%}-expression & 
+{\small\verb%``let %}$x${\small\verb%=%}$t_1${\small\verb% in %}$t_2${\small\verb%``%} &
+{\small\verb%LET(\%}$x${\small\verb%.%}$t_2${\small\verb%)%}$t_1$ &
+{\small\verb%mk_let(\%}$x${\small\verb%.%}$t_1${\small\verb%,%}$t_2${\small\verb%)%} \\ \hline
+\end{tabular}
+\end{center}
+
+\bigskip
+
+There are constructors, destructors and indicators for all the
+obvious constructs. (Indicators, \eg\ \ml{is\_neg}, return truth
+values indicating whether or not a term belongs to the syntax
+class in question.) In addition to the constructors listed in the table there
+are constructors for pairs and lists, namely
+\ml{mk\_pair}\index{mk_pair@@\ml{mk\_pair}},
+\ml{mk\_cons}\index{mk_cons@@\ml{mk\_cons}} and
+\ml{mk\_list}\index{mk_list@@\ml{mk\_list}} (see \REFERENCE).
+The constants {\small\verb%COND%}\index{COND@@\ml{COND}} and {\small\verb%LET%} are explained in
+Sections~\ref{conditionals} and \ref{let-exp}, respectively.  
+The constants {\small\verb%\/%}\index{disjunction, in HOL logic@@disjunction, in \HOL\ logic!syntax of}, {\small\verb%/\%},
+{\small\verb%==>%} and {\small\verb%=%} are examples of {\it infixes\/}
+and represent $\vee$, $\wedge$, $\imp$ and equality, respectively. If
+$c$ is declared to be an infix, then the \HOL\ parser will translate
+{\small\verb%``%}$t_1\ c\ t_2${\small\verb%``%} to 
+{\small\verb%``$%}$c\ t_1\ t_2${\small\verb%``%}.  
+
+The constants {\small\verb%!%}, {\small\verb%?%} and {\small\verb%@@%} are examples
+of \label{binder} {\it binders\/}\index{binders, in HOL logic@@binders, in \HOL\ logic}
+ and represent $\forall$, $\exists$ and $\hilbert$, respectively.  If $c$ 
+is declared to be a binder, then the
+\HOL\ parser will translate {\small\verb%``%}$c\ x${\small\verb%.%}$t${\small\verb%``%} to the combination
+{\small\verb%`$%}$c${\small\verb%(\%}$x${\small\verb%.%}$t${\small\verb%)'%}
+(\ie\ the application of the constant $c$ to the representation of
+the abstraction $\lquant{x}t$)\index{ function abstraction binder, in HOL logic@@{\small\verb+\+} (function abstraction binder, in \HOL\ logic)}.
+
+In addition to the kinds of terms in the tables above, 
+the parser also supports the following syntactic abbreviations.
+
+
+\begin{center}
+
+\index{variables, in HOL logic@@variables, in \HOL\ logic!multiple bound}
+\index{list_mk_comb@@\ml{list\_mk\_comb}|pin} 
+\index{list_mk_abs@@\ml{list\_mk\_abs}|pin} 
+\index{list_mk_forall@@\ml{list\_mk\_forall}|pin} 
+\index{list_mk_exists@@\ml{list\_mk\_exists}|pin}
+\index{combinations, in HOL logic@@combinations, in \HOL\ logic!abbreviation for multiple} 
+\index{existential quantifier, in HOL logic@@existential quantifier, in \HOL\ logic!abbreviation for multiple}
+\index{universal quantifier, in HOL logic@@universal quantifier, in \HOL\ logic!abbreviation for multiple}
+\begin{tabular}{|l|l|l|} \hline
+\multicolumn{3}{|c|}{ } \\
+\multicolumn{3}{|c|}{\bf Syntactic abbreviations} \\
+\multicolumn{3}{|c|}{ } \\
+{\it Abbreviated term} & {\it Meaning} & 
+{\it Constructor expression} \\ \hline
+ & &  \\
+{\small\verb%``%}$t\ t_1 \cdots t_n${\small\verb%``%} &
+{\small\verb%``(%}$\cdots${\small\verb%(%}$t\ t_1${\small\verb%)%}$\cdots t_n${\small\verb%)``%} &
+{\small\verb%list_mk_comb(%}$t${\small\verb%,[%}$t_1${\small\verb%, %}$\ldots${\small\verb% ,%}$t_n${\small\verb%])%} \\ \hline
+{\small\verb%``\%}$x_1\cdots x_n${\small\verb%.%}$t${\small\verb%``%} &
+{\small\verb%``\%}$x_1${\small\verb%. %}$\cdots${\small\verb% \%}$x_n${\small\verb%.%}$t${\small\verb%``%} &
+{\small\verb%list_mk_abs([%}$x_1${\small\verb%, %}$\ldots${\small\verb% ,%}$x_n${\small\verb%],%}$t${\small\verb%)%}
+\\ \hline
+{\small\verb%``!%}$x_1\cdots x_n${\small\verb%.%}$t${\small\verb%``%} &
+{\small\verb%``!%}$x_1${\small\verb%. %}$\cdots${\small\verb% !%}$x_n${\small\verb%.%}$t${\small\verb%``%} &
+{\small\verb%list_mk_forall([%}$x_1${\small\verb%, %}$\ldots${\small\verb% ,%}$x_n${\small\verb%],%}$t${\small\verb%)%} 
+\\ \hline
+{\small\verb%``?%}$x_1\cdots x_n${\small\verb%.%}$t${\small\verb%``%} &
+{\small\verb%``?%}$x_1${\small\verb%. %}$\cdots${\small\verb% ?%}$x_n${\small\verb%.%}$t${\small\verb%``%} &
+{\small\verb%list_mk_exists([%}$x_1${\small\verb%, %}$\ldots${\small\verb% ,%}$x_n${\small\verb%],%}$t${\small\verb%)%} \\ 
+\hline
+\end{tabular}
+\end{center}
+
+\noindent There are also constructors
+\ml{list\_mk\_conj}\index{list_mk_conj@@\ml{list\_mk\_conj}},
+\ml{list\_mk\_disj}\index{list_mk_disj@@\ml{list\_mk\_disj}},
+\ml{list\_mk\_imp}\index{list_mk_imp@@\ml{list\_mk\_imp}} and
+\ml{list\_mk\_pair}\index{list_mk_pair@@\ml{list\_mk\_pair}}
+for conjunctions, disjunctions, implications and tuples respectively.
+The corresponding destructor functions are called \ml{strip\_comb}, 
+\ml{strip\_conj}, \ml{strip\_disj} and \ml{strip\_pair}. 
+Note that \ml{strip\_conj} and \ml{strip\_disj}
+are not proper inverses of \ml{list\_mk\_conj} and
+\ml{list\_mk\_disj}.
+\index{term constructors, in HOL logic@@term constructors, in \HOL\ logic|)}
+\index{terms, in HOL logic@@terms, in \HOL\ logic!constructors for|)}
+
+
+\subsection{Paired abstractions}
+\label{HOL-varstruct}
+\index{pairs, in HOL logic@@pairs, in \HOL\ logic!in abstractions|(}
+\index{UNCURRY@@\ml{UNCURRY}|(}
+
+\index{terms, in HOL logic@@terms, in \HOL\ logic!pair|(}
+\index{parsing, of HOL logic@@parsing, of \HOL\ logic!of quotation syntax|(}
+\index{function abstraction, in HOL logic@@function abstraction, in \HOL\ logic!paired|(}
+\index{function abstraction, in HOL logic@@function abstraction, in \HOL\ logic!uncurrying, in paired|(}
+The quotation parser\index{parsing, of HOL logic@@parsing, of \HOL\ logic!of function abstractions}\index{function abstraction, in HOL logic@@function abstraction, in \HOL\ logic!abbreviation for multiple}\index{terms, in HOL logic@@terms, in \HOL\ logic!function abstraction}
+ will convert `{{\small\verb%\ %}($x_1$,$x_2$).$t$}'
+to `{{\small\verb%UNCURRY(\%}$x_1\ x_2$.$t$)}',
+where the constant {\small\verb%UNCURRY%} 
+is defined by:
+
+\begin{hol}\begin{verbatim}
+   UNCURRY f (x,y)  =  f x y
+\end{verbatim}\end{hol}
+
+\noindent See Section~\ref{prod} for more details and an explanation
+of pair terms \ml{($t_1$,$t_2$)}.
+See Section~\ref{genbeta} and the \ml{pair} library
+for a description of the
+extensive reasoning support that is available in the \HOL\ system for
+dealing with paired values and paired abstractions.
+
+The transformation described above
+is done recursively so that, for example,
+
+\begin{hol}\begin{alltt}
+   ``\verb%\ %(\m{x\sb{1}},\m{x\sb{2}},\m{x\sb{3}}).\m{t}``
+\end{alltt}\end{hol}
+
+\noindent is converted to
+
+\begin{hol}\begin{alltt}
+   ``UNCURRY (\verb%\ %\m{x\sb{1}}.UNCURRY(\verb%\ %\m{x\sb{2}}\m{x\sb{3}}.\m{t}))``
+\end{alltt}\end{hol}
+
+\noindent More generally,
+the quotation parser repeatedly applies the transformation:
+
+\begin{hol}\begin{alltt}
+   ``\verb%\ %(\m{v\sb{1}},\m{v\sb{2}}).\m{t}``\m{\quad \leadsto\quad }``UNCURRY(\verb%\ %\m{v\sb{1}}.\verb%\ %\m{v\sb{2}}.\m{t})``
+\end{alltt}\end{hol}
+
+\noindent until no more variable structures remain. For example:
+
+\begin{flushleft}
+\begin{tabular}{@@{}ll}
+{\small\verb%   ``\(%}$x${\small\verb%,%}$y${\small\verb%).%}$t${\small\verb%``%}
+&$\leadsto\ \ ${\small\verb%``UNCURRY(\ %}$x\
+y${\small\verb%.%}$t${\small\verb%)``%}\\
+{\small\verb%   ``\(%}$x_1${\small\verb%,%}$x_2${\small\verb%,%}$\ldots${\small\verb%,%}$x_n${\small\verb%).%}$t${\small\verb%``%}
+&$\leadsto\ \ ${\small\verb%``UNCURRY(\%}$x_1${\small\verb%.\(%}$x_2${\small\verb%,%}$\ldots${\small\verb%,%}$x_n${\small\verb%).%}$t${\small\verb%)``%}\\
+%{\small\verb%   ``\((%}$x_1${\small\verb%,%}$\ldots${\small\verb%,%}$x_n${\small\verb%),%}$y_1${\small\verb%,%}$\ldots${\small\verb%,%}$y_m${\small\verb%).%}t{\small\verb%``%}
+%&$\leadsto\ \ ${\small\verb%``UNCURRY(\(%}$x_1${\small\verb%,%}$\ldots${\small\verb%,%}$x_n${\small\verb%).\(%}$y_1${\small\verb%,%}$\ldots${\small\verb%,%}$y_m${\small\verb%).%}$t${\small\verb%)``%}\\
+\end{tabular}
+\end{flushleft}
+
+
+Note that a variable structure like \ml{``(x,y)``} in 
+{\small\verb%``\(x,y).x+y``%} 
+is not a subterm
+of the abstraction\index{function abstraction, in HOL logic@@function abstraction, in \HOL\ logic!subterms of} in which it occurs; it disappears on parsing\index{binders, in HOL logic@@binders, in \HOL\ logic!parsing of}\index{parsing, of HOL logic@@parsing, of \HOL\ logic!of binders}. This can
+lead to unexpected errors (accompanied by obscure error messages).  
+For example:
+
+\begin{session}\begin{verbatim}
+- ``\(x,y).x+y``;
+``\(x,y). x + y`` : term
+
+- val p = ``(x:num,y:num)``;
+p = ``x,y`` : term
+
+- ``\^p.x+y``;
+evaluation failed     mk_abs in quotation 
+\end{verbatim}\end{session}
+
+Furthermore, if the type checker complains, it may print out
+diagnostic messages referring to the transformed term:
+
+\begin{session}\begin{verbatim}
+- ``\(x,y). x+1``;
+Indeterminate types:
+    ``UNCURRY:(num -> (?1 -> num)) -> (num # ?2 -> num)``
+
+evaluation failed     types indeterminate in quotation 
+\end{verbatim}\end{session}
+
+If $b$ is a binder, then
+\ml{``}$b$\ml{(}$x_1${\small\verb%,%}$x_2${\small\verb%).%}$t${\small\verb%``%}
+is parsed as
+{\small\verb%``$%}$b${\small\verb%(\(%}$x_1${\small\verb%,%}$x_2${\small\verb%).%}$t${\small\verb%)``%}, and hence transformed as above.
+For example, {\small\verb%``!(x,y).x>y``%} parses to
+{\small\verb%`$!(UNCURRY(\x.\y.$> x y))'%} (where {\small{\tt >}} is an infixed
+constant of the theory {\small\verb%num%} meaning `is greater than')\index{function abstraction, in HOL logic@@function abstraction, in \HOL\ logic!paired|)}. 
+\index{function abstraction, in HOL logic@@function abstraction, in \HOL\ logic!uncurrying, in paired|)}\index{pairs, in HOL logic@@pairs, in \HOL\ logic!in abstractions|)}\index{terms, in HOL logic@@terms, in \HOL\ logic!pair|)}\index{UNCURRY@@\ml{UNCURRY}|)}
+
+
+%A good exercise for the reader would be to understand why this use 
+%of \ml{UNCURRY} supports the intuitive meaning suggested by the surface
+%notation.
+\subsection{Conditionals}
+\label{conditionals}
+
+A conditional\index{terms, in HOL logic@@terms, in \HOL\ logic!conditional}\index{conditional predicate, in HOL logic@@conditional predicate, in \HOL\ logic}\index{conditionals, in HOL logic@@conditionals, in \HOL\ logic}
+ term \ml{``$t_1\ $=>$\ t_2\ $|$\ t_3$``} means 
+`if $t_1$ then $t_2$ else
+$t_3$' and abbreviates the application 
+\ml{``COND\ $t_1\ t_2\ t_3$``}, where \ml{COND}\index{COND@@\ml{COND}}\index{conditionals, in HOL logic@@conditionals, in \HOL\ logic}
+is a predefined
+constant of the theory \ml{bool} (see Section~\ref{boolthy}). 
+An iterated conditional
+
+\[
+t_{11}\ \ml{=>}\ t_{12}\ \ml{|}\ 
+t_{21}\ \ml{=>}\ t_{22}\ \ml{|}\ 
+\ \ldots\ \ml{|}\ 
+t_{n1}\ \ml{=>}\ t_{n2}\ \ml{|}\ t_{n3}
+\]
+
+\noindent translates\index{parsing, of HOL logic@@parsing, of \HOL\ logic!of conditionals} to:
+
+\[
+t_{11}\ \ml{=>}\ t_{12}\ \ml{|}\ 
+(t_{21}\ \ml{=>}\ t_{22}\ \ml{|}\ 
+\ \ldots\ \ml{|}\ 
+(t_{n1}\ \ml{=>}\ t_{n2}\ \ml{|}\ t_{n3})\ \ldots\ )
+\]
+
+\noindent which, in turn, abbreviates:
+
+\[\ml{COND}\ t_{11}\ t_{12}\ \ml{(COND}\ t_{21}\ t_{22}\ \ldots\ 
+\ml{(COND}\ t_{n1}\ t_{n2}\ t_{n3}\ml{)}\ \ldots\ \ml{)}\]
+
+
+\subsection{{\tt let}-terms}
+\label{let-exp}
+
+
+The quotation parser\index{parsing, of HOL logic@@parsing, of \HOL\ logic!of let-terms@@of \ml{let}-terms}
+accepts \ml{let}-terms\index{terms, in HOL logic@@terms, in \HOL\ logic!let-@@\ml{let}-}\index{let-terms, in HOL logic@@\ml{let}-terms, in \HOL\ logic!as abbreviations} superficially similar to those in 
+\ML. For example, the following terms are allowed:
+
+\begin{hol}\begin{verbatim}
+   ``let x = 1 and y = 2 in x+y``
+
+   ``let f(x,y) = (x*x)+(y*y) and a = 20*20 and b = 50*49 in f(a,b)``
+\end{verbatim}\end{hol}
+
+As with paired abstractions, \ml{let}-terms are actually abbreviations for 
+ordinary  terms which are specially supported by the parser and pretty printer.
+\ml{let}-terms can be simplified with 
+\ml{let\_CONV} - see Section~\ref{let-terms}.
+The constant \ml{LET}\index{LET@@\ml{LET}} is defined (in the theory \ml{bool}) by:
+
+\begin{hol}\index{function abstraction, in HOL logic@@function abstraction, in \HOL\ logic!relation to let-terms@@relation to \ml{let}-terms}
+\begin{verbatim}
+   LET = (\f x. f x)
+\end{verbatim}\end{hol}
+
+\noindent and is used to encode \ml{let}-terms in the logic. The parser
+repeatedly applies the transformations:
+
+\bigskip
+
+\noindent
+{\small\begin{tabular}{@@{}ll}
+{\small\verb%   let %}$f\ v_1\ \ldots\ v_n${\small\verb% = %}$t_1${\small\verb% in %}$t_2${\small\verb%%}
+&$\leadsto\ \ ${\small\verb%LET(\%}$f${\small\verb%.%}$t_2$
+{\small\verb%)(\%}$v_1\ \ldots\ v_n${\small\verb%.%}$t_1${\small\verb%)%}\\
+{\small\verb%   let (%}$v_1${\small\verb%,%}$\ldots${\small\verb%,%}$v_n${\small\verb%) =%}$t_1${\small\verb% in %}$t_2${\small\verb%%}
+&$\leadsto\ \ ${\small\verb%LET(\(%}$v_1${\small\verb%,%}$\ldots${\small\verb%,%}$v_n${\small\verb%).%}$t_2${\small\verb%)%}$t_1${\small\verb%%}\\
+{\small\verb%   let %}$v_1${\small\verb%=%}$t_1${\small\verb% and %}$\ldots${\small\verb% and %}$v_n${\small\verb%=%}$t_n${\small\verb% in%}$t${\small\verb%%}
+&$\leadsto\ \ ${\small\verb%LET(%}$\ldots${\small\verb%(LET(LET(\%}$v_1\ldots v_n${\small\verb%.%}$t${\small\verb%)%}$t_1${\small\verb%)%}$t_2${\small\verb%)%}$\ldots${\small\verb%)%}$t_n${\small\verb%%}\\
+\end{tabular}}
+
+\bigskip
+ 
+
+%\noindent The printer\index{printing, in HOL logic@@printing, in \HOL\ logic!of let-terms@@of \ml{let}-terms} inverts these transformations if the flag 
+%\ml{print\_let} is \ml{true}.  For example:
+%
+%\setcounter{sessioncount}{1}
+%\begin{session}\begin{verbatim}
+%- ``let x = 1 and y = 2 in x+y``;
+%``let x = 1 and y = 2 in x + y`` : term
+%
+%- set_flag("print_let",false);
+%true : bool
+%
+%- ``let x = 1 and y = 2 in x+y``;
+%``LET(LET(\x y. x + y)1)2``
+%
+%- ``let (x,y) = (1,2) in x+y``;
+%``LET(UNCURRY(\x y. x + y))(1,2)`` : term
+%\end{verbatim}\end{session}
+
+Note that, as with uncurried terms, the underlying representation in \HOL\ can
+manifest itself in error messages. For example:
+
+\setcounter{sessioncount}{1}
+\begin{session}\begin{verbatim}
+- ``let x = y in z``;
+Indeterminate types:  ``LET:(?1 -> ?2) -> (?3 -> ?4)``
+ 
+evaluation failed     types indeterminate in quotation 
+\end{verbatim}\end{session}
+
+The reader is recommended to convince himself or herself that the
+translations of \ml{let}-terms represent the intuitive meaning suggested by 
+the surface syntax.\index{quotation, in HOL logic@@quotation, in \HOL\ logic|)}\index{quotation, in HOL logic@@quotation, in \HOL\ logic!of non-primitive terms|)}\index{terms, in HOL logic@@terms, in \HOL\ logic!syntax of|)}\index{type checking, in HOL logic@@type checking, in \HOL\ logic!special forms in|)}
+
+\subsection{Syntax for restricted quantification}\label{res-quant}
+\index{types, in HOL logic@@types, in \HOL\ logic!dependent}
+\index{dependent types in HOL logic@@dependent types in \HOL\ logic}
+\index{quantifiers!restricted}
+
+Syntactic support for restricted quantification and abstraction is 
+provided. This follows a suggestion discussed at the Second \HOL\ Users
+Meeting and implements a method of simulating subtypes and dependent
+types with predicates. 
+
+%Currently no derived rules are provided to support this notation, so
+%any inferences will need to work on the underlying semantic
+%representation.
+
+The new syntax automatically translates as follows:
+
+\begin{hol}
+{\small\verb%   \%}$v${\small\verb%::%}$P${\small\verb%.%}$B${\small\verb%    <---->   RES_ABSTRACT %}$P${\small\verb% (\%}$v${\small\verb%.%}$B${\small\verb%)%}\\
+{\small\verb%   !%}$v${\small\verb%::%}$P${\small\verb%.%}$B${\small\verb%    <---->   RES_FORALL   %}$P${\small\verb% (\%}$v${\small\verb%.%}$B${\small\verb%)%}\\
+{\small\verb%   ?%}$v${\small\verb%::%}$P${\small\verb%.%}$B${\small\verb%    <---->   RES_EXISTS   %}$P${\small\verb% (\%}$v${\small\verb%.%}$B${\small\verb%)%}\\
+{\small\verb%   @@%}$v${\small\verb%::%}$P${\small\verb%.%}$B${\small\verb%    <---->   RES_SELECT   %}$P${\small\verb% (\%}$v${\small\verb%.%}$B${\small\verb%)%}
+\end{hol}
+
+Anything can be written between the binder and `\ml{::}' that can be
+written between the binder and `\ml{.}'. See the examples below.
+
+The flag \ml{show\_restrict} has default \ml{true}, but if set to \ml{false}
+will disable the pretty printing. This is useful for seeing what the semantics
+of particular restricted abstractions are.
+
+The constants \ml{RES\_ABSTRACT}, \ml{RES\_FORALL}, \ml{RES\_EXISTS} and 
+\ml{RES\_SELECT} are
+defined in the theory \ml{restr\_binder} by:
+
+
+\begin{hol}\index{RES_FORALL@@\ml{RES\_FORALL}}
+\index{RES_EXISTS@@\ml{RES\_EXISTS}}
+\index{RES_SELECT@@\ml{RES\_SELECT}}
+\index{RES_ABSTRACT@@\ml{RES\_ABSTRACT}}\begin{verbatim}
+   |- RES_ABSTRACT P B  =  \x:'a. (P x => B x | ARB:'b)
+   |- RES_FORALL   P B  =  !x:'a. P x ==> B x
+   |- RES_EXISTS   P B  =  ?x:'b. P x /\ B x
+   |- RES_SELECT   P B  =  @@x:'b. P x /\ B x
+\end{verbatim}\end{hol}
+
+\noindent where the constant \ml{ARB}\index{ARB@@\ml{ARB}},
+which is also defined in the theory \ml{bool}, has the definition:
+
+\begin{hol}\begin{verbatim}
+   ARB  =  @@x:'b. T
+\end{verbatim}\end{hol}
+
+User-defined binders can also have restricted forms, which are set up
+with the function:
+
+\begin{boxed}\index{associate_restriction@@\ml{associate\_restriction}|pin}
+\begin{verbatim}
+   associate_restriction : (string * string) -> 'a
+\end{verbatim}\end{boxed}
+
+
+\noindent If \m{c} is the name
+of a binder and \ml{RES\_}\m{c} is the name of a suitable constant (which
+must be explicitly defined), then executing:
+
+\begin{hol}
+{\small\verb%   associate_restriction("%}$c${\small\verb%", "RES_%}$c${\small\verb%")%}
+\end{hol}
+
+\noindent will cause the parser and pretty-printer to support:
+
+\begin{hol}
+{\small\verb%   %}$c$ $v${\small\verb%::%}$P${\small\verb%. %}$B${\small\verb%    <---->   RES_%}$c$ $P${\small\verb% (\%}$v${\small\verb%. %}$B${\small\verb%)%}
+\end{hol}
+
+\noindent Note that associations between user defined binders and their
+restrictions are not stored in theory files, so they have to be set up
+for each \HOL\ session (e.g. with a {\small\verb%hol-init.sml%}
+initialization file).
+
+Here is an example session:
+
+\setcounter{sessioncount}{1}
+\begin{session}\begin{verbatim}
+- ``!x y::P. x<y``;
+``!x y :: P. x < y`` : term
+
+- show_restrict := false;
+val it = () : unit
+
+- ``!x y::P. x<y``;
+``RES_FORALL P(\x. RES_FORALL P(\y. x < y))`` : term
+
+- ``?(x,y) p::(\(m,n).m<n). p=(x,y)``;
+``RES_EXISTS
+ (\(m,n). m < n)
+ (\(x,y). RES_EXISTS(\(m,n). m < n)(\p. p = x,y))``
+: term
+
+- ``\x y z::P.[0;x;y;z]``;
+``RES_ABSTRACT P(\x. RES_ABSTRACT P(\y. RES_ABSTRACT P(\z. [0;x;y;z])))``
+: term
+\end{verbatim}\end{session}
+
+See Section~\ref{restricted-quantifiers} and the \ml{res\_quan}
+library for descriptions of the extensive reasoning 
+support provided with the \HOL\ system
+for dealing with restricted quantifiers.
+
+Here is an example of a user-defined restriction:
+
+\begin{session}\begin{verbatim}
+- new_binder_definition("DURING", ``DURING(p:num#num->bool) = $!p``);
+|- !p. $DURING p = $! p
+
+- ``DURING x::(m,n). p x``;
+no restriction constant associated with DURING
+skipping: x `` ; parse failed  
+
+- new_definition
+=  ("RES_DURING", ``RES_DURING(m,n)p = !x. m<=x /\ x<=n ==> p x``);
+|- !m n p. RES_DURING(m,n)p = (!x. m <= x /\ x <= n ==> p x)
+\end{verbatim}\end{session}
+
+\begin{session}\begin{verbatim}
+- associate_restriction("DURING","RES_DURING");
+() : unit
+
+- ``DURING x::(m,n). p x``;
+``DURING x :: (m,n). p x`` : term
+
+- show_restrict := false;
+true : bool
+
+- ``DURING x::(m,n). p x``;
+``RES_DURING(m,n)(\x. p x)`` : term
+\end{verbatim}\end{session}
+
+\subsection{Syntax for sets}\index{set theory notation}
+
+The special purpose set-theoretic notations 
+{\small\verb%``{%}$t_1,t_2,\ldots,t_n${\small\verb%}``%} and
+{\small\verb%``{%}$t${\small\verb%|%}$p${\small\verb%}``%} are available.
+The normal interpretation of the former is the finite set containing 
+$t_1,t_2,\ldots, t_n$ and the normal interpretation of the latter
+is the set of all $t$s such that $p$. These interpretations are predefined for
+the libraries \ml{set}, \ml{pred\_set} and \ml{finite\_set}.  See
+these libraries for the extensive collection of definitions and
+theorems provided in the \HOL\ system for reasoning about set
+constructs.
+
+The two syntactic forms described above are always mapped to the
+constants \ml{EMPTY}, \ml{INSERT} and \ml{GSPEC}\footnote{regardless of
+the meaning these constants have in the current session}.
+For example, in the library \ml{set},  \ml{EMPTY} represents the
+empty set and and
+the infixed function \ml{INSERT} adds an element to a set.
+Thus \verb%``{1,2,3,4}``%
+will parse as
+
+\begin{hol}\begin{verbatim}
+   ``1 INSERT (2 INSERT (3 INSERT (4 INSERT EMPTY)))``
+\end{verbatim}\end{hol}
+
+\noindent Set abstracion syntax is also supported:
+{\small\verb%``{%}$t${\small\verb%|%}$p${\small\verb%}``%}
+will parse as:
+
+\medskip
+
+\noindent{\small
+{\verb%   ``GSPEC(\(%}$x_1${\verb%,%}$\ldots${\verb%,%}$x_n${\verb%).(%}$t${\verb%,%}$p${\verb%))``%}
+}
+
+\medskip
+
+\noindent where $x_1$, $\ldots$ , $x_n$ are the 
+free variables occurring in both $t$
+and $p$.  If there are no such free variables then an error results.
+The order in which the variables are listed in the variable structure
+of the paired abstraction is an unspecified function of the structure
+of $t$ (it is approximately left to right). Failure occurs if $c$ is not the
+name of a constant.
+
+Other examples are:
+
+\begin{hol}\begin{verbatim}
+   ``{x+y+z | (x < y) /\ (y < z)}``
+\end{verbatim}\end{hol}
+
+\noindent will parse to:
+
+\begin{hol}\begin{verbatim}
+   ``GSPEC(\(x,y,z). (x+(y+z), (x < y /\ y < z)))`` 
+\end{verbatim}\end{hol}
+
+\noindent and
+
+\begin{hol}\begin{verbatim}
+   ``{x+y+w | (x < y) /\ (y < z)}``
+\end{verbatim}\end{hol}
+
+\noindent will parse to:
+
+\begin{hol}\begin{verbatim}
+   ``GSPEC(\(x,y). (x+(y+w), (x < y /\ y < z)))``
+\end{verbatim}\end{hol}
+
+Terms will be printed in set notation by default.
+Note that 
+
+\medskip
+
+\ml{``}$c${\small\verb%(\(%}$x_1$\ml{,}$\ldots$\ml{,}$x_n$\ml{).(}$t$\ml{,}$p$\ml{))``} 
+
+\medskip
+
+\noindent will only print as 
+{\small\verb%``{%}$t${\small\verb%|%}$p${\small\verb%}``%} 
+if the variables $x_1$, $\ldots$ , 
+$x_n$ occur free in both $t$ and $p$.
+
+
+\section{Fixities}
+
+\label{precedence}
+\label{fixities}
+\index{terms, in HOL logic@@terms, in \HOL logic!fixities}
+\index{terms, in HOL logic@@terms, in \HOL logic!parsing status}
+\index{fixities}
+\index{parsing status}
+Infixes in \HOL\ have precedence, and associate to the right, e.g.,
+if \ml{OP} is an infix, then
+\begin{hol} \begin{verbatim}
+    A OP B OP C 
+\end{verbatim} \end{hol}
+parses to the same term as
+\begin{hol} \begin{verbatim}
+    A OP (B OP C). 
+\end{verbatim} \end{hol}
+%\HOLNINETYSEVENDIFF In this release of \HOL, fixity information is a property of the
+%parser and pretty printers, and are stored in a table accessed
+%by the functions
+%\begin{boxed} \begin{alltt}
+%   structure Fixity =
+%      ...
+%      datatype fixity = Prefix | Binder | Infix of int
+%      val fixities : unit -> (string * fixity) list
+%      val fixity : string -> fixity
+%      val hol_infix : int -> string -> unit
+%      val hol_prefix : string -> unit
+%      val hol_binder : string -> unit
+%      val hol_nonfix : string -> unit
+%      ...
+%   end
+%\end{alltt} \end{boxed}
+%Note: Fixity information is also saved with each theory file - note that
+%{\em all} fixity information current when \ml{export\_theory} is called
+%will be saved with the theory file, regardless of whether the fixities
+%are related to constants in the theory.  This is not usually
+%problematic.
+%
+%Unlike previous versions of \HOL,
+%fixities affect the parsing of both free variables and constants!
+%In the following example, \ml{++} is being parsed as a variable,
+%since it has not yet been defined as a constant.
+%\begin{session} \begin{alltt}
+%- hol_infix 500 "++";
+%val it = () : unit
+%
+%- ``[1] ++ [3]``;
+%val it = ``[1] ++ [3]`` : num list
+%\end{alltt} \end{session}
+
+
+To give $c_1$ a higher precedence than $c_2$, 
+give it a higher number. The default precedences are
+\begin{hol} \begin{verbatim}
+          $,  ---> 50
+          $=  ---> 100
+        $==>  ---> 200
+         $\/  ---> 300
+         $/\  ---> 400
+      $>, $<  ---> 450
+    $>=, $<=  ---> 450
+      $+, $-  ---> 500
+    $*, $DIV  ---> 600
+        $MOD  ---> 650
+        $EXP  ---> 700
+        $o    ---> 800
+\end{verbatim} \end{hol}
+For the library \ml{sets}, the precedences are
+\begin{hol} \begin{verbatim}
+         $IN  ---> 450
+     $SUBSET  ---> 450
+    $PSUBSET  ---> 450
+      $UNION  ---> 500
+       $DIFF  ---> 500
+     $INSERT  ---> 500
+     $DELETE  ---> 500
+      $INTER  ---> 600
+\end{verbatim} \end{hol}
+The \HOL\ prettyprinter also uses precedence to eliminate as many
+brackets as possible. 
+
+
+\section{Enhanced IO Features}
+
+This section describes the latest ``enhanced input/output features''
+for the \HOL\ system.
+
+Terms are parsed in the following stages:
+\begin{description}
+   \item[Lexical Analysis]  The input text is broken into a stream of tokens.
+   \item[Parsing to Preterms]  The stream of tokens is parsed to  
+preterms.  The special forms of syntax described above are
+resolved at this stage.
+%   \item[Macro Expansion]  Term macros and type abbreviations are applied
+%to the preterm repeatedly until it is normalized with respect to these.
+%   \item[Name Translation]  The names of atoms in the preterm
+%are translated to their corresponding ``internal 
+%representations''. 
+   \item[Constant Resolution]  Atoms which represent constants
+in the current context are mapped to the corresponding constant name.
+Other atoms are mapped to variables.
+   \item[Type Inference]  Types are inferred for all variables,
+and type checking is performed to ensure that the preterm is well formed.
+Type inference is by a variant of
+Milner's algorithm W; unification of types is done by Robinson's
+side-effecting unification algorithm.
+%   \item[Autotypes] An attempt is made to free 
+%type variables are resolved by using any
+%active autotypes.
+%   \item[Type Maximization] Free type variables are allocated new types.
+\end{description}
+
+\subsection{Lexical matters}
+\label{HOL-lex}
+
+This section is mainly for reference for experienced users - beginners
+may safely ignore it on a first reading.
+
+\subsubsection{Type variable names}
+\label{tyvars}
+
+The names of type variables in the \HOL\ logic are similar
+to the type variable names used in \ML.  They must
+begin with \verb%'%, after which may follow any valid
+identifier, that is an alphabetic character followed by
+any number of alphanumeric characters; for example:
+
+\begin{hol}\begin{verbatim}
+   'a  'a1  'alpha  'b  'tag
+\end{verbatim}\end{hol}
+
+\subsubsection{Type constructor names}
+
+Type constructors can be any identifier, i.e.,
+an alphabetic character followed by any number of alphanumeric characters.
+
+\subsubsection{Lexical structure of Terms}
+
+The lexical structure for term identifiers is also much like that for
+\ML: identifiers can be alphanumeric or symbolic. Variables must be 
+alphanumeric. A symbolic identifier is any concatenation of the characters 
+in the following list
+\begin{hol} \begin{verbatim}
+    explode "#?+*/\\=<>&%@@!,:;_|~-";
+\end{verbatim} \end{hol}
+with the exception of the keywords
+\begin{hol} \begin{verbatim}
+    ["\\", ";", "=>", "|", ":" ]
+\end{verbatim} \end{hol}
+
+Any alphanumeric can be a constant except the keywords
+\begin{hol} \begin{verbatim}
+    [ "let", "in", "and", "of" ].
+\end{verbatim} \end{hol}
+There are also two infinite families of constants: numbers and strings
+(if you have loaded the string library). 
+%Numbers are exactly the same as
+%in hol88, while strings are much like \ML strings.
+
+
+The separator for enumerated lists and sets is ";", for example
+\begin{hol} \begin{verbatim}
+    ``[1;2;3]``
+\end{verbatim} \end{hol}
+gives a three element list of type `:num list`.
+
+
+
+\subsubsection{Special cases in lexical analysis}
+
+The inclusion of `:' in the symbolics means that some constraints may
+need to be separated by white space. For example
+\begin{hol} \begin{verbatim}
+    $=:bool->bool->bool
+\end{verbatim} \end{hol}
+will be broken up during lexical analysis as
+\begin{hol} \begin{verbatim}
+    $=: bool -> bool -> bool
+\end{verbatim} \end{hol}
+and parsed as an application of the symbolic identifier \ml{\$=:} to
+the term argument list \ml{["bool",} \ml{"->"}, \ml{"bool"}, \ml{"->"}, 
+\ml{"bool"]}. But
+\begin{hol} \begin{verbatim}
+    $= :bool->bool->bool
+\end{verbatim} \end{hol}
+is OK, being parsed as the symbolic identifier \ml{=} constrained by a
+type. 
+
+
+Another special case is that of \verb%~%, which is used for
+negation. It is the only prefix parsed identifier in the system. For
+example, the usual parsing of \verb%`A B C`% is equivalent to
+\verb%`(A B) C`%, since application is viewed as an invisible left
+associative infix operator with the top binding power. However, parsing
+\verb%`~ ~ A`% is equivalent to parsing \verb%`~ (~A)`%. 
+Furthermore, the tilde is really in a lexical class of its
+own, since it `breaks up' symbolic identifiers it's with (including
+itself): for example, if we take \verb%_|_% as an existing symbolic
+constant, then \verb%`~~_|_`% is equivalent to \verb%`~(~( _|_
+))`%. 
+Adding a ``tilde'd'' symbolic
+identifier to the global variable 
+\verb%tilde_symbols% suppresses the special nature
+of tilde in the symbolic identifier. For example,
+
+\begin{hol} \begin{verbatim}
+    tilde_symbols := ["~*"];
+    new_infix{Name = "~*", 
+              Ty   = `:bool -> bool -> bool`, 
+              Prec = 450};
+\end{verbatim} \end{hol}
+
+allows \verb%`A ~* B`% to parse happily. 
+
+
+
+
+\subsubsection{Separators}
+
+The separators used by the \HOL\ lexical analyser are (with ascii codes in
+brackets):
+
+\bigskip
+
+space (32), carriage return (13), line feed (10), tab ({\verb%^%}I, 9), 
+form feed ({\verb%^%}L, 12)
+
+
+\subsubsection{Antiquotation} \label{antiquotation}
+
+Within a quotation, expressions of the form
+{\small\verb%^(%}$t${\small\verb%)%}\index{ antiquotation, in HOL logic@@{\small\verb+^+} (antiquotation, in \HOL\ logic)} (where $t$ is an \ML\ expression of
+type\index{type checking, in HOL logic@@type checking, in \HOL\
+logic!antiquotation in} \ml{term} or \ml{typ} are called {\it
+antiquotations\/}\index{terms, in HOL logic@@terms, in \HOL\ logic!antiquotation}\index{antiquotation, in HOL logic terms@@antiquotation, in \HOL\ logic terms}.
+An antiquotation {\small\verb%^(%}$t${\small\verb%)%}
+evaluates to the \ML\ value of $t$. For example, 
+{\small\verb%``x \/ ^(mk_conj (``y:bool``,``z:bool``))``%} evaluates to the same term as
+{\small\verb%``x \/ (y /\ z)``%}. The most common use of antiquotation
+is when the term $t$ is just an \ML\ variable $x$. 
+In this case
+{\small\verb%^(%}$x${\small\verb%)%} can be abbreviated by
+{\small\verb%^%}$x$. 
+
+The following session illustrates antiquotation.
+
+\setcounter{sessioncount}{1}
+\begin{session}\begin{verbatim}
+- val y = ``x+1``;
+y = ``x + 1`` : term
+
+- val z = ``y = ^y``;
+z = ``y = x + 1`` : term
+
+- ``!x:num.?y:num.^z``;
+``!x. ?y. y = x + 1`` : term
+\end{verbatim}\end{session}
+To antiquote types, it is necessary to use a somewhat more devious approach: if you are
+going to use a type as an antiquotation, you must wrap the constructor
+\verb%ty_antiq% around it:
+\begin{session} \begin{verbatim}
+- val ty = ty_antiq``:('a -> 'b) -> 'a list -> 'b list``
+val ty = <type antiquotation> : term
+
+- val tm = ``(MAP:^ty) f``;
+val tm = ``MAP f`` : term
+\end{verbatim} \end{session}
+In \HOLNINETY, type antiquotations are needed to get the effect of type
+abbreviations in \HOLEIGHTY.  
+%Alternatively the experimental
+%macro translations can be  used.
+
+
+
+%\section{Type Abbreviations}
+%
+%A type abbreviation (or type macro) 
+%specifies a translation between the user's input syntax
+%and the ``internal'' world of \HOL\ 
+%type representations.  For example:
+%\begin{hol} \begin{alltt}
+%- new_type_macro (`:'a signal`,`:num -> 'a -> bool`);
+%val it = () : unit
+%- val ty = ``:num signal``;
+%val ty = ``:num signal``;
+%- set_enhanced_io false;
+%val it = () : unit
+%- ty;
+%val ty = ``:num -> num -> bool``;
+%\end{alltt} \end{hol}
+%
+%By default, \HOL\ supports a single set of macros per working
+%context.  
+%Type macros effect
+%the behaviour of the default term parser \ml{``...``} and the
+%\HOL\ pretty printer.
+%
+%The set of type macros for the current context is specified using:
+%\begin{boxed} \index{new_type_macro@@\ml{new\_type\_macro}|pin} \begin{alltt}
+%   val new_type_macro : quotation * quotation -> unit;
+%\end{alltt} \end{boxed}
+%Note the external representation comes first.
+%
+%Type macros are always exported from a working context.
+%In any working context, the type macros from all 
+%the theories imported into that 
+%context are also in effect.
+%
+%\section{Term Macros}
+%
+%\label{macromaps}\index{macros}
+%\index{parsing!macros}
+%\index{terms, in HOL logic@@terms, in \HOL\ logic!macros}
+%
+%\begin{aside}
+%This work is experimental and may be changed at a later date.
+%\end{aside}
+%
+%A term macro specifies a translation between the user's input syntax
+%and the `internal' world of \HOL\ 
+%term representations.
+%
+%%Macros can be used for many purposes.  For instance, 
+%%finite map syntax can be specified using the translations:
+%%\begin{hol} \begin{alltt}
+%%   `{ x |-> y }`     |--> `PFUN_UPDATE (x,y) PFUN_NIL`
+%%   `{ x |-> y , f }` |--> `PFUN_UPDATE (x,y) { f }`
+%%\end{alltt} \end{hol}
+%%How does this work?  Well, I'm not sure it does just yet...
+%
+%By default, \HOL\ supports a single set of term macros per working
+%context.  
+%Term macros effect
+%the behaviour of the default term parser \ml{``...``} and the
+%\HOL\ pretty printer.
+%
+%The set of term macros for the current context is specified using:
+%\begin{boxed} \index{new_term_macro@@\ml{new\_term\_macro}|pin} \begin{alltt}
+%   val new_term_macro : string list * quotation * quotation -> unit;
+%\end{alltt} \end{boxed}
+%The first argument is the set of identifiers in the 
+%``external'' representation which are to be regarded as variables.
+%Identifiers not included in this list are regarded as constants.
+%For example, when
+%developing a theory of an arbitrary group \ml{G} with product function
+%\ml{prod} the following translations could
+%be used:
+%\begin{session} \begin{alltt}
+%- hol_infix "++";
+%- new_term_macro (["x","y"],`x ++ y`,`GROUP_PROD G prod x y`);
+%- new_term_macro (["x"],    `G x`,   `GROUP_SET G prod x`);
+%- new_term_macro (["x"],    `inx x`, `GROUP_INV G prod x`);
+%- new_term_macro ([],       `e`,      `GROUP_ID G prod`);
+%\end{alltt} \end{session}
+%\begin{aside}
+%\HOL does not yet provide
+%any protection against hiding or duplicating constants by using macros.
+%This is partly because macro mapping happens entirely at the
+%preterm/pretype level, and without reference to constants and
+%variables.  Also, \HOL\ allows free variables to occur in the ``internal''
+%representations, as in the example above.  In theory
+%this can allow unexpected variable capture to occur, though in
+%practice it is usually easy to avoid this.
+%\end{aside}
+%It is normal \HOL\ practice to include all macro specifications for
+%a theory script at the top of each theory script being developed.
+%
+%%The restriction to one "global" set of macros is a little
+%%artificial.  In general a set of macros is created using:
+%%\begin{boxed} \index{mk_macros@@\ml{mk\_stringmap}|pin} \begin{alltt}
+%%   val mk\_macros : {termmap: (string * string) list,
+%%                     typemap: (string * string) list} -> stringmap
+%%\end{alltt} \end{boxed}
+%and can be installed by calling  the explicit
+%functions for installing preterm filters (see Section~\ref{preterm-filters})
+%and pretty printer modifications (see Section~\ref{extensible-pp}).
+
+%\subsection{Autotypes}
+%
+%\label{autotypes}
+%
+%\index{types, in HOL logic@@types, in \HOL\ logic!autotypes}
+%\index{terms, in HOL logic@@terms, in \HOL\ logic!unconstrained type variables}
+%\index{autotypes}
+%\index{parsing!autotypes}
+%
+%A type table specifies default types for variables within
+%type quotations.  
+%It is used to help infer types for unconstrained types.  
+%
+%By default, \HOL\ supports one set of autotypes per working
+%context.  Autotypes are {\em not} exported from a context, hence
+%autotypes from imported contexts do not impact the current context.
+%Autotypes effect
+%the behaviour of the default term parser \ml{``...``}.  
+%Entries are added to the set of autotypes for the current context using:
+%\begin{boxed} \index{set_typetable@@\ml{set\_typetable}|pin} \begin{alltt}
+%   val new_autotype : (string * type) -> unit
+%\end{alltt} \end{boxed}
+%For example:
+%\begin{session} \begin{alltt}
+%- new_autotype ("x", ==`:num``;
+%- new_autotype ("P", ==`:num -> bool``;
+%- show_types := true;
+%val it = () : unit
+%
+%- ``x``;
+%val it = ``x:num``;
+%
+%- ``P 1``;
+%val it = ``(P:num -> bool) (1:num)``;
+%\end{alltt} \end{session}
+%\HOLNINETYDIFF Unlike \HOLEIGHTY sticky types, type tables can help
+%infer types where the type attached to the variable by type inference
+%is partially known.  In the last example above, the type inference
+%mechanism can infer \ml{P} to have type \ml{:num -> 'a}, and the
+%type table is then able to fill in \ml{:'a} as \ml{:bool}.
+%
+%It is normal to specify all autotypes
+%near the top of each theory script being developed.
+%
+%%The restriction to one type table per context is a little
+%artificial.  In general a type table is created using:
+%\begin{boxed} \index{mk_typetable@@\ml{mk\_typetable}|pin} \begin{alltt}
+%   val mk\_typetable : (string * typ) list -> typetable
+%\end{alltt} \end{boxed}
+%and can be installed by calling the explicit
+%functions for installing preterm filters (see Section~\ref{preterm-filters}).
+
+
+%\section{Type Maximization}
+%
+%\index{type maximization}
+%\index{terms, in HOL logic@@terms, in \HOL\ logic!unconstrained type variables}
+%\index{types, in HOL logic@@types, in \HOL\ logic!type maximization}
+%\label{type-maximization}
+%When type maximization is on, unconstrained type variables
+%are allocated fresh types in order to infer a `most general' type
+%for a term.  Type maximization can be controlled
+%using the functions:
+%\begin{boxed} \index{maximize_types@@\ml{maximize\_types}|pin} \begin{alltt}
+%   val set_maximize_types : bool -> unit
+%   val maximize_types : unit -> bool
+%\end{alltt} \end{boxed}
+%Type maximization is on by default.
+%\begin{session} \begin{alltt}
+%- set_maximize_types true;
+%val it = false : bool
+%\end{alltt} \end{session}
+%
+%%Type maximization is available for more general application
+%%via the preterm filter:
+%%\begin{boxed} \index{type\_maximization@@\ml{type\_maximization}|pin} \begin{alltt}
+%%   val type_maximization : preterm -> preterm
+%%\end{alltt} \end{boxed}
+%
+%%\section{String Maps}
+%
+%\label{stringmaps}\index{string maps}
+%\label{interfacemaps}\index{interface maps}
+%\index{parsing!string maps}
+%\index{terms, in HOL logic@@terms, in \HOL\ logic!string maps}
+%
+%A string map specifies a simple translation of names
+%for variables and constants between the `external' world 
+%and the `internal' world of \HOL\ names.  
+%
+%\HOL\ allows for the possibility that several
+%string maps might be needed by providing general functions for creating and
+%installing type tables - this is described below.  However,
+%for most purposes a single "global" string map suffices.  This effects
+%the behaviour of the default term parser \ml{``...``} and the
+%\HOL\ pretty printer.
+%The global string map is specified using:
+%\begin{boxed} \index{set_stringmap@@\ml{set\_stringmap}|pin} \begin{alltt}
+%   val set_stringmap : {termmap: (string * string) list,
+%                         typemap: (string * string) list} -> unit
+%   val clear_stringmap : unit -> unit
+%   val current_stringmap : unit -> {termmap: (string * string) list,
+%                                     typemap: (string * string) list}
+%\end{alltt} \end{boxed}
+%Note the external representation comes first.  For example, when
+%developing a theory of the integers the following translations may
+%be used:
+%\begin{session} \begin{alltt}
+%- set_stringmap ["~~" |--> "int_neg",
+%		 "+" |--> "int_plus",
+%		 "*" |--> "int_times"];
+%val it = () : unit
+%
+%- val x = ``~~x``;
+%val x = ``~~x``;
+%
+%- reset_stringmap();
+%val it = () : unit
+%
+%- x;
+%val it = ``int_neg x``;
+%\end{alltt} \end{session}
+%\HOLNINETYDIFF Unlike \HOLEIGHTY, \HOLNINETY does not yet provide
+%any protection against hiding constants by using interface maps.
+%This is partly because string mapping happens entirely at the
+%preterm/pretype level, and without reference to constants and
+%variables.
+%
+%It is normal \HOL\ practice to have one call to \ml{set\_stringmap}
+%near the top of each theory script being developed.
+%
+%The restriction to one "global" string map is a little
+%artificial.  In general a string map is created using:
+%\begin{boxed} \index{mk_stringmap@@\ml{mk\_stringmap}|pin} \begin{alltt}
+%   val mk_stringmap : {termmap: (string * string) list,
+%                        typemap: (string * string) list} -> stringmap
+%\end{alltt} \end{boxed}
+%and can be installed by calling  the explicit
+%functions for installing preterm filters (see Section~\ref{preterm-filters})
+%and pretty printer modifications (see Section~\ref{extensible-pp}).
+
+
+\section{Programming the Interface}
+
+\subsection{Extensible Pretty Printing}
+
+\label{extensible-pp} 
+\index{terms, in HOL logic@@terms, in \HOL\ logic!pretty printing}
+\index{terms, in HOL logic@@terms, in \HOL\ logic!extensible pretty printing}
+\index{pretty printing!extending}
+
+Most of the HOL prettyprinters depend on the prettyprinters for types
+and terms. These are extensible.
+The structure \ml{Extend\_hol\_pp} contains functions for
+incrementally extending the system pretty-printers for HOL types and
+terms, and for resetting them to their original state. The signature of
+this structure is:
+
+\begin{boxed} \begin{alltt}
+sig
+   datatype gravity = TOP | APPL | INFIX of int | WEAK | BOTTOM
+   val gravity_geq : gravity -> gravity -> bool
+
+   val extend_pp_type :
+      (({depth:int, gravity:gravity} -> typ -> PP.ppstream -> unit) ->
+       ({depth:int, gravity:gravity} -> typ -> PP.ppstream -> unit)) -> unit
+
+   val extend_pp_term :
+      (({boundvars:term list, depth:int, gravity:gravity} ->
+        term -> PP.ppstream -> unit) ->
+       ({boundvars:term list, depth:int, gravity:gravity} ->
+        term -> PP.ppstream -> unit)) -> unit
+
+   val reset_pp_type : unit -> unit
+   val reset_pp_term : unit -> unit
+end
+\end{alltt} \end{boxed}
+
+Considering terms (and by analogy, types), there are two functions: one
+to extend the printer; the other to reset it to the start-up
+state. Users can provide a special-purpose pretty-printing function for
+whatever special printing behaviour they require.  This function will be
+tried first on each call (top-level and recursive) to the
+pretty-printer. If it fails for any reason, the original printer (or the
+previously extended version) is called.
+
+The argument types to the extension functions are complex. Let's dissect
+the type of \ml{extend\_pp\_term}; to start, it takes a function and
+returns \ml{`()'} (the only value of type \ml{unit}). This
+function has the following type:
+
+\begin{hol} \begin{alltt}
+    ({boundvars:Term.term list, depth:int, gravity:gravity} ->
+        Term.term -> PP.ppstream -> unit) ->
+    ({boundvars:Term.term list, depth:int, gravity:gravity} ->
+        Term.term -> PP.ppstream -> unit)
+\end{alltt} \end{hol}
+
+\noindent Its first argument is a pretty-printing function. Let us forget about
+this argument for the moment, leaving us with a function of type:
+\begin{hol} \begin{alltt}
+    {boundvars:Term.term list, depth:int, gravity:gravity}
+      -> Term.term -> PP.ppstream -> unit
+\end{alltt} \end{hol}
+
+\noindent If we also ignore the first argument of this function (it represents the
+changing context that the function will operate in), we are left with a
+function of type:
+\begin{hol} \begin{alltt}
+    Term.term -> PP.ppstream -> unit
+\end{alltt} \end{hol}
+which (ought to) make some sense as a pretty-printing function which
+takes a term and pretty-prints it on the specified \ml{ppstream}
+before returning \ml{`()'}. 
+
+Now we return to the context parameter. The special-purpose
+prettyprinter must handle the context that it is called in. The context
+is a record with fields {\em boundvars}, {\em depth}, and
+{\em gravity}. These fields are used to decide how to print the
+current subterm, and are modified for recursive calls to the
+prettyprinter.
+
+\begin{description}
+   \item[\ml{boundvars}]
+ The \ml{boundvars} argument is a list of the
+bound variables of the abstractions passed through in descending the
+term, the {\em scope} in other words. The list is indexed by the de
+Bruijn number when a bound variable needs to be printed. Unless your
+prettyprinter is processing terms involving lambda-abstractions this
+value can be passed on unchanged. However, if you are doing processing
+of such binders, the binding occurrences of variables should be put on
+the \ml{boundvars} list in order of textual occurrence,
+i.e., \ml{boundvars} is treated like a stack.
+
+   \item[\ml{depth}]
+The \ml{depth} argument to
+the print functions is the print depth; it should be decremented on each
+recursive call. When it reaches zero, the subterm is elided. Starting
+with a negative value prevents elision from occurring regardless of how
+deep the term is. 
+
+   \item[\ml{gravity}]
+The datatype for precedence (called \ml{gravity}) is available to
+the user. There are five constructors. \ml{TOP} is the highest
+(most-tightly binding) precedence; \ml{APPL} is for applications,
+\ml{INFIX} is for the infix operators and takes an integer
+argument; \ml{WEAK} is used for bindings and for mixfixes such as
+conditional expressions; and \ml{BOTTOM} is the lowest precedence
+value. Generally, if the gravity of the context is greater or equal to
+that of the current subterm, then the current subterm should be bracketed.
+\end{description}
+
+\subsubsection{Example}
+
+The use of the extensibility functions is illustrated in the session
+below in which a function to print conditional expressions as 
+\begin{hol} \begin{alltt}
+    \ml{if} \(term\) \ml{then} \(term\) \ml{else} \(term\)
+\end{alltt} \end{hol}
+\noindent instead of as 
+\begin{hol} \begin{alltt}
+    \(term\) \ml{=>} \(term\) \ml{|} \(term\)
+\end{alltt} \end{hol}
+
+\noindent is installed. Note that the call to \ml{dest\_cond} fails if the term
+is not a conditional expression and so forces the original printer to be
+used. The following is the definition of the custom prettyprinting function:
+
+\begin{boxed} \begin{alltt}
+    local open PP Extend_hol_pp
+    in
+    fun pp_ite pp_tm {boundvars:term list,depth,gravity} tm ppstrm =
+       if (depth = 0)
+       then raise Fail "pp_ite"
+       else let val {cond,larm,rarm} = dest_cond tm
+                val parenth = gravity_geq gravity WEAK
+                val params = {boundvars=boundvars,depth=depth-1,gravity=TOP}
+            in  
+                if parenth then add_string ppstrm "(" else ();
+                begin_block ppstrm CONSISTENT 0;
+                add_string ppstrm "if ";
+                (pp_tm params cond ppstrm : unit);
+                add_break ppstrm (1,0);
+                add_string ppstrm "then ";
+                pp_tm params larm ppstrm;
+                add_break ppstrm (1,0);
+                add_string ppstrm "else ";
+                pp_tm params rarm ppstrm;
+                end_block ppstrm;
+                if parenth then add_string ppstrm ")" else ()
+            end
+      end;
+\end{alltt} \end{boxed}
+
+\noindent Let us bind a test case:
+\begin{session} \begin{alltt}
+- val tm = ``APPEND ((n = 0) => [] | [n]) [1;2;3]``;
+val tm = ``APPEND ((n = 0) => [] | [n]) [1; 2; 3]`` : term
+
+\end{alltt} \end{session}
+
+\noindent Now, we extend the system prettyprinter and test it:
+\begin{session} \begin{alltt}
+- Extend_hol_pp.extend_pp_term pp_ite;
+val it = () : unit
+
+- tm;
+val it = ``APPEND (\ml{if} (n = 0) \ml{then} [] \ml{else} [n]) [1; 2; 3]`` : term
+
+- Extend_hol_pp.reset_pp_term ();
+val it = () : unit
+
+- tm;
+val it = ``APPEND ((n = 0) => [] | [n]) [1; 2; 3]`` : term
+\end{alltt} \end{session}
+
+
+%\subsection{Preterms and Preterm Filters}
+%
+%\index{pretypes|(}
+%\index{preterms|(}
+%\index{preterm filters|(}
+%\label{preterms}
+%\label{preterm-filters}
+%\label{pretypes}
+%The \ML\ datatypes \ml{preterm} and \ml{pretype} 
+%represent the parse trees of \HOL\ 
+%terms and types. A preterm filter is a function of type \ml{:preterm->preterm}.
+%The function \ml{thenf} (reverse function
+%composition) can be used to string preterm filters together.
+%\begin{session} \begin{alltt}
+%- val my_filter = macros my_macros
+%                  thenf type_inference
+%                  thenf typetable my_types
+%                  thenf type_maximization;
+%val my_filter = fn : preterm -> preterm
+%\end{alltt} \end{session}
+%The function
+%\begin{boxed} \index{mk_term_parser@@\ml{mk\_term\_parser}|pin} \begin{alltt}
+%   val mk_term_parser : (preterm -> preterm) -> quotation -> term
+%\end{alltt} \end{boxed}
+%creates a new term parser based on the given sequence of
+%preterm transformations.  Similarly the functions
+%\begin{boxed} \index{mk_term_parser@@\ml{mk\_term\_parser}|pin} \begin{alltt}
+%   val mk_type_parser : (pretype -> pretype) -> quotation -> typ
+%   val mk_preterm_parser : (preterm -> preterm) -> quotation -> preterm
+%   val mk_pretype_parser : (pretype -> pretype) -> quotation -> pretype
+%\end{alltt} \end{boxed}
+%make other kinds of parsers.  A term parser suitable for use with
+%as {``...``} style quotation mechanism can be made as follows:
+%For example:
+%\begin{session} \begin{alltt}
+%- fun -- t _ = mk_term_parser (macros my_macros
+%                               thenf type_inference
+%		               thenf typetable my_types);
+%\end{alltt} \end{session}
+%The following preterm filters are available in the core \HOL\
+%system:
+%\begin{boxed} \begin{alltt}
+%   val stringtable : stringtable -> preterm -> preterm
+%   val type_macros : type_macros -> preterm -> preterm
+%   val term_macros : term_macros -> preterm -> preterm
+%   val type_inference : preterm -> preterm
+%   val type_maximization : preterm -> preterm
+%   val typetable : typetable -> preterm -> preterm
+%\end{alltt} \end{boxed}
+%\WARNING Instances of the filters \ml{type\_maximization} and \ml{typetable}
+%should only be used {\em after} the \ml{type\_inference} filter
+%has been called.
+%
+%The definitions of the \ML\ types \ml{pretype} and \ml{preterm}
+%are:
+%\begin{hol}\index{pretype@@\ml{pretype}!the type}\index{preterm@@\ml{preterm}!the type}\begin{alltt}
+%   datatype pretype =
+%     Tyvar        of string                        \({\it User Type Variables}\)
+%   | Tyapp        of (string * pretype list)       \({\it Type Constructions}\)
+%   | Stv          of (string * pretype list)       \({\it System Type Variables}\)
+%   | Link         of pretype ref                   \({\it Pointers}\)
+%
+%   datatype preterm = 
+%     Var          of string * pretype              \({\it Variables}\) 
+%   | Const        of string * pretype              \({\it Constants}\) 
+%   | Comb         of preterm * preterm             \({\it Combinations}\) 
+%   | Abs          of preterm * preterm             \({\it Abstractions}\) 
+%   | Constrained  of preterm * pretype             \({\it Type constraints}\)
+%   | Antiq        of term                          \({\it Antiquotation}\) 
+%\end{alltt}\end{hol}
+%
+%The links in pretypes are used to implement type inference via
+%pointer reduction.  Users wishing to experiment with alternative
+%type inference schemes should consult the code which implements
+%these mechanisms --- the type maximization mechanism is a good place
+%to begin.
+%
+%The function:
+%\begin{boxed}\index{preterm\_to\_term@@\ml{preterm\_to\_term}|pin}
+%\begin{verbatim}
+%   preterm_to_term : preterm -> term
+%\end{verbatim}\end{boxed}
+%
+%\noindent invokes the standard \HOL\ typechecker on a preterm and returns the
+%resulting typechecked term (or causes the standard error message).\index{preterms|)}
+%
+%Similarly the function:
+%
+%\begin{boxed}\index{pretype\_to\_type@@\ml{pretype\_to\_type}|pin}
+%\begin{verbatim}
+%   pretype_to_type : pretype -> type
+%\end{verbatim}\end{boxed}
+%
+%\noindent converts a pretype to a type if the type described is well
+%constructed.
+%
+%
+%%\section{*How terms are parsed}
+%%
+%The information in this section is probably too detailed to include in a
+%user manual; it is included anyway, for those intrepid users who want to
+%know a bit more.  Terms are currently parsed in 3 passes. The
+%first pass leaves us with a structure where everything is associated to
+%the left, conforming to the fact that application associates to the left
+%and is highest in the precedence pecking order. The second pass sorts
+%out the precedences of the user-defined infixes and eliminates
+%dollar markers off variables and constants. This leaves us in the
+%type of preterms.
+%
+%Type inference is by a variant of
+%Milner's algorithm W; unification of types is done by Robinson's
+%side-effecting unification algorithm. The declaration of \ml{typ} allows
+%two kinds of type variables: user and system. A user-given type variable
+%is treated as a type constant during unification: it would be
+%frustrating to constrain a term to have a certain type, only to have
+%that type change by unification. A system type variable is modifiable by
+%unification, but may not persist after the end of parsing.
+%
+%Type inference is called when mapping from
+%preterms to terms, which is the last pass performed.
+
+
+%A difference in the parsing of hol88 and hol90 is how type
+%constraints work with infixes. In hol88 
+%\begin{hol} \begin{verbatim}
+%    $term$ $infix$ $term$ \ml{:} $hol_type$
+%\end{verbatim} \end{hol}
+%gets bracketed thus:
+%\begin{hol} \begin{verbatim}
+%    $term$ $infix$ \ml{(}$term$ \ml{:} $hol_type$\ml{)}
+%\end{verbatim} \end{hol}
+%whereas in hol90, it is equivalent to the following parse:
+%\begin{hol} \begin{verbatim}
+%    \ml{(}$term$ $infix$ $term$\ml{)} \ml{:} $hol_type$
+%\end{verbatim} \end{hol}
+
+
+@
+
+
+1.3.2.1
+log
+@Moving changes toManual Description to main development branch
+@
+text
+@@
+
+
+1.3.2.2
+log
+@Changed quotations.
+@
+text
+@d263 1
+a263 1
+\index{ type quotes, in ML@@\ml{``:$\cdots$``} (type quotes, in \ML)|(}
+d1530 2
+a1531 2
+%- new_autotype ("x", ``:num``);
+%- new_autotype ("P", ``:num -> bool``);
+@
+
+
+1.2
+log
+@lots of development by don
+@
+text
+@@
+
+
+1.1
+log
+@much improved (??), by DRS
+@
+text
+@d3 1
+a9 6
+%; the representation of
+%theorems (Section~\ref{avra_theorems}); the representation of theories
+%(Section~\ref{theoryfns}); the basic \HOL\ theories that are built into the
+%\HOL\ system (Sections~\ref{HOL-theory} and \ref{rules}); and the methods for
+%extending theories (throughout Section~\ref{HOL-ancestry} and in
+%Section~\ref{types-package}).  
+d42 7
+a48 13
+%For the moment we will ignore lexical matters concerning types
+%and terms - these are described in Section~\ref{HOL-lex}.  The
+%allowed identifiers for types and terms are very similar to those
+%for \ML - e.g. type variables are given by \verb%'a%, \verb%'b%
+%and so on, so the reader familiar with \ML\ should have no
+%problems for the present.
+
+\WARNING This manual assumes you are using the `paired' versions
+pf th syntax functions in the \HOL\ system.  These are far
+easier to use interactively than the recordized versions which
+are, for backward compatibility reasons, the default.  To switch
+to paired versions, use:
+\begin{session} \begin{alltt}
+d50 2
+a51 1
+\end{alltt} \end{session}
+d140 1
+a140 1
+   mk_fun_ty    : (typ * typ) -> typ
+d146 1
+a146 1
+\index{printing, in HOL logic@@printing, in \HOL\ logic!of types} in the form \ml{(==`:}$\ \cdots\ $\ml{`==)}
+d150 1
+a150 1
+as \ml{(==`:ind -> ind -> bool`==)}.
+a234 1
+
+d242 1
+a242 1
+Terms are printed in the form \ml{(--`}$\ \cdots\ $\ml{`--)}
+d250 1
+a250 1
+\[ \ml{(--`!x y. x < y ==> ?z. x + z = y`--)} \]
+d253 3
+a255 3
+ is used to distinguish type quotation from term quotation;
+the former have the form \ml{(==`:}$\ \cdots\ $\ml{`==)} and the latter have
+ the form \ml{(--`}$\ \cdots\ $\ml{`--)}.
+d263 2
+a264 2
+\index{ type quotes, in ML@@\ml{(==`::$\cdots$`==)} (type quotes, in \ML)|(}
+\index{ term quotes, in ML@@\ml{(--`$\cdots$`--)} (term quotes, in \ML)|(}
+d268 1
+a268 1
+It would be tedious, however, to always have to input types and terms using the
+d279 1
+a279 1
+For example, the \ML\ expression {\small\verb%(==`:bool->bool`==)%} denotes
+d288 1
+a288 1
+{\small\verb%(--`\x.x+1`--)%}\index{function abstraction, in HOL logic@@function abstraction, in \HOL\ logic} 
+d316 1
+a316 1
+such as {\small\verb%(--`\x.x+1`--)%}.
+d319 1
+a319 1
+of {\small\verb%x%} in {\small\verb%(--`\x.x+1`--)%} could have type
+d334 5
+a338 5
+- (--`x = (x = 1)`--);
+Badly typed application of:  (--`$= x`--)
+   which has type:           (==`:num -> bool`==)
+to the argument term:        (--`x = 1`--)
+   which has type:           (==`:bool`==)
+d347 1
+a347 1
+(--`x = (x = 1)`--) : term
+d352 5
+a356 2
+variables occurring in a term.  If there are not enough clues,  then the system
+will complain with an error message.
+d360 1
+a360 1
+{\small\verb%(--`f(x:num):bool`--)%} will   type check   with   {\small\verb%f%}   and
+a364 3
+%There is  also a  feature called  {\it sticky  types\/} that enables
+%variables to be given default types; this is described in
+%Section~\ref{stickytypes}.
+d369 1
+a369 1
+type {\small\verb%'a->'a%}, but the \HOL\ term {\small\verb%(--`\x.x`--)%} will
+d374 2
+a375 2
+- (--`\x. x`--);
+Indeterminate types:  (--`x:?`--)
+d382 1
+a382 1
+for example by writing {\small\verb%(--`\x:'a.x`--)%}. 
+d385 2
+a386 2
+- (--`\x:'a. x`--);
+(--`\x. x`--) : term
+d390 1
+a390 1
+\index{ term quotes, in ML@@\ml{(--`$\cdots$`--)} (term quotes, in \ML)|)}
+d392 26
+a417 1
+\subsection{Enhanced Type Checking}
+a418 24
+The \HOL\ term and type parsers are extensively programmable via
+the preterm mechanism, described further in Section~\ref{preterms}.
+This has been used to implement two major enhancements to the
+type checking system described above.  These are completely optional,
+though highly recommended:
+\begin{description}
+   \item[Type Maximization]  The default \HOL\ parser complains if
+   type variables are left indeterminate after parsing.  Type
+   maximization prevents this by allocating type variables \ml{'a1},
+   \ml{'a2} and so on for indeterminate type variables.  Type
+   maximization is explained in Section~\ref{type-maximization}
+   and can be activated using the function \ml{maximize\_types}.
+   
+   \item[Type Tables]  It is normal in mathematics to write
+   `let $i$ and $j$ be integers'.  Using a type table allows
+   such an association to be set up.  This means \HOL\ will
+   then infer the type \ml{(==`:int -> int`==)} for the
+   quotation \ml{(--`\\j. j`--)}.  Generally, one type table
+   should be used for each theory being developed.  Type tables
+   are described
+   in full in Section~\ref{typetables}, and can be activated
+   by using the function \ml{set\_typetable}.
+\end{description}   
+   
+d447 1
+a447 1
+{\small\verb%(==`:'a%}$\cdots${\small\verb%`==)%} & 
+d450 1
+a450 1
+{\small\verb%(==`:%}$op${\small\verb%`==)%} & 
+d453 1
+a453 1
+{\small\verb%(==`:%}$\sigma_1${\small\verb%->%}$\sigma_2${\small\verb%`==)%} &
+d456 2
+a457 2
+{\small\verb%(==`:(%}$\sigma_1${\small\verb%,%} $\ldots$ {\small\verb%,%} $\sigma_n${\small\verb%)%}$op${\small\verb%`==)%} &
+{\small\verb%mk_type("%}$op${\small\verb%", [%}$\sigma_1${\small\verb%,%}% $\ldots$ {\small\verb%,%}$\sigma_n${\small\verb%])%}
+d462 1
+a462 1
+\index{ type quotes, in ML@@\ml{(==`:$\cdots$`==)} (type quotes, in \ML)|)}
+d493 1
+a493 1
+Variable & {\small\verb%(--`%}$var${\small\verb%:%}$\sigma${\small\verb%`--)%} &
+d495 1
+a495 1
+Constant & {\small\verb%(--`%}$const${\small\verb%:%}$\sigma${\small\verb%`--)%} &
+d497 1
+a497 1
+Combination & {\small\verb%(--`%}$t_1\ t_2${\small\verb%`--)%} &
+d499 1
+a499 1
+Abstraction & {\small\verb%(--`\%}$x${\small\verb%.%}$t${\small\verb%`--)%} &
+d517 1
+a517 1
+{\small\verb%(--`x+1`--)%} is translated to {\small\verb%(--`$+ x 1`--)%}. The escape
+d574 1
+a574 1
+Negation & {\small\verb%(--`~%}$t${\small\verb%`--)%} & 
+d577 1
+a577 1
+Disjunction & {\small\verb%(--`%}$t_1${\small\verb%\/%}$t_2${\small\verb%`--)%} & 
+d580 1
+a580 1
+Conjunction & {\small\verb%(--`%}$t_1${\small\verb%/\%}$t_2${\small\verb%`--)%} & 
+d583 1
+a583 1
+Implication & {\small\verb%(--`%}$t_1${\small\verb%==>%}$t_2${\small\verb%`--)%} & 
+d586 1
+a586 1
+Equality & {\small\verb%(--`%}$t_1${\small\verb%=%}$t_2${\small\verb%`--)%} & 
+d589 1
+a589 1
+$\forall$-quantification & \ml{(--`!$x$.$t$`--)} &
+d592 1
+a592 1
+$\exists$-quantification & \ml{(--`?$x$.$t$`--)} &
+d595 1
+a595 1
+$\hilbert$-term & \ml{(--`@@$x$.$t$`--)} &
+d598 1
+a598 1
+Conditional\index{COND@@\ml{COND}} & {\small\verb%(--`(%}$t${\small\verb%=>%}$t_1${\small\verb%|%}$t_2${\small\verb%)`--)%} &
+d603 1
+a603 1
+{\small\verb%(--`let %}$x${\small\verb%=%}$t_1${\small\verb% in %}$t_2${\small\verb%`--)%} &
+d625 2
+a626 2
+{\small\verb%(--`%}$t_1\ c\ t_2${\small\verb%`--)%} to 
+{\small\verb%(--`$%}$c\ t_1\ t_2${\small\verb%`--)%}.  
+d632 1
+a632 1
+\HOL\ parser will translate {\small\verb%(--`%}$c\ x${\small\verb%.%}$t${\small\verb%`--)%} to the combination
+d658 2
+a659 2
+{\small\verb%(--`%}$t\ t_1 \cdots t_n${\small\verb%`--)%} &
+{\small\verb%(--`(%}$\cdots${\small\verb%(%}$t\ t_1${\small\verb%)%}$\cdots t_n${\small\verb%)`--)%} &
+d661 2
+a662 2
+{\small\verb%(--`\%}$x_1\cdots x_n${\small\verb%.%}$t${\small\verb%`--)%} &
+{\small\verb%(--`\%}$x_1${\small\verb%. %}$\cdots${\small\verb% \%}$x_n${\small\verb%.%}$t${\small\verb%`--)%} &
+d665 2
+a666 2
+{\small\verb%(--`!%}$x_1\cdots x_n${\small\verb%.%}$t${\small\verb%`--)%} &
+{\small\verb%(--`!%}$x_1${\small\verb%. %}$\cdots${\small\verb% !%}$x_n${\small\verb%.%}$t${\small\verb%`--)%} &
+d669 2
+a670 2
+{\small\verb%(--`?%}$x_1\cdots x_n${\small\verb%.%}$t${\small\verb%`--)%} &
+{\small\verb%(--`?%}$x_1${\small\verb%. %}$\cdots${\small\verb% ?%}$x_n${\small\verb%.%}$t${\small\verb%`--)%} &
+d701 2
+a702 3
+ will convert
+\ml{(--`/($x_1$,$x_2$).$t$`--)}
+to `\ml{UNCURRY(/$x_1\ x_2$.$t$}',
+d721 1
+a721 1
+   (--`\verb%\%(\m{x\sb{1}},\m{x\sb{2}},\m{x\sb{3}}).\m{t}`--)
+d727 1
+a727 1
+   (--`UNCURRY \verb%\%\m{x\sb{1}}.UNCURRY(\verb%\%\m{x\sb{2}},\m{x\sb{3}}.\m{t}))`--)
+d734 1
+a734 1
+   (--`\verb%\%(\m{v\sb{1}},\m{v\sb{2}}).\m{t}`--)\m{\quad \leadsto\quad }(--`UNCURRY(\verb%\%\m{v\sb{1}}.\verb%\%\m{v\sb{2}}.\m{t})`--)
+d741 7
+a747 7
+{\small\verb%   (--`\(%}$x${\small\verb%,%}$y${\small\verb%).%}$t${\small\verb%`--)%}
+&$\leadsto\ \ ${\small\verb%(--`UNCURRY(\%}$x\
+y${\small\verb%.%}$t${\small\verb%)`--)%}\\
+{\small\verb%   (--`\(%}$x_1${\small\verb%,%}$x_2${\small\verb%,%}$\ldots${\small\verb%,%}$x_n${\small\verb%).%}$t${\small\verb%`--)%}
+&$\leadsto\ \ ${\small\verb%(--`UNCURRY(\%}$x_1${\small\verb%.\(%}$x_2${\small\verb%,%}$\ldots${\small\verb%,%}$x_n${\small\verb%).%}$t${\small\verb%)`--)%}\\
+%{\small\verb%   (--`\((%}$x_1${\small\verb%,%}$\ldots${\small\verb%,%}$x_n${\small\verb%),%}$y_1${\small\verb%,%}$\ldots${\small\verb%,%}$y_m${\small\verb%).%}t{\small\verb%`--)%}
+%&$\leadsto\ \ ${\small\verb%(--`UNCURRY(\(%}$x_1${\small\verb%,%}$\ldots${\small\verb%,%}$x_n${\small\verb%).\(%}$y_1${\small\verb%,%}$\ldots${\small\verb%,%}$y_m${\small\verb%).%}$t${\small\verb%)`--)%}\\
+d752 2
+a753 2
+Note that a variable structure like \ml{(--`(x,y)`--)} in 
+{\small\verb%(--`\(x,y).x+y`--)%} 
+d760 2
+a761 2
+- (--`\(x,y).x+y`--);
+(--`\(x,y). x + y`--) : term
+d763 2
+a764 2
+- val p = (--`(x:num,y:num)`--);
+p = (--`x,y`--) : term
+d766 1
+a766 1
+- (--`\^p.x+y`--);
+d774 1
+a774 1
+- (--`\(x,y). x+1`--);
+d776 1
+a776 1
+    (--`UNCURRY:(num -> (?1 -> num)) -> (num # ?2 -> num)`--)
+d782 1
+a782 1
+\ml{(--`}$b$\ml{(}$x_1${\small\verb%,%}$x_2${\small\verb%).%}$t${\small\verb%`--)%}
+d784 2
+a785 2
+{\small\verb%(--`$%}$b${\small\verb%(\(%}$x_1${\small\verb%,%}$x_2${\small\verb%).%}$t${\small\verb%)`--)%}, and hence transformed as above.
+For example, {\small\verb%(--`!(x,y).x>y`--)%} parses to
+d787 1
+a787 1
+constant of the theory {\small\verb%num%} meaning "is greater than')\index{function abstraction, in HOL logic@@function abstraction, in \HOL\ logic!paired|)}. 
+d798 2
+a799 2
+ term \ml{(--`$t_1\ $=>$\ t_2\ $|$\ t_3$`--)} means 
+"if $t_1$ then $t_2$ else
+d801 1
+a801 1
+\ml{(--`COND\ $t_1\ t_2\ t_3$`--)}, where \ml{COND}\index{COND@@\ml{COND}}\index{conditionals, in HOL logic@@conditionals, in \HOL\ logic}
+d837 1
+a837 1
+   (--`let x = 1 and y = 2 in x+y`--)
+d839 1
+a839 1
+   (--`let f(x,y) = (x*x)+(y*y) and a = 20*20 and b = 50*49 in f(a,b)`--)
+d860 1
+a860 1
+{\small\verb%   let %}$f\ v_1\ \ldots\ v_n${\small\verb% = %}$t_1${\small\verb% in%}$t_2${\small\verb%%}
+d877 2
+a878 2
+%- (--`let x = 1 and y = 2 in x+y`--);
+%(--`let x = 1 and y = 2 in x + y`--) : term
+d883 2
+a884 2
+%- (--`let x = 1 and y = 2 in x+y`--);
+%(--`LET(LET(\x y. x + y)1)2`--)
+d886 2
+a887 2
+%- (--`let (x,y) = (1,2) in x+y`--);
+%(--`LET(UNCURRY(\x y. x + y))(1,2)`--) : term
+d895 2
+a896 2
+- (--`let x = y in z`--);
+Indeterminate types:  (--`LET:(?1 -> ?2) -> (?3 -> ?4)`--)
+d928 2
+a929 2
+Anything can be written between the binder and "\ml{::}' that can be
+written between the binder and "\ml{.}". See the examples below.
+d944 4
+a947 7
+   RES_ABSTRACT P B  =  \x:'a. (P x => B x | ARB:'b)
+
+   RES_FORALL   P B  =  !x:'a. P x ==> B x
+
+   RES_EXISTS   P B  =  ?x:'b. P x /\ B x
+
+   RES_SELECT   P B  =  @@x:'b. P x /\ B x
+d983 1
+a983 1
+initialization file -- see Section~\ref{hol-init}).
+d989 2
+a990 2
+- (--`!x y::P. x<y`--);
+(--`!x y :: P. x < y`--) : term
+d995 2
+a996 2
+- (--`!x y::P. x<y`--);
+(--`RES_FORALL P(\x. RES_FORALL P(\y. x < y))`--) : term
+d998 2
+a999 2
+- (--`?(x,y) p::(\(m,n).m<n). p=(x,y)`--);
+(--`RES_EXISTS
+d1001 1
+a1001 1
+ (\(x,y). RES_EXISTS(\(m,n). m < n)(\p. p = x,y))`--)
+d1004 2
+a1005 2
+- (--`\x y z::P.[0;x;y;z]`--);
+(--`RES_ABSTRACT P(\x. RES_ABSTRACT P(\y. RES_ABSTRACT P(\z. [0;x;y;z])))`--)
+d1009 1
+a1009 1
+See section \ref{restricted-quantifers} and the \ml{res\_quan}
+d1017 1
+a1017 1
+- new_binder_definition("DURING", (--`DURING(p:num#num->bool) = $!p`--));
+d1020 1
+a1020 1
+- (--`DURING x::(m,n). p x`--);
+d1022 1
+a1022 1
+skipping: x (--` ; parse failed  
+d1025 1
+a1025 1
+=  ("RES_DURING", (--`RES_DURING(m,n)p = !x. m<=x /\ x<=n ==> p x`--));
+d1027 1
+d1029 1
+d1033 2
+a1034 2
+- (--`DURING x::(m,n). p x`--);
+(--`DURING x :: (m,n). p x`--) : term
+d1039 2
+a1040 2
+- (--`DURING x::(m,n). p x`--);
+(--`RES_DURING(m,n)(\x. p x)`--) : term
+d1046 2
+a1047 2
+{\small\verb%(--`{%}$t_1,t_2,\ldots,t_n${\small\verb%}`--)%} and
+{\small\verb%(--`{%}$t${\small\verb%|%}$p${\small\verb%}`--)%} are available.
+d1062 1
+a1062 1
+Thus \verb%(--`{1,2,3,4}`--)%
+d1066 1
+a1066 1
+   (--`1 INSERT (2 INSERT (3 INSERT (4 INSERT EMPTY)))`--)
+d1070 1
+a1070 1
+{\small\verb%(--`{%}$t${\small\verb%|%}$p${\small\verb%}`--)%}
+d1076 1
+a1076 1
+{\verb%   (--`GSPEC(\(%}$x_1${\verb%,%}$\ldots${\verb%,%}$x_n${\verb%).(%}$t${\verb%,%}$p${\verb%))`--)%}
+d1092 1
+a1092 1
+   (--`{x+y+z | (x < y) /\ (y < z)}`--)
+d1098 1
+a1098 1
+   (--`GSPEC(\(x,y,z). (x+(y+z), (x < y /\ y < z)))`--) 
+d1104 1
+a1104 1
+   (--`{x+y+w | (x < y) /\ (y < z)}`--)
+d1110 1
+a1110 1
+   (--`GSPEC(\(x,y). (x+(y+w), (x < y /\ y < z)))`--)
+d1118 1
+a1118 1
+\ml{(--`}$c${\small\verb%(\(%}$x_1$\ml{,}$\ldots$\ml{,}$x_n$\ml{).(}$t$\ml{,}$p$\ml{))`--)} 
+d1123 1
+a1123 1
+{\small\verb%(--`{%}$t${\small\verb%|%}$p${\small\verb%}`--)%} 
+d1127 115
+a1241 1
+\section{Lexical matters}
+d1247 1
+a1247 1
+\subsection{Type variable names}
+d1260 1
+a1260 1
+\subsection{Type constructor names}
+d1265 1
+a1265 1
+\subsection{Lexical structure of Terms}
+a1273 1
+
+a1282 1
+
+d1291 1
+a1291 1
+    (--`[1;2;3]`--)
+d1297 1
+a1297 1
+\subsection{Special cases in parsing}
+d1299 1
+a1299 1
+The inclusion of ":" in the "symbolics" means that some constraints may
+a1303 1
+
+d1308 3
+a1310 3
+
+and parsed as an application of the symbolic identifier "\$=:" to
+the term argument list ["bool", "->", "bool", "->", "bool"]. But
+d1314 1
+a1314 2
+
+is OK, being parsed as the symbolic identifier "=" constrained by a
+d1346 1
+a1346 1
+\subsection{Separators}
+d1357 1
+a1357 110
+\section{Fixities}
+
+\label{precedence}
+\label{fixities}
+\index{terms, in HOL logic@@terms, in \HOL logic!fixities}
+\index{terms, in HOL logic@@terms, in \HOL logic!parsing status}
+\index{fixities}
+\index{parsing status}
+Infixes in \HOL\ have precedence, and associate to the right, e.g.,
+if \ml{OP} is an infix, then
+\begin{hol} \begin{verbatim}
+    A OP B OP C 
+\end{verbatim} \end{hol}
+parses to the same term as
+\begin{hol} \begin{verbatim}
+    A OP (B OP C). 
+\end{verbatim} \end{hol}
+\HOLNINETYSEVENDIFF In this release of \HOL, fixity information is a property of the
+parser and pretty printers, and are stored in a table accessed
+by the functions
+\begin{boxed} \begin{alltt}
+   structure Fixity =
+      ...
+      datatype fixity = Prefix | Binder | Infix of int
+      val fixities : unit -> (string * fixity) list
+      val fixity : string -> fixity
+      val hol_infix : int -> string -> unit
+      val hol_prefix : string -> unit
+      val hol_binder : string -> unit
+      val hol_nonfix : string -> unit
+      ...
+   end
+\end{alltt} \end{boxed}
+Note: Fixity information is also saved with each theory file - note that
+{\em all} fixity information current when \ml{export\_theory} is called
+will be saved with the theory file, regardless of whether the fixities
+are related to constants in the theory.  This is not usually
+problematic.
+
+Unlike previous versions of \HOL,
+fixities affect the parsing of both free variables and constants!
+In the following example, \ml{++} is being parsed as a variable,
+since it has not yet been defined as a constant.
+\begin{session} \begin{alltt}
+- hol_infix 500 "++";
+val it = () : unit
+
+- (--`[1] ++ [3]`--);
+val it = (--`[1] ++ [3]`--) : num list
+\end{alltt} \end{session}
+
+
+To give $c_1$ a higher precedence than $c_2$, 
+give it a higher number. The default precedences are
+\begin{hol} \begin{verbatim}
+          $,  ---> 50
+          $=  ---> 100
+        $==>  ---> 200
+         $\/  ---> 300
+         $/\  ---> 400
+      $>, $<  ---> 450
+    $>=, $<=  ---> 450
+      $+, $-  ---> 500
+    $*, $DIV  ---> 600
+        $MOD  ---> 650
+        $EXP  ---> 700
+        $o    ---> 800
+\end{verbatim} \end{hol}
+For the library \ml{sets}, the precedences are
+\begin{hol} \begin{verbatim}
+         $IN  ---> 450
+     $SUBSET  ---> 450
+    $PSUBSET  ---> 450
+      $UNION  ---> 500
+       $DIFF  ---> 500
+     $INSERT  ---> 500
+     $DELETE  ---> 500
+      $INTER  ---> 600
+\end{verbatim} \end{hol}
+The \HOL\ prettyprinter also uses precedence to eliminate as many
+brackets as possible. 
+
+
+\HOLNINETYSEVENDIFF In this version of \HOLNINETY, the 
+underlying definitional mechanisms for the constant definition functions
+do {\em not} need fixity information.  This makes them
+considerably simpler.  However, the for backward compatibility
+the top level functions still require this information.
+For example the underlying
+function for \ml{new\_specification} is in the structure
+\ml{Const\_spec}:
+\begin{boxed} \begin{verbatim}
+  structure Const_spec =
+     ...
+     val new_specification : (string * string list * thm) -> thm
+     ...
+  end
+\end{verbatim} \end{boxed}
+Because fixity information is about syntax rather than semantics,
+it is generally better to specify it prior to its use.  The
+new fixity mechanism allows this:
+\begin{session} \begin{verbatim}
+- hol_infix 200 "|>";
+
+- Const_def.new_definition("APP_DEF", (--`x |> f = f x`--));
+\end{verbatim} \end{session}
+This parallels the treatment of fixities in Standard \ML\, and
+is now the recommended way of using fixities in \HOL.
+
+\section{Antiquotation} \label{antiquotation}
+d1366 2
+a1367 2
+{\small\verb%(--`x \/ ^(mk_conj(--`y:bool`--,--`z:bool`--))`--)%} evaluates to the same term as
+{\small\verb%(--`x \/ (y /\ z)`--)%}. The most common use of antiquotation
+d1377 2
+a1378 2
+- val y = (--`x+1`--);
+y = (--`x + 1`--) : term
+d1380 2
+a1381 2
+- val z = (--`y = ^y`--);
+z = (--`y = x + 1`--) : term
+d1383 2
+a1384 2
+- (--`!x:num.?y:num.^z`--);
+(--`!x. ?y. y = x + 1`--) : term
+d1390 1
+a1390 1
+- val ty = ty_antiq(==`:('a -> 'b) -> 'a list -> 'b list`==)
+d1393 2
+a1394 2
+- val tm = (--`(MAP:^ty) f`--);
+val tm = (--`MAP f`--) : term
+d1396 4
+a1399 34
+\HOLNINETYDIFF In \HOLNINETY, type antiquotations are needed to get the effect of type
+abbreviations in \HOLEIGHTY.  Alternatively the experimental
+macro translations can be  used.
+
+\section{Type Tables}
+
+\label{typetables}
+
+\index{types, in HOL logic@@types, in \HOL\ logic!type tables}
+\index{terms, in HOL logic@@terms, in \HOL\ logic!unconstrained type variables}
+\index{type tables}
+\index{parsing!type tables}
+
+A type table specifies default types for variables within
+type quotations.  
+It is used to help infer types for unconstrained types.  
+
+\HOL\ allows for the possibility that several
+different type tables may be needed by providing general functions for creating and
+installing type tables - this is described below.  However,
+for most purposes a single "global" type table suffices.  This effects
+the behaviour of the default term parser \ml{(--`...`--)}.  
+The global type table is specified using:
+\begin{boxed} \index{set_typetable@@\ml{set\_typetable}|pin} \begin{alltt}
+   val set_typetable : (string * type) list -> unit
+   val clear_typetable : unit -> unit
+   val current_typetable : unit -> (string * type) list
+\end{alltt} \end{boxed}
+For example:
+\begin{session} \begin{alltt}
+- set_typetable ["x"  |--> (==`:num`==),
+		 "P"  |--> (==`:num -> bool`==),
+		 "f"  |--> (==`:'a -> `b`==)];
+val it = () : unit
+a1400 2
+- show_types := true;
+val it = () : unit
+a1401 2
+- (--`x`--);
+val it = (--`x:num`--);
+d1403 102
+a1504 19
+- (--`P 1`--);
+val it = (--`(P:num -> bool) (1:num)`--);
+\end{alltt} \end{session}
+\HOLNINETYDIFF Unlike \HOLEIGHTY sticky types, type tables can help
+infer types where the type attached to the variable by type inference
+is partially known.  In the last example above, the type inference
+mechanism can infer \ml{P} to have type \ml{:num -> 'a}, and the
+type table is then able to fill in \ml{:'a} as \ml{:bool}.
+
+It is normal to have one call to \ml{set\_typetable}
+near the top of each theory script being developed.
+
+The restriction to one "global" type table is a little
+artificial.  In general a type table is created using:
+\begin{boxed} \index{mk_typetable@@\ml{mk\_typetable}|pin} \begin{alltt}
+   val mk\_typetable : (string * typ) list -> typetable
+\end{alltt} \end{boxed}
+and can be installed by calling  the explicit
+functions for installing preterm filters (see Section~\ref{preterm-filters}).
+d1506 51
+a1557 86
+\section{Type Maximization}
+
+\index{type maximization}
+\index{terms, in HOL logic@@terms, in \HOL\ logic!unconstrained type variables}
+\index{types, in HOL logic@@types, in \HOL\ logic!type maximization}
+\label{type-maximization}
+When type maximization is on, unconstrained type variables
+are allocated fresh types in order to infer a `most general' type
+for a term.  Type maximization can be turned
+on by using the function:
+\begin{boxed} \index{maximize_types@@\ml{maximize\_types}|pin} \begin{alltt}
+   val maximize_types : bool -> bool
+\end{alltt} \end{boxed}
+This returns the old value of the switch.  Type maximization is off by default.
+\begin{session} \begin{alltt}
+- maximize_types true;
+val it = false : bool
+\end{alltt} \end{session}
+
+Type maximization is available for more general application
+via the preterm filter:
+\begin{boxed} \index{type\_maximization@@\ml{type\_maximization}|pin} \begin{alltt}
+   val type_maximization : preterm -> preterm
+\end{alltt} \end{boxed}
+
+\section{String Maps}
+
+\label{stringmaps}\index{string maps}
+\label{interfacemaps}\index{interface maps}
+\index{parsing!string maps}
+\index{terms, in HOL logic@@terms, in \HOL\ logic!string maps}
+
+A string map specifies a simple translation of names
+for variables and constants between the `external' world 
+and the `internal' world of \HOL\ names.  
+
+\HOL\ allows for the possibility that several
+string maps might be needed by providing general functions for creating and
+installing type tables - this is described below.  However,
+for most purposes a single "global" string map suffices.  This effects
+the behaviour of the default term parser \ml{(--`...`--)} and the
+\HOL\ pretty printer.
+The global string map is specified using:
+\begin{boxed} \index{set_stringmap@@\ml{set\_stringmap}|pin} \begin{alltt}
+   val set_stringmap : {termmap: (string * string) list,
+                         typemap: (string * string) list} -> unit
+   val clear_stringmap : unit -> unit
+   val current_stringmap : unit -> {termmap: (string * string) list,
+                                     typemap: (string * string) list}
+\end{alltt} \end{boxed}
+Note the external representation comes first.  For example, when
+developing a theory of the integers the following translations may
+be used:
+\begin{session} \begin{alltt}
+- set_stringmap ["~~" |--> "int_neg",
+		 "+" |--> "int_plus",
+		 "*" |--> "int_times"];
+val it = () : unit
+
+- val x = (--`~~x`--);
+val x = (--`~~x`--);
+
+- reset_stringmap();
+val it = () : unit
+
+- x;
+val it = (--`int_neg x`--);
+\end{alltt} \end{session}
+\HOLNINETYDIFF Unlike \HOLEIGHTY, \HOLNINETY does not yet provide
+any protection against hiding constants by using interface maps.
+This is partly because string mapping happens entirely at the
+preterm/pretype level, and without reference to constants and
+variables.
+
+It is normal \HOL\ practice to have one call to \ml{set\_stringmap}
+near the top of each theory script being developed.
+
+The restriction to one "global" string map is a little
+artificial.  In general a string map is created using:
+\begin{boxed} \index{mk_stringmap@@\ml{mk\_stringmap}|pin} \begin{alltt}
+   val mk_stringmap : {termmap: (string * string) list,
+                        typemap: (string * string) list} -> stringmap
+\end{alltt} \end{boxed}
+and can be installed by calling  the explicit
+functions for installing preterm filters (see Section~\ref{preterm-filters})
+and pretty printer modifications (see Section~\ref{extensible-pp}).
+d1559 87
+a1646 1
+\section{Macros}
+d1648 1
+a1648 66
+\label{typeabbrev}\index{types, in HOL logic@@types, in \HOL\ logic!abbreviation of}
+\index{type abbreviations!in HOL logic@@in \HOL\ logic}
+\index{abbreviation of types, in HOL logic@@abbreviation of types, in \HOL\ logic|(}
+
+\label{macromaps}\index{macros}
+\index{parsing!macros}
+\index{terms, in HOL logic@@terms, in \HOL\ logic!macros}
+
+A macro specifies a translation between preterms
+between the `external' world and the `internal' world of \HOL\ 
+term and type representations.
+
+This work is experimental and may be changed at a later date.
+
+
+Macros can be used for many purposes.  For instance, 
+finite map syntax can be specified using the translations:
+\begin{hol} \begin{alltt}
+   `{ x |-> y }`     |--> `PFUN_UPDATE (x,y) PFUN_NIL`
+   `{ x |-> y , f }` |--> `PFUN_UPDATE (x,y) { f }`
+\end{alltt} \end{hol}
+How does this work?  Well, I'm not sure it does just yet...
+
+For most purposes a single "global" set of macros suffices.  This effects
+the behaviour of the default term parser \ml{(--`...`--)} and the
+\HOL\ pretty printer.
+The global set of macros is specified using:
+\begin{boxed} \index{set_macros@@\ml{set\_macros}|pin} \begin{alltt}
+   val set_macros : {termmacros: (string list * term frag * term frag) list,
+                     typemacros: (string list * term frag * term frag) list} -> unit
+   val clear_macros : unit -> unit
+   val current_macros : unit -> {termmacros: (string list * term frag * term frag) list,
+                                 typemacros: (string list * term frag * term frag) list}
+\end{alltt} \end{boxed}
+Note the external representation comes first.
+For example, when
+developing a theory of an arbitrary group \ml{G} with product function
+\ml{prod} the following translations may
+be used:
+\begin{session} \begin{alltt}
+- hol_infix "++";
+  set_macros [`++`   |--> `GROUP_PROD G prod`,
+	      `IN`   |--> `GROUP_SET G prod`,
+              `inv`  |--> `GROUP_INV G prod`,
+              `e`    |--> `GROUP_ID G prod`];
+\end{alltt} \end{session}
+\WARNING \HOLNINETY does not yet provide
+any protection against hiding or duplicating constants by using macros.
+This is partly because macro mapping happens entirely at the
+preterm/pretype level, and without reference to constants and
+variables.
+
+It is normal \HOL\ practice to have one call to \ml{set\_macros}
+near the top of each theory script being developed.
+
+The restriction to one "global" set of macros is a little
+artificial.  In general a set of macros is created using:
+\begin{boxed} \index{mk_macros@@\ml{mk\_stringmap}|pin} \begin{alltt}
+   val mk\_macros : {termmap: (string * string) list,
+                     typemap: (string * string) list} -> stringmap
+\end{alltt} \end{boxed}
+and can be installed by calling  the explicit
+functions for installing preterm filters (see Section~\ref{preterm-filters})
+and pretty printer modifications (see Section~\ref{extensible-pp}).
+
+\section{Programmable and Advanced Interface Translations}
+d1658 1
+a1658 1
+and terms. Thanks to Richard Boulton, these have been made extensible.
+d1665 17
+a1681 18
+    sig
+       datatype gravity = TOP | APPL | INFIX of int | WEAK | BOTTOM
+       val gravity_geq : gravity -> gravity -> bool
+
+       val extend_pp_type :
+          (({depth:int, gravity:gravity} -> typ -> PP.ppstream -> unit) ->
+           ({depth:int, gravity:gravity} -> typ -> PP.ppstream -> unit)) -> 
+	   unit
+
+       val extend_pp_term :
+          (({boundvars:term list, depth:int, gravity:gravity} ->
+            term -> PP.ppstream -> unit) ->
+           ({boundvars:term list, depth:int, gravity:gravity} ->
+            term -> PP.ppstream -> unit)) -> unit
+
+       val reset_pp_type : unit -> unit
+       val reset_pp_term : unit -> unit
+    end
+d1704 1
+a1704 1
+Its first argument is a pretty-printing function. Let us forget about
+d1711 1
+a1711 1
+If we also ignore the first argument of this function (it represents the
+a1716 1
+
+d1723 2
+a1724 2
+is a record with fields <EM>boundvars</EM>, <EM>depth</EM>, and
+<EM>gravity</EM>. These fields are used to decide how to print the
+d1732 1
+a1732 1
+term, the <EM>scope</EM> in other words. The list is indexed by the de
+a1761 1
+
+d1765 1
+a1765 3
+
+instead of as 
+
+d1770 1
+a1770 1
+is installed. Note that the call to \ml{dest\_cond} fails if the term
+d1774 1
+a1774 1
+\begin{hol} \begin{alltt}
+d1798 1
+a1798 1
+\end{alltt} \end{hol}
+d1800 1
+a1800 1
+Let us bind a test case:
+d1802 2
+a1803 2
+- val tm = (--`APPEND ((n = 0) => [] | [n]) [1;2;3]`--);
+val tm = (--`APPEND ((n = 0) => [] | [n]) [1; 2; 3]`--) : term
+d1807 1
+a1807 1
+Now, we extend the system prettyprinter and test it:
+d1813 1
+a1813 1
+val it = (--`APPEND (\ml{if} (n = 0) \ml{then} [] \ml{else} [n]) [1; 2; 3]`--) : term
+d1819 1
+a1819 1
+val it = (--`APPEND ((n = 0) => [] | [n]) [1; 2; 3]`--) : term
+d1823 120
+a1942 119
+\subsection{Preterms and Preterm Filters}
+
+\index{pretypes|(}
+\index{preterms|(}
+\index{preterm filters|(}
+\label{preterms}
+\label{preterm-filters}
+\label{pretypes}
+The \ML\ datatypes \ml{preterm} and \ml{pretype} 
+represent the parse trees of \HOL\ 
+terms and types. A preterm filter is a function of type \ml{:preterm->preterm}.
+The function \ml{thenf} (reverse function
+composition) can be used to string preterm filters together.
+\begin{session} \begin{alltt}
+- val my_filter = macros my_macros
+                  thenf type_inference
+                  thenf typetable my_types
+                  thenf type_maximization;
+val my_filter = fn : preterm -> preterm
+\end{alltt} \end{session}
+The function
+\begin{boxed} \index{mk_term_parser@@\ml{mk\_term\_parser}|pin} \begin{alltt}
+   val mk_term_parser : (preterm -> preterm) -> term frag list -> term
+\end{alltt} \end{boxed}
+creates a new term parser based on the given sequence of
+preterm transformations.  Similarly the functions
+\begin{boxed} \index{mk_term_parser@@\ml{mk\_term\_parser}|pin} \begin{alltt}
+   val mk_type_parser : (pretype -> pretype) -> term frag list -> typ
+   val mk_preterm_parser : (preterm -> preterm) -> term frag list -> preterm
+   val mk_pretype_parser : (pretype -> pretype) -> term frag list -> pretype
+\end{alltt} \end{boxed}
+make other kinds of parsers.  A term parser suitable for use with
+as {(--`...`--)} style quotation mechanism can be made as follows:
+For example:
+\begin{session} \begin{alltt}
+- fun -- t _ = mk_term_parser (macros my_macros
+                               thenf type_inference
+		               thenf typetable my_types);
+\end{alltt} \end{session}
+The following preterm filters are available in the core \HOL\
+system:
+\begin{boxed} \begin{alltt}
+   val stringtable : stringtable -> preterm -> preterm
+   val macros : macros -> preterm -> preterm
+   val type_inference : preterm -> preterm
+   val type_maximization : preterm -> preterm
+   val typetable : typetable -> preterm -> preterm
+\end{alltt} \end{boxed}
+\WARNING Instances of the filters \ml{type\_maximization} and \ml{typetable}
+should only be used {\em after} the \ml{type\_inference} filter
+has been called.
+
+The definitions of the \ML\ types \ml{pretype} and \ml{preterm}
+are:
+\begin{hol}\index{pretype@@\ml{pretype}!the type}\index{preterm@@\ml{preterm}!the type}\begin{alltt}
+   datatype pretype =
+     Tyvar        of string                        \({\it User Type Variables}\)
+   | Tyapp        of (string * pretype list)       \({\it Type Constructions}\)
+   | Stv          of (string * pretype list)       \({\it System Type Variables}\)
+   | Link         of pretype ref                   \({\it Pointers}\)
+
+   datatype preterm = 
+     Var          of string * pretype              \({\it Variables}\) 
+   | Const        of string * pretype              \({\it Constants}\) 
+   | Comb         of preterm * preterm             \({\it Combinations}\) 
+   | Abs          of preterm * preterm             \({\it Abstractions}\) 
+   | Constrained  of preterm * pretype             \({\it Type constraints}\)
+   | Antiq        of term                          \({\it Antiquotation}\) 
+\end{alltt}\end{hol}
+
+The links in pretypes are used to implement type inference via
+pointer reduction.  Users wishing to experiment with alternative
+type inference schemes should consult the code which implements
+these mechanisms - the type maximization mechanism is a good place
+to begin.
+
+The function:
+\begin{boxed}\index{preterm\_to\_term@@\ml{preterm\_to\_term}|pin}
+\begin{verbatim}
+   preterm_to_term : preterm -> term
+\end{verbatim}\end{boxed}
+
+\noindent invokes the standard \HOL\ typechecker on a preterm and returns the
+resulting typechecked term (or causes the standard error message).\index{preterms|)}
+
+Similarly the function:
+
+\begin{boxed}\index{pretype\_to\_type@@\ml{pretype\_to\_type}|pin}
+\begin{verbatim}
+   pretype_to_type : pretype -> type
+\end{verbatim}\end{boxed}
+
+\noindent converts a pretype to a type if the type described is well
+constructed.
+
+
+\section{*How terms are parsed}
+
+The information in this section is probably too detailed to include in a
+user manual; it is included anyway, for those intrepid users who want to
+know a bit more.  Terms are currently parsed in 3 passes. The
+first pass leaves us with a structure where everything is associated to
+the left, conforming to the fact that application associates to the left
+and is highest in the precedence pecking order. The second pass sorts
+out the precedences of the user-defined infixes and eliminates
+dollar markers off variables and constants. This leaves us in the
+type of preterms.
+
+Type inference is by a variant of
+Milner's algorithm W; unification of types is done by Robinson's
+side-effecting unification algorithm. The declaration of \ml{typ} allows
+two kinds of type variables: user and system. A user-given type variable
+is treated as a type constant during unification: it would be
+frustrating to constrain a term to have a certain type, only to have
+that type change by unification. A system type variable is modifiable by
+unification, but may not persist after the end of parsing.
+
+Type inference is called when mapping from
+preterms to terms, which is the last pass performed.
+@

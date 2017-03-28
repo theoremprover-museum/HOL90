@@ -1,0 +1,116 @@
+head	1.1;
+branch	1.1.1;
+access;
+symbols
+	HOL97:1.1.1.1.0.6
+	bpHOL97:1.1.1.1
+	hol90_9_alpha:1.1.1.1
+	hol90_pre8_for_multiple_compilers:1.1.1.1.0.4
+	hol90_pre8_after_donalds_separate_compilation_changes:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	95.10.16.13.32.11;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.32.11;	author rjb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@\DOC PSTRIP_GOAL_THEN
+
+\TYPE {PSTRIP_GOAL_THEN : (thm_tactic -> tactic)}
+
+\KEYWORDS
+theorem-tactic.
+
+\LIBRARY pair
+
+\SYNOPSIS
+Splits a goal by eliminating one outermost connective, applying the
+given theorem-tactic to the antecedents of implications.
+
+\DESCRIBE
+Given a theorem-tactic {ttac} and a goal {(A,t)}, {PSTRIP_GOAL_THEN} removes one
+outermost occurrence of one of the connectives {!}, {==>}, {~} or {/\} from the
+conclusion of the goal {t}.  If {t} is a universally quantified term, then
+{STRIP_GOAL_THEN} strips off the quantifier.   Note that {PSTRIP_GOAL_THEN}
+will strip off paired universal quantifications.
+{
+      A ?- !p. u
+   ==============  PSTRIP_GOAL_THEN ttac
+    A ?- u[p'/p]
+}
+\noindent where {p'} is a primed variant that contains no variables that
+appear free in the assumptions {A}.  If {t} is a conjunction,
+then {PSTRIP_GOAL_THEN} simply splits
+the conjunction into two subgoals:
+{
+      A ?- v /\ w
+   =================  PSTRIP_GOAL_THEN ttac
+    A ?- v   A ?- w
+}
+\noindent If {t} is an implication {"u ==> v"} and if:
+{
+      A ?- v
+  ===============  ttac (u |- u)
+     A' ?- v'
+}
+\noindent then:
+{
+      A ?- u ==> v
+  ====================  PSTRIP_GOAL_THEN ttac
+        A' ?- v'
+}
+\noindent Finally, a negation {~t} is treated as the implication {t ==> F}.
+
+\FAILURE
+{PSTRIP_GOAL_THEN ttac (A,t)} fails if {t} is not a paired universally
+quantified term, an implication, a negation or a conjunction.  
+Failure also occurs if the application of {ttac} fails,
+after stripping the goal.
+
+\USES
+{PSTRIP_GOAL_THEN} is used when manipulating intermediate results (obtained by
+stripping outer connectives from a goal) directly, rather than as assumptions.
+
+\SEEALSO
+PGEN_TAC, STRIP_GOAL_THEN, FILTER_PSTRIP_THEN, PSTRIP_TAC, FILTER_PSTRIP_TAC.
+
+\ENDDOC
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

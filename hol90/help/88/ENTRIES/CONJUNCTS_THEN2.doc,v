@@ -1,0 +1,101 @@
+head	1.1;
+branch	1.1.1;
+access;
+symbols
+	HOL97:1.1.1.1.0.6
+	bpHOL97:1.1.1.1
+	hol90_9_alpha:1.1.1.1
+	hol90_pre8_for_multiple_compilers:1.1.1.1.0.4
+	hol90_pre8_after_donalds_separate_compilation_changes:1.1.1.1
+	hol90_8_after_merging_Konrad_Elsa:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	95.10.16.13.33.47;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.33.47;	author rjb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@\DOC CONJUNCTS_THEN2
+
+\TYPE {CONJUNCTS_THEN2 : (thm_tactic -> thm_tactic -> thm_tactic)}
+
+\SYNOPSIS
+Applies two theorem-tactics to the corresponding conjuncts of a theorem.
+
+\KEYWORDS
+theorem-tactic, conjunction.
+
+\DESCRIBE
+{CONJUNCTS_THEN2} takes two theorem-tactics, {f1} and {f2}, and a theorem {t}
+whose conclusion must be a conjunction. {CONJUNCTS_THEN2} breaks {t} into two
+new theorems, {t1} and {t2} which are {CONJUNCT1} and {CONJUNCT2} of {t}
+respectively, and then returns the tactic {f1 t1 THEN f2 t2}. Thus
+{
+   CONJUNCTS_THEN2 f1 f2 (A |- l /\ r) =  f1 (A |- l) THEN f2 (A |- r)
+}
+\noindent so if
+{
+   A1 ?- t1                     A2 ?- t2
+  ==========  f1 (A |- l)      ==========  f2 (A |- r)
+   A2 ?- t2                     A3 ?- t3
+}
+\noindent then
+{
+    A1 ?- t1
+   ==========  CONJUNCTS_THEN2 f1 f2 (A |- l /\ r)
+    A3 ?- t3
+}
+\FAILURE
+{CONJUNCTS_THEN f} will fail if applied to a theorem whose conclusion is not a
+conjunction.
+
+\COMMENTS
+The system shows the type as {(thm_tactic -> thm_tactical)}.
+
+\USES
+The construction of complex {tactical}s like {CONJUNCTS_THEN}.
+
+\SEEALSO
+CONJUNCT1, CONJUNCT2, CONJUNCTS, CONJUNCTS_TAC, CONJUNCTS_THEN2,
+STRIP_THM_THEN.
+
+\ENDDOC
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

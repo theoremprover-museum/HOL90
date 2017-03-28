@@ -1,0 +1,161 @@
+head	1.1;
+branch	1.1.1;
+access;
+symbols
+	HOL97:1.1.1.1.4.1.0.2
+	bpHOL97:1.1.1.1.4.1
+	hol90_9_alpha:1.1.1.1.4.1
+	hol90_pre8_for_multiple_compilers:1.1.1.1.0.4
+	hol90_pre8_after_donalds_separate_compilation_changes:1.1.1.1
+	hol90_8_after_merging_Konrad_Elsa:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	95.10.16.13.31.52;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.31.52;	author rjb;	state Exp;
+branches
+	1.1.1.1.4.1;
+next	;
+
+1.1.1.1.4.1
+date	96.08.23.09.46.44;	author rjb;	state Exp;
+branches
+	1.1.1.1.4.1.2.1;
+next	;
+
+1.1.1.1.4.1.2.1
+date	97.07.14.17.34.20;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@signature BND_CONV =
+    sig
+        (* utilities *)
+
+	val SUBS_CONV  : thm -> term -> thm
+
+        (* conversions *)
+
+	val BND_CONV   : conv
+    end
+
+functor Bnd_Conv (S:SYNTAX) : BND_CONV =
+    struct
+
+    open Rsyntax;
+(*
+    load_library{lib=string_lib,theory="-"} (need string_EQ_CONV)
+*)
+
+    val BND_THM1  = theorem "semantics" "BND_THM1"
+    val BND_THM2  = theorem "semantics" "BND_THM2"
+
+    fun SUBS_CONV th t =
+	let val x = genvar(type_of t)
+	    val t1 = mk_eq{lhs=x,rhs=t}
+	    val th1 = DISCH t1 (SUBS [th] (ASSUME t1))
+	in
+	    MP(INST [{redex=x,residue=t}] th1)(REFL t)
+	end  
+
+    fun BND_CONV t =
+	let val [x,n,s,y] = (snd o strip_comb) t
+	in
+	    if x = y 
+		then SPECL [n,x,s] BND_THM1
+	    else let val yx = mk_eq{lhs=y,rhs=x}
+		 in
+		     MP (SPECL [n,x,s,y] BND_THM2)
+		     (EQ_MP (el 4 (CONJUNCTS (SPEC yx EQ_CLAUSES)))
+		      (string_EQ_CONV yx))
+		 end
+	end
+
+    end (* Functor Bnd_Conv() *)
+
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@
+
+
+1.1.1.1.4.1
+log
+@Added semicolon for Poly/ML.
+String_rules structure no longer assumed to be open.
+@
+text
+@d10 1
+a10 1
+    end;
+d40 1
+a40 1
+		      (String_rules.string_EQ_CONV yx))
+@
+
+
+1.1.1.1.4.1.2.1
+log
+@The prog_logic library now loads under CM. The entrypoint is the
+structure prog_logicLib. The removed files are target files of hol_lex and
+hol_yak.
+@
+text
+@d2 2
+a3 1
+sig
+d5 1
+a5 2
+ (* utilities *)
+  val SUBS_CONV  : CoreHol.Thm.thm -> CoreHol.Term.term -> CoreHol.Thm.thm
+d7 4
+a10 3
+ (* conversions *)
+  val BND_CONV   : Abbrev.conv
+end;
+d13 1
+a13 1
+struct
+d15 4
+a18 3
+  open stringLib;
+  open Lib CoreHol;
+  open Term Dsyntax Thm Theory Drule;
+d40 1
+a40 1
+		      (string_EQ_CONV yx))
+@

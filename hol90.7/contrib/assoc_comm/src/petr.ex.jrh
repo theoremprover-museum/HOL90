@@ -1,0 +1,72 @@
+(* From John Harrison. Dies on the last line of the proof :AC_CONV *)
+load_library{lib = hol88_lib, theory = "-"};
+open Old_syntax ;
+open Compat;
+
+load_theory "REAL";
+map add_theory_to_sml ["REALAX","REAL"];
+
+val LAND_CONV = RATOR_CONV o RAND_CONV;
+
+(* Some support code *)
+local
+fun mk_op opr = curry mk_comb o curry mk_comb opr;
+
+val list_mk_op = end_itlist o mk_op;
+
+fun dest_op opr tm =
+  let val (_,[l,r]) = (assert(curry(op=)opr)##I) (strip_comb tm) 
+  in (l,r)
+  end;
+
+fun strip_op opr tm =
+   let val (l,r) = dest_op opr tm 
+   in strip_op opr l@strip_op opr r
+   end
+   handle _ => [tm];
+
+
+exception AC_JUGGLE_CONV_ERR
+in
+fun AC_JUGGLE_CONV(assoc,sym) =
+  let val opp = (fst o strip_comb o Dsyntax.lhs 
+                 o snd o strip_forall o concl) sym 
+  in fn listop => fn tm =>
+       if (fst(strip_comb tm) = opp)
+       then EQT_ELIM(AC_CONV(assoc,sym)
+                         (mk_eq(tm,list_mk_op opp (listop (strip_op opp tm)))))
+       else raise AC_JUGGLE_CONV_ERR
+  end
+
+fun AC_PARTITION_CONV(assoc,sym) pred =
+  AC_JUGGLE_CONV(assoc,sym) (uncurry append o partition pred)
+
+fun AC_SORT_CONV(assoc,sym) spred = AC_JUGGLE_CONV(assoc,sym) (sort spred)
+
+fun AC_CANON_CONV(assoc,sym) = AC_SORT_CONV(assoc,sym) Term.term_lt
+end;
+
+
+
+val LAGRANGE = prove_thm("LAGRANGE",
+--`(x1 pow 2 real_add x2 pow 2 real_add x3 pow 2 real_add x4 pow 2) real_mul
+   (y1 pow 2 real_add y2 pow 2 real_add y3 pow 2 real_add y4 pow 2) =
+   (((x1 real_mul y1 real_sub x2 real_mul y2) real_sub
+     x3 real_mul y3) real_sub x4 real_mul y4) pow 2 
+     real_add (((x1 real_mul y2 real_add x2 real_mul y1) real_add
+                x3 real_mul y4) real_sub x4 real_mul y3) pow 2 
+     real_add (((x1 real_mul y3 real_sub x2 real_mul y4) real_add
+                x3 real_mul y1) real_add x4 real_mul y2) pow 2
+     real_add (((x1 real_mul y4 real_add x2 real_mul y3) real_sub
+                x3 real_mul y2) real_add x4 real_mul y1) pow 2`--,
+  ONCE_REWRITE_TAC[GSYM REAL_SUB_0] THEN
+  REWRITE_TAC[POW_2, REAL_LDISTRIB, real_sub, REAL_RDISTRIB,
+    REAL_NEG_ADD, REAL_NEGNEG,
+    GSYM REAL_NEG_LMUL, GSYM REAL_NEG_RMUL,
+    GSYM REAL_MUL_ASSOC, GSYM REAL_ADD_ASSOC] THEN
+  CONV_TAC(LAND_CONV(AC_PARTITION_CONV(REAL_ADD_ASSOC,REAL_ADD_SYM)
+    (op not o curry(op=)(--`--`--) o rator))) THEN
+  REWRITE_TAC[REAL_ADD_ASSOC, REWRITE_RULE[real_sub] REAL_EQ_SUB_RADD] THEN
+  REWRITE_TAC[REAL_ADD_LID, GSYM REAL_ADD_ASSOC] THEN
+  CONV_TAC(ONCE_DEPTH_CONV(AC_CANON_CONV(REAL_MUL_ASSOC,REAL_MUL_SYM))) THEN
+  CONV_TAC(AC_CONV(REAL_ADD_ASSOC,REAL_ADD_SYM)));

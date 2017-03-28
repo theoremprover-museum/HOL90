@@ -1,0 +1,51 @@
+head	1.1;
+access;
+symbols
+	HOL97:1.1.0.2;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	97.07.15.12.51.07;	author kxs;	state dead;
+branches
+	1.1.2.1;
+next	;
+
+1.1.2.1
+date	97.07.15.12.51.08;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@file loaded.sml was initially added on branch HOL97.
+@
+text
+@@
+
+
+1.1.2.1
+log
+@The string library now loads under CM. The entrypoint is the structure
+"stringLib";
+@
+text
+@a0 11
+(*---------------------------------------------------------------------------
+ * This ensures that the "string" theory is present before the other 
+ * structures in this library are evaluated.
+ *---------------------------------------------------------------------------*)
+structure stringTheoryLoaded =
+struct
+
+  val _ = Lib.try (CoreHol.Theory.loadLibThry "string") "ascii"
+  val _ = Lib.try (CoreHol.Theory.loadLibThry "string") "string"
+
+end;
+@

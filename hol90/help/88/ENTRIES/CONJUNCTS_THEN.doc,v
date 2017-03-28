@@ -1,0 +1,111 @@
+head	1.1;
+branch	1.1.1;
+access;
+symbols
+	HOL97:1.1.1.1.0.6
+	bpHOL97:1.1.1.1
+	hol90_9_alpha:1.1.1.1
+	hol90_pre8_for_multiple_compilers:1.1.1.1.0.4
+	hol90_pre8_after_donalds_separate_compilation_changes:1.1.1.1
+	hol90_8_after_merging_Konrad_Elsa:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	95.10.16.13.33.46;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.33.46;	author rjb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@\DOC CONJUNCTS_THEN
+
+\TYPE {CONJUNCTS_THEN : thm_tactical}
+
+\SYNOPSIS
+Applies a theorem-tactic to each conjunct of a theorem.
+
+\KEYWORDS
+theorem-tactic, conjunction.
+
+\DESCRIBE
+{CONJUNCTS_THEN} takes a theorem-tactic {f}, and a theorem {t} whose conclusion
+must be a conjunction. {CONJUNCTS_THEN} breaks {t} into two new theorems, {t1}
+and {t2} which are {CONJUNCT1} and {CONJUNCT2} of {t} respectively, and then
+returns a new tactic: {f t1 THEN f t2}. That is,
+{
+   CONJUNCTS_THEN f (A |- l /\ r) =  f (A |- l) THEN f (A |- r)
+}
+\noindent so if
+{
+   A1 ?- t1                    A2 ?- t2
+  ==========  f (A |- l)      ==========  f (A |- r)
+   A2 ?- t2                    A3 ?- t3
+}
+\noindent then
+{
+    A1 ?- t1
+   ==========  CONJUNCTS_THEN f (A |- l /\ r)
+    A3 ?- t3
+}
+\FAILURE
+{CONJUNCTS_THEN f} will fail if applied to a theorem whose conclusion is not a
+conjunction.
+
+\COMMENTS
+{CONJUNCTS_THEN f (A |- u1 /\ ... /\ un)} results in the tactic:
+{
+   f (A |- u1) THEN f (A |- u2 /\ ... /\ un)
+}
+\noindent Unfortunately, it is more likely that the user had wanted the tactic:
+{
+   f (A |- u1) THEN ... THEN f(A |- un)
+}
+\noindent Such a tactic could be defined as follows:
+{
+   let CONJUNCTS_THENL (f:thm_tactic) thm =
+         itlist $THEN (map f (CONJUNCTS thm)) ALL_TAC;;
+}
+\noindent or by using {REPEAT_TCL}.
+
+\SEEALSO
+CONJUNCT1, CONJUNCT2, CONJUNCTS, CONJUNCTS_TAC, CONJUNCTS_THEN2,
+STRIP_THM_THEN.
+
+\ENDDOC
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

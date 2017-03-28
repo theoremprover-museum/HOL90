@@ -1,0 +1,2 @@
+Decl 7
+qf%Join.f-sqsLex.v$LEXER.;-;sParserData.v$PARSER_DATA.;-;sLrParser.v$LR_PARSER.;-;rLex.ParserData.LrParser.;;;ss<resultStr>.sqsToken.vParserData.Token.;-;sStream.vLrParser.Stream.;-;rLex.Token.ParserData.LrParser.;;+v$PARSER.;;-;f%JoinWithArg.f-sqsLex.v$ARG_LEXER.;-;sParserData.v$PARSER_DATA.;-;sLrParser.v$LR_PARSER.;-;rLex.ParserData.LrParser.;;;ss<resultStr>.sqsToken.vParserData.Token.;-;sStream.vLrParser.Stream.;-;rLex.Token.ParserData.LrParser.;;+v$ARG_PARSER.;;-;;

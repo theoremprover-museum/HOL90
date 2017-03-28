@@ -1,0 +1,145 @@
+head	1.1;
+access;
+symbols
+	HOL97:1.1.2.2.0.2
+	bpHOL97:1.1.2.2
+	hol90_9_alpha:1.1.2.2
+	TFL_1:1.1.2.1
+	hol90_pre8_for_multiple_compilers:1.1.0.2;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	96.06.29.15.11.20;	author rjb;	state dead;
+branches
+	1.1.2.1;
+next	;
+
+1.1.2.1
+date	96.06.29.15.11.21;	author rjb;	state Exp;
+branches;
+next	1.1.2.2;
+
+1.1.2.2
+date	96.08.05.15.42.06;	author rjb;	state Exp;
+branches
+	1.1.2.2.2.1;
+next	;
+
+1.1.2.2.2.1
+date	97.07.11.19.16.25;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@file sys.sml was initially added on branch hol90_pre8_for_multiple_compilers.
+@
+text
+@@
+
+
+1.1.2.1
+log
+@TFL version 1 for HOL: A well-founded recursive function definition package.
+@
+text
+@a0 20
+(* Compile the TFL system *)
+
+
+(* Establish a base of common and/or helpful functions. *)
+use "utils.sig";
+use "utils.sml";  (* Same for both implementations *)
+
+(* Get the specifications - these are independent of any system *)
+use "usyntax.sig";
+use "rules.sig";
+use "thry.sig";
+use "thms.sig";
+use "tfl.sig";
+
+(*----------------------------------------------------------------------------
+ * Load the TFL functor - this is defined totally in terms of the 
+ * above interfaces.
+ *---------------------------------------------------------------------------*)
+
+use "tfl.sml";
+@
+
+
+1.1.2.2
+log
+@Updated to TFL release 4.
+@
+text
+@d6 1
+a6 1
+use "utils.sml";
+@
+
+
+1.1.2.2.2.1
+log
+@Small changes to make CM-friendly.
+@
+text
+@d1 1
+a1 1
+(* Build the HOL version of Tfl *)
+a2 3
+(*---------------------------------------------------------------------------
+ *          Build TFL functor 
+ *---------------------------------------------------------------------------*)
+d4 3
+a6 3
+(* Hiding of constructors *)
+use"mask.sig";
+use"mask.sml";
+d8 1
+a8 2
+(* The specifications - these are independent of any system *)
+use "utils.sig";
+d16 1
+a16 1
+ * Compile the TFL functor - this is defined totally in terms of the 
+a20 32
+
+(*----------------------------------------------------------------------------
+ *      Supply implementations
+ *---------------------------------------------------------------------------*)
+use "utils.sml";
+use "usyntax.sml";
+use "rw.sig"; use "rw.sml";
+use "thms.sml";
+use"rules.sml";
+use"hol_datatype.sig"; use"hol_datatype.sml";
+use "thry.sml";
+
+(*---------------------------------------------------------------------------
+ *      Link the system and specialize for HOL 
+ *---------------------------------------------------------------------------*)
+
+val _ = load_library_in_place arith_lib;
+use"Q.sig"; use"Q.sml";
+use"post.sml";
+
+(*---------------------------------------------------------------------------
+ *      Dump the system
+ *---------------------------------------------------------------------------*)
+
+val _ = PP.install_pp ["RW","simpls"] "" RW.pp_simpls;
+open HOL_Tfl;
+open RW;
+val use = Lib.interpret;
+infix 4 |->;
+val Term = Parse.term_parser;
+val Type = Parse.type_parser;
+save_hol"HEAP";
+@

@@ -1,0 +1,117 @@
+<TITLE>Theory: string</TITLE>
+<H1>Theory: string</H1>
+<H1>Parents</H1>
+    <UL>
+    <LI><A HREF = "ascii.html"><STRONG>ascii</STRONG></A>
+    </UL>
+
+
+<HR>
+<H1>Type constants</H1>
+    <UL>
+    <LI><STRONG>string</STRONG>(Arity = 0)
+    </UL>
+
+
+<HR>
+<H1>Term constants</H1>
+    <UL>
+    <LI><STRONG>REP_string</STRONG><EM>:string -> (one + ascii) ltree</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>ABS_string</STRONG><EM>:(one + ascii) ltree -> string</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>""</STRONG><EM>:string</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>STRING</STRONG><EM>:ascii -> string -> string</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    </UL>
+
+
+<HR>
+<H1>Axioms</H1>
+<DL>
+
+</DL>
+
+
+<HR>
+<H1>Definitions</H1>
+<DL>
+<DT><STRONG>string_TY_DEF</STRONG>
+<DD>
+<PRE>
+|- ?rep.
+     TYPE_DEFINITION
+       (TRP
+         (\v tl.
+           (v = INL one) /\ (LENGTH tl = 0) \/
+           (?a. v = INR a) /\ (LENGTH tl = SUC 0)))
+       rep
+</PRE>
+
+<DT><STRONG>string_ISO_DEF</STRONG>
+<DD>
+<PRE>
+|- (!a. ABS_string (REP_string a) = a) /\
+   (!r.
+     TRP
+       (\v tl.
+         (v = INL one) /\ (LENGTH tl = 0) \/
+         (?a. v = INR a) /\ (LENGTH tl = SUC 0))
+       r =
+     REP_string (ABS_string r) =
+     r)
+</PRE>
+
+<DT><STRONG>eps_DEF</STRONG>
+<DD>
+<PRE>
+|- "" = ABS_string (Node (INL one) [])
+</PRE>
+
+<DT><STRONG>STRING_DEF</STRONG>
+<DD>
+<PRE>
+|- !a s. STRING a s = ABS_string (Node (INR a) [REP_string s])
+</PRE>
+
+</DL>
+
+
+<HR>
+<H1>Theorems</H1>
+<DL>
+<DT><STRONG>string_Axiom</STRONG>
+<DD>
+<PRE>
+|- !e f. ?!fn. (fn "" = e) /\ (!a s. fn (STRING a s) = f (fn s) a s)
+</PRE>
+
+<DT><STRONG>string_Induct</STRONG>
+<DD>
+<PRE>
+|- !P. P "" /\ (!s. P s ==> (!a. P (STRING a s))) ==> (!s. P s)
+</PRE>
+
+<DT><STRONG>string_CASES</STRONG>
+<DD>
+<PRE>
+|- !s. (s = "") \/ (?s' a. s = STRING a s')
+</PRE>
+
+<DT><STRONG>STRING_11</STRONG>
+<DD>
+<PRE>
+|- !a s a' s'. (STRING a s = STRING a' s') = (a = a') /\ (s = s')
+</PRE>
+
+<DT><STRONG>NOT_STRING_EMPTY</STRONG>
+<DD>
+<PRE>
+|- !s a. ~("" = STRING a s)
+</PRE>
+
+</DL>
+
+
+<HR>

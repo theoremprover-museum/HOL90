@@ -1,0 +1,557 @@
+(* ========================================================================= *)
+(* Version of the MESON procedure a la PTTP. Various search options.         *)
+(* ========================================================================= *)
+
+
+structure Meson : Meson_sig =
+struct
+
+
+    open LiteLib FOL
+infix 5 |->
+fun ERR x = STRUCT_ERR "Meson" x;
+fun WRAP_ERR x = STRUCT_WRAP "Meson" x;
+
+val _ = say "Adding MESON decision procedure...";
+	
+val depth = ref false;;         (* Use depth not inference bound.            *)
+
+val prefine = ref true;;        (* Plaisted's "positive refinement".         *)
+
+val precheck = ref false;;      (* Precheck ancestors for repetitions.       *)
+
+val dcutin = ref 1;;            (* Min size for d-and-c optimization cut-in. *)
+
+val skew = ref 3;;              (* Skew proof bias (one side is <= n / skew) *)
+
+val inferences = ref 0;
+    
+val cache = ref true;
+
+(* ------------------------------------------------------------------------- *)
+(* Cacheing continuations.                                                   *)
+(* ------------------------------------------------------------------------- *)
+
+fun cacheconts f =
+  if !cache then
+      let val memory = ref [] 
+      in fn input as (gg,(insts,offset,size)) =>
+	  if exists (fn (_,(insts',_,size')) =>
+		     insts = insts' andalso ((size:int) <= size' 
+					     orelse (!depth)))
+	      (!memory)
+	      then failwith "meson: cachecont"
+	  else (memory := input::(!memory); f input)
+      end
+  else f;;
+
+
+(* ------------------------------------------------------------------------- *)
+(* Check ancestor list for repetition.                                       *)
+(* ------------------------------------------------------------------------- *)
+
+fun checkan insts (p,a) ancestors =
+  if !precheck then
+      let val p' = ~(p :int)
+	  val t' = (p',a) 
+      in let val ours = assoc p' ancestors
+	 in if exists (fn u => fol_atom_eq insts t' (snd(fst u))) ours
+		then failwith "meson: checkan"
+	    else ancestors
+	 end
+         handle Subscript => ancestors
+      end
+  else ancestors;;
+
+(* ------------------------------------------------------------------------- *)
+(* Insert new goal's negation in ancestor clause, given refinement.          *)
+(* ------------------------------------------------------------------------- *)
+
+fun insertan e insts (p,a) ancestors =
+  let val p' = ~(p:int)
+      val t' = (p',a)
+      val (ourancp,otheranc) =
+         remove (fn (pr,_) => pr = p') ancestors
+         handle HOL_ERR _ => ((p',[]),ancestors)
+      val ouranc = snd ourancp
+  in if exists (fn u => fol_atom_eq insts t' (snd(fst u))) ouranc
+	 then failwith "insertan: loop"
+     else (p',(([],t'),(0,e))::ouranc)::otheranc
+  end;;
+
+(* ------------------------------------------------------------------------- *)
+(* Recording MESON proof tree.                                               *)
+(* ------------------------------------------------------------------------- *)
+
+datatype 'a fol_goal =
+  Subgoal of fol_atom * 'a fol_goal list * (int * 'a) *
+             int * (fol_term * int)list;;
+
+(* ------------------------------------------------------------------------- *)
+(* Perform basic MESON expansion.                                            *)
+(* ------------------------------------------------------------------------- *)
+
+fun meson_single_expand rule ((g,ancestors),(insts,offset,size)) =
+  let val ((hyps,conc),tag) = rule
+      val allins = rev_itlist2 (fol_unify_bump offset) (snd g) (snd conc) insts
+      val (locin,globin) = qpartition (fn (_,v) => offset <= v) insts allins
+      fun mk_ihyp h =
+	  let val h' = fol_inst_bump offset locin h
+	  in (h',checkan insts h' ancestors)
+	  end
+      val newhyps =  map mk_ihyp hyps
+  in (inferences := !inferences + 1;
+      (newhyps,(globin,offset+offinc,size-length hyps)))
+  end;
+   
+       
+
+(* ------------------------------------------------------------------------- *)
+(* Perform first basic expansion which allows continuation call.             *)
+(* ------------------------------------------------------------------------- *)
+
+fun meson_expand_cont rules state cont =
+  tryfind (fn r => cont (snd r) (meson_single_expand r state)) rules;;
+
+(* ------------------------------------------------------------------------- *)
+(* Try expansion and continuation call with either ancestor or initial rule. *)
+(* ------------------------------------------------------------------------- *)
+exception Cut;
+
+fun meson_expand e rules ((g,ancestors),(tup as (insts,offset,size))) cont =
+  let val pr = fst g
+      val newancestors = insertan e insts g ancestors
+      val newstate = ((g,newancestors),tup)
+  in (if !prefine andalso pr > 0 then failwith "meson: meson_expand" else
+      let val arules = assoc pr ancestors
+      in  meson_expand_cont arules newstate cont
+      end)
+      handle Cut => failwith "meson: meson_expand"
+	   | _ => (* HOL_ERR or Subscript *)
+		 (let val crules =
+		      filter (fn ((h,_),_) => length h <= size) (assoc pr rules)
+		  in  meson_expand_cont crules newstate cont
+		  end
+		      handle Cut => failwith "meson: meson_expand"
+			   | HOL_ERR _ => failwith "meson: meson_expand")
+   end;
+   
+
+(* ------------------------------------------------------------------------- *)
+(* Simple Prolog engine which organizes search and backtracking.             *)
+(* ------------------------------------------------------------------------- *)
+fun chop_list n l =
+  if n = 0 then ([],l) else
+  let val (m,l') = chop_list (n-1) (tl l) in ((hd l)::m,l') end
+  handle _ => failwith "chop_list";
+
+fun expand_goal e rules =
+    let fun expand_goal depth (state as ((g,_),(insts,offset,size))) cont =
+	if depth < 0 then failwith "expand_goal: too deep" else
+	    meson_expand e rules state
+	    (fn apprule => fn (newstate as (_,(pinsts,_,_))) =>
+	     expand_goals (depth-1) newstate
+	     (cacheconts
+	      (fn (gs,(newinsts,newoffset,newsize)) =>
+	       let val (locin,globin) = 
+		   qpartition (fn (_,v) => offset <= v) pinsts newinsts
+		   val g' = Subgoal(g,gs,apprule,offset,locin)
+	       in 
+		   if globin = insts andalso null gs then
+		       (cont(g',(globin,newoffset,size))
+			handle HOL_ERR _ => raise Cut)
+		   else
+		       (cont(g',(globin,newoffset,newsize))
+			handle Cut => failwith "expand_goal"
+			     | HOL_ERR _ => failwith "expand_goal")
+	       end)))
+	and expand_goals depth (gl,tup as (insts,offset,size)) cont =
+	    case gl of
+		[] => cont ([],tup)
+	      | [g] => expand_goal depth (g,tup) (fn (g',stup) => cont([g'],stup))
+	      | gl => if size >= !dcutin then
+		    let val lsize = size div (!skew)
+			val rsize = size - lsize
+			val (lgoals,rgoals) = chop_list (length gl div 2) gl
+		    in expand_goals depth (lgoals,(insts,offset,lsize))
+			(cacheconts
+			 (fn (lg',(i,off,n)) =>
+			  expand_goals depth (rgoals,(i,off,n + rsize))
+			  (cacheconts(fn (rg',ztup) => cont (lg'@rg',ztup)))))
+			handle HOL_ERR _ =>
+			    expand_goals depth (rgoals,(insts,offset,lsize))
+			    (cacheconts
+			     (fn (rg',(i,off,n)) =>
+			      expand_goals depth (lgoals,(i,off,n + rsize))
+			      (cacheconts
+			       (fn (lg',(ztup as (_,_,fsize))) =>
+				if n + rsize <= lsize + fsize
+				    then failwith "meson: repetition of demigoal pair"
+				else cont (lg'@rg',ztup)))))
+		    end
+		      else
+			  let val (g::gs) = gl
+			  in expand_goal depth (g,tup)
+			      (cacheconts
+			       (fn (g',stup) =>
+				expand_goals depth (gs,stup)
+				(cacheconts(fn (gs',ftup) => cont(g'::gs',ftup)))))
+			  end
+    in fn g => fn maxdep => fn maxinf => fn cont =>
+	expand_goal maxdep (g,([],2 * offinc,maxinf)) cont
+	handle e => WRAP_ERR("expand_goal",e)
+    end;;
+
+(* ------------------------------------------------------------------------- *)
+(* With iterative deepening of inferences or depth.                          *)
+(*                                                                           *)
+(* NB: If multiple solutions are required, simply give a continuation which  *)
+(* stores putative solutions then fails; that will initiate backtracking!    *)
+(* ------------------------------------------------------------------------- *)
+
+fun solve_goal e rules incdepth min max incsize =
+    let fun solve n g =
+	if n > max then failwith "solve_goal: Too deep"
+	else
+	    (say ((int_to_string (!inferences))^" inferences so far. "^
+		 "Searching with maximum size "^(int_to_string n)^".\n");
+	    let val gi =
+		if incdepth then expand_goal e rules g n 100000 (fn x => x)
+		else expand_goal e rules g 100000 n (fn x => x)
+	    in  (say ("Goal solved with "^(int_to_string (!inferences))^
+		      " inferences.\n");
+		gi)
+	    end)
+	handle HOL_ERR _ => solve (n + incsize) g
+    in fn g => solve min (g,[])
+	handle e => WRAP_ERR("solve_goal",e)
+    end;;
+
+fun rule_eq ((fol1,(i1,tag1)),(fol2,(i2,tag2))) = 
+    (fol1 = fol2) andalso (i1 = i2) andalso (tag1 = tag2);
+
+
+fun combine_rules rawrules =
+    let val rawrules' = itlist (op_union rule_eq) rawrules []
+	val prs = mk_set (map (fst o snd o fst) rawrules')
+	val prules =
+	    map (fn t => (t,filter (fn x => t = fst (snd (fst x))) rawrules')) prs
+	val srules = sort (fn (p,_) => fn (q:int,_) => abs(p) <= abs(q)) prules
+    in srules
+    end;
+
+(* ------------------------------------------------------------------------- *)
+(* Optimize a set of clauses (changing literal order complicates HOL stuff). *)
+(* ------------------------------------------------------------------------- *)
+
+fun optimize_rules x =
+  let fun optimize_clause_order cls =
+	  sort (fn ((l1,_),_) => fn ((l2,_),_) => length l1 <= length l2) cls
+  in map (I ## optimize_clause_order) x
+  end;;
+
+
+(*==========================================================================
+ * LIFT MESON TO HOL.
+ *   Nothing above this depends on HOL.
+ *=========================================================================*)
+
+(* ------------------------------------------------------------------------- *)
+(* Creation of tagged contrapositives from a HOL clause.                     *)
+(* This includes any possible support clauses (1 = falsity).                 *)
+(* The rules are partitioned into association lists.                         *)
+(* ------------------------------------------------------------------------- *)
+
+    open FOL_HOL AC Equal Canon;
+    open Theorems Resolve Ho_rewrite Ho_match Psyntax;
+infix THENC THENQC
+
+val fol_of_hol_clauses =
+  let fun mk_negated (p:int,a) = (~p,a)
+      fun mk_contraposes n th used unused sofar =
+	  case unused of
+	      [] => sofar
+	    | h::t => 
+		  let val new = ((map mk_negated (used @ t),h),(n,th))
+		  in  mk_contraposes (n + 1) th (used@[h]) t (new::sofar)
+		  end
+      fun fol_of_hol_clause th =
+	  let val lconsts = free_varsl (hyp th)
+	      val hlits = strip_disj (concl th)
+	      val flits = map (fol_of_literal [] lconsts) hlits
+	      val basics = mk_contraposes 0 th [] flits []
+	  in if all (fn (p,_) => p < 0) flits then
+	      ((map mk_negated flits,(1,[])),(~1,th))::basics
+	     else basics
+	  end
+  in fn thms =>
+      itlist (op_union rule_eq o fol_of_hol_clause) thms []
+      handle e => WRAP_ERR("fol_of_hol_clauses",e)
+  end;;
+
+
+(* ------------------------------------------------------------------------- *)
+(* Create a HOL contrapositive on demand, with a cache.                      *)
+(* ------------------------------------------------------------------------- *)
+
+val (clear_contrapos_cache,make_hol_contrapos) =
+    let val DISJ_AC = AC(DISJ_ASSOC,DISJ_SYM)
+	and imp_CONV = REWR_CONV(TAUT (--`a \/ b = ~b ==> a`--))
+	and push_CONV =
+	    GEN_REWRITE_CONV TOP_DEPTH_CONV
+	    [TAUT (--`~(a \/ b) = ~a /\ ~b`--), TAUT (--`~(~a) = a`--)]
+	and pull_CONV = GEN_REWRITE_CONV DEPTH_CONV
+	    [TAUT (--`~a \/ ~b = ~(a /\ b)`--)]
+	and imf_CONV = REWR_CONV(TAUT (--`~p = p ==> F`--))
+	val memory = ref []
+	fun clear_contrapos_cache() = memory := []
+	fun make_hol_contrapos (n,th) =
+	    let val tm = concl th
+		val key = (n,tm)
+	    in assoc key (!memory) handle Subscript =>
+		if n < 0 then
+		    CONV_RULE (pull_CONV THENC imf_CONV) th
+		else
+		    let val djs = strip_disj tm
+			val acth =
+			    if n = 0 then th else
+				let val (ldjs,rdjs) = chop_list n djs
+				    val ndjs = (hd rdjs)::(ldjs@(tl rdjs))
+				in EQ_MP (DISJ_AC(mk_eq(tm,list_mk_disj ndjs))) th
+				end
+			val fth =
+			    if length djs = 1 then acth
+			    else CONV_RULE (imp_CONV THENC push_CONV) acth
+		    in (memory := (key,fth)::(!memory); fth)
+		    end
+	    end
+	handle e => WRAP_ERR("make_hol_contrapos",e)
+    in (clear_contrapos_cache,make_hol_contrapos)
+    end
+
+(* ------------------------------------------------------------------------- *)
+(* Translate back the saved proof into HOL.                                  *)
+(* ------------------------------------------------------------------------- *)
+
+val (MTH_args,meson_to_hol) =
+    let 
+	val MTH_args = ref NONE;
+	fun bump_hol_thm offset th =
+	let val fvs = subtract (free_vars(concl th)) (free_varsl(hyp th))
+	in INST (map (fn v => (v |-> hol_of_var(fol_of_var v + offset))) fvs) th
+	end
+	fun hol_negate tm =
+	    dest_neg tm handle HOL_ERR _ => mk_neg tm
+	fun merge_inst (t,x) current =
+	    (fol_subst current t,x)::current
+	val finish_RULE =
+	    GEN_REWRITE_RULE I
+	    [TAUT (--`(~p ==> p) = p`--), TAUT (--`(p ==> ~p) = ~p`--)]
+	fun meson_to_hol insts (x as Subgoal(g,gs,(n,th),offset,locin)) =
+	    let val _ = (MTH_args := SOME (insts, x)) 
+		val newins = itlist merge_inst locin insts
+		val g' = fol_inst newins g
+		val hol_g = hol_of_literal g'
+		val ths = map (meson_to_hol newins) gs
+		val hth =
+		    if th = TRUTH then ASSUME hol_g else
+			let val cth = make_hol_contrapos(n,th)
+			in if null ths then cth 
+			   else MATCH_MP cth (end_itlist CONJ ths)
+			end
+		val ith = PART_MATCH I hth hol_g handle e => WRAP_ERR("PART_MATCH",e)
+	    in 
+		finish_RULE (DISCH (hol_negate(concl ith)) ith)
+	    end
+	handle e => WRAP_ERR("meson_to_hol",e)
+    in (MTH_args,meson_to_hol)
+    end;
+
+(* ------------------------------------------------------------------------- 
+ * HOL MESON procedure.                                                      
+ *                                                                           
+ * Obs! We try all the support clauses in each iterative deepening  run.     
+ *                                                                           
+ * This makes sure we get the shortest proof, but it can increase the run    
+ * time if there is a proof based on the first support clause with similar   
+ * size. It would be easy to separate out the support-clause trying (and     
+ * it would save a little time in the assocs to take it out of the main      
+ * rules too).                                                               
+ * ------------------------------------------------------------------------- *)
+
+
+
+(* ------------------------------------------------------------------------- 
+ * Create equality axioms for all the function and predicate symbols in      
+ * a HOL term. Not very efficient (but then neither is throwing them into    
+ * automated proof search!                                                   
+ * ------------------------------------------------------------------------- *)
+
+val create_equality_axioms =
+    let val eq_thms = map (CONV_RULE (NNF_CONV NO_CONV true) o SPEC_ALL)
+	[EQ_REFL, EQ_SYM, EQ_TRANS]
+	val imp_elim_CONV = REWR_CONV (TAUT (--`(a ==> b) = ~a \/ b`--))
+	val eq_elim_RULE = MATCH_MP(TAUT (--`(a = b) ==> b \/ ~a`--))
+	val veq_tm = rator(rator(concl(hd eq_thms)))
+	fun create_equivalence_axioms eq =
+	    let val tyins = match_type (type_of veq_tm) (type_of eq)
+	    in map (INST_TYPE tyins) eq_thms
+	    end
+	fun tm_consts tm acc =
+	    let val (f,args) = strip_comb tm
+	    in if args = [] then acc
+	       else itlist tm_consts args (insert f acc)
+	    end
+	fun fm_consts tm (acc as (preds,funs)) =
+	    fm_consts(snd(dest_forall tm)) acc 
+	    handle HOL_ERR _ =>
+	    fm_consts(snd(dest_exists tm)) acc 
+	    handle HOL_ERR _ =>
+	    let val (l,r) = dest_conj tm 
+	    in fm_consts l (fm_consts r acc)
+	    end
+	    handle HOL_ERR _ => 
+	    let val (l,r) = dest_disj tm 
+	    in fm_consts l (fm_consts r acc)
+	    end
+	    handle HOL_ERR _ =>
+	    let val (l,r) = dest_imp tm 
+	    in fm_consts l (fm_consts r acc)
+	    end
+	    handle HOL_ERR _ =>
+	    fm_consts (dest_neg tm) acc 
+	    handle HOL_ERR _ =>
+	    let val (l,r) = dest_eq tm in
+		if type_of l = bool_ty
+		    then fm_consts r (fm_consts l acc)
+		else failwith "meson: atomic equality"
+	    end
+	    handle HOL_ERR _ =>
+	    let val (pred,args) = strip_comb tm
+	    in if args = [] then acc 
+	       else
+		   (insert pred preds,itlist tm_consts args funs)
+	    end
+	    
+    fun create_congruence_axiom pflag tm =
+	let val (atys,rty) = splitlist dest_fun_ty (type_of tm)
+	    val largs = map genvar atys
+	    val rargs = map genvar atys
+	    val th1 = rev_itlist (C (curry MK_COMB)) 
+		(map (ASSUME o mk_eq) (zip largs rargs)) (REFL tm)
+	    val th2 = if pflag then eq_elim_RULE th1 else th1
+	in 
+	    itlist (fn e => fn th => CONV_RULE imp_elim_CONV (DISCH e th)) (hyp th2) th2
+	end
+    in fn tms => 
+	let val (preds,funs) = itlist fm_consts tms ([],[])
+	    val (eqs,noneqs) = partition
+		(fn t => is_const t andalso fst(dest_const t) = "=") preds
+	in if eqs = [] then [] else
+	    let val pcongs = map (create_congruence_axiom true) noneqs
+		and fcongs = map (create_congruence_axiom false) funs
+		and equivs = itlist (union o create_equivalence_axioms) eqs []
+	    in equivs@pcongs@fcongs
+	    end
+	end
+    end;;
+
+(* ------------------------------------------------------------------------- 
+ * Meson Rule Sets etc.
+ *   - Have to put theorems into CNF clausal form before use.
+ * ------------------------------------------------------------------------- *)
+
+type 'a rule = (fol_atom list * fol_atom) * (int * 'a);
+type  mset = thm rule list;
+
+val prepare_thms =
+  let fun split_thms ths dun =
+      case ths of
+	  [] => dun
+	| (th::thl) =>
+	      let val tm = concl th 
+	      in split_thms (snd(SPEC_VAR th)::thl) dun
+		  handle HOL_ERR _ =>
+		      split_thms ((CONJUNCT1 th)::(CONJUNCT2 th)::thl) dun
+		      handle HOL_ERR _ =>
+			  let val th' = CONV_RULE CNF_CONV th
+			  in if th = th' then split_thms thl (th::dun)
+			     else split_thms (th'::thl) dun
+			  end
+	      end
+      val nnf_rule = 
+	  CONV_RULE (NNF_SKOLEM_CONV (TOP_DEPTH_QCONV BETA_CONV THENQC UNLAMB_CONV) true
+		     THENC FOL_CONV)
+  in fn thms => split_thms (map nnf_rule thms) []
+  end;;
+fun mk_mset ths =  
+    let val ths' = prepare_thms ths @ create_equality_axioms (map concl ths)
+    in fol_of_hol_clauses ths'
+    end;
+
+	  
+
+(* ------------------------------------------------------------------------- *)
+(* Version of MESON which throws in equality axioms.                         *)
+(* ------------------------------------------------------------------------- *)
+
+val SMR_args = ref NONE : (mset list * thm list) option ref;
+fun SIMPLE_MESON_REFUTE min max inc (msets:mset list) ths =
+  (SMR_args := SOME (msets,ths);
+   clear_contrapos_cache();
+   inferences := 0;
+   let val old_dcutin = !dcutin
+   in (if !depth then dcutin := 100001 else ();
+       let val rules = optimize_rules(combine_rules(mk_mset ths::msets))
+	   val (proof,(insts,_,_)) = 
+	       solve_goal TRUTH rules (!depth) min max inc (1,[])
+       in (dcutin := old_dcutin;  meson_to_hol insts proof)
+       end)
+   end);;
+	   
+fun GEN_MESON min max inc msets = (* time *)
+  (fn tm =>
+    ((* reset_vars(); reset_consts(); *)
+    let val (avs,t) = strip_forall tm
+	val th = CNF_REFUTE (TOP_DEPTH_QCONV BETA_CONV THENQC UNLAMB_CONV)
+	    FOL_CONV
+	    (SIMPLE_MESON_REFUTE min max inc msets) t
+    in GENL avs th
+    end));;
+
+fun GEN_MESON_CONV min max inc msets ths =
+  CONV_OF_PROVER (GEN_MESON min max inc msets) ths;;
+
+fun GEN_MESON_TAC min max inc msets ths =
+  CONV_TAC(GEN_MESON_CONV min max inc msets ths);;
+
+(* fun MESON_TAC ths = GEN_MESON_TAC 0 1000 1 ths;; *)
+
+fun MESON_TAC  msets ths (asl,w) =
+    GEN_MESON_TAC 0 1000 1 msets (ths@ map ASSUME asl) (asl,w);;
+
+fun MESON msets ths = EQT_ELIM o GEN_MESON_CONV 0 1000 1 msets ths;
+
+val _ = say "done!\n";
+
+
+end (* struct *)
+
+
+
+(*
+val min = 0;
+val max = 1000;
+val inc = 1;
+val msets =  [TYP_SYN_ms,TYP_OPTION_ms];
+
+val (asl,w) = top_goal();
+val ths = [];
+
+MESON_TAC msets ths (asl,w);
+
+*)
+
+
+
+

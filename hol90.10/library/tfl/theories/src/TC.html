@@ -1,0 +1,91 @@
+<TITLE>Theory: TC</TITLE>
+<H1>Theory: TC</H1>
+<H1>Parents</H1>
+    <UL>
+    <LI><A HREF = "HOL.html"><STRONG>HOL</STRONG></A>
+    </UL>
+
+
+<HR>
+<H1>Types</H1>
+    <UL>
+    
+    </UL>
+
+
+<HR>
+<H1>Constants</H1>
+    <UL>
+    <LI><STRONG>TC</STRONG><EM>:('a -> 'a -> bool) -> 'a -> 'a -> bool</EM>
+    <LI><STRONG>transitive</STRONG><EM>:('a -> 'a -> bool) -> bool</EM>
+    </UL>
+
+
+<HR>
+<H1>Axioms</H1>
+<DL>
+
+</DL>
+
+
+<HR>
+<H1>Definitions</H1>
+<DL>
+<DT><STRONG>TC_DEF</STRONG>
+<DD>
+<PRE>
+|- !R a b.
+     TC R a b =
+     (!P.
+       (!x y. R x y ==> P x y) /\ (!x y z. P x y /\ P y z ==> P x z) ==>
+       P a b)
+</PRE>
+
+<DT><STRONG>transitive_def</STRONG>
+<DD>
+<PRE>
+|- !R. transitive R = (!x y z. R x y /\ R y z ==> R x z)
+</PRE>
+
+</DL>
+
+
+<HR>
+<H1>Theorems</H1>
+<DL>
+<DT><STRONG>TC_TRANSITIVE</STRONG>
+<DD>
+<PRE>
+|- !R. transitive (TC R)
+</PRE>
+
+<DT><STRONG>TC_SUBSET</STRONG>
+<DD>
+<PRE>
+|- !R x y. R x y ==> TC R x y
+</PRE>
+
+<DT><STRONG>TC_INDUCT</STRONG>
+<DD>
+<PRE>
+|- !R P.
+     (!x y. R x y ==> P x y) /\ (!x y z. P x y /\ P y z ==> P x z) ==>
+     (!u v. TC R u v ==> P u v)
+</PRE>
+
+<DT><STRONG>TC_CASES1</STRONG>
+<DD>
+<PRE>
+|- !R x z. TC R x z ==> R x z \/ (?y. R x y /\ TC R y z)
+</PRE>
+
+<DT><STRONG>TC_CASES2</STRONG>
+<DD>
+<PRE>
+|- !R x z. TC R x z ==> R x z \/ (?y. TC R x y /\ R y z)
+</PRE>
+
+</DL>
+
+
+<HR>

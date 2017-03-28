@@ -1,0 +1,107 @@
+<TITLE>Theory: apply_f_until_finished</TITLE>
+<H1>Theory: apply_f_until_finished</H1>
+<H1>Parents</H1>
+    <UL>
+    <LI><A HREF = "HOL.html"><STRONG>HOL</STRONG></A>
+    </UL>
+
+
+<HR>
+<H1>Type constants</H1>
+    <UL>
+    
+    </UL>
+
+
+<HR>
+<H1>Term constants</H1>
+    <UL>
+    <LI><STRONG>apply_f_cond_n_times</STRONG><EM>:('a -> bool) ->
+                                                  ('a -> 'a) -> 'a -> num ->
+                                                  'a</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>apply_f_until_finished</STRONG><EM>:('a -> bool) ->
+                                                    ('a -> 'a) -> 'a ->
+                                                    'a</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    </UL>
+
+
+<HR>
+<H1>Axioms</H1>
+<DL>
+
+</DL>
+
+
+<HR>
+<H1>Definitions</H1>
+<DL>
+<DT><STRONG>apply_f_cond_n_times</STRONG>
+<DD>
+<PRE>
+|- (!finished f x. apply_f_cond_n_times finished f x 0 = x) /\
+   (!finished f x n.
+     apply_f_cond_n_times finished f x (SUC n) =
+     ((finished (apply_f_cond_n_times finished f x n))
+      => (apply_f_cond_n_times finished f x n)
+      | (f (apply_f_cond_n_times finished f x n))))
+</PRE>
+
+<DT><STRONG>apply_f_until_finished</STRONG>
+<DD>
+<PRE>
+|- !finished f x.
+     apply_f_until_finished finished f x =
+     (@y. finished y /\ (?n. apply_f_cond_n_times finished f x n = y))
+</PRE>
+
+</DL>
+
+
+<HR>
+<H1>Theorems</H1>
+<DL>
+<DT><STRONG>FINISHED_IMPLIES_NO_CHANGE</STRONG>
+<DD>
+<PRE>
+|- !finished f x.
+     ?n0.
+       finished (apply_f_cond_n_times finished f x n0) ==>
+       (!n.
+         n0 <= n ==>
+         (apply_f_cond_n_times finished f x n =
+          apply_f_cond_n_times finished f x n0))
+</PRE>
+
+<DT><STRONG>FINISHED_IMPLIES_LOWEST</STRONG>
+<DD>
+<PRE>
+|- !finished f x.
+     ?n.
+       finished (apply_f_cond_n_times finished f x n) ==>
+       (?!n0. finished (apply_f_cond_n_times finished f x n0))
+</PRE>
+
+<DT><STRONG>FINISHED_UNIQUE</STRONG>
+<DD>
+<PRE>
+|- !finished f x y z.
+     (finished z /\ (?n. apply_f_cond_n_times finished f x n = z)) /\
+     finished y /\
+     (?n. apply_f_cond_n_times finished f x n = y) ==>
+     (z = y)
+</PRE>
+
+<DT><STRONG>apply_f_until_finished_TERMINATE_CASE</STRONG>
+<DD>
+<PRE>
+|- !finished f y x.
+     finished y /\ (?n. apply_f_cond_n_times finished f x n = y) ==>
+     (apply_f_until_finished finished f x = y)
+</PRE>
+
+</DL>
+
+
+<HR>

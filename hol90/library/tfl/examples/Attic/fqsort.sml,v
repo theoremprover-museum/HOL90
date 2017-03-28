@@ -1,0 +1,143 @@
+head	1.1;
+access;
+symbols
+	HOL97:1.1.2.2.0.2
+	bpHOL97:1.1.2.2
+	hol90_9_alpha:1.1.2.2
+	TFL_1:1.1.2.1
+	hol90_pre8_for_multiple_compilers:1.1.0.2;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	96.06.29.15.08.11;	author rjb;	state dead;
+branches
+	1.1.2.1;
+next	;
+
+1.1.2.1
+date	96.06.29.15.08.12;	author rjb;	state Exp;
+branches;
+next	1.1.2.2;
+
+1.1.2.2
+date	96.08.05.15.40.36;	author rjb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@file fqsort.sml was initially added on branch hol90_pre8_for_multiple_compilers.
+@
+text
+@@
+
+
+1.1.2.1
+log
+@TFL version 1 for HOL: A well-founded recursive function definition package.
+@
+text
+@a0 85
+(* A less naive version of Quicksort than that in "qsort.sml". *)
+
+new_theory"fqsort" handle _ => ();
+
+cons_path "../" theory_path;
+val _ = new_parent "kls_list";
+
+(* Make some abbreviations *)
+val TY = ty_antiq o Parse.type_parser;
+val order = TY`:'a -> 'a -> bool`;
+
+
+
+(*---------------------------------------------------------------------------
+ * Partition a list by a predicate.
+ *---------------------------------------------------------------------------*)
+val part_def = 
+   Rfunction  `inv_image ^list_pred (FST o SND)`
+       `(part(P:'a->bool,  [],    l1,l2) = (l1,l2)) /\
+        (part(P, CONS h rst, l1,l2) =
+           (P h => part(P,rst, CONS h l1, l2)
+                |  part(P,rst,  l1,  CONS h l2)))`;
+  
+
+val partition_def = 
+  Q.new_definition
+      ("partition", 
+      `!(P:'a->bool). partition(P,L) = part(P,L,[],[])`);
+
+
+(* The quicksort algorithm  *)
+val fqsort_def = 
+     Rfunction `measure (LENGTH o SND)`
+      `(fqsort(ord:^order,[]) = []) /\
+       (fqsort(ord, CONS (x:'a) rst) = 
+           let (l1,l2) = partition((\y. ord y x), rst)
+           in
+           fqsort(ord,l1)++[x]++fqsort(ord,l2))`;
+
+map add_theory_to_sml["list", "kls_list"];
+val LIST_INDUCT_TAC = INDUCT_THEN (theorem "list" "list_INDUCT") MP_TAC;
+
+(*---------------------------------------------------------------------------
+ * Termination requires reasoning about the behaviour of "part"
+ *---------------------------------------------------------------------------*)
+val part_length = Q.prove
+`!P (L:'a list) l1 l2 p q.
+    ((p,q) = part(P,L,l1,l2))
+    ==> (LENGTH L + LENGTH l1 + LENGTH l2 = LENGTH p + LENGTH q)`
+(PROGRAM_TAC{induction = #induction part_def, rules = #rules part_def}
+  THENL [ALL_TAC, RES_TAC, RES_TAC]
+  THEN POP_ASSUM MP_TAC 
+  THEN RW_TAC[LENGTH,theorem"arithmetic" "ADD_CLAUSES", #rules part_def]);
+
+
+val part_length_lem = Q.prove
+`!P (L:'a list) l1 l2 p q. 
+    ((p,q) = part(P,L,l1,l2))
+    ==>  LENGTH p <= LENGTH L + LENGTH l1 + LENGTH l2 /\
+         LENGTH q <= LENGTH L + LENGTH l1 + LENGTH l2`
+(RW_TAC[part_length]
+  THEN REPEAT STRIP_TAC 
+  THEN CONV_TAC ARITH_CONV);
+
+val fqsort_terminates = save_thm("fqsort_terminates",
+prove_termination fqsort_def
+ (RW_TAC[partition_def,LENGTH] THEN 
+  CONJ_TAC THEN REPEAT STRIP_TAC THEN
+  MATCH_MP_TAC (theorem"arithmetic" "LESS_EQ_IMP_LESS_SUC") THEN 
+  IMP_RES_TAC part_length_lem THEN
+  RULE_ASSUM_TAC (RW_RULE[LENGTH, theorem"arithmetic" "ADD_CLAUSES"]) THEN 
+  ASM_RW_TAC[]));
+
+(*---------------------------------------------------------------------------
+ * Get clean recursion equations and induction rule.
+ *---------------------------------------------------------------------------*)
+val fqsort_induction = 
+  RW_RULE [fqsort_terminates](DISCH_ALL (#induction fqsort_def));
+val fqsort_eqns = save_thm("fqsort_eqns", 
+  RW_RULE[fqsort_terminates](#rules fqsort_def));
+
+
+(* More to come! *)
+
+html_theory"-";
+@
+
+
+1.1.2.2
+log
+@Updated to TFL release 4.
+@
+text
+@a81 1
+val FQSORT_TAC = PROGRAM_TAC{rules=fqsort_eqns, induction=fqsort_induction};
+@

@@ -1,0 +1,303 @@
+<TITLE>Theory: bword_num</TITLE>
+<H1>Theory: bword_num</H1>
+<H1>Parents</H1>
+    <UL>
+    <LI><A HREF = "word_num.html"><STRONG>word_num</STRONG></A>
+    <LI><A HREF = "word_bitop.html"><STRONG>word_bitop</STRONG></A>
+    </UL>
+
+
+<HR>
+<H1>Type constants</H1>
+    <UL>
+    
+    </UL>
+
+
+<HR>
+<H1>Term constants</H1>
+    <UL>
+    <LI><STRONG>BV</STRONG><EM>:bool -> num</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>BNVAL</STRONG><EM>:bool word -> num</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>VB</STRONG><EM>:num -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>NBWORD</STRONG><EM>:num -> num -> bool word</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    </UL>
+
+
+<HR>
+<H1>Axioms</H1>
+<DL>
+
+</DL>
+
+
+<HR>
+<H1>Definitions</H1>
+<DL>
+<DT><STRONG>BV_DEF</STRONG>
+<DD>
+<PRE>
+|- !b. BV b = (b => (SUC 0) | 0)
+</PRE>
+
+<DT><STRONG>BNVAL_DEF</STRONG>
+<DD>
+<PRE>
+|- !l. BNVAL (WORD l) = LVAL BV 2 l
+</PRE>
+
+<DT><STRONG>VB_DEF</STRONG>
+<DD>
+<PRE>
+|- !n. VB n = ~(n MOD 2 = 0)
+</PRE>
+
+<DT><STRONG>NBWORD_DEF</STRONG>
+<DD>
+<PRE>
+|- !n m. NBWORD n m = WORD (NLIST n VB 2 m)
+</PRE>
+
+</DL>
+
+
+<HR>
+<H1>Theorems</H1>
+<DL>
+<DT><STRONG>BV_LESS_2</STRONG>
+<DD>
+<PRE>
+|- !x. BV x < 2
+</PRE>
+
+<DT><STRONG>BNVAL_NVAL</STRONG>
+<DD>
+<PRE>
+|- !w. BNVAL w = NVAL BV 2 w
+</PRE>
+
+<DT><STRONG>BNVAL0</STRONG>
+<DD>
+<PRE>
+|- BNVAL (WORD []) = 0
+</PRE>
+
+<DT><STRONG>BNVAL_11</STRONG>
+<DD>
+<PRE>
+|- !w1 w2. (WORDLEN w1 = WORDLEN w2) ==> (BNVAL w1 = BNVAL w2) ==> (w1 = w2)
+</PRE>
+
+<DT><STRONG>BNVAL_ONTO</STRONG>
+<DD>
+<PRE>
+|- !w. ?n. BNVAL w = n
+</PRE>
+
+<DT><STRONG>BNVAL_MAX</STRONG>
+<DD>
+<PRE>
+|- !n. !w ::(PWORDLEN n). BNVAL w < 2 EXP n
+</PRE>
+
+<DT><STRONG>BNVAL_WCAT1</STRONG>
+<DD>
+<PRE>
+|- !n. !w ::(PWORDLEN n). !x. BNVAL (WCAT (w,WORD [x])) = BNVAL w * 2 + BV x
+</PRE>
+
+<DT><STRONG>BNVAL_WCAT2</STRONG>
+<DD>
+<PRE>
+|- !n.
+     !w ::(PWORDLEN n).
+       !x. BNVAL (WCAT (WORD [x],w)) = BV x * 2 EXP n + BNVAL w
+</PRE>
+
+<DT><STRONG>BNVAL_WCAT</STRONG>
+<DD>
+<PRE>
+|- !n m.
+     !w1 ::(PWORDLEN n).
+       !w2 ::(PWORDLEN m).
+         BNVAL (WCAT (w1,w2)) = BNVAL w1 * 2 EXP m + BNVAL w2
+</PRE>
+
+<DT><STRONG>NBWORD0</STRONG>
+<DD>
+<PRE>
+|- !m. NBWORD 0 m = WORD []
+</PRE>
+
+<DT><STRONG>WORDLEN_NBWORD</STRONG>
+<DD>
+<PRE>
+|- !n m. WORDLEN (NBWORD n m) = n
+</PRE>
+
+<DT><STRONG>PWORDLEN_NBWORD</STRONG>
+<DD>
+<PRE>
+|- !n m. PWORDLEN n (NBWORD n m)
+</PRE>
+
+<DT><STRONG>NBWORD_SUC</STRONG>
+<DD>
+<PRE>
+|- !n m. NBWORD (SUC n) m = WCAT (NBWORD n (m DIV 2),WORD [VB (m MOD 2)])
+</PRE>
+
+<DT><STRONG>VB_BV</STRONG>
+<DD>
+<PRE>
+|- !x. VB (BV x) = x
+</PRE>
+
+<DT><STRONG>BV_VB</STRONG>
+<DD>
+<PRE>
+|- !x. x < 2 ==> (BV (VB x) = x)
+</PRE>
+
+<DT><STRONG>NBWORD_BNVAL</STRONG>
+<DD>
+<PRE>
+|- !n. !w ::(PWORDLEN n). NBWORD n (BNVAL w) = w
+</PRE>
+
+<DT><STRONG>BNVAL_NBWORD</STRONG>
+<DD>
+<PRE>
+|- !n m. m < 2 EXP n ==> (BNVAL (NBWORD n m) = m)
+</PRE>
+
+<DT><STRONG>ZERO_WORD_VAL</STRONG>
+<DD>
+<PRE>
+|- !n. !w ::(PWORDLEN n). (w = NBWORD n 0) = BNVAL w = 0
+</PRE>
+
+<DT><STRONG>WCAT_NBWORD_0</STRONG>
+<DD>
+<PRE>
+|- !n1 n2. WCAT (NBWORD n1 0,NBWORD n2 0) = NBWORD (n1 + n2) 0
+</PRE>
+
+<DT><STRONG>WSPLIT_NBWORD_0</STRONG>
+<DD>
+<PRE>
+|- !n m. m <= n ==> (WSPLIT m (NBWORD n 0) = (NBWORD (n - m) 0,NBWORD m 0))
+</PRE>
+
+<DT><STRONG>EQ_NBWORD0_SPLIT</STRONG>
+<DD>
+<PRE>
+|- !n.
+     !w ::(PWORDLEN n).
+       !m.
+         m <= n ==>
+         ((w = NBWORD n 0) =
+          (WSEG (n - m) m w = NBWORD (n - m) 0) /\ (WSEG m 0 w = NBWORD m 0))
+</PRE>
+
+<DT><STRONG>NBWORD_MOD</STRONG>
+<DD>
+<PRE>
+|- !n m. NBWORD n (m MOD 2 EXP n) = NBWORD n m
+</PRE>
+
+<DT><STRONG>WSEG_NBWORD_SUC</STRONG>
+<DD>
+<PRE>
+|- !n m. WSEG n 0 (NBWORD (SUC n) m) = NBWORD n m
+</PRE>
+
+<DT><STRONG>NBWORD_SUC_WSEG</STRONG>
+<DD>
+<PRE>
+|- !n. !w ::(PWORDLEN (SUC n)). NBWORD n (BNVAL w) = WSEG n 0 w
+</PRE>
+
+<DT><STRONG>DOUBL_EQ_SHL</STRONG>
+<DD>
+<PRE>
+|- !n.
+     0 < n ==>
+     (!w ::(PWORDLEN n).
+       !b. NBWORD n (BNVAL w + BNVAL w + BV b) = SND (SHL F w b))
+</PRE>
+
+<DT><STRONG>MSB_NBWORD</STRONG>
+<DD>
+<PRE>
+|- !n m. BIT n (NBWORD (SUC n) m) = VB ((m DIV 2 EXP n) MOD 2)
+</PRE>
+
+<DT><STRONG>NBWORD_SPLIT</STRONG>
+<DD>
+<PRE>
+|- !n1 n2 m.
+     NBWORD (n1 + n2) m = WCAT (NBWORD n1 (m DIV 2 EXP n2),NBWORD n2 m)
+</PRE>
+
+<DT><STRONG>WSEG_NBWORD</STRONG>
+<DD>
+<PRE>
+|- !m k n.
+     m + k <= n ==> (!l. WSEG m k (NBWORD n l) = NBWORD m (l DIV 2 EXP k))
+</PRE>
+
+<DT><STRONG>NBWORD_SUC_FST</STRONG>
+<DD>
+<PRE>
+|- !n m.
+     NBWORD (SUC n) m = WCAT (WORD [VB ((m DIV 2 EXP n) MOD 2)],NBWORD n m)
+</PRE>
+
+<DT><STRONG>BIT_NBWORD0</STRONG>
+<DD>
+<PRE>
+|- !k n. k < n ==> (BIT k (NBWORD n 0) = F)
+</PRE>
+
+<DT><STRONG>ADD_BNVAL_LEFT</STRONG>
+<DD>
+<PRE>
+|- !n.
+     !w1 w2 ::(PWORDLEN (SUC n)).
+       BNVAL w1 + BNVAL w2 =
+       (BV (BIT n w1) + BV (BIT n w2)) * 2 EXP n +
+       BNVAL (WSEG n 0 w1) +
+       BNVAL (WSEG n 0 w2)
+</PRE>
+
+<DT><STRONG>ADD_BNVAL_RIGHT</STRONG>
+<DD>
+<PRE>
+|- !n.
+     !w1 w2 ::(PWORDLEN (SUC n)).
+       BNVAL w1 + BNVAL w2 =
+       (BNVAL (WSEG n 1 w1) + BNVAL (WSEG n 1 w2)) * 2 +
+       BV (BIT 0 w1) +
+       BV (BIT 0 w2)
+</PRE>
+
+<DT><STRONG>ADD_BNVAL_SPLIT</STRONG>
+<DD>
+<PRE>
+|- !n1 n2.
+     !w1 w2 ::(PWORDLEN (n1 + n2)).
+       BNVAL w1 + BNVAL w2 =
+       (BNVAL (WSEG n1 n2 w1) + BNVAL (WSEG n1 n2 w2)) * 2 EXP n2 +
+       BNVAL (WSEG n2 0 w1) +
+       BNVAL (WSEG n2 0 w2)
+</PRE>
+
+</DL>
+
+
+<HR>

@@ -1,0 +1,92 @@
+thid = (tree, 934216740, 153222)
+axioms = []
+definitions =
+[((trf),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num).
+   ((! :(('b list -> 'b) -> bool) -> bool) (\(f :'b list -> 'b).
+   (((= :(tree -> 'b) -> (tree -> 'b) -> bool)
+   (((trf :num -> ('b list -> 'b) -> tree -> 'b) $1) $0))
+   ((@ :((tree -> 'b) -> bool) -> tree -> 'b) (\(fn :tree -> 'b).
+   ((! :(tree list -> bool) -> bool) (\(trl :tree list). ((==> ((<=
+   (HT (node $0))) $3)) (((= :'b -> 'b -> bool) ($1 (node $0))) ($2
+   (((MAP :(tree -> 'b) -> tree list -> 'b list) $1)
+   $0)))))))))))))`),
+ ((HT),
+  [],
+  `((! :(tree -> bool) -> bool) (\(t :tree). (((= :num -> num -> bool)
+   (HT $0)) ((@ :(num -> bool) -> num) (\(n :num). ((/\ ((bht $0) $1))
+   ((! :(num -> bool) -> bool) (\(m :num). ((==> ((< $0) $1)) (~ ((bht
+   $0) $2)))))))))))`),
+ ((bht),
+  [],
+  `(((= :(num -> tree -> bool) -> (num -> tree -> bool) -> bool) bht)
+   (((PRIM_REC :(tree -> bool) ->
+                ((tree -> bool) -> num -> tree -> bool) -> num ->
+                tree -> bool) (\(tr :tree).
+   (((= :tree -> tree -> bool) $0) (node (NIL :tree list)))))
+   (\(res :tree -> bool). (\(n :num). (\(tr :tree).
+   ((? :(tree list -> bool) -> bool) (\(trl :tree list). ((/\
+   (((= :tree -> tree -> bool) $1) (node $0)))
+   (((EVERY :(tree -> bool) -> tree list -> bool) $3) $0)))))))))`),
+ ((dest_node),
+  [],
+  `((! :(tree -> bool) -> bool) (\(t :tree).
+   (((= :tree list -> tree list -> bool) (dest_node $0))
+   ((@ :(tree list -> bool) -> tree list) (\(p :tree list).
+   (((= :tree -> tree -> bool) $1) (node $0)))))))`),
+ ((node),
+  [],
+  `((! :(tree list -> bool) -> bool) (\(tl :tree list).
+   (((= :tree -> tree -> bool) (node $0)) (ABS_tree (node_REP
+   (((MAP :(tree -> num) -> tree list -> num list) REP_tree)
+   $0))))))`),
+ ((tree_ISO_DEF),
+  [],
+  `((/\ ((! :(tree -> bool) -> bool) (\(a :tree).
+   (((= :tree -> tree -> bool) (ABS_tree (REP_tree $0))) $0))))
+   ((! :(num -> bool) -> bool) (\(r :num). (((= :bool -> bool -> bool)
+   (Is_tree_REP $0)) (((= :num -> num -> bool) (REP_tree (ABS_tree
+   $0))) $0)))))`),
+ ((tree_TY_DEF),
+  [],
+  `((? :((tree -> num) -> bool) -> bool) (\(rep :tree -> num).
+   (((TYPE_DEFINITION :(num -> bool) -> (tree -> num) -> bool)
+   Is_tree_REP) $0)))`),
+ ((Is_tree_REP),
+  [],
+  `(((= :(num -> bool) -> (num -> bool) -> bool) Is_tree_REP)
+   (\(t :num). ((! :((num -> bool) -> bool) -> bool)
+   (\(P :num -> bool). ((==> ((! :(num list -> bool) -> bool)
+   (\(tl :num list). ((==>
+   (((EVERY :(num -> bool) -> num list -> bool) $1) $0)) ($1 (node_REP
+   $0)))))) ($0 $1))))))`),
+ ((node_REP),
+  [],
+  `((/\ (((= :num -> num -> bool) (node_REP (NIL :num list))) 0))
+   ((! :(num list -> bool) -> bool) (\(t :num list).
+   ((! :(num -> bool) -> bool) (\(h :num). (((= :num -> num -> bool)
+   (node_REP (((CONS :num -> num list -> num list) $0) $1))) ((* (SUC
+   ((+ $0) $0))) ((EXP 2) (node_REP $1)))))))))`)]
+theorems =
+[((tree_Axiom),
+  [],
+  `((! :(('b list -> tree list -> 'b) -> bool) -> bool)
+   (\(f :'b list -> tree list -> 'b).
+   ((?! :((tree -> 'b) -> bool) -> bool) (\(fn :tree -> 'b).
+   ((! :(tree list -> bool) -> bool) (\(tl :tree list).
+   (((= :'b -> 'b -> bool) ($1 (node $0))) (($2
+   (((MAP :(tree -> 'b) -> tree list -> 'b list) $1) $0))
+   $0))))))))`),
+ ((tree_Induct),
+  [],
+  `((! :((tree -> bool) -> bool) -> bool) (\(P :tree -> bool). ((==>
+   ((! :(tree list -> bool) -> bool) (\(tl :tree list). ((==>
+   (((EVERY :(tree -> bool) -> tree list -> bool) $1) $0)) ($1 (node
+   $0)))))) ((! :(tree -> bool) -> bool) (\(t :tree). ($1 $0))))))`),
+ ((node_11),
+  [],
+  `((! :(tree list -> bool) -> bool) (\(tl1 :tree list).
+   ((! :(tree list -> bool) -> bool) (\(tl2 :tree list).
+   (((= :bool -> bool -> bool) (((= :tree -> tree -> bool) (node $1))
+   (node $0))) (((= :tree list -> tree list -> bool) $1) $0))))))`)]

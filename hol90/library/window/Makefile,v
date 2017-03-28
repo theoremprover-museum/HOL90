@@ -1,0 +1,132 @@
+head	1.1;
+branch	1.1.1;
+access;
+symbols
+	HOL97:1.1.1.1.0.6
+	bpHOL97:1.1.1.1
+	hol90_9_alpha:1.1.1.1
+	hol90_pre8_for_multiple_compilers:1.1.1.1.0.4
+	hol90_pre8_after_donalds_separate_compilation_changes:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	95.10.16.13.32.44;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.32.44;	author rjb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@# =====================================================================
+#
+# 		 MAKEFILE FOR THE HOL LIBRARY: window
+#
+# $Id: Makefile,v 4.1 1994/09/10 03:27:58 jim Exp $
+# =====================================================================
+
+# =====================================================================
+# MAIN ENTRIES:
+#
+#    make all	    : make the source and theory files.
+#
+#    make source    : check out the source code (see REVISION)
+#
+#    make install   : make the source and theories and define the
+#                     library.
+#
+#    make clean	    : remove the theories.
+#	
+#    make clobber   : remove theories, and source code that isn't
+#                     different to that in REVISION.
+#
+# ---------------------------------------------------------------------
+# MACROS:
+#
+#    HOL            : the pathname of the version of hol used
+#    SOURCE         : all the source files
+#    REVISION       : The rcs revision of the source code to get
+# =====================================================================
+
+HOL=hol90.7
+
+SOURCE=src/basic_close.sml src/defined.sml src/eq_close.sml		\
+      src/history.sml src/hol_ext.sml src/imp_close.sml src/inter.sml	\
+      src/ml_ext.sml src/relations.sml src/rules.sml src/signal.sml	\
+      src/tactic.sml src/tty.sml src/win.sml src/win_core.sml src/window.sml
+
+REVISION=
+
+# =====================================================================
+# Basic functions.
+# =====================================================================
+
+all: source theories
+	@@echo "===> library window built"
+
+install: all install.sml
+	${HOL} < install.sml
+	@@echo "===> library window installed"
+
+source: ${SOURCE}
+	@@echo "===> library window source code built"
+
+theories: theories/ascii/window.holsig theories/ascii/window.thms
+	@@echo "===> library window theories built"
+
+theories/ascii/window.holsig theories/ascii/window.thms:	\
+		theories/src/mk_window.sml
+	cd theories/src; ${HOL} < mk_window.sml
+	mv theories/src/window.holsig theories/ascii/window.holsig
+	mv theories/src/window.thms theories/ascii/window.thms
+
+clean:
+	rm -f theories/ascii/window.holsig theories/ascii/window.thms
+	@@echo "===> library window: all theory files deleted"
+
+clobber: clean
+	rcsclean -r${REVISION} ${SOURCE}
+	rcsclean -r${REVISION} install.sml make_window
+	rcsclean -r${REVISION} theories/src/mk_window.sml
+	@@echo "===> library window: all source code deleted"
+
+.FAILED:
+	@@echo "===> library window build failed"
+
+.DEFAULT:
+	co -r${REVISION} $@@
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

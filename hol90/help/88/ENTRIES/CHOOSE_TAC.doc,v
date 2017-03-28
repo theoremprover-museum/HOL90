@@ -1,0 +1,101 @@
+head	1.1;
+branch	1.1.1;
+access;
+symbols
+	HOL97:1.1.1.1.0.6
+	bpHOL97:1.1.1.1
+	hol90_9_alpha:1.1.1.1
+	hol90_pre8_for_multiple_compilers:1.1.1.1.0.4
+	hol90_pre8_after_donalds_separate_compilation_changes:1.1.1.1
+	hol90_8_after_merging_Konrad_Elsa:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	95.10.16.13.33.45;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.33.45;	author rjb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@\DOC CHOOSE_TAC
+
+\TYPE {CHOOSE_TAC : thm_tactic}
+
+\SYNOPSIS
+Adds the body of an existentially quantified theorem to the assumptions of
+a goal.
+
+\KEYWORDS
+tactic, existential.
+
+\DESCRIBE
+When applied to a theorem {A' |- ?x. t} and a goal, {CHOOSE_TAC} adds
+{t[x'/x]} to the assumptions of the goal, where {x'} is a variant of {x}
+which is not free in the assumption list; normally {x'} is just {x}.
+{
+         A ?- u
+   ====================  CHOOSE_TAC (A' |- ?x. t)
+    A u {{t[x'/x]}} ?- u
+}
+\noindent Unless {A'} is a subset of {A}, this is not a valid tactic.
+
+\FAILURE
+Fails unless the given theorem is existentially quantified.
+
+\EXAMPLE
+Suppose we have a goal asserting that the output of an electrical circuit
+(represented as a boolean-valued function) will become high at some time:
+{
+   ?- ?t. output(t)
+}
+\noindent and we have the following theorems available:
+{
+   t1 = |- ?t. input(t)
+   t2 = !t. input(t) ==> output(t+1)
+}
+\noindent Then the goal can be solved by the application of:
+{
+   CHOOSE_TAC t1 THEN EXISTS_TAC "t+1" THEN
+     UNDISCH_TAC "input (t:num) :bool" THEN MATCH_ACCEPT_TAC t2
+}
+\SEEALSO
+CHOOSE_THEN, X_CHOOSE_TAC.
+
+\ENDDOC
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

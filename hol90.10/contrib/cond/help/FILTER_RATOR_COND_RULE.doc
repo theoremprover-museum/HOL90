@@ -1,0 +1,38 @@
+\DOC FILTER_RATOR_COND_RULE
+
+\TYPE {FILTER_RATOR_COND_RULE: thm -> thm}
+
+\SYNOPSIS
+moves all selected rators inward through conditonals.
+
+\LIBRARY cond
+
+\DESCRIBE 
+moves all selected rators inward through conditonals.
+
+{
+      |- f (A => x|y)
+     ==================
+      |- A => f x|f y
+}
+
+\EXAMPLE
+
+{
+- val it = |- ~(SUC (A => (SUC (B => 1 | 2)) | 3) = 0) : thm
+FILTER_RATOR_COND_RULE 
+(fn t => (is_const t)andalso(#Name(dest_const t) = "SUC"))
+val it = |- ~((A => (B => (SUC (SUC 1)) | (SUC (SUC 2))) | (SUC 3)) = 0) : thm
+}
+
+\FAILURE
+
+\SEEALSO
+
+RATOR_COND_CONV RATOR_COND_RULE RATOR_COND_TAC 
+FILTER_RATOR_COND_CONV FILTER_RATOR_COND_TAC 
+COND_RATOR_CONV COND_RATOR_RULE COND_RATOR_TAC
+FILTER_COND_RATOR_CONV FILTER_COND_RATOR_RULE FILTER_COND_RATOR_TAC
+
+\ENDDOC
+

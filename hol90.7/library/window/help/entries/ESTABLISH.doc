@@ -1,0 +1,48 @@
+\DOC ESTABLISH
+
+\TYPE {ESTABLISH : (term -> win_stack -> win_stack)}
+
+\SYNOPSIS
+Prove a new lemma, or establish a conjecture.
+
+\LIBRARY window
+
+\DESCRIBE
+{ESTABLISH tm} pushes a subwindow with focus {tm} onto a window stack.
+If {tm} is a conjecture in the parent window, it (and any lemmas that
+depend on it) will be removed from the subwindow.  The relationship
+preserved in the subwindow is {`<==`}.  The user should then transform
+the focus of the subwindow from {tm} to {`T`}(true).  The subwindow
+should then be closed making {tm} a lemma of the parent window.
+
+\FAILURE
+{ESTABLISH} will fail if the window stack is empty.
+
+\noindent Attempts to use {CLOSE_WIN} on a window opened by
+{ESTABLISH} and whose focus has not been transformed to {`T`} will
+fail.  If the focus can not be proved you can abandon the proof
+attempt with {UNDO_WIN}.
+
+\EXAMPLE
+{
+   = * f
+   val it = () : unit
+   - DO (ESTABLISH (--`A \/ ~A`--));
+   
+   <== * A \/ ~A
+   val it = () : unit
+   - DO (REWRITE_WIN [EXCLUDED_MIDDLE]);
+   
+   <== * T
+   val it = () : unit
+   - DO CLOSE_WIN;
+   
+     | A \/ ~A
+   = * f
+   val it = () : unit
+}
+
+\SEEALSO
+CLOSE_WIN, OPEN_CONTEXT, OPEN_WIN
+
+\ENDDOC

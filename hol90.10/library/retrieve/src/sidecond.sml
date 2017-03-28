@@ -1,0 +1,271 @@
+(****************************************************************************)
+(* FILE          : sidecond.sml                                             *)
+(* DESCRIPTION   : Functions to construct side-conditions for retrieval     *)
+(*                 patterns.                                                *)
+(*                                                                          *)
+(* AUTHOR (HOL88): R.J.Boulton                                              *)
+(* DATE          : 1989                                                     *)
+(*                                                                          *)
+(* TRANSLATED BY : D.R.Syme                                                 *)
+(* DATE          : 1995                                                     *)
+(*                                                                          *)
+(* LAST MODIFIED : R.J.Boulton                                              *)
+(* DATE          : 17th November 1995                                       *)
+(****************************************************************************)
+
+structure RetrieveSidecond : RETRIEVE_SIDECOND =
+struct
+
+type hol_type = CoreHol.Type.hol_type
+type term = CoreHol.Term.term;
+
+local
+
+open Exception Lib CoreHol ;
+open Term RetrieveExceptions RetrieveStruct RetrieveName RetrieveMatching;
+
+fun failwith_message function message =
+   raise HOL_ERR{origin_structure = "RetrieveSidecond",
+                 origin_function = function,
+                 message = message};
+
+fun failwith function = failwith_message function "";
+
+(*--------------------------------------------------------------------------*)
+(* containsfn : termpattern -> term -> unit -> result_of_match              *)
+(*                                                                          *)
+(* Function to create a `result_of_match' of all the ways of matching a     *)
+(* termpattern within a term.                                               *)
+(*                                                                          *)
+(* The function tries to match the termpattern against the term. If this is *)
+(* successful the resulting matching is made the first item of the          *)
+(* `result_of_match'. The rest of the `result_of_match' will be null if `t' *)
+(* is a variable or a constant, since `t' cannot be split in such cases.    *)
+(*                                                                          *)
+(* If `t' is an abstraction, a match is tried against the body. If `t' is a *)
+(* combination, matches are tried against both the rator and the rand. Both *)
+(* these return `result_of_matches' which have to be appended using the     *)
+(* function `approms'.                                                      *)
+(*                                                                          *)
+(* Note that the function requires a null argument before it actually does  *)
+(* any evaluation. This is to keep the computation as lazy as possible.     *)
+(*--------------------------------------------------------------------------*)
+
+fun containsfn p t () =
+   let fun rest () =
+      case (Term.dest_term t)
+      of CONST _ => Nomatch
+       | VAR _ => Nomatch
+       | LAMB {Bvar,Body} => containsfn p Body ()
+       | COMB {Rator,Rand} =>
+            approms (containsfn p Rator) (containsfn p Rand) ()
+   in  Match (make_matching p t,rest) handle NO_MATCH => rest ()
+   end;
+
+in
+
+(*==========================================================================*)
+(* Functions which make theorem patterns which are side-conditions.         *)
+(*==========================================================================*)
+
+(*--------------------------------------------------------------------------*)
+(* Contains : wildvar * termpattern -> thmpattern                           *)
+(*                                                                          *)
+(* This function looks up its first argument in the matching given as       *)
+(* argument to the side-condition. A `result_of_match' is formed from the   *)
+(* termpattern and the term bound to `w', by testing the termpattern for    *)
+(* containment within the term.                                             *)
+(*--------------------------------------------------------------------------*)
+
+fun Contains (w,p) = Side (fn m => containsfn p (match_of_var m w) ());
+
+(*--------------------------------------------------------------------------*)
+(* contains : term * term -> thmpattern                                     *)
+(*                                                                          *)
+(* This function behaves as for `Contains' except that its arguments are    *)
+(* given as terms rather than as a wildvar and a termpattern. The terms are *)
+(* made into a wildvar and a termpattern using default wildcards.           *)
+(*--------------------------------------------------------------------------*)
+
+fun contains (t,t') = Contains (make_wildvar t,autotermpattern t');
+
+(*--------------------------------------------------------------------------*)
+(* Matches : wildvar * termpattern -> thmpattern                            *)
+(*                                                                          *)
+(* This function looks up its first argument in the matching given as       *)
+(* argument to the side-condition. A `result_of_match' is formed from the   *)
+(* termpattern and the term bound to `w', by testing the termpattern        *)
+(* against the term. If the match is successful, the matching becomes the   *)
+(* first and only element of the `result_of_match'. If not the              *)
+(* `result_of_match' is `Nomatch'.                                          *)
+(*--------------------------------------------------------------------------*)
+
+fun Matches (w,p) =
+   Side (fn m => (Match (make_matching p (match_of_var m w),fn () => Nomatch)
+                  handle NO_MATCH => Nomatch));
+
+(*--------------------------------------------------------------------------*)
+(* matches : term * term -> thmpattern                                      *)
+(*                                                                          *)
+(* This function behaves as for `Matches' except that its arguments are     *)
+(* given as terms rather than as a wildvar and a termpattern. The terms are *)
+(* made into a wildvar and a termpattern using default wildcards.           *)
+(*--------------------------------------------------------------------------*)
+
+fun matches (t,t') = Matches (make_wildvar t,autotermpattern t');
+
+(*--------------------------------------------------------------------------*)
+(* dest_binder : term -> (term * term)                                      *)
+(*                                                                          *)
+(* Function to split a bound term into the bound variable and the body.     *)
+(*                                                                          *)
+(* The bindings are represented by applications of function constants to    *)
+(* lambda-abstractions. Hence the need to destroy a combination, followed   *)
+(* by (if the operator is a binder) destruction of an abstraction.          *)
+(*--------------------------------------------------------------------------*)
+
+fun dest_binder t =
+   let val {Rator = t1,Rand = t2} = Term.dest_comb t
+       val {Name,Ty} = Term.dest_const t1
+   in  if (Term.is_binder Name)
+       then let val {Bvar,Body} = Term.dest_abs t2 in (Bvar,Body) end
+       else failwith "dest_binder"
+   end
+   handle HOL_ERR _ => failwith "dest_binder";
+
+(*--------------------------------------------------------------------------*)
+(* strip_binders : term -> term                                             *)
+(*                                                                          *)
+(* Function to strip all binders from the beginning of a term.              *)
+(*                                                                          *)
+(* The function repeatedly strips one binder until the process fails.       *)
+(*--------------------------------------------------------------------------*)
+
+fun strip_binders t =
+   (strip_binders o snd o dest_binder) t handle HOL_ERR _ => t;
+
+(*--------------------------------------------------------------------------*)
+(* Has_body : wildvar * termpattern -> thmpattern                           *)
+(*                                                                          *)
+(* This function looks up its first argument in the matching given as       *)
+(* argument to the side-condition. The bound term then has any binders      *)
+(* stripped from the front of it. A `result_of_match' is formed from the    *)
+(* termpattern and the processed term by testing the termpattern against    *)
+(* the term. If the match is successful, the matching becomes the first and *)
+(* only element of the `result_of_match'. If not the `result_of_match' is   *)
+(* `Nomatch'.                                                               *)
+(*--------------------------------------------------------------------------*)
+                 
+fun Has_body (w,p) =
+   Side (fn m => (Match (make_matching p (strip_binders (match_of_var m w)),
+                         fn () => Nomatch)
+                  handle NO_MATCH => Nomatch));
+
+(*--------------------------------------------------------------------------*)
+(* has_body : term * term -> thmpattern                                     *)
+(*                                                                          *)
+(* This function behaves as for `Has_body' except that its arguments are    *)
+(* given as terms rather than as a wildvar and a termpattern. The terms are *)
+(* made into a wildvar and a termpattern using default wildcards.           *)
+(*--------------------------------------------------------------------------*)
+
+fun has_body (t,t') = Has_body (make_wildvar t,autotermpattern t');
+
+(*==========================================================================*)
+(* Functions which construct a side-condition as a theorem pattern.         *)
+(*==========================================================================*)
+
+(*--------------------------------------------------------------------------*)
+(* Test1term : (term -> bool) -> wildvar -> thmpattern                      *)
+(*                                                                          *)
+(* This one builds a side-condition which looks up the binding of `w' in    *)
+(* the matching given as argument to the side-condition. It then applies    *)
+(* `f' to the bound `term', and converts the resulting Boolean value to a   *)
+(* value of type `result_of_match'. The latter becomes the result of the    *)
+(* side-condition test.                                                     *)
+(*--------------------------------------------------------------------------*)
+
+fun Test1term f w = Side (fn m => (bool_to_rom o f) (match_of_var m w));
+
+(*--------------------------------------------------------------------------*)
+(* test1term : (term -> bool) -> term -> thmpattern                         *)
+(*                                                                          *)
+(* This function behaves as for `Test1term' except that its second argument *)
+(* is given as a `term'. The `term' is automatically converted to a         *)
+(* `wildvar'.                                                               *)
+(*--------------------------------------------------------------------------*)
+
+fun test1term f t = Test1term f (make_wildvar t);
+
+(*--------------------------------------------------------------------------*)
+(* Test1type : (type -> bool) -> wildtype -> thmpattern                     *)
+(*                                                                          *)
+(* This one builds a side-condition which looks up the binding of `w' in    *)
+(* the matching given as argument to the side-condition. It then applies    *)
+(* `f' to the bound `type', and converts the resulting Boolean value to a   *)
+(* value of type `result_of_match'. The latter becomes the result of the    *)
+(* side-condition test.                                                     *)
+(*--------------------------------------------------------------------------*)
+
+fun Test1type f w = Side (fn m => (bool_to_rom o f) (match_of_type m w));
+
+(*--------------------------------------------------------------------------*)
+(* test1type : (type -> bool) -> type -> thmpattern                         *)
+(*                                                                          *)
+(* This function behaves as for `Test1type' except that its second argument *)
+(* is given as a `type'. The `type' is automatically converted to a         *)
+(* `wildtype'.                                                              *)
+(*--------------------------------------------------------------------------*)
+
+fun test1type f t = Test1type f (make_wildtype t);
+
+(*--------------------------------------------------------------------------*)
+(* Test2terms : (term -> term -> bool) -> wildvar -> wildvar -> thmpattern  *)
+(*                                                                          *)
+(* This one builds a side-condition which looks up the bindings of `w1' and *)
+(* `w2' in the matching given as argument to the side-condition. It then    *)
+(* applies `f' to the two bound `terms', and converts the resulting Boolean *)
+(* value to a value of type `result_of_match'. The latter becomes the       *)
+(* result of the side-condition test.                                       *)
+(*--------------------------------------------------------------------------*)
+
+fun Test2terms f w1 w2 =
+   Side (fn m => bool_to_rom (f (match_of_var m w1) (match_of_var m w2)));
+
+(*--------------------------------------------------------------------------*)
+(* test2terms : (term -> term -> bool) -> term -> term -> thmpattern        *)
+(*                                                                          *)
+(* This function behaves as for `Test2terms' except that its second and     *)
+(* third arguments are given as `terms'. The `terms' are automatically      *)
+(* converted to `wildvars'.                                                 *)
+(*--------------------------------------------------------------------------*)
+
+fun test2terms f t1 t2 = Test2terms f (make_wildvar t1) (make_wildvar t2);
+
+(*--------------------------------------------------------------------------*)
+(* Test2types :                                                             *)
+(*    (type -> type -> bool) -> wildtype -> wildtype -> thmpattern          *)
+(*                                                                          *)
+(* This one builds a side-condition which looks up the bindings of `w1' and *)
+(* `w2' in the matching given as argument to the side-condition. It then    *)
+(* applies `f' to the two bound `types', and converts the resulting Boolean *)
+(* value to a value of type `result_of_match'. The latter becomes the       *)
+(* result of the side-condition test.                                       *)
+(*--------------------------------------------------------------------------*)
+
+fun Test2types f w1 w2 =
+   Side (fn m => bool_to_rom (f (match_of_type m w1) (match_of_type m w2)));
+
+(*--------------------------------------------------------------------------*)
+(* test2types : (type -> type -> bool) -> type -> type -> thmpattern        *)
+(*                                                                          *)
+(* This function behaves as for `Test2types' except that its second and     *)
+(* third arguments are given as `types'. The `types' are automatically      *)
+(* converted to `wildtypes'.                                                *)
+(*--------------------------------------------------------------------------*)
+
+fun test2types f t1 t2 = Test2types f (make_wildtype t1) (make_wildtype t2);
+
+end;
+
+end; (* RetrieveSidecond *)

@@ -1,0 +1,258 @@
+<TITLE>TFL User Manual</TITLE>
+
+<H1>TFL User Manual</H1>
+
+This document describes the <STRONG>TFL</STRONG> system and how one can
+use it. <STRONG>TFL</STRONG>, which stands for <STRONG>T</STRONG>otal
+<STRONG>F</STRONG>unctional <STRONG>L</STRONG>anguage, is a verification
+system for higher-order polymorphic functional programs, much like those
+of ML or Haskell, with one special property: each program must
+terminate. <STRONG>TFL</STRONG> models programs with the native
+functions of a higher order logic; this has the advantage that the
+built-in reasoning machinery for functions can be directly applied to
+reasoning about programs, <EM>i.e.</EM>, no special verification theory
+has to be built.
+
+<HR>
+<H2>Using an instantiation of <STRONG>TFL</STRONG></H2>
+
+In order use use an instantiation of <STRONG>TFL</STRONG>, one must know
+the language allowed to express recursive definitions in. There are two
+components of this: how to express the recursion equations, and how to
+express termination.
+
+<H3>Recursion Equations</H3>
+
+Function definitions are very much like those of ML, with the
+restriction that patterns must be exhaustive, and must be presented as a
+single argument. This means that equations like the following are
+allowed:
+
+<PRE>
+    f x = if (x=0) then 1 else x * f(x-1)
+
+    ack (0,n) =  n+1
+    ack (Suc m,0) = ack (m, 1)
+    ack (Suc m, Suc n) = ack (m, ack (Suc m, n))
+</PRE>
+
+but that the following are not (the first two have overlapping patterns,
+and the second function has two arguments):
+
+<PRE>
+    g (0,x) = 1
+    g (y,0) = 2
+
+    f 0 = 1
+    f y = y * f (x-1)
+
+                A 0 n = n+1
+          A (Suc m) 0 = A m 1
+    A (Suc m) (Suc n) = A m (A (Suc m) n)
+</PRE>
+
+<H3>Expressing Termination</H3>
+
+Termination expressions are built out of wellfounded relations. A
+wellfounded relation is one that "allows no infinite decreasing
+chains". Consider an arbitrary invocation <EM>f x</EM> of a function
+<EM>f</EM>, leading to recursive calls <EM>f y_1</EM>,...,<EM>f
+y_m</EM>. If we can place <EM>(y_1,x), ..., (y_m,x)</EM> in a
+wellfounded relation, then <EM>f</EM> terminates. Thus our job involves
+<EM>finding</EM> wellfounded relations and <EM>proving</EM> termination,
+<EM>i.e.</EM>, that recursive calls belong in the selected wellfounded
+relation. 
+
+<P>
+
+Fortunately, it is usually simple to build the right wellfounded
+relation. The basic wellfounded relation for a datatype is the
+<EM>immediate subterm</EM> relation. This is wellfounded since one can
+only finitely often take the immediate subterm of a datatype element
+before getting to a term with no subterms. For example, in the natural
+numbers, the predecessor relation is the immediate subterm relation.
+Using the immediate subterm relation for a datatype gives <EM>primitive
+recursive</EM> definitions, but we can make much more powerful
+termination expressions by use of the following combining forms:
+transitive closure, inverse image, and lexicographic combination (there
+are others available, but these are the most useful). Following are the
+definitions:
+
+<PRE>
+   inv_image R f = \x y. R (f x) (f y))
+
+   lexico R1 R2 = \(s,t) (u,v). R1 s u \/ (s = u) /\ R2 t v)
+
+   measure = inv_image (&lt;)
+</PRE>  
+
+Now we give some example termination expressions and describe what
+functions would terminate under them.
+
+<UL>
+<LI><EM>\x y.y = Suc x</EM>. This is one way to express the predecessor
+    relation, and it proves that such functions as factorial terminate.
+<LI><EM>measure length</EM>. This proves the termination of any function
+    over lists that makes recursive calls on smaller lists.
+<LI><EM>measure length o snd</EM>. This proves the termination of any function
+    over pairs where the second element of the recursive argument is
+    shorter than the second element of the original call.
+</UL>
+
+More complicated examples, like Ackermann's function, require
+termination expressions involving lexicographic combinations, but the
+reader can see these in the examples.
+
+<HR>
+<H2>TFL Entrypoints</H3>
+
+In this section we discuss the entrypoints available in an instantiation
+of <STRONG>TFL</STRONG>. Using these entrypoints, one can quickly build
+easy-to-use facilities for defining recursive functions and reasoning
+with recursion induction principles derived from such definitions.
+
+<P>
+
+The structures <STRONG>Rules</STRONG>, <STRONG>Thms</STRONG>,
+<STRONG>Thry</STRONG>, and <STRONG>USyntax</STRONG> represent the basis
+on which <STRONG>TFL</STRONG> is built. They provide such things as
+common syntactic manipulations, specific theorems and inference rules,
+and access to the underlying theory mechanism. The ordinary user should
+have no great need to look at the implementations of these structures.
+
+<P>
+
+<STRONG>TFL</STRONG> also uses a collection of types:
+<UL>
+<LI><STRONG>Preterm</STRONG> is the type of lambda calculus
+terms. These are thought to be untyped, although implementations may use
+typed terms in their place, and make typechecking be a vacuous
+operation. 
+<LI><STRONG>Thry</STRONG> is the type of
+theories. 
+<LI><STRONG>Thm</STRONG> is the type of theorems.
+<LI><STRONG>Tactic</STRONG> is the type of tactics.
+</UL>
+
+<HR>
+
+<PRE>
+   val mk_functional : Thry -> Preterm ->
+                       {functional:Preterm, patterns:Preterm list}
+</PRE>
+
+<STRONG>mk_functional</STRONG> takes a theory and a conjunction of
+recursion equations and returns the functional corresponding to the
+equations and also the patterns used in the equations. The main
+component in this operation is an ML-style pattern-matching
+translation. For example, in HOL, with recursion equations
+<PRE>
+    (Fact 0 = 1) /\
+    (Fact (Suc x) = Fact x * Suc x)
+</PRE>
+
+the output of <STRONG>mk_functional</STRONG> is
+
+<PRE>
+    {functional = `\Fact a. num_case 1 (\v. Fact v * Suc v) a`,
+     patterns = [`0`,`Suc x`]}.
+</PRE>
+Note that the function being represented (<EM>Fact</EM> in this case)
+should be a variable in the recursion equations. 
+<HR>
+
+<PRE>
+   val prim_wfrec_definition : Thry 
+                                -> {R:Preterm, functional:Preterm}
+                                -> {def:Thm, corollary:Thm, theory:Thry}
+</PRE>
+
+<STRONG>prim_wfrec_definition</STRONG> is the main underlying definition
+mechanism. It takes a relation <EM>R</EM> and a functional which looks
+like <EM>\f x. N</EM>, the latter presumably derived from
+<STRONG>mk_functional</STRONG>, and makes the definition  <EM>def</EM>
+<PRE>     f = WFREC R (\f x. N).
+</PRE>
+It then instantiates and simplifies the wellfounded recursion theorem to
+get <EM>corollary</EM>. For our example, we get, using <EM>(\m n. n =
+Suc m) </EM> for <EM>R</EM>:
+<PRE>
+  {def= |- Fact =
+            WFREC (\m n. n = Suc m) 
+                  (\Fact a. num_case 1 (\v. Fact v * Suc v) a),
+  corollary= |- WF (\m n. n = Suc m) ==>
+                   !x. Fact x = (\Fact a. num_case 1 (\v. Fact v * Suc v) a)
+                                (Fact % (\m n. n = Suc m),x)
+                                x}.
+</PRE>
+<HR>
+<PRE>
+   val gen_wfrec_definition : Thry 
+                               -> {R:Preterm, eqs:Preterm}
+                               -> {theory:Thry, rules:Thm, 
+                                   TCs:Preterm list list}
+</PRE>
+<STRONG>gen_wfrec_definition</STRONG> acts essentially as a pre- and
+post-processor for <STRONG>prim_wfrec_definition</STRONG>. It takes
+<EM>R</EM> as before, and takes <EM>eqs</EM>, a conjunction of recursion
+equations. It then calls <STRONG>mk_functional</EM> to translate the
+recursion equations to a functional, and then invokes
+<STRONG>prim_wfrec_definition</STRONG> on the result to make the
+definition. After that, there is a phase of <EM>termination condition
+extraction</EM>: this traverses the definition and brings out formulae
+that, when proven, allow the definition to be used freely. For example,
+an invocation with <EM>R = (\m n. n = Suc m)</EM> and 
+<EM>eqs = fact x = if (x = 0) then 1 else x * fact(x-1)</EM> gives the result
+(momentarily ignoring the returned theory component):
+
+<PRE>
+    {rules = [WF (\m n. n = SUC m)]
+             |- (!x. ~(x = 0) ==> (\m n. n = SUC m) (x - 1) x) ==>
+                (fact x = ((x = 0) => 1 | (x * fact (x - 1)))),
+     TCs = [[`!x. ~(x = 0) ==> (\m n. n = SUC m) (x - 1) x`]]}
+</PRE>
+
+Note well that even if these are not proven, the definition can still be
+used. This is in contrast to some other approaches, where termination
+must be proved before anything can be doen with the function.
+
+<HR>
+<PRE>
+   val wfrec_eqns : Thry -> Preterm -> Preterm * Preterm 
+                                       * (Thm * Preterm list) list
+
+   val lazyR_def : Thry -> Preterm -> {theory: Thry, eqns:Thm, 
+                                       TCs:Preterm list list}
+</PRE>
+
+<STRONG>wfrec_eqns</STRONG> is used to implement
+<STRONG>lazyR_def</STRONG>, and is not of much interest.
+
+<HR>
+<PRE>
+   val mk_induction : Thry -> Thm -> Preterm list list -> Thm
+</PRE>
+<HR>
+<PRE>
+   val postprocess: {WFtac:Tactic, terminator:Tactic, simplifier:Term -> Thm}
+                    -> Thry 
+                      -> {rules:Thm, induction:Thm, TCs:Preterm list list}
+                          -> {rules:Thm, induction:Thm, TCs:Thm list}
+</PRE>
+
+<HR>
+<PRE>
+   val new_context : Thm -> unit
+   val context_congs : unit -> Thm list
+</PRE>
+<HR>
+<H2>Instantiating <STRONG>TFL</STRONG></H2>
+
+(settable parameters,what the rewriter has to do)
+
+
+<HR>
+<A HREF = "#Table of Contents">Table of Contents</A>
+<BR>
+<A HREF="http://hpbroy3.informatik.tu-muenchen.de/MITARBEITER/slind/slind.html">Konrad Slind</A>, 
+slind@informatik.tu-muenchen.de<P>

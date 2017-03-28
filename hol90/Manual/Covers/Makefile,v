@@ -1,0 +1,106 @@
+head	1.1;
+branch	1.1.1;
+access;
+symbols
+	HOL97:1.1.1.1.0.6
+	bpHOL97:1.1.1.1
+	hol90_9_alpha:1.1.1.1
+	hol90_pre8_for_multiple_compilers:1.1.1.1.0.4
+	hol90_pre8_after_donalds_separate_compilation_changes:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	95.10.16.13.36.41;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.36.41;	author rjb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@# Makefile for HOL Manual title and end pages.  This is separate from the main
+# manual stuff because of the heavy PostScript hacking involved.
+
+# The following variables are needed:
+#
+#   LATEX -- The name of the LaTeX command normally used at this site.
+#   DVI2PS -- The name of the dvi -> ps converter.
+#   DVI2PSOPTS -- Options for the converter named in DVI2PS.
+
+LATEX = latex
+DVI2PS = dvips
+DVI2PSOPTS =
+RM = rm -f
+
+default:
+	@@echo "$(DIR)"
+	@@echo "INSTRUCTIONS: Type \"make all\" to make the fancy covers."
+	@@echo -n "  NB - psfig macros required.  See Covers/psfig/"
+	@@echo " if you don't have them."
+
+endpages.dvi: CRC.ps DESCRIPTION.ps LANTERN.ps REFERENCE.ps TUTORIAL.ps \
+              arms.ps endpages.tex endpages.sty
+	$(LATEX) endpages
+	@@echo "===> endpages.dvi created"
+
+titlepages.dvi: CRC.ps DESCRIPTION.ps LANTERN.ps REFERENCE.ps TUTORIAL.ps \
+                arms.ps titlepages.tex titlepages.sty
+	$(LATEX) titlepages
+	@@echo "===> titlepages.dvi created"
+
+dvi: endpages.dvi titlepages.dvi
+
+endpages.ps: endpages.dvi
+	-$(DVI2PS) $(DVI2PSOPTS) endpages > endpages.ps
+	@@echo "===> endpages.ps created"
+
+titlepages.ps: titlepages.dvi
+	-$(DVI2PS) $(DVI2PSOPTS) titlepages > titlepages.ps
+	@@echo "===> titlepages.ps created"
+
+all: clobber endpages.ps titlepages.ps
+
+clean:
+	$(RM) *.log core *.aux *~ #* LOG
+	@@echo "===> Fancy end and title pages cleaned up"
+
+clobber: clean
+	$(RM) endpages.ps titlepages.ps *.dvi 
+	@@echo "===> Fancy end and title pages clobbered"
+
+
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

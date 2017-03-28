@@ -1,0 +1,236 @@
+head	1.3;
+access;
+symbols
+	HOL97:1.1.0.4
+	bpHOL97:1.1
+	hol90_9_alpha:1.1
+	hol90_pre8_for_multiple_compilers:1.1.0.2
+	hol90_pre8_after_donalds_separate_compilation_changes:1.1;
+locks; strict;
+comment	@# @;
+
+
+1.3
+date	96.01.04.22.06.52;	author drs1004;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	95.12.18.11.41.48;	author drs1004;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	95.10.31.13.55.56;	author drs1004;	state Exp;
+branches
+	1.1.4.1;
+next	;
+
+1.1.4.1
+date	97.07.10.19.41.54;	author kxs;	state Exp;
+branches;
+next	1.1.4.2;
+
+1.1.4.2
+date	97.10.05.21.04.51;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.3
+log
+@NJML 108.19 changes
+@
+text
+@
+(*------------------------------------------------------------------------
+ * $Id: sources.cm,v 1.2 1995/12/18 11:41:48 drs1004 Exp $
+ *
+ * Sources description for core hol90
+
+fun c () = CM.recompile' (CM.cmfile "/homes/drs1004/hol90.8/src/sources.cm");
+fun m () = CM.make' (CM.cmfile "/homes/drs1004/hol90.8/src/sources.cm");
+fun cset () = CM.recompile' (CM.cmfile "/homes/drs1004/hol90.8/library/set/sources.cm");
+fun mset () = CM.make' (CM.cmfile "/homes/drs1004/hol90.8/library/set/sources.cm");
+fun cp () = CM.recompile' (CM.cmfile "/homes/drs1004/hol90.8/library/pred_set/sources.cm");
+fun mp () = CM.make' (CM.cmfile "/homes/drs1004/hol90.8/library/pred_set/sources.cm");
+fun cred () = CM.recompile' (CM.cmfile "/homes/drs1004/hol90.8/library/reduce/sources.cm");
+fun mred () = CM.make' (CM.cmfile "/homes/drs1004/hol90.8/library/reduce/sources.cm");
+fun cid () = CM.recompile' (CM.cmfile "/homes/drs1004/hol90.8/library/ind_def/sources.cm");
+fun mid () = CM.make' (CM.cmfile "/homes/drs1004/hol90.8/library/ind_def/sources.cm");
+fun ca () = CM.recompile' (CM.cmfile "/homes/drs1004/hol90.8/library/arith/sources.cm");
+fun ma () = CM.make' (CM.cmfile "/homes/drs1004/hol90.8/library/arith/sources.cm");
+ use "/homes/drs1004/hol90.8/src/0/hol0.sml"; 
+ use "/homes/drs1004/hol90.8/src/1/hol1.sml"; 
+ use "/homes/drs1004/hol90.8/src/2/hol2.sml"; 
+ use "/homes/drs1004/hol90.8/src/3/hol3.sml"; 
+ use "/homes/drs1004/hol90.8/src/3/simplifier/src/load.sml";
+
+new_theory "junk"; load_library_in_place option_lib;
+
+ *-----------------------------------------------------------------------*)
+
+Group
+
+
+is
+
+	0/sources.cm
+	1/sources.cm
+	2/sources.cm
+	3/sources.cm
+
+@
+
+
+1.2
+log
+@Preterm and other changes, see 7.changes
+@
+text
+@d3 1
+a3 1
+ * $Id: sources.cm,v 1.1 1995/10/31 13:55:56 drs1004 Exp $
+d6 21
+a37 1
+	3/simplifier/src/sources.cm
+@
+
+
+1.1
+log
+@First phase of hol90.8 development.  hol90 now compiles using NJSML-CM
+108.5, with separate compilation of libraries.  System dependencies
+have been isolated in the makefiles and "portable.sml".
+
+This involved a large number of enhancments to the source files,
+most of which are documented in the 7.changes file (or will be shortly).
+See also the correpsonding email corrspondence between RJB, KLS, TFM,
+JRH and DRS that happened during this development.
+@
+text
+@d3 1
+a3 1
+ * $Id$
+d15 3
+a17 2
+(*	2/sources.cm
+	3/sources.cm *)
+@
+
+
+1.1.4.1
+log
+@Now this maintains different versions of SML: 90 and 97.
+@
+text
+@d1 3
+a3 6
+(*---------------------------------------------------------------------------
+ * $Id: sources.cm,v 1.1 1995/10/31 13:55:56 drs1004 Exp $
+ *
+ * Sources for core hol90
+ *
+ * Need to do 
+d5 2
+a6 4
+      Compiler.Control.quotation := true;
+ *
+ * on startup of the ML compiler!
+ *---------------------------------------------------------------------------*)
+d12 6
+a17 72
+   SysParams.sml
+   portableML/njsml.109.xx.sml
+   0/sources.cm
+
+  (* CoreHol needs to be here cause of multiple decl. of "Term" and "Type" *)
+  0/CoreHol.sig
+  0/CoreHol.sml
+  0/parse_support.sig
+  0/parse_support.sml
+  Grammars/hol.yak : MLYacc
+
+#if (SMLNJ_VERSION>109 || ((SMLNJ_VERSION == 109) && SMLNJ_MINOR_VERSION>=28))
+Grammars/hol.lex
+#else
+Grammars/hol.lex.90 : MLLex
+#endif
+
+  0/parse.sig
+  0/parse.sml
+
+  0/theory/add_to_sml.sig
+  0/theory/add_to_sml.sml
+
+  ../theories/src/min.sig
+  ../theories/src/ld_min.sml
+  ../theories/src/exists.sig
+  ../theories/src/ld_exists.sml
+  ../theories/src/bool.sig
+  ../theories/src/ld_bool.sml
+
+  1/drule.sig
+  1/drule.sml
+  1/abbrev.sml
+  1/conv.sig
+  1/conv.sml
+  1/tactical.sig 
+  1/tactical.sml
+  1/rewrite.sig
+  1/rewrite.sml
+  1/thm_cont.sig
+  1/thm_cont.sml
+  1/tactic.sig
+  1/tactic.sml
+  1/taut_thms.sig
+  1/taut_thms.sml
+  1/resolve.sig
+  1/resolve.sml
+  1/type_def_support.sig
+  1/type_def_support.sml
+  1/induct_then.sig
+  1/induct_then.sml
+  1/prim_rec.sig
+  1/prim_rec.sml
+
+  ../theories/src/ld_BASIC_HOL.sml
+  2/num_conv.sig            
+  2/num_conv.sml            
+  2/let_conv.sig            
+  2/let_conv.sml            
+  2/num_induct.sig 
+  2/num_induct.sml      
+  2/rec_type_support.sig
+  2/rec_type_support.sml
+
+  ../theories/src/ld_HOL.sml
+  (* 3/sys_lib.sig 3/sys_lib.sml    *)
+  3/define_type.sig 3/define_type.sml
+  3/gstack.sig 3/gstack.sml
+  3/psyntax.sig
+  3/rsyntax.sig
+  3/psyntax.sml
+  3/rsyntax.sml
+@
+
+
+1.1.4.2
+log
+@INSTALL.txt tells how to build the system.
+@
+text
+@d2 1
+a2 1
+ * $Id: sources.cm,v 1.1.4.1 1997/07/10 19:41:54 kxs Exp $
+a8 2
+      CM.SymVal.define ("THY_AS_MODULE",0);
+      CM.make();
+d17 2
+a88 1
+
+@

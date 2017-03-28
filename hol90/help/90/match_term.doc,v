@@ -1,0 +1,118 @@
+head	1.1;
+branch	1.1.1;
+access;
+symbols
+	HOL97:1.1.1.1.0.6
+	bpHOL97:1.1.1.1
+	hol90_9_alpha:1.1.1.1
+	hol90_pre8_for_multiple_compilers:1.1.1.1.0.4
+	hol90_pre8_after_donalds_separate_compilation_changes:1.1.1.1
+	hol90_8_after_merging_Konrad_Elsa:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	95.10.16.13.35.45;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.35.45;	author rjb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@\DOC match
+
+\TYPE {match_term : term -> term -> (term subst * hol_type subst)}
+
+\SYNOPSIS
+Finds instantiations to match one term to another.
+
+\DESCRIBE
+
+When applied to two terms, {match_term} attempts to find a set of type
+and term instantiations for the first term (only) to make it
+alpha-convertible to the second. If it succeeds, it returns the
+instantiations in the form of a pair containing a term substitution and
+a type substitution. If the first term represents the conclusion of a
+theorem, the returned instantiations are of the appropriate form to be
+passed to {INST_TY_TERM}.
+
+\FAILURE
+Fails if the term cannot be matched by one-way instantiation.
+
+\EXAMPLE
+The following shows how {match_term} could be used to match the conclusion of a
+theorem to a term.
+{
+   - val th = REFL (--`x:'a`--);
+   th = |- x = x
+
+   - match_term (concl th) (--`1 = 1`--);
+   val it = ([{{redex = (--`x`--), residue = (--`1`--)}}],
+             [{{redex = (==`:'a`==), residue= (==`:num`==)}}])
+     : term subst * hol_type subst
+
+  - INST_TY_TERM it th;
+   |- 1 = 1
+}
+\COMMENTS
+Note that there is no guarantee that the returned instantiations will be
+possible for {INST_TY_TERM} to achieve, because some of the variables (term or
+type) which need to be instantiated may be free in the assumptions, eg:
+{
+   - (show_types := true; show_assums := true);
+   () : unit
+
+   - val th = ASSUME (--`x:'a = x`--);
+   val th = [(x :'a) = (x :'a)] |- (x :'a) = (x :'a) : thm
+
+   - match_term (concl th) (--`1 = 1`--);
+   val it = ([{{redex = (--`x :num`--), residue = (--`1`--)}}],
+             [{{redex = (==`:'a`==), residue = (==`:num`==)}}])
+     : term subst * hol_type subst
+
+   - INST_TY_TERM it th handle e => Raise e;
+   Exception raised at Thm.INST_TYPE:
+   type variable(s) in assumptions would be instantiated in concl
+
+}
+\noindent In fact, for instantiating a theorem, {PART_MATCH} is usually easier.
+
+\SEEALSO
+match_type, INST_TY_TERM, PART_MATCH.
+
+\ENDDOC
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

@@ -1,0 +1,1009 @@
+head	1.2;
+access;
+symbols
+	HOL97:1.2.2.2.0.2
+	bpHOL97:1.2.2.2
+	hol90_9_alpha:1.2.2.2
+	hol90_pre8_for_multiple_compilers:1.2.0.2
+	hol90_manual_after_dons_changes:1.1;
+locks; strict;
+comment	@% @;
+
+
+1.2
+date	96.09.04.18.55.57;	author drs1004;	state dead;
+branches
+	1.2.2.1;
+next	1.1;
+
+1.1
+date	96.02.27.15.11.50;	author drs1004;	state Exp;
+branches;
+next	;
+
+1.2.2.1
+date	96.09.04.18.56.52;	author drs1004;	state Exp;
+branches;
+next	1.2.2.2;
+
+1.2.2.2
+date	96.09.06.09.53.23;	author rjb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.2
+log
+@blah
+@
+text
+@\chapter*{Preface}
+
+The purpose of the chapters which follow is to document some of the 
+more advanced techniques that experienced users employ 
+when using the \HOL system.
+Chapter~\ref{simplification} describes the \HOL\ simplifier, a 
+powerful new proof tool available with this release of \HOL.  
+%Chapter~\ref{abstract-theories} describes how abstract (or
+%parameterized) theories
+%can be developed in the \HOL\ system, for example theories
+%for algebraic notions like groups and rings.  
+%Chapter~\ref{choice} describes utilities that are available for 
+%dealing with the troublesome Hilbert-choice operator, and also some techniques
+%for avoiding its use altogether.
+%Chapter~\ref{decision-procedures} describes some of the advanced
+%decision procedures included with the \HOL\ system.
+%Chapter~\ref{subtyping} describes the latest ideas on how
+%subtyping and dependent types can be handled in the \HOL\ framework.
+%Chapter~\ref{wisdom} is a distillation of some of the wisdom
+%that has appeared on the \verb%info-hol% mailing list over the
+%last 10 years.
+
+
+Moany of these topics are ongoing areas of research, and users are 
+invited to pursue better solutions than those 
+presented here.  The \HOL\ system provides an
+ideal environment for exploring solutions to these problems,
+due to its high level of programmability and simple conceptual
+framework.
+
+All of these tools are developed on top of the
+core \HOL\ system, without changing the essential logical
+basis being used.  In different ways this demonstrates both
+the power of the \HOL\ design philosophy --- a
+simple core allows safe, easy extensibility via programming.
+However, this can be also be seen as a weakness, as the advanced
+facilities described here are needed in most applications, and 
+significant effort is needed to program them on top of the \HOL\ core.
+
+
+
+\chapter{Simplification}
+
+\label{simplification}
+\label{simplifier}
+
+This chapter describes `simplification', which is a 
+powerful new proof technique available in the latest version
+of \HOL.  
+
+First a word of warning! As always, {\em the more you know about what
+an automated tool can do for you, the more effective it will
+be for you}. Users should ensure they have
+a good understanding of what simplification is
+before they make large sale use of it in their poofs.
+This will help avoid the plethora of problems
+that develop from the misapplication of automated tools.
+
+In particular, users new to theorem proving
+systems should probably use simplification sparingly,
+until they have a thorough understanding of the basics of how
+a theorem proving system works.
+
+\section{What is simplification?}
+
+In its most basic form, simplification is essentially an expanded
+kind of rewriting, which has already been introduced in
+Section~\ref{rewriting}. Like rewriting, simplification
+starts with some term, say $t_1$, and repeatedly applies
+a collection of {\it reduction rules} to the term and its
+subterms until no more reductions apply.  This produces
+the theorem \ml{|- $t_1$ = $t_2$}, which can be utilised
+in various ways.  
+
+Simplification is only concerned with the case where the reduction
+rules prove that the term $t_1$ is {\it equal} to another term
+$t_2$.  Thus the domain of operation of simplification is
+most of what is encompassed by {\it equational reasoning}.  
+Simplification can be generalized to reduction under preorders, but
+for the moment we need only be concerned with the equality case.
+
+A collection of simplification rules has \ML\ type {\it simpset}.
+Simpsets contain:
+\begin{itemize}
+   \item{Rewrite Rules}
+   \item{Rewrite Conversions}
+   \item{Congruence Rules}
+   \item{Decision Procedures}
+\end{itemize}
+
+Some of the basic functions for creating and manipulating simpsets
+are:
+\begin{boxed} \begin{verbatim}
+    val addrewrs : simpset * thm list -> simpset
+    val addconvs : simpset * convdata list -> simpset
+    val addcongs : simpset * thm list -> simpset
+    val adddprocs : simpset * dproc list -> simpset
+\end{verbatim} \end{boxed}
+Some of inbuilt simpsets of the \HOL\ system are:
+\begin{center}
+\index{simpsets@@!inbuilt}
+\index{mk_vartype@@\ml{mk\_vartype}}
+\index{mk_type@@\ml{mk\_type}}
+\begin{tabular}{|l|l|} \hline
+{\it Simpset} & {\it Purpose}  \\ \hline
+ & \\ \hline
+\ml{pure\_ss} & Used for building other simpsets \\ \hline
+\ml{bool\_ss} & Simplifies ``basic'' constructs \\ \hline
+\ml{pair\_ss} & Simplifies tupled expressions \\ \hline
+\ml{list\_ss} & Simplifies list constructs \\ \hline
+\ml{combin\_ss} & Simplifies combinator constructs \\ \hline
+\ml{arith\_ss} & Simplification combined arithmetic decision procedures \\ \hline
+\ml{hol\_ss} & Combines all inbuilt simplification strategies \\ \hline
+\end{tabular}
+\end{center}
+Simpsets are usually constructed to perform a particular
+task, e.g. to rewrite out all occurrences of a group of definitions,
+or to apply a set of reductions which will always reduce a term
+to a normal form.
+
+The above functions 
+are usually called using the \ml{|>} infix operator.  For example:
+\begin{session} \begin{verbatim}
+- val BOOL_ss = 
+      pure_ss |> addrewrs [FORALL_SIMP, EXISTS_SIMP,
+                           IMP_CLAUSES, AND_CLAUSES,
+                           COND_CLAUSES, OR_CLAUSES]
+              |> addcongs [imp_congrule, cond_congrule]
+\end{verbatim} \end{session}
+
+The basic routines used to invoke simplification are:
+\begin{boxed} \begin{verbatim}
+    val SIMP_CONV : simpset -> thm list -> conv
+    val SIMP_PROVE : simpset -> thm list -> term -> thm
+    val SIMP_RULE : simpset -> thm list -> thm -> thm
+    val SIMP_TAC : simpset -> thm list -> tactic
+    val ASM_SIMP_TAC : simpset -> thm list -> tactic
+    val FULL_SIMP_TAC : simpset -> thm list -> tactic
+\end{verbatim} \end{boxed}
+
+Simplification often involves many, many inferences, and complex
+paths of deduction may occur, leading to almost magical results.
+There is a down side to this - simplification is difficult
+to understand, and even more difficult to debug when things
+go wrong.
+
+The function provided for to enable tracing is:
+\begin{boxed} \begin{verbatim}
+   val trace_level : int -> void
+\end{verbatim} \end{boxed}
+The trace levels currently range from 0 to 5, where level
+0 is no tracing and level 5 presents enormous quantities of information.
+The aim has been to make trace level 1 produce sufficient information
+to debug most problems.  Trace levels 3 to 5 should only be needed
+when debugging the simplifier itself.
+
+
+\subsection{An example: List Equality}
+
+The following simpset will decide equality for lists of
+natural numbers constructed using \ml{CONS} and \ml{NIL}.  The
+simpset is made up of simple rewrites about lists along with a conversion
+to decide numeric equality.
+\begin{session} \begin{verbatim}
+- THM "CONS_11";
+val it = |- !h h' t t'. (CONS h t = CONS h' t') = (h = h')
+
+- val list_eq_ss = 
+      bool_ss |> addrewrs [THM "CONS_11", THM "NOT_CONS_NIL", 
+                           THM "NOT_NIL_CONS"]
+              |> addconvs [("num_EQ_CONV",num_EQ_CONV)];
+...
+- SIMP_CONV list_eq_ss [] (--`[1;2;3] = [1;2;3]`--);
+val it = |- ([1;2;3] = [1;2;3]) = T : thm
+
+- SIMP_PROVE list_eq_ss [] (--`~[1;2;3] = [1;2]`--);
+val it = |- ~[1;2;3] = [1;2] : thm
+
+- SIMP_PROVE list_eq_ss [] (--`~[1;2;4] = [1;2;3]`--);
+val it = |- ~[1;2;4] = [1;2;3] : thm
+\end{verbatim} \end{session}
+
+
+\section{Rewrite Rules}
+
+\label{rewrite-rules}
+
+Rewrite rules are theorems which express an equality.  They
+are similar to the theorems
+provided as input to the `plain' rewriter 
+\ml{REWRITE\_TAC}.  Some examples are:
+\begin{hol}\begin{verbatim}
+   |- !i j k. (i + j) + k = i + (j + k)
+   |- HD (CONS h t) = h
+   |- NULL [] = T
+   |- (!x. t) = t
+\end{verbatim}\end{hol}
+In each of the rules above, an infinite number of potential
+reductions has been specified.  For example the first rule
+will act on any term which matches \ml{(--`($i$ + $j$) + $k$`--)}.
+
+Rewrite rules may also be {\em conditional}.  For example:
+\begin{hol}\begin{verbatim}
+   |- n > 0 ==> (EL n (CONS h t) = EL (n-1) t)
+\end{verbatim}\end{hol}
+This
+rule applies to any term which matches \ml{(--`EL $n$ (CONS $h$ $t$)`--)},
+and will only be applied if the condition \ml{(--`$n$ > 0`--)} can be
+solved for a particular $n$.  Note that solving an arithmetic side condition
+like this automatically will almost certainly 
+require a decision procedure to be present.
+
+\subsection{How rewrite rules are made}
+
+Strictly speaking, each reduction rule in a simpset must specify an
+equality. However, any theorem which is not already an
+equality can be turned into a rewrite rule by simply
+converting \ml{|- $t$} to \ml{|- $t$ = T}.  
+In fact, the process is a little more complex than this.
+All theorems are processed by a {\em rewrite maker}
+before being added to a simpset.  The rewrite maker is 
+an attribute of the simpset.  The default rewrite maker
+performs the following transformations repeatedly:
+\begin{itemize}
+    \item A conjunction in the final conclusion lead to
+    two reduction rules.  Thus
+\begin{hol} \begin{verbatim}
+       |- \ldots ==> x /\ y becomes
+       |- \ldots ==> x and
+       |- \ldots ==> y.
+\end{verbatim} \end{hol}
+
+    \item Negations \ml{~$t$} in the final conclusion become \ml{$t$ = F}:
+    \begin{hol} \begin{verbatim}
+       |- \ldots ==> ~t becomes 
+       |- \ldots ==> (t = F).
+\end{verbatim} \end{hol}
+
+    \item Universal quantifiers get stripped off the
+    conclusion:
+    \begin{hol} \begin{verbatim}
+       |- \ldots ==> !x. t becomes 
+       |- \ldots ==> t.
+\end{verbatim} \end{hol}
+        
+    \item Ignoring conditions, a rewrite rule whose conclusion
+    is not an equality, universal quantification,
+    negation or conjunction becomes one rewrite rule:
+    \begin{hol} \begin{verbatim}
+       |- \ldots ==> x becomes 
+       |- \ldots ==> (x = T).
+\end{verbatim} \end{hol}
+        
+    \item All side conditions are transformed into a single condition,
+    where variables free in the condition but not in the equality
+    become exisentially quantified.  Thus 
+    \begin{hol} \begin{verbatim}
+       |- IS_TYPE t ==> PROG x t ==> IS_PROG x becomes
+       |- (?t. IS_TYPE t /\ PROG x t) ==> (IS_PROG x = T)
+\end{verbatim} \end{hol}
+\end{itemize}
+
+Note that in general, some
+decision procedure or external routine must be contained in the
+simpset in order to automaticaly choose an appropriate value
+for these existential variables.  Two routines are provided
+in the core \HOL\ system to handle this --- \ml{SATISFY\_CONV}
+and \ml{SINGLE\_POINT\_EXISTS\_CONV}.  See
+Section~\ref{solving-existentials} for more details.
+
+\subsection{How rewrite rules are applied}
+
+Simplification works by:
+\begin{itemize}
+    \item Descending the target term in a top-down
+fashion.  
+    \item At each subterm, the simplifier attempts to match 
+the current subterm with one of the rewrite
+rules from the simpset.  This is done
+efficiently by using term nets to eliminate most
+non-matches.  
+    \item When a match is found, the simplifier attempts
+to solve the conditions to the rewrite rule.  It does this
+by trying to simplify the conditions to the term \verb%"T"%.
+    \item If the conditions are solved, then the rewrite rule is applied and
+the process continues on the new term.  
+\end{itemize}
+
+This is a somewhat simplified view of things - the exact term traversal
+performed is dictated by the congruence rules being used - this is
+explained further in Section~\ref{congruence-rules}.
+
+
+\subsubsection{Matching and Higher Order Matching}
+
+For a rewrite rule \ml{|- $c_1$ ==> \ldots ==> $t_1$ = $t_2$},
+the simplifier will try to match subterms against $t_1$.  The
+matching preformed is a limited version of {\it higher order
+matching}.  For many rewrite rules this will have no effect.  However,
+wherever function valued variables are free in $t_1$, then higher
+order matching may come into play.
+
+Higher order matching allows a pattern such as
+\ml{(--`!x. P x`--)} to match a term like \ml{(--`(!x. x = 3)`--)}.  In
+this example the variable $P$ will be instantiated to 
+\verb%(--`\x. x = 3`--)%.
+Higher order matching allows rewrite rules to be far more expressive.
+For example, beta reduction can be expressed as a rewrite rule:
+\begin{hol} \begin{verbatim}
+   |- (\x. P x) y = P y
+\end{verbatim} \end{hol}
+Some other common higher order rewrite rules are:
+\begin{hol} \begin{verbatim}
+   |- ~(!x. P x) = (?x. ~P x)
+   |- (!x. P x /\ Q) = (!x. P x) /\ Q
+   |- (!x. P x /\ Q x) = (!x. P x) /\ (!x. Q x)
+\end{verbatim} \end{hol}
+All of the quntifier movement conversions from Section~{quantifier-movement}\
+can be implemented using higher order rewrite rules.
+
+The limited higher order matching used in the simplifier 
+only allows function variables in the match to be paramaterized
+by variables which are quantified in the pattern.  Thus \ml{(--`P x`--)}
+will not match \ml{(--`x = 3`--)}, whereas \ml{(--`?x. P x`--)} will.
+This ensures unique unifiers as the unifiers can be made maximal
+over these variables.  This
+avoids many of the difficulties that arise with full higher order
+matching.  Note, however, that the simplifier 
+is sufficiently programmable to allow
+other kinds of matching to be used instead of higher order matching.
+
+The higher order matching routines used by the simplifier are also available
+for general use by other derived procedures.  The relevant functions
+are:
+\begin{hol} \begin{verbatim}
+   val ho_match_term : term -> term -> (term subst * type subst)
+   val HO_PART_MATCH : (term -> term) -> thm -> conv
+\end{verbatim} \end{hol}
+
+
+\section{Contextual Rewriting}
+
+The discussion so far has assumed that the simplifier reduces
+a term by traversing its subterms in a simple top-depth fashion.  This
+is how `plain rewriting' works in the \HOL\ system.  In
+this simpe case, reductions
+made to subterms are justified by the {\it congruence rules}:
+$$\Gamma_1\turn l_1=l_2\qquad\qquad\qquad\Gamma_2\turn r_1=r_2\over
+\Gamma\turn l_1\ r_1 = l_2\_r_2$$
+$$\Gamma_1\turn t_1=t_2\over
+\Gamma\turn (\lquant{x}t_1) = (\lquant{x}t_2)$$
+which are in turn implemented by the conversional \ml{SUB\_CONV}.
+
+This process is straight forward to implement, but fails to do justice to the
+fact that, when reducing certain subterms, it is valid, and indeed
+desireable to make use of additional facts which hold
+in the context of those subterms.  These `context theorems' are typically
+used to provide new rewrite rules, or are provided as extra input to
+decision procedures when making reductions or solving side conditions.
+
+To take a simple yet important example, consider
+the case when reducing the term $t_2$ within \ml{(--`$t_1$ ==> $t_2$`--)}.
+It is reasonable to expect that an automatic tool can make use of any rewrite
+rules that can be derived from $t_1$ when simplifiying $t_2$.
+In other words, $t_1$ is added to the ``current working context'' when
+within $t_2$. \footnote{The notion of context turns out to be an important one
+in theorem proving work, and provides one of the
+motivations for the Window Inference proof style (see the
+\HOL\ window inference library for more details on this).
+Simplification can be seen as the fully automated, and thus
+less controlled, version of window inference under the equality
+relation.  Simplification is a special case of term traversal,
+which provides automated contextual reasoning for other relations.} 
+
+As an example, consider
+the goal \verb%(--`P x /\ ~(x = y) ==> ~([1;x;5] = [1;y;5])`--)%.  The
+goal is obviously true, but may require several tactics to solve
+in the primitive \HOL\ system.  
+
+The key observation is that when reducing the term on the right of the
+implication, the ``theorems'' \ml{|- P x} and \ml{|- ~(x = y)} can
+be assumed.  During simplification, they are added as
+rewrites to the current simpset.  They are also added to the
+working context of any co--operating decision procedures, but that
+will be described in more detail later.
+
+To see this in practice, try:
+\begin{session} \begin{verbatim}
+- SIMP_PROVE list_eq_ss [] (--`P x /\ ~(x = y) ==> ~([1;x;5] = [1;y;5])`--);
+val it = |- ~[1;x;5] = [1;y;5] : thm
+\end{verbatim} \end{session}
+
+
+\section{Ordered Rewriting}
+
+\label{ordered-rewriting}
+
+It is well known that some rewrite rules cause `plain rewriting'
+(i.e. \ml {REWRITE\_TAC}) to loop, for instance:
+\begin{hol} \begin{verbatim}
+ADD_SYM |- x + y = y + x
+INSERT_SYM |- x INSERT (y INSERT s) = y INSERT (x INSERT s)
+\end{verbatim} \end{hol}
+Both of these are {\em permutative rewrites}, in the sense that
+the right hand side is a permutation of the pattern on the left.
+
+For such rewrites, the simplifier uses the common and
+simple solution of only applying these rewrites when the term 
+to which they are being applied is strictly reduced according to a term
+ordering.  
+
+Ordered rewriting will also work for operations whose
+commutative theorems have side
+conditions, as for partial functions:
+\begin{hol} \begin{verbatim}
+PUPDATE_SYM |- ~(x1 = x2) ==>
+               (PUPDATE (x1,y1) (PUPDATE (x2,y2) f) = 
+                PUPDATE (x2,y2) (PUPDATE (x1,y1) f))
+\end{verbatim} \end{hol}
+
+\subsection{AC Rewriting}
+
+The \HOL\ simplifier supports AC rewriting, in the style of the
+Isabelle simplifier.  This will create a normalizer for repeated
+applications of an associative/comutative operator
+like \ml{+}.\footnote{Note that \HOL\ also includes
+AC\_CONV for performing similar operations.}
+
+To enable AC ordered rewriting, 
+the associative and comutative theorems
+for the operation must be inserted in a
+simpset using the special function \ml{addac}.
+For example, to enable AC rewriting over \ml{+}:
+\begin{hol} \begin{verbatim}
+ADD_SYM |- x + y = y + x
+ADD_ASSOC |- x + (y + z) = (x + y) + z
+\end{verbatim} \end{hol}
+must be inserted in to a simpset:
+\begin{session} \begin{verbatim}
+- val AC_ADD_ss = pure_ss |> addac (ADD_SYM,ADD_ASSOC)
+
+- SIMP_CONV AC_ADD_ss (--`(y + x) + 3 + 6 + (2 * x + 1)`--)
+val it = |- (y + x) + 3 + 6 + (2 * x + 1) =
+            1 + 3 + 6 + y + x + 2 * x : thm
+
+- SIMP_CONV AC_ADD_ss (--`x + 3 + y + 2 * x + 6 + 1`--)
+val it = |- x + 3 + y + 2 * x + 6 + 1 =
+            1 + 3 + 6 + y + x + 2 * x : thm
+
+- SIMP_PROVE AC_ADD_ss (--`(y + x) + 3 + 6 + (2 * x + 1) =
+                           x + 3 + y + 2 * x + 6 + 1`--)
+val it = |- (y + x) + 3 + 6 + (2 * x + 1) =
+            x + 3 + y + 2 * x + 6 + 1 : thm
+\end{verbatim} \end{session}
+
+
+This is implemented using ordered rewriting, with a term ordering that
+is AC compatible.  
+The function \ml{addac} is a simple interface to \ml{addrewrs}.  Three
+rewrite rules are needed to implement AC rewriting:
+\begin{hol} \begin{verbatim}
+ADD_SYM |- x + y = y + x
+GSYM ADD_ASSOC |- (x + y) + z = x + (y + z)
+ADD_LASSOC |- x + (y + z) = y + (x + z)
+\end{verbatim} \end{hol}
+The function \ml{addac} derives the third of these from the first two.
+Also, note that the standard form for \HOL\ associativity theorems is the
+wrong way round for the purposes of normalizing AC nestings to
+the right --- \ml{addac} reverses this automatically.
+
+\section{Decision Procedures and Simplification}
+
+It is exceptionally useful to allow the integration
+{\it decision procedures} with the simplification process,
+particularly arithmetic decision procedures.
+
+In the context of this discussion, a decision procedure is a function which
+performs complex computation before producing a reduction for
+a term.  The example we shall use is \ml{ARITH}, 
+which determines the truth of linear
+arithmetic formulae over the natural numbers.
+It is easy to imagine decision procedures for other
+domains such as the integer and real numbers.
+
+Decision procedures are integrated into the simplification
+process by adding them to simpsets.  They get
+invoked at low priority, in the sense that all reductions via
+rewrite rules are performed before trying the 
+procedure on a term.  All
+decision procedures are invoked for every reducable subterm.  
+
+How to add a decision procedure to a simpset is described in
+Section~\ref{adding-dprocs}.
+
+\section{Avoiding the Pitfalls of Simplification}
+
+Simplification is a powerful theorem proving technique, but is
+prone to several major problems.  
+This section is designed to make the user aware of these in advance!
+
+The pitfalls of simplification can generally be
+avoided by two techniques:
+\begin{itemize}
+   \item Using well designed simpsets.
+   \item Using tracing extensively.
+\end{itemize}
+The behaviour of simplification is almost totally dependent on the
+simpset being used.  The user should stop and think about
+exactly what reduction behavior they are specifying when they
+group together certain theorems, conversions and decision
+procedures.  A well designed simpset will work on a particular
+class of problems, and in many cases will do a thorough job
+of proving simple facts within that domain.  A poorly
+designed simpset constructed by throwing together random
+theorems will create all sorts of problems at a later date.
+
+\subsection{Non-termination}
+
+Simplification will continue until no more reductions apply.  It is very
+easy to create simpsets which will result in non-termination when
+applied to some terms.  \HOL\ detects some simple cases of
+non-terminating rewrites (e.g. it doesn't admit rewrites like
+\ml{|- x = I x} since the pattern on the left occurs within the
+right).  However, there is no general protection against this.
+Generally problems arise when two or more theorems interact
+to produce looping, such as \ml{|- x > y = y < x} and
+\ml{y < x = x > y}.
+
+The best way to avoid non-termination is to ask
+the following question about each rewrite you place in a simpset:
+{\it Is the rewrite actually contributing toward bringing terms
+toward a particular normal form}.  For example, the rewrite
+\ml{|- x > y = y < x} should only be added to a simpset if
+the normal form we are heading for involves only instances of \ml{<}
+for all linear inequalities.
+
+\subsection{Backward Chaining}
+
+Conditional rewriting allows a limited degree of search when 
+rewriting, since the rewrite is not applied unless all conditions
+are solved.  The simplifier itself is used to solve these
+conditions.  This will {\em immediately} lead to looping if
+theorems which contain the pattern within the conditions
+are added as rewrite rules.  The most obvious example is
+transitivity theorems:
+\begin{hol} \begin{verbatim}
+    |- (?z. x < z /\ z < y) ==> x < y
+\end{verbatim} \end{hol}
+Do not put these theorems into simpsets!
+
+\subsection{Non-confluence}
+
+When faced with a choice of two rewrite rules, both of which are 
+applicable to a given term, the simplifier will choose
+one and ignore the other.  This can lead to {\em confluence}
+problems, i.e. it may be that a different final result will
+be produced depending on the order in which rewrites are applied.
+Non-confluence is mainly a problem for the long term maintainability
+of proofs.
+
+Some simpsets may be confluent regardless of the presence of
+conflicting rewrite rules.  An extensive literature exists
+on term rewriting system and their properties such as 
+termination and confluence, which the user is encouraged to
+study if the subject proves particularly important.
+
+An example of non-confluence is given by the rewrites:
+\begin{hol} \begin{verbatim}
+<example>
+\end{verbatim} \end{hol}
+
+\subsection{Over-applicability}
+
+Consider the following potential rewrite rule, taken from 
+the underlying theory for the abstract theory of groups:
+\begin{hol} \begin{verbatim}
+    |- (?G. GROUP (G,prod) /\ G x /\ G y /\ G z) ==>
+       (prod (prod x y) z = prod x (prod y z))
+\end{verbatim} \end{hol}
+The theorem simply states that if $G$ and $prod$ are
+together define a algebraic group, then $prod$ is associative.
+Note there are no constants apart from \ml{GROUP} --- $G$ and
+$prod$ are variables.
+
+The problem with such a rewrite rule is that the pattern 
+\ml{(--`prod (prod x y) z`--)} will produce many undesireable matches.
+The problem is that the rewrite rule is over applicable.  The
+best solution at the moment is to make the intent of the rule
+more clear, by replacing \ml{(--`prod`--)} with a function
+to compute \ml{(--`prod`--)} for a given group:
+\begin{hol} \begin{verbatim}
+    |- GROUP (G,prod) /\ G x /\ G y /\ G z ==>
+       (PROD (G,prod) (PROD (G,prod) x y) z = 
+        PROD (G,prod) x (PROD (G,prod) y z))
+\end{verbatim} \end{hol}
+The pattern \ml{(--`PROD (G,prod) (PROD (G,prod) x y) z`--)} will
+now be suitably applicable.  The use of \ml{PROD} may seem
+redundant, but turns out to be a suitable generalization.
+
+\subsection{Bad congruence rules}
+
+Ill-formed congruence rules will cause unpredictable and incorrect
+behaviour.  The user should study examples of congruence rules,
+consult the relevant manual sections and communicate with other
+\HOL\ users should this be a problem.
+
+
+\section{Advanced Topics}
+
+\subsection{Congruence Rules}
+
+\label{congruence-rules}
+
+We now fill in the details of the general
+process we have outlined above.  During simplification, facts
+get added to the current working context because of the application
+of {\em congruence rules}.  The user is encouraged to learn to recognise
+when a certain construct allows additional crucial assumptions
+to be made when simplifiying subterms, and to learn how
+to express this fact by a congruence rule.
+
+Congruence rules are contained within simpsets.  User congruence
+rules are usually theorems, although congruence rules may also
+be ML functions (these are potentially useful for infinite families
+of congruence rules, and are used for highly speed
+critical congruence rules such as those for equality).  
+Congruence rules are added to a simpset using:
+\begin{boxed} \begin{verbatim}
+   val addcongs : thm list -> simpset -> simpset
+\end{verbatim} \end{boxed}
+This is usually done using the infix operator \ml{|>}:
+\begin{session} \begin{verbatim}
+- val bool_ss = pure_ss ++ [...] 
+                        |> addcongs [IMP_CONG, COND_CONG];
+\end{verbatim} \end{session}
+
+%Aside: context theorems which just \ml{(--`F`--)}
+%as their conclusion are thrown away.  They
+%turn out to be far too powerful,
+%since they allow any reduction to be made regardless of
+%side conditions.
+
+
+\subsection{Constructing Congruence Rules}
+
+Some sample congruence rules are:
+\begin{hol} \begin{verbatim}
+COND_CONG |- (g = g') ==>
+             (g'  ==> (t = t')) ==>
+             (~g' ==> (e = e')) ==>
+             ((g => t | e) = (g' => t' | e'))
+
+RES_FORALL_CONG |- (R = R') ==>
+                   (!x. R' x ==> (P x = P' x)) ==>
+                   ((!x::R. P x) = (!x::R'. P' x))
+\end{verbatim} \end{hol}
+These theorems are not hard to prove.
+The principal difficulty is in {\it formulating} the rules
+in the first place.  The simplifier only accepts 
+congruence rules formulated in a certain way.   
+We shall examine the process of formulating
+the first congrunce rule in some detail.
+
+The purpose of a congruence rule is to state how
+a certain contruct is simplified by simplifying its
+subterms.  The place to begin is with a `template'
+of the construct to be simplified.  In this
+case we are interested in simplifying conditionals, thus
+the template is \ml{(--`$g$ => $t$ | $e$`--)}.  
+
+Next, the final conclusion of the congruence rule
+must state that the free subterms $g$, $t$ and $e$ get simplified, and
+that the term produced is equal to the term we started with.
+Thus the final conclusion is
+\begin{hol} \begin{verbatim}
+COND_CONG |- ... ==>
+             ((g => t | e) = (g' => t' | e'))
+
+\end{verbatim} \end{hol}
+Next, the antecedents to this final conclusion specify how these
+variables are related.  They are
+interpreted as instructions by the simplifier about the order
+in which the subterms should be simplified, and what context assumptions may be
+made for each subterm.
+The first antecedent is simple enough: $g = g'$.  The simplifier
+interprets this as ``first starting with $g$, simplify it and get a new
+$g'$''.  The second is more complex: \ml{$g'$ ==> ($t$ = $t'$)}.
+This is interpreted as ``simplify $t$ to some $t'$, adding the
+fact $g'$ to the current context''.  In other words, the antecedent
+says that it is valid to assume $g'$ when simplifying $t$.
+The third antecedent is similar: \ml{~$g$ ==> ($e$ = $e'$)}.  This
+allows the introduction of the context assumption \ml{~$g$}.
+
+After all three antecedents have been processed and discharged by
+the simplifier, a theorem \ml{|- ($g$ => $t$ | $e$) = ($g'$ => $t'$ | $e'$}
+will have been produced, where the values for $g'$, $t'$ and $e'$ have
+been discovered by contextual simpification.  This theorem is
+then used by the simplifier to help reduce the entire term.
+
+Putting all this together gives the general congruence rule:
+\begin{hol} \begin{verbatim}
+COND_CONG |- (g = g') ==>
+             (g'  ==> (t = t')) ==>
+             (~g' ==> (e = e')) ==>
+             ((g => t | e) = (g' => t' | e'))
+\end{verbatim} \end{hol}
+
+
+
+\subsection{Adding Decsion Procedures}
+
+\label{adding-dprocs}
+During application, each decision procedure maintains
+a private copy of the working context.
+Each procedure is allowed to organise this data according to its needs.  
+For exampe, in the implementation of the simplification, the rewriter counts
+as just one decision procedure, which happens to store its working
+context as a term net.
+
+A decision procedure is added to a simpset using \ml{adddprocs}
+and \ml{mk\_dproc}:
+\begin{boxed} \begin{verbatim}
+    val adddprocs : simpset * dproc list -> simpset
+    val mk_dproc : {
+         name : string,
+         relation : term,
+         initial: context,
+         addcontext : context * Thm.thm list -> context,
+         apply: {solver:term -> thm, context: context} -> Abbrev.conv
+       } -> dproc
+\end{verbatim} \end{boxed}
+Do not be overwhelemed by the number of fields in \ml{mk\_dproc} --- only
+\ml{initial}, \ml{addcontext}\ and \ml{apply}\ need much thought:
+\begin{itemize}
+   \item \ml{name} field should be a unique name for the decision procedure
+   \item \ml{relation} should be the term \verb%(--`$=`--)% 
+(i.e equality), since we are always reducing under equality during
+simplification.
+   \item \ml{initial} should return a value of type \ml{context}.  This
+is the value of the context storage for the decision procedure before
+simplification starts.  If the context is being stored as a list of
+theorems, this should be \ml{THMLIST []}.
+   \item \ml{addcontext} is called every time a new fact becomes known
+during simplification.  Facts become known from three sources:
+   \begin{itemize}
+       \item Theorems passed as arguments to the simplification routines.
+       \item Theorems from the assumption list when using \ml{ASM\_SIMP\_TAC}
+or \ml{FULL\_SIMP\_TAC}.
+       \item Facts derived because of contextual rewriting.
+   \end{itemize}
+   \ml{addcontext} is passed the previous working context and the new
+   facts.  It is expected to return the next working context.
+   \item \ml{apply} is how the decision procedure is actually
+invoked.  The current working context is passed as an argument.
+A {\em solver} is also provided which can be used to help solve
+any side conditions that arise from applying the decision procedure.
+\ml{apply} should return a theorem of the form \ml{|- $t_1$ = $t_2$},
+and it should also fail quickly for terms to which it does not apply.
+\end{itemize}.
+
+Consider the example of \ml{ARITH}.  This decision procedure can
+make use of any contextual facts relating to Presburger arithmetic.
+We shall store the context as a theorem list - hence we use the
+constructor \ml{THMLIST} to produce values of type \ml{context}.
+Assuming the the function \ml{is\_arith\_thm} determines if a
+theorem expresses a fact about Presburger arithmetic, and the
+function \ml{ARITH\_CCONV} accepts a list of theorems and a term,
+calls the arithmetic decision procedure
+and returns an equality theorem, then a simpset utilising the
+decision procedure is created as follows:
+\begin{session} \begin{verbatim}
+val ARITH_DPROC = 
+   let fun addcontext (THMLIST thms, newthms) = 
+       let val thms' = flatten (map CONJUNCTS newthms
+       in THMLIST (filter is_arith_thm thms'@@thms)
+       end
+       fun apply {context=THMLIST thms,solver} tm = ARITH_CCONV thms tm
+   in mk_reducer {
+         addcontext= addcontext,
+         apply=apply,
+         initial=THMLIST [],
+         name="ARITH",
+         relation = #const (const_decl "=")
+      }
+   end;
+
+val ARITH_ss = pure_ss |> adddprocs [ARITH_DPROC];
+\end{verbatim} \end{session}
+
+\shadowbox{The working context must be stored as a value of type \ml{context}.
+This would seem to limit the ways in which the context can be organised,
+however see the notes in the implementation for a method using
+exceptions to allow the storage of arbitrary data.}
+
+\subsection{Programmable Hooks: Reduction Conversions and
+Congruence Procedures}
+
+<not yet written - see examples in the inbuilt simpsets>
+
+\subsection{Generalized Term Traversal}
+
+Simplification is implemented as specific instance of {\em 
+contextual term traversal}.  Term traversal generalizes
+simplification in that it is capable of reducing a term
+under relations other than equality.  
+
+Non-contextual term traversal
+is essentially encompassed by the functions
+
+In many applications it is common to define equivalence or
+preorder relations other than logical equality.  For instance, for
+a small embedded language we may define a relation 
+\verb%(--`$==: prog -> prog -> bool`--)% which tests
+whether two expressions are observationally equivalent,
+e.g. whether they have the same input/output characteristics.  The
+following theorems should then hold:
+\begin{hol} \begin{verbatim}
+|- (p == p)
+|- (p1 == p2) /\ (p2 = p3) ==> (p1 == p3)
+\end{verbatim} \end{hol}
+which makes \ml{==} a preorder (it is, of course a congruence also).
+These theorems, and appropriate congruence rules, are sufficient
+to enable automated term traversal and reduction of a kind very similar
+to that for simplification.  The similarities are close enough that
+they deserve to be implemented in the same mechanism.
+
+Some congruence rules for the above construct might be:
+\begin{hol} \begin{verbatim}
+|- (p == p') ==> (Succ p == Succ p')
+|- (p == p') ==> (q == q') ==> (Appl p q == Appl p' q')
+\end{verbatim} \end{hol}
+Some theorems we might want to automatically apply are:
+\begin{hol} \begin{verbatim}
+|- (Skip ;; P) == P
+|- (P ;; Skip) == P
+\end{verbatim} \end{hol}
+Other theorems may help normalize fully specified programs
+to sequences of input/output actions, thus aiding automatic
+proof of program equivalence.
+
+\section{Summary}
+
+To summarize the main points of this chapter:
+\begin{itemize}
+    \item A powerful contextual, conditional simplifier is available
+    through the functions \ml{SIMP\_CONV}, \ml{SIMP\_RULE},
+    \ml{SIMP\_TAC}, \ml{ASM\_SIMP\_TAC} etc.
+    \item Rewrite rules are organised in objects called {\it simpsets}.
+    The best simpsets are generally created by making small simpsets and
+    combining them with other simpset fragments to form powerful tools.
+    \item Rewrite rules are applied using a limited form of higher
+    order matching.  Higher order matching allows general theorems about
+    functionals such as quantifiers to be applied without the use
+    of purpose built conversions.
+    \item Simpsets may also contain congruence rules.  Congruence
+    rules dictate the term traversal strategy used during simplification
+    and the cause the production of context theorems
+    \item Simpsets may contain conversions which can act as infinite sets
+    of rewrite rules.  This is useful for conversion schemas
+    which are essentially reduction but which cannot be formulated
+    as rewrite rules (e.g. \ml{REDUCE\_CONV}).
+    \item Simpsets may contain decision procedures.  These are invoked
+    at lowest priority, and have access to the current working
+    context.  The arithmetic decision procedure included with
+    \ml{arith\_ss} is an example of the use of this.
+\end{itemize}
+
+
+@
+
+
+1.2.2.1
+log
+@Shifting onto main development branch.
+@
+text
+@@
+
+
+1.2.2.2
+log
+@Changed quotations.
+@
+text
+@d149 1
+a149 1
+   val trace_level : int -> unit
+d173 1
+a173 1
+- SIMP_CONV list_eq_ss [] ``[1;2;3] = [1;2;3]``;
+d176 1
+a176 1
+- SIMP_PROVE list_eq_ss [] ``~[1;2;3] = [1;2]``;
+d179 1
+a179 1
+- SIMP_PROVE list_eq_ss [] ``~[1;2;4] = [1;2;3]``;
+d200 1
+a200 1
+will act on any term which matches \ml{``($i$ + $j$) + $k$``}.
+d207 2
+a208 2
+rule applies to any term which matches \ml{``EL $n$ (CONS $h$ $t$)``},
+and will only be applied if the condition \ml{``$n$ > 0``} can be
+d304 1
+a304 1
+\ml{``!x. P x``} to match a term like \ml{``(!x. x = 3)``}.  In
+d306 1
+a306 1
+\verb%``\x. x = 3``%.
+d323 2
+a324 2
+by variables which are quantified in the pattern.  Thus \ml{``P x``}
+will not match \ml{``x = 3``}, whereas \ml{``?x. P x``} will.
+d362 1
+a362 1
+the case when reducing the term $t_2$ within \ml{``$t_1$ ==> $t_2$``}.
+d376 1
+a376 1
+the goal \verb%``P x /\ ~(x = y) ==> ~([1;x;5] = [1;y;5])``%.  The
+d384 1
+a384 1
+working context of any co-operating decision procedures, but that
+d389 1
+a389 1
+- SIMP_PROVE list_eq_ss [] ``P x /\ ~(x = y) ==> ~([1;x;5] = [1;y;5])``;
+d442 1
+a442 1
+- SIMP_CONV AC_ADD_ss ``(y + x) + 3 + 6 + (2 * x + 1)``
+d446 1
+a446 1
+- SIMP_CONV AC_ADD_ss ``x + 3 + y + 2 * x + 6 + 1``
+d450 2
+a451 2
+- SIMP_PROVE AC_ADD_ss ``(y + x) + 3 + 6 + (2 * x + 1) =
+                           x + 3 + y + 2 * x + 6 + 1``
+d586 1
+a586 1
+\ml{``prod (prod x y) z``} will produce many undesireable matches.
+d589 2
+a590 2
+more clear, by replacing \ml{``prod``} with a function
+to compute \ml{``prod``} for a given group:
+d596 1
+a596 1
+The pattern \ml{``PROD (G,prod) (PROD (G,prod) x y) z``} will
+d637 1
+a637 1
+%Aside: context theorems which just \ml{``F``}
+d669 1
+a669 1
+the template is \ml{``$g$ => $t$ | $e$``}.  
+d736 1
+a736 1
+   \item \ml{relation} should be the term \verb%``$=``% 
+d813 1
+a813 1
+\verb%``$==: prog -> prog -> bool``% which tests
+@
+
+
+1.1
+log
+@much improved (??), by DRS
+@
+text
+@@

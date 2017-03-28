@@ -1,0 +1,311 @@
+head	1.1;
+access;
+symbols
+	HOL97:1.1.0.2;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	97.10.05.21.04.45;	author kxs;	state dead;
+branches
+	1.1.2.1;
+next	;
+
+1.1.2.1
+date	97.10.05.21.04.46;	author kxs;	state Exp;
+branches;
+next	1.1.2.2;
+
+1.1.2.2
+date	98.02.23.20.53.16;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@file INSTALL.txt was initially added on branch HOL97.
+@
+text
+@@
+
+
+1.1.2.1
+log
+@INSTALL.txt tells how to build the system.
+@
+text
+@a0 205
+July 9, 1997.
+
+Hol90.10 is the latest version of Hol90. It is not yet a complete
+release, since there are many new features that are still being
+added. However, I thought I'd kick out an intermediate version for
+people to look at, before more revolutionary changes are added.
+
+Currently, hol90.10 builds on late-model implementations of SML/NJ:
+109.26, 109.27, 109.29. Older versions of SML/NJ, e.g., 0.93 and 109
+have not been ported to, but they should not be too difficult.  The
+system build sequence handles differences between the SML'90 and SML'97
+dialects. All the libraries in hol90.9.beta build in Hol90.10, but they
+have not been extensively tested. 
+
+Warning. People may want not want to build Hol90.10 on 109.29 since the
+"meson" library builds there but a subsequent invocation of MESON_TAC
+will cause ML to exit.  
+
+
+  Building the system.
+ ---------------------
+
+The system build sequence is still a little scrappy; however, it
+works. In the following, all paths are from the top of the HOL
+distribution directory (HOLdir). This has subdirectories "bin", "src",
+"library", "contrib", etc.
+
+1. Remove bin/hol90, if it exists.
+
+2. Make a symbolic link from bin/njsml.1xx to the version of sml that
+   you are going to use. Something like
+
+    (cd bin/njsml.1xx; rm -f sml; ln -s <your-sml-path> sml)
+
+   ought to work.
+
+3. The file src/Makefiles/njsml.1xx defines variables for paths to
+   ML-Lex and ML-Yacc. These have to be edited.
+
+4. The file src/SysParams.sml needs to be edited. The variables
+
+      HOL_base_directory
+      arch
+      MLdialect
+
+    have to be set.  
+
+    * "HOL_base_directory" ought to be equal to HOLdir.
+    * "arch" is used to identify the executable for the front-end
+             pre-processor for HOL. Its value can be obtained by running
+             tools/architecture.
+    * "MLdialect" should be NinetySeven for SML/NJ versions later than or
+                  equal to 109.28; otherwise it should be Ninety.
+
+5. Run src/BUILD. This should build hol and all the libraries.
+
+6. The final executable dwells in a hidden directory:
+   
+       bin/njsml.1xx/.heap
+
+   It is invoked by the (generated) script "bin/hol90". The options are
+   discussed in that script; here's a re-cap:
+
+      # usage: hol90 [-ml <sml>] [-h <heapsize>] [-u <exec>]
+      #
+      # (where <sml>     = njsml.1xx, njsml.93, polyml, etc.
+      #       <heapsize> = size of heap in Kbytes for Poly/ML (default 10000)
+      #       <exec>     = path to a user's executable/heap/database)
+      #
+      # e.g. hol90 -ml njsml.1xx -u /my/hol/heap
+
+   The "hol90" script does something intelligent if none of the
+   parameters are given.
+
+
+ Using CM.
+-----------
+
+ CM is a nice "Make"-like package for maintaining up-to-date
+dependencies in SML source. It is distributed with later copies of the
+New Jersey compiler.  It gives a separate compilation facility to SML,
+which is very nice for anyone building large systems. The downside to
+using CM is that it only deals with closed modules -- the wide-open
+nature of previous versions of HOL where all entrypoints were available
+at the top level just won't work.  
+
+ I have made Hol90.10 CM-friendly by closing up the HOL core system and
+libraries, and putting them all under CM. "Closing up" means that no
+module has any free identifiers anymore, and there are no free
+identifiers at the top level. (This finishes up work that Elsa and I
+started a long time ago, and that Don Syme also did a lot of work on.)
+This gives a drastically different way of working with the system - a
+more batch-oriented way. I have found it to be very useful in managing
+the 150,000+ lines of code and proofs that HOL has. I haven't quite
+worked out the best means to do interactive proof with HOL under CM, but
+you can try the following example.  
+
+Example.
+
+  * Go to src
+
+  * Invoke an ML that has the CM package loaded  -- often this is called
+    sml-cm.  
+
+  * At the ML prompt, enter  
+
+        Compiler.Control.quotation := true;
+        CM.SymVal.define ("THY_AS_MODULE",0);
+        CM.make();
+
+    This may invoke a lot of compilation; it may even compile the
+    entire HOL system (if it hasn't already been compiled on the
+    invoking architecture). Subsequent invocations of CM.make will
+    however be much quicker.  At the end of the compilation phase, all
+    the module declarations will be executed and made
+    available. 
+
+  * However, this leaves the system in a much different state than
+    before, since only module bindings have been added to the top-level
+    environment, not individual bindings. In order to get access to
+    individual bindings, all the modules have to be opened up and
+    activities like making fixity declarations (e.g., "infix THEN") and
+    installing prettyprinters have to be done. The "interact" library,
+    which is in a very primitive state right now, attempts to do this.
+    To use it, restart sml-cm and do a
+
+        use"library/interact/src/open.sml"
+
+    to recover an environment much like that of previous hol90 systems.
+    (I haven't tried to see if CM.make will still work after Hol90 is
+    opened.) However, I hope there are better ways to get the usefulness
+    of dependency maintenance together with the convenience of having
+    all identifiers available at the top level. I should note that the
+    "CM.sa" command is quite useful here for building stand-alone
+    systems (ones that build without CM) from systems managed by CM.
+
+
+Notes.
+------
+
+0. Currently, no logical theories get built under the CM scheme. As a
+   consequence, if you want to use HOL under CM, you first have to do a
+   "BUILD", i.e., build the HOL system and its libraries the
+   old-fashioned way. This will, I hope, soon be fixed and one will then
+   be able to manage the system solely through the devices of CM.  
+
+1. Don't expect the file "library/sources.cm" to succeed at compiling
+   and loading all the libraries at once (obscure theory-related reasons
+   make this fail). However, each individual library has a "sources.cm"
+   file in its directory that will load the library.
+
+2. If you build HOL under CM, the old hol90 library system will not be
+   present: its functionality is subsumed by that of CM so I dropped it
+   from the sources that CM compiles. (The library system is still
+   included when the system is built with BUILD.)
+
+3. Many libraries are now packaged up slightly differently since they
+   return structures instead of dumping a lot of individual bindings
+   into the top level. For example, a library named "X" will usually be
+   accessible after building under CM as the structure XLib. Opening
+   XLib will give access to the functionality of the library. Even then,
+   this may not be identical to the old functionality. I would like to
+   hear of cases where this is so.  
+
+4. The external quotation filter of hol90.9.alpha doesn't get invoked in
+   a system loaded under CM. It should be possible, though.
+
+5. I added a phase at the end of type inference that "guesses" names for
+   unconstrained type variables. For example:
+
+       - show_types := true;
+       - Parse.term_parser `A B C`;
+
+         <<HOL message: inventing new type variable names: 'a, 'b, 'c.>>
+         val it = `(A :'a -> 'b -> 'c) (B :'a) (C :'b)` : term
+
+6. Documentation for CM can be found in the SML/NJ distribution under
+   src/cm/Doc. 
+
+
+Future Work.
+------------
+
+ The old HOL executable contained much that was often extraneous to any
+particular verification effort. Now that the system is closed, I think
+CM (and hopefully the make facilities of PolyML and even MoscowML) may
+give us a way to easily build tailor-made (and hence leaner)
+systems. For example, someone whose work uses just the theory of
+arithmetic would only get the theory of arithmetic and its ancestors,
+plus whatever inference procedures (e.g., ARITH_CONV), are asked
+for. Packages and support theories for HOL Datatypes, lists, etc. would
+not be loaded. 
+
+ In fact, I think that most non-core HOL packages (those which come
+after the declaration of the theory "bool" -- this includes the standard
+derived rules, conversions, rewriting, datatypes, prim_rec_definition,
+etc.) should be put into various libraries. The Hol90 library will exist
+to provide backwards compatibility and there might perhaps be a HolLite
+library which might be able to look a lot like JRH's system, a PVS
+library that would look a bit like PVS, etc. 
+
+Although this all seems rather "CM-centric", and thus SML/NJ-dependent,
+that is not so. The system is still StandardML, thanks to the efforts of
+Richard and Don in the last release, so the system should still build
+under any SML compiler.
+@
+
+
+1.1.2.2
+log
+@Slight alteration to make INSTALL.txt correspond to reality.
+@
+text
+@d1 1
+a1 1
+July 9, 1997. (Revised Jan 15. 1998).
+d9 5
+a13 5
+109.26, 109.27, 109.29, 109.31, 109.32, and 110. Older versions of
+SML/NJ, e.g., 0.93 and 109 have not been ported to, but they should not
+be too difficult.  The system build sequence handles differences between
+the SML'90 and SML'97 dialects. All the libraries in hol90.9.beta build
+in Hol90.10, but they have not been extensively tested.
+d23 4
+a26 4
+The system build sequence is a little scrappy; however, it works. In the
+following, all paths are from the top of the HOL distribution directory
+(HOLdir). This has subdirectories "bin", "src", "library", "contrib",
+etc.
+a39 1
+(*
+a53 1
+*)
+a75 10
+NOTES.
+
+*  Many libraries are now packaged up slightly differently since they
+return structures instead of dumping a lot of individual bindings into
+the top level. For example, a library named "X" will usually be
+accessible via the structure XLib. Opening XLib will give access to the
+functionality of the library. Even then, this may not be identical to
+the old functionality. 
+
+
+d87 2
+a88 2
+ Hol90.10 has been made CM-friendly by closing up the HOL core system
+and libraries, and putting them all under CM. "Closing up" means that no
+d90 7
+a96 7
+identifiers at the top level. (This finishes up work that Elsa Gunter
+and I started a long time ago, and that Don Syme also did a lot of work
+on.)  This gives a drastically different way of working with the system
+- a more batch-oriented way. I have found it to be very useful in
+managing the 150,000+ lines of code and proofs that HOL has. I haven't
+quite worked out the best means to do interactive proof with HOL under
+CM, but you can try the following example.
+d134 1
+a134 1
+    "CM.sa" command is quite useful for building stand-alone
+d160 4
+a163 4
+   accessible via the structure XLib. Opening XLib will give access to
+   the functionality of the library. Even then, this may not be
+   identical to the old functionality. I would like to hear of cases
+   where this is so.
+d179 27
+@

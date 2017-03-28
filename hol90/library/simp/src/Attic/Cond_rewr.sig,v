@@ -1,0 +1,135 @@
+head	1.1;
+access;
+symbols
+	HOL97:1.1.2.2.0.2
+	bpHOL97:1.1.2.2
+	hol90_9_alpha:1.1.2.2
+	hol90_pre8_for_multiple_compilers:1.1.0.2;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	96.08.06.12.23.37;	author rjb;	state dead;
+branches
+	1.1.2.1;
+next	;
+
+1.1.2.1
+date	96.08.06.12.23.38;	author rjb;	state Exp;
+branches;
+next	1.1.2.2;
+
+1.1.2.2
+date	96.09.02.21.10.03;	author drs1004;	state Exp;
+branches
+	1.1.2.2.2.1;
+next	;
+
+1.1.2.2.2.1
+date	97.06.11.17.03.25;	author kxs;	state Exp;
+branches;
+next	1.1.2.2.2.2;
+
+1.1.2.2.2.2
+date	97.07.14.18.08.01;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@file Cond_rewr.sig was initially added on branch hol90_pre8_for_multiple_compilers.
+@
+text
+@@
+
+
+1.1.2.1
+log
+@New library simp.
+@
+text
+@a0 36
+   (* ----------------------------------------------------------------------
+    * COND_REWR_CONV : thm -> (term -> thm) -> conv
+    * 
+    * Build a conversion based on a conditional rewrite theorem.  
+    * The theorem must be of the form
+    *       A |- P1 ==> ... Pm ==> (Q[x1,...,xn] = R[x1,...,xn])
+    * The conversion matches the input term against Q, using limited
+    * higher order matching.  This instantiates
+    * x1 ... xn, which the conversion then solves with the solver provided.
+    * If any of the conditions are not solved COND_REWR_CONV fails.
+    *
+    * The theorem can be a permutative rewrite, such as
+    *      |- (x = y) = (y = x)
+    *      |- (x + y) = (y + x)
+    * In these cases the rewrite will only get applied if the ordering
+    * of the variables in the term is not in strictly ascending order,
+    * according to a term_lt function which places a total ordering
+    * on terms.  (Nb. term_lt is broken in hol90.7, so I have to
+    * work with my own version here, which is not so efficient.  Also,
+    * the term ordering needs to be "AC" compatible - see Termord).
+    *
+    * FAILURE CONDITIONS
+    *
+    * Fails if any of the assumptions cannot be solved by the solver,
+    * or if the term does not match the rewrite in the first place.
+    * ---------------------------------------------------------------------*)
+
+signature Cond_rewr_sig = sig
+
+  local open Term open Thm open Equal in
+    val COND_REWR_CONV : thm -> (term list -> term -> thm) -> term list -> conv
+    val IMP_EQ_CANON : thm -> thm list
+    val QUANTIFY_CONDITIONS : thm -> thm list
+    val mk_cond_rewrs : thm -> thm list
+  end;
+end (* sig *)
+@
+
+
+1.1.2.2
+log
+@Fixes described in changes file.
+@
+text
+@a34 1
+ val stack_limit : int ref
+@
+
+
+1.1.2.2.2.1
+log
+@Konrad's changes to make it compile under SML109.26
+@
+text
+@d30 1
+a30 1
+  (* local open Term open Thm open Equal in *)
+d36 1
+a36 1
+(*   end; *)
+@
+
+
+1.1.2.2.2.2
+log
+@The "simp" library now loads under CM.
+@
+text
+@d30 1
+a30 4
+  type term 
+  type thm 
+  type conv
+
+d35 2
+a36 1
+    val stack_limit : int ref
+@

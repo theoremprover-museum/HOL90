@@ -1,0 +1,184 @@
+
+(*------------------------------------------------------------------------
+ * $Id: sources.cm,v 1.1.2.1.2.1 1997/07/11 15:16:12 kxs Exp $
+ *
+ * Sources description for core hol90 (level 1)
+ *-----------------------------------------------------------------------*)
+
+
+
+Group is
+(* 	../0/sources.cm *)
+	../../theories/src/min.sig
+	../../theories/src/ld_min.sml
+	../../theories/src/exists.sig
+	../../theories/src/ld_exists.sml
+	../../theories/src/bool.sig
+	../../theories/src/ld_bool.sml
+        drule.sig
+	drule.sml
+        conv.sig
+	conv.sml
+        tactical.sig 
+	tactical.sml
+        rewrite.sig
+	rewrite.sml
+        thm_cont.sig
+	thm_cont.sml
+        tactic.sig
+	tactic.sml
+        taut_thms.sig
+	taut_thms.sml
+        resolve.sig
+	resolve.sml
+        type_def_support.sig
+	type_def_support.sml
+        induct_then.sig
+	induct_then.sml
+        prim_rec.sig
+	prim_rec.sml
+(* 
+
+mkdir .heap
+sml-cm.108
+Compiler.Control.quotation := true;
+val m = CM.make;
+m();
+use "1/hol1.sml";
+open Abbrev;
+
+#set Compiler.Environment.pervasiveEnvRef (Compiler.Environment.concatEnv (#get Compiler.Environment.topLevelEnvRef (),#get Compiler.Environment.pervasiveEnvRef ()));
+#set Compiler.Environment.topLevelEnvRef Compiler.Environment.emptyEnv;
+
+CM.export(".heap/hol1.sparc",NONE);
+<exit>
+sml.108 @SMLload=.heap/hol1.sparc < ../theories/src/mk_restr_binder.sml;
+sml.108 @SMLload=.heap/hol1.sparc < ../theories/src/mk_pair.sml;
+sml.108 @SMLload=.heap/hol1.sparc < ../theories/src/mk_combin.sml;
+sml.108 @SMLload=.heap/hol1.sparc < ../theories/src/mk_one.sml;
+sml.108 @SMLload=.heap/hol1.sparc < ../theories/src/mk_sum.sml;
+sml.108 @SMLload=.heap/hol1.sparc < ../theories/src/mk_num.sml;
+sml.108 @SMLload=.heap/hol1.sparc < ../theories/src/mk_BASIC_HOL.sml;
+
+sml.108 @SMLload=.heap/hol1.sparc
+
+load_theory "BASIC_HOL";
+fun m () = CM.make' (CM.cmfile "2/sources.cm") handle e => Raise e;
+m();
+
+use "2/hol2.sml";
+
+
+#set Compiler.Environment.pervasiveEnvRef (Compiler.Environment.concatEnv (#get Compiler.Environment.topLevelEnvRef (),#get Compiler.Environment.pervasiveEnvRef ()));
+#set Compiler.Environment.topLevelEnvRef Compiler.Environment.emptyEnv;
+
+CM.export(".heap/hol2.sparc",NONE);
+
+
+sml.108 @SMLload=.heap/hol2.sparc < ../theories/src/mk_prim_rec.sml;
+sml.108 @SMLload=.heap/hol2.sparc < ../theories/src/mk_arithmetic.sml;
+sml.108 @SMLload=.heap/hol2.sparc < ../theories/src/mk_list.sml;
+sml.108 @SMLload=.heap/hol2.sparc < ../theories/src/mk_list_thms.sml;
+sml.108 @SMLload=.heap/hol2.sparc < ../theories/src/mk_tree.sml;
+sml.108 @SMLload=.heap/hol2.sparc < ../theories/src/mk_ltree.sml;
+sml.108 @SMLload=.heap/hol2.sparc < ../theories/src/mk_rec_type.sml;
+sml.108 @SMLload=.heap/hol2.sparc < ../theories/src/mk_HOL.sml;
+
+sml.108 @SMLload=.heap/hol2.sparc
+
+load_theory "HOL";
+
+fun m () = CM.make' (CM.cmfile "3/sources.cm") handle e => Raise e;
+m();
+
+use "3/hol3.sml";
+
+#set Compiler.Environment.pervasiveEnvRef (Compiler.Environment.concatEnv (#get Compiler.Environment.topLevelEnvRef (),#get Compiler.Environment.pervasiveEnvRef ()));
+#set Compiler.Environment.topLevelEnvRef Compiler.Environment.emptyEnv;
+
+CM.export(".heap/hol90.sparc",NONE);
+
+sml.108 @SMLload=.heap/hol90.sparc
+
+
+use "3/sys_lib.sig";
+use "3/sys_lib.sml";
+open Sys_lib;
+
+fun cmfile_for_lib lib = 
+     ("/tmp/"^(#name (dest_library lib))^".cm");
+   
+fun write_cmfileentry (os,path) file = 
+       output(os,"\t"^path^"/"^file^"\n");
+fun write_cmlibentry (os,path) libname = 
+       output(os,"\t"^path^"/"^libname^".cm\n");
+
+fun write_cmfiles_for_lib lib =
+   let val {code, path, name, parents, ...} = dest_library lib
+       val os = open_out (cmfile_for_lib lib)
+       val _ = output(os,"Group is\n");
+       val _ = app (write_cmlibentry (os,"/tmp")) (map (#name o dest_library) parents)
+       val _ = app (write_cmfileentry (os,path^"src")) code
+       val _ = close_out os
+       val _ = map write_cmfiles_for_lib parents
+   in
+      ()
+   end;
+
+fun load_library' lib =
+   let val _ = output (std_out, "[writing CM description files]\n");
+       val _ = write_cmfiles_for_lib lib
+       val _ = output (std_out, "[analysing pervasive environment]\n");
+       val _ = CM.make' (CM.cmfile (cmfile_for_lib lib)) 
+   in ()
+   end;
+
+load_library' num_lib; 
+fun m () = load_library' arith_lib;
+m();
+
+
+*)
+
+
+
+(*
+val prim_hol_lib =
+   if Globals.remake_theory_files
+   then Library.new_library
+         {name = "PRIM_HOL",
+          doc = "Derived rules and such. Preloaded", 
+          path = !Globals.HOLdir,
+          parents = [],
+          theories = [], (* ought to be "bool" in long run *)
+          code = ["1/drule.sig", "1/drule.sml",
+                  "1/conv.sig", "1/conv.sml",
+                  "1/tactical.sig", "1/tactical.sml",
+                  "1/rewrite.sig", "1/rewrite.sml",
+                  "1/thm_cont.sig", "1/thm_cont.sml",
+                  "1/tactic.sig", "1/tactic.sml",
+                  "1/taut_thms.sig", "1/taut_thms.sml",
+                  "1/resolve.sig", "1/resolve.sml",
+                  "1/type_def_support.sig", "1/type_def_support.sml",
+                  "1/induct_then.sig", "1/induct_then.sml",
+                  "1/prim_rec.sig", "1/prim_rec.sml",
+                  "1/hol1.sml"],
+          help = [],
+          loaded = "fn() => \
+                   \  (Portable.interp := true;    \
+                   \   PP.install_pp [\"Rewrite\",\"rewrites\"] \
+                   \                 Rewrite.pp_rewrites; \
+                   \   Save_hol.save_hol\"hol90.01\")"}
+   else let val ph_lib = Library.find_library "PRIM_HOL"
+        in Library.move_library(ph_lib, !Globals.HOLdir);
+           ph_lib
+        end;
+
+val _ = Library.load_library_in_place prim_hol_lib;
+
+
+
+
+
+*)
+

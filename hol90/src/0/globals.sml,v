@@ -1,0 +1,901 @@
+head	1.7;
+access;
+symbols
+	HOL97:1.5.2.2.0.2
+	bpHOL97:1.5.2.2
+	hol90_9_alpha:1.5.2.2
+	hol90_pre8_for_multiple_compilers:1.5.0.2
+	hol90_pre8_after_donalds_separate_compilation_changes:1.4
+	hol90_8_after_merging_Konrad_Elsa:1.3
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.7
+date	96.02.08.00.30.56;	author drs1004;	state Exp;
+branches;
+next	1.6;
+
+1.6
+date	95.12.18.11.34.24;	author drs1004;	state Exp;
+branches;
+next	1.5;
+
+1.5
+date	95.11.15.13.24.19;	author rjb;	state Exp;
+branches
+	1.5.2.1;
+next	1.4;
+
+1.4
+date	95.10.31.13.56.08;	author drs1004;	state Exp;
+branches;
+next	1.3;
+
+1.3
+date	95.10.18.16.36.55;	author drs1004;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	95.10.17.17.06.51;	author drs1004;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	95.10.16.13.29.52;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.29.52;	author rjb;	state Exp;
+branches
+	1.1.1.1.2.1;
+next	;
+
+1.1.1.1.2.1
+date	95.10.17.18.42.47;	author drs1004;	state Exp;
+branches;
+next	;
+
+1.5.2.1
+date	96.06.25.15.41.26;	author rjb;	state Exp;
+branches;
+next	1.5.2.2;
+
+1.5.2.2
+date	96.08.23.14.16.18;	author rjb;	state Exp;
+branches
+	1.5.2.2.2.1;
+next	;
+
+1.5.2.2.2.1
+date	97.06.11.17.23.53;	author kxs;	state Exp;
+branches;
+next	1.5.2.2.2.2;
+
+1.5.2.2.2.2
+date	97.07.10.19.59.26;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.7
+log
+@New theory mechanism, by Donald Syme, and many other enhancements.
+@
+text
+@(* ===================================================================== *)
+(* FILE          : globals.sml                                           *)
+(* DESCRIPTION   : Contains global flags for hol90.                      *)
+(*                                                                       *)
+(* AUTHOR        : (c) Konrad Slind, University of Calgary               *)
+(* DATE          : August 26, 1991                                       *)
+(* ===================================================================== *)
+
+
+structure Globals : Globals_sig =
+struct
+
+
+
+(* *************************************************************************
+ *
+ * These parameters codify the arguments given to make_hol. The calling 
+ * convention for make_hol is:
+ * 
+ *     make_hol <sml> [-n | -b | -o] [-d <path>]
+ * 
+ * The default, calling make_hol with no parameters, tells the system to
+ * re-use the existing ascii theory files. One must be in hol90.4/src to
+ * invoke this. If you aren't there, the "-d" option must be used.
+ * 
+ *     -o  This is the same as calling the default. 
+ *            (HOL_REBUILD_THEORIES = 0 or unset)
+ * 
+ *     -n  The "-n" option tells the system to rebuild all its theories. Be
+ *         warned that a consequence of this option is that all user theories 
+ *         at the site will have to be rebuilt. (HOL_REBUILD_THEORIES = 1)
+ * 
+ *     -a  The "-a" option tells the system to build ascii theories. This 
+ *         is the default.
+ * 
+ *     -b  The "-b" option tells the system to build binary theories. This 
+ *         is not advised, and some editing of the sys01.sml file is 
+ *         necessary to get this approach to work.
+ * 
+ *     -d <path> This option to make_hol is used to establish the root
+ *         directory for hol90. If your current directory at the 
+ *         time of calling "make_hol" is not hol90.4/src, then you 
+ *         will need to supply the full directory path to the hol90.4 
+ *         directory.
+ * 
+ * The default and the "-n" and "-o" options entail that theory files will
+ * be in ascii. This is preferable, since ascii files are portable between
+ * architectures and are much smaller than binary theory files.
+
+Manual configuration.
+
+One can manually configure the system by 
+
+    a) Setting the values of theory_file_option and HOL_base_directory in
+       this file.
+
+    b) By commenting out the code that currently sets these values in
+       this file.
+
+    c) By not using the line
+
+           $* < sys01.sml
+
+       in the make_hol shell script. Instead one would invoke sml, then do a
+   
+           use "sys01.sml";
+
+       After that finished, the rest of the make_hol shell script should be 
+       invoked.
+
+
+Here are some hints for part a.
+
+If you want ascii theory files and you want to rebuild all the
+theories anew, you should do
+
+    val theory_file_option = make_new_ascii
+
+If you want binary versions of theory files, you should use
+
+    val theory_file_option = make_binary
+
+If you chose either of the above two options, you will have to remake
+all libraries and site theories. If you use binary format you will have
+to modify the file sys01.sml too.
+
+If you wish to reuse existing ascii theory files, thereby avoiding
+having to remake libraries and local theories, you should use
+
+    val theory_file_option = use_old_ascii
+
+You will need to use the "use_old_ascii" option on all but the first
+build when building hol90 on multiple architectures which are all to
+share the same theory files.
+
+Warning: the "use_old_ascii" option is not as secure as the other two.
+It also may not always be possible when building a new version of hol90
+for the first time at your site. SYSTEM THEORY FILES MAY CHANGE BETWEEN
+RELEASES.
+
+ ***************************************************************************)
+
+datatype thy_opt = binary | ascii;
+  
+val theory_file_option = 
+    ref (case (Portable.getEnv "HOL_THEORY_TYPE") of
+	     SOME "binary" => binary
+	   | SOME "ascii" => ascii
+	   | SOME x => (output(std_err, "WARNING: strange value for environment variable HOL_THEORY_TYPE: "^x^"\n"); ascii)
+	   | NONE => ascii);
+val HOL_base_directory = 
+    ref (case (Portable.getEnv "HOL_BASE_DIR") of
+	     SOME x => x^"/"
+	   | NONE => (Portable.pwd() ^ "/../"));
+
+(*------------------------------------------------------------------
+ * Version number for hol90
+ *----------------------------------------------------------------*)
+
+val version_number = 8;
+
+(*------------------------------------------------------------------
+ * Bogus hack for defining negation. Hack is required because
+   "~" is the only prefix; therefore, it is allowed to be a constant,
+   but not allowed to be part of another constant. 
+ *----------------------------------------------------------------*)
+
+val neg_defined_ref = ref false
+fun neg_defined() = !neg_defined_ref
+fun assert_neg_defined() = neg_defined_ref := true
+
+(*------------------------------------------------------------------
+ * "Temporary" hack.
+ *----------------------------------------------------------------*)
+
+val in_type_spec = ref NONE:string option ref;
+
+(*------------------------------------------------------------------
+ * For controlling the display of exceptions
+ *----------------------------------------------------------------*)
+
+val print_exceptions = ref true;
+
+(*------------------------------------------------------------------
+ * For showing assumptions in theorems
+ *----------------------------------------------------------------*)
+
+val show_assums = ref false
+
+(*------------------------------------------------------------------
+ * Tells whether or not to bother finding and using a hol-init.sml file
+ *----------------------------------------------------------------*)
+
+val use_init_file = ref false;
+
+(*------------------------------------------------------------------
+ *----------------------------------------------------------------*)
+
+val linewidth = Portable.linewidth;
+
+(*------------------------------------------------------------------
+ * Whether the host compiler is running in interpreted mode, e.g., not 
+ * optimizing the code 
+ *----------------------------------------------------------------*)
+
+val theory_file_type = 
+    (case (!theory_file_option)
+       of binary => Portable.arch
+	| ascii => "ascii")
+
+val remake_theory_files = false
+
+(*------------------------------------------------------------------
+ * For pathnames to theories and libraries and help directories.
+ *----------------------------------------------------------------*)
+
+local val base = !HOL_base_directory
+    val helpbase = base^"help/90/"
+    val helps =  [helpbase^"Bwdproof/",
+		  helpbase^"Defining/",
+		  helpbase^"EqReasoning/",
+		  helpbase^"Fwdproof/",
+		  helpbase^"Lib/",
+		  helpbase^"Misc/",
+		  helpbase^"Rewriter/",
+		  helpbase^"Simplifier/",
+		  helpbase^"Syntax/",
+		  helpbase^"Tableux/",
+		  helpbase^"Terms/",
+		  helpbase^"Theories/",
+		  base^"help/88/ENTRIES/"]
+in
+val paths = { HOLdir = HOL_base_directory,
+              theory_path = ref [base^"theories/"^theory_file_type^"/"],
+              library_path = ref [base^"library/desc/", base^"contrib/desc/"],
+              help_path = ref helps}
+end
+
+val HOLdir = #HOLdir paths
+and theory_path = #theory_path paths
+and library_path = #library_path paths
+and help_path = #help_path paths
+
+(*------------------------------------------------------------------
+ * Allow theorems with assumptions to be saved in a theory 
+ *----------------------------------------------------------------*)
+
+val allow_theorems_with_assumptions = ref true;
+
+(*------------------------------------------------------------------
+ * controls depth of printing for terms. Since the pp recursively decrements 
+   this value when traversing a term, and since printing stops when the
+   value is 0, the negative value means "print everything". Warning: this
+   will work to negmaxint, but no guarantees after that. But that's a pretty
+   big term.
+ *----------------------------------------------------------------*)
+
+val max_print_depth = ref ~1;
+
+(*------------------------------------------------------------------
+ * Assignable function for printing errors 
+ *----------------------------------------------------------------*)
+
+val output_HOL_ERR = 
+   ref (fn {message,origin_function,origin_structure} =>
+         ( output(std_out, ("\nException raised at "^origin_structure^"."^
+			    origin_function^":\n"^message^"\n"));
+	  Portable.flush_out std_out));
+
+(*------------------------------------------------------------------
+ * Controls how online help is printed. 
+ *----------------------------------------------------------------*)
+
+val output_help = ref "/bin/cat";
+
+(*------------------------------------------------------------------
+ * Gives some ability to tweak the lexis. It is initially being used 
+ * to make "~" more widely accessible in symbolic identifiers.
+ *----------------------------------------------------------------*)
+
+val tilde_symbols = ref []:string list ref;
+
+(*------------------------------------------------------------------
+ * For prettyprinting 
+ *----------------------------------------------------------------*)
+
+val type_pp_prefix = ref "(=="  and  type_pp_suffix = ref "==)"
+
+val term_pp_prefix = ref "(--"  and  term_pp_suffix = ref "--)"
+
+val pp_flags = {show_dB        = ref false,
+                show_restrict  = ref true, 
+                show_types     = ref false,
+                infix_at_front = ref false,
+                stack_infixes  = ref true};
+
+(*------------------------------------------------------------------
+ * For showing the deBruijn structure of a term 
+ *----------------------------------------------------------------*)
+
+val show_dB = #show_dB pp_flags;
+
+(*------------------------------------------------------------------
+ * For showing the representation of a term having restricted quantifiers
+ *----------------------------------------------------------------*)
+
+val show_restrict = #show_restrict pp_flags;
+
+(*------------------------------------------------------------------
+ * For prettyprinting type information in a term. 
+ *----------------------------------------------------------------*)
+val show_types = #show_types pp_flags;
+
+(*------------------------------------------------------------------
+ * For printing HOL infixes at beginning or end of lines.
+ *----------------------------------------------------------------*)
+
+
+val infix_at_front = #infix_at_front pp_flags;
+
+(*------------------------------------------------------------------
+ * Controls whether each argument of an infix goes on a new line.
+ *----------------------------------------------------------------*)
+val stack_infixes = #stack_infixes pp_flags;
+
+(*------------------------------------------------------------------
+ * This is for documentation purposes
+ *----------------------------------------------------------------*)
+
+val reserved_identifiers = {symbolic = ["\\", ";", "=>", "|", ":" ],
+                            alphanumeric = ["let", "in", "and", "of"]}
+
+(*------------------------------------------------------------------
+ *----------------------------------------------------------------*)
+val goal_line = ref "____________________________";
+
+
+end; (* Globals *)
+
+@
+
+
+1.6
+log
+@Preterm and other changes, see 7.changes
+@
+text
+@a132 22
+ * Bogus hack for defining numbers.
+ *----------------------------------------------------------------*)
+
+local
+val defined = ref false
+in
+fun nums_defined() = !defined
+fun assert_nums_defined() = defined := true
+end;
+
+(*------------------------------------------------------------------
+ * Bogus hack for defining strings
+ *----------------------------------------------------------------*)
+
+local
+val defined = ref false
+in
+fun strings_defined() = !defined
+fun assert_strings_defined() = defined := true
+end;
+
+(*------------------------------------------------------------------
+d178 14
+d196 1
+a196 1
+              help_path = ref [base^"help/90/", base^"help/88/ENTRIES/"]}
+@
+
+
+1.5
+log
+@The HOL90 sources have been changed to allow for the use of different
+Standard ML compilers (possibly simultaneously).
+
+ * Many files in "src/0" changed to make them more portable across different
+   ML compilers. Various additions have been made to the Portable structure
+   and files changed to access identifiers in the Portable structure rather
+   than from the global environment. Worthy of special note are:
+
+   - The pointer equality used in "src/0/term.sml" has been made into a
+     function in the Portable structure.
+
+   - The ML-Lex and ML-Yacc files for the various parsers have been changed
+     to access the Portable structure. Both the source files and the SML
+     produced from them have been changed but I have not verified that the
+     source files would reproduce the new SML versions if ML-Lex and ML-Yacc
+     were to be rerun on them. The changes involve some hacks that exploit the
+     way ML-Lex and ML-Yacc work. See the sources for details.
+
+R.J.Boulton, 15th November 1995.
+@
+text
+@d103 12
+a114 1
+datatype thy_opt = make_binary | make_new_ascii | use_old_ascii
+a115 3
+val theory_file_option = ref make_new_ascii;
+val HOL_base_directory = ref (Portable.pwd() ^ "/../");
+
+d190 2
+a191 2
+       of make_binary => Portable.arch
+	| _ => "ascii")
+d193 1
+a193 4
+val remake_theory_files =
+    (case (!theory_file_option)
+       of use_old_ascii => false
+	| _ => true)
+@
+
+
+1.5.2.1
+log
+@The core of hol90.9.alpha now builds successfully with SML/NJ 109,
+SML/NJ 108.5 (using CM), SML/NJ 0.93, and Poly/ML 3.0.
+I have not yet tried rebuilding the theory files.
+@
+text
+@d112 1
+a112 4
+val version_number =
+   case (Portable.getEnv "HOL90_VERSION")
+   of NONE => "?"
+    | SOME s => s;
+d250 1
+a250 4
+(* Old values:
+val type_pp_prefix = ref "(=="  and type_pp_suffix = ref "==)"
+val term_pp_prefix = ref "(--"  and term_pp_suffix = ref "--)"
+*)
+d252 1
+a252 1
+val type_pp_prefix = ref ""  and type_pp_suffix = ref ""
+a253 2
+val term_pp_prefix = ref ""  and term_pp_suffix = ref ""
+
+a274 1
+
+d281 1
+a286 1
+
+a297 1
+
+@
+
+
+1.5.2.2
+log
+@Propagating base directory from Portable structure.
+Changed pretty-printing of term and type quotations to ``...``.
+@
+text
+@d106 1
+a106 1
+val HOL_base_directory = ref (Portable.HOL_base_directory ^ "/");
+d258 1
+a258 1
+val type_pp_prefix = ref "`"  and type_pp_suffix = ref "`"
+d260 1
+a260 1
+val term_pp_prefix = ref "`"  and term_pp_suffix = ref "`"
+@
+
+
+1.5.2.2.2.1
+log
+@Removed files are parse files and portability files that have
+effectively been moved elsewhere.
+
+Modified files are up to date for ML 109.26.
+@
+text
+@a12 1
+open Portable;
+d15 93
+d112 4
+a115 1
+val version_number = SysParams.version_number
+d117 5
+a121 5
+(*---------------------------------------------------------------------------
+ * Bogus hack for defining negation. Hack is required because "~" is the only
+ * prefix; therefore, it is allowed to be a constant, but not allowed to be 
+ * part of another constant. 
+ *---------------------------------------------------------------------------*)
+d131 2
+a132 1
+local val defined = ref false
+d173 3
+d183 9
+a191 2
+val interp = Portable.interp;
+
+d197 1
+a197 1
+local val base = ref SysParams.HOL_base_directory
+d199 4
+a202 4
+val paths = { HOLdir = base,
+            theory_path=ref [!base^"theories/"^SysParams.theory_file_type^"/"],
+             library_path=ref [!base^"library/desc/", !base^"contrib/desc/"],
+                help_path=ref [!base^"help/90/", !base^"help/88/ENTRIES/"]}
+d266 1
+a266 2
+                stack_infixes  = ref true,
+                in_at_end      = ref false};
+d299 1
+a299 2
+ * Controls whether the "in" of a let expression is printed at the
+ * end of the line.
+d302 2
+a303 1
+val in_at_end = #in_at_end pp_flags;
+a305 1
+ * This is mainly for documentation purposes
+a307 4
+val reserved_identifiers = {symbolic = ["\\", ";", "=>", "|", ":" ],
+                            alphanumeric = ["let", "in", "and", "of"]}
+
+
+a310 2
+val notify_on_tyvar_guess = ref true;
+
+@
+
+
+1.5.2.2.2.2
+log
+@Added a flag controlling whether a HOL message gets emitted when new
+type variables are guessed.
+@
+text
+@d110 6
+a115 6
+(*---------------------------------------------------------------------------
+ * Controls depth of printing for terms. Since the pp recursively decrements 
+ * this value when traversing a term, and since printing stops when the
+ * value is 0, the negative value means "print everything". Warning: 
+ * this will work to negmaxint, but no guarantees after that. But that's 
+ * a pretty big term.
+a210 5
+(*------------------------------------------------------------------
+ * At the end of type inference, HOL now guesses names for 
+ * unconstrained type variables. If this flag is set, then the system
+ * will print a message when such guesses are made.
+ *----------------------------------------------------------------*)
+@
+
+
+1.4
+log
+@First phase of hol90.8 development.  hol90 now compiles using NJSML-CM
+108.5, with separate compilation of libraries.  System dependencies
+have been isolated in the makefiles and "portable.sml".
+
+This involved a large number of enhancments to the source files,
+most of which are documented in the 7.changes file (or will be shortly).
+See also the correpsonding email corrspondence between RJB, KLS, TFM,
+JRH and DRS that happened during this development.
+@
+text
+@d231 1
+a231 1
+	  flush_out std_out));
+@
+
+
+1.3
+log
+@Check in after merging in Konrad's changes made after
+the release of hol90.7.  This involved creating a side branch
+in which to check in Konrad's changes, then merging in that
+side branch into the main development (which contains changes
+made by Elsa Gunter).
+
+Some other small modification have been made to the source code,
+as I begun to try to make this version into a working version:
+	- hol90 will now be compiled in an environment were no
+structures can be considered opn.  This means many structures
+now need "open Lib" and other such commands at their head.
+This has not yet been completed, but has been begun.
+	- "rotl" and "rotr" have been added to Lib, something
+which I just did impulsively.   Documentation files
+have also been added in help/90.
+@
+text
+@d13 99
+a111 1
+(* Version number for hol90 *)
+d114 2
+a115 1
+(* Bogus hack for defining negation. Hack is required because
+d118 9
+a126 7
+*)
+local
+val defined = ref false
+in
+fun neg_defined() = !defined
+fun assert_neg_defined() = defined := true
+end;
+a127 1
+(* Bogus hack for defining numbers *)
+d135 4
+a138 1
+(* Bogus hack for defining strings *)
+d146 4
+a149 1
+(* Temporary hack *)
+d152 4
+a155 1
+(* For controlling the display of exceptions *)
+d158 4
+a161 1
+(* For showing assumptions in theorems *)
+d164 4
+a167 1
+(* Tells whether or not to bother finding and using a hol-init.sml file *)
+d170 2
+a171 1
+val linewidth = Sml_system.linewidth;
+d173 1
+a173 2
+(* Whether the host compiler is running in interpreted mode, e.g., not 
+ * optimizing the code *)
+d175 4
+d181 2
+a182 2
+    (case Sml_system.Sys_params.theory_file_option
+       of Sml_system.Sys_params.make_binary => Sml_system.arch
+d186 2
+a187 2
+    (case Sml_system.Sys_params.theory_file_option
+       of Sml_system.Sys_params.use_old_ascii => false
+d190 5
+a194 2
+(* For pathnames to theories and libraries and help directories. *)
+local val base = !Sml_system.Sys_params.HOL_base_directory
+d196 1
+a196 1
+val paths = { HOLdir = Sml_system.Sys_params.HOL_base_directory,
+d207 4
+a210 1
+(* Allow theorems with assumptions to be saved in a theory *)
+d213 2
+a214 1
+(* controls depth of printing for terms. Since the pp recursively decrements 
+d219 2
+a220 1
+*)
+d223 4
+a226 1
+(* Assignable function for printing errors *)
+d233 4
+a236 1
+(* Controls how online help is printed. *)
+d239 5
+a243 3
+(* Gives some ability to tweak the lexis. It is initially being used 
+   to make "~" more widely accessible in symbolic identifiers.
+*)
+d246 4
+a249 1
+(* For prettyprinting *)
+d260 4
+a263 1
+(* For showing the deBruijn structure of a term *)
+d266 4
+a269 1
+(* For showing the representation of a term having restricted quantifiers *)
+d272 3
+a274 1
+(* For prettyprinting type information in a term.  *)
+d277 5
+a281 1
+(* For printing HOL infixes at beginning or end of lines.  *)
+d284 3
+a286 1
+(* Controls whether each argument of an infix goes on a new line. *)
+d289 4
+a292 1
+(* This is for documentation purposes *)
+d296 2
+d300 1
+d302 1
+@
+
+
+1.2
+log
+@Keeping you up to date:
+
+I'm about to do a checkin of elsa's modifications to the hol90.7
+sources to create her hol90.pre8.  To recap what I've done:
+	- I checked out hol90 (in /usr/groups/hol/drs1004/hol90)
+		cvs co hol90
+	  (Well, to be honest, I only checked out those
+	  parts of hol90 I knew I'd be changing, e.g. not the
+	  Manual, and only parts of the library.  Checking out the
+	  entire source takes a while, mainly due to the enormous number
+	  of help files.  The limiting factor is files/second, which
+         runs at around 5 when CVS is working on nfs over a network, not
+         KB/second, which you might at first think it would be).
+
+	- By doing a recursive diff between Elsa's source and the
+	hol90.7 source I found all the changes Elsa had made to
+	source files.  I copied relevant files from Elsa's source
+	into my checked out version.  The only new files were
+		- the sml_system files in src/0
+		- some make scripts in src/.
+	Changed files were in:
+		src/{0,1,2,3}
+		library/arith/src/thm_convs.sml
+		library/list/src/list_conv1.sml
+		library/num/src/num_lib.sml
+		library/prog_logic/src/halts_logic.sml
+		library/prog_logic/src/translation.sml
+		library/prog_logic/theories/src/mk_halts.sml
+		library/real/theories/src/Make
+		library/real/theories/src/equiv.sml
+		library/real/theories/src/seq.sml
+		library/reduce/src/arithconv.sml
+		library/string/src/string_conv.sml
+		library/unity/theories/src/aux_definitions.sml
+		library/word/theories/src/*
+
+	- I will now commit these changes, with this email as the log message.
+		cvs commit
+
+	- Tomorrow I will get this version compiling
+	with NJSML 108 (I will probably add
+	the files to enable the NJSML compilation manager to make
+	this easier), then check those changes in.  I think it's
+	good to get things in a working state.
+@
+text
+@d116 5
+a120 5
+val pp_flags = {infix_at_front = ref false,
+                show_dB = ref false,
+                show_restrict = ref true, 
+                show_types = ref false,
+                stack_infixes = ref true};
+d131 6
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d10 1
+a10 1
+functor GLOBALS (structure Sys_params : Sys_params_sig) : Globals_sig =
+d14 1
+a14 1
+val version_number = 7;
+d55 1
+a55 3
+(* sml/nj 0.93 val linewidth = System.Print.linewidth *)
+(* sml/nj 1.02 val linewidth = Compiler.Control.Print.linewidth *)
+val linewidth = System.Print.linewidth;
+a58 10
+(* sml/nj 93 val interp = System.Control.interp; *)
+(* sml/nj 102 val interp = Compiler.Control.interp; *)
+val interp = System.Control.interp;
+
+(* suffix to distinguish hol90s for different architectures. 
+ *   Implode.tl.explode used to get rid of leading "."
+ ***)
+(* sml/nj 93 val arch = implode (tl (explode (!System.architecture))) *)
+(* sml/nj 102 val arch = implode (tl (explode Compiler.architecture)); *)
+val arch = implode (tl (explode (!System.architecture)));
+d60 1
+d62 2
+a63 2
+    (case Sys_params.theory_file_option
+       of Sys_params.make_binary => arch
+d67 2
+a68 2
+    (case Sys_params.theory_file_option
+       of Sys_params.use_old_ascii => false
+d72 1
+a72 1
+local val base = Sys_params.HOL_base_directory
+d74 1
+a74 1
+val paths = { HOLdir = ref base,
+d78 1
+a78 1
+end;
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@
+
+
+1.1.1.1.2.1
+log
+@Konrad's bug fixes up to start of serious
+hol90.8 devel;opment.  Checked into branch revision for
+later merging with trunk (elsa's work).  See
+doc/7.chages for a full description of what's been done.
+@
+text
+@d14 1
+a14 1
+val version_number = 8;
+d127 5
+a131 5
+val pp_flags = {show_dB        = ref false,
+                show_restrict  = ref true, 
+                show_types     = ref false,
+                infix_at_front = ref false,
+                stack_infixes  = ref true};
+a141 6
+(* For printing HOL infixes at beginning or end of lines.  *)
+val infix_at_front = #infix_at_front pp_flags;
+
+(* Controls whether each argument of an infix goes on a new line. *)
+val stack_infixes = #stack_infixes pp_flags;
+
+@

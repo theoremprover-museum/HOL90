@@ -1,0 +1,359 @@
+head	1.6;
+access;
+symbols
+	HOL97:1.4.2.1.0.2
+	bpHOL97:1.4.2.1
+	hol90_9_alpha:1.4.2.1
+	hol90_pre8_for_multiple_compilers:1.4.0.2
+	hol90_pre8_after_donalds_separate_compilation_changes:1.4
+	hol90_8_after_merging_Konrad_Elsa:1.3
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.6
+date	96.02.08.00.30.55;	author drs1004;	state Exp;
+branches;
+next	1.5;
+
+1.5
+date	95.12.18.11.34.22;	author drs1004;	state Exp;
+branches;
+next	1.4;
+
+1.4
+date	95.10.31.13.56.06;	author drs1004;	state Exp;
+branches
+	1.4.2.1;
+next	1.3;
+
+1.3
+date	95.10.18.16.36.54;	author drs1004;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	95.10.17.17.06.50;	author drs1004;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	95.10.16.13.29.52;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.29.52;	author rjb;	state Exp;
+branches
+	1.1.1.1.2.1;
+next	;
+
+1.1.1.1.2.1
+date	95.10.17.18.42.45;	author drs1004;	state Exp;
+branches;
+next	;
+
+1.4.2.1
+date	96.06.25.15.41.24;	author rjb;	state Exp;
+branches
+	1.4.2.1.2.1;
+next	;
+
+1.4.2.1.2.1
+date	97.06.11.17.23.52;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.6
+log
+@New theory mechanism, by Donald Syme, and many other enhancements.
+@
+text
+@(* ===================================================================== *)
+(* FILE          : globals.sig                                           *)
+(* DESCRIPTION   : Signature for global flags of hol90.                  *)
+(*                                                                       *)
+(* AUTHOR        : (c) Konrad Slind, University of Calgary               *)
+(* DATE          : August 26, 1991                                       *)
+(* ===================================================================== *)
+
+
+signature Globals_sig =
+sig
+
+  val version_number : int
+
+  val neg_defined : unit -> bool
+  val assert_neg_defined : unit -> unit
+
+  val in_type_spec: string option ref
+
+  val print_exceptions : bool ref
+  val show_assums : bool ref
+  val allow_theorems_with_assumptions : bool ref
+  val use_init_file : bool ref
+  val max_print_depth : int ref
+
+  val type_pp_prefix : string ref
+  val type_pp_suffix : string ref
+  val term_pp_prefix : string ref
+  val term_pp_suffix : string ref
+  val linewidth : int ref
+(*  val interp : bool ref
+  val arch : string *)
+  val theory_file_type : string
+  val remake_theory_files : bool
+
+  val paths : {HOLdir : string ref,
+               theory_path : string list ref,
+               library_path : string list ref,
+               help_path : string list ref}
+
+  val HOLdir : string ref
+  val theory_path : string list ref
+  val library_path : string list ref
+  val help_path : string list ref
+
+  val output_HOL_ERR : ({origin_structure : string,
+                         origin_function : string,
+  		         message : string} -> unit) ref
+  val output_help : string ref
+  val tilde_symbols : string list ref
+  val pp_flags : {show_dB: bool ref,
+                  show_restrict:bool ref,
+                  show_types: bool ref,
+                  infix_at_front:bool ref,
+                  stack_infixes :bool ref}
+  val show_dB : bool ref
+  val show_restrict : bool ref
+  val show_types : bool ref
+  val infix_at_front:bool ref
+  val stack_infixes :bool ref
+  val reserved_identifiers : {symbolic : string list, 
+                              alphanumeric : string list}
+  val goal_line : string ref
+
+
+  (*-----------------------------------------------------------------
+   * System parameters
+   *---------------------------------------------------------------*)
+
+
+    datatype thy_opt = binary | ascii;
+    val theory_file_option : thy_opt ref
+    val HOL_base_directory : string ref
+
+
+end
+@
+
+
+1.5
+log
+@Preterm and other changes, see 7.changes
+@
+text
+@a15 2
+  val nums_defined :  unit -> bool
+  val strings_defined :  unit -> bool
+a16 2
+  val assert_nums_defined : unit -> unit
+  val assert_strings_defined : unit -> unit
+@
+
+
+1.4
+log
+@First phase of hol90.8 development.  hol90 now compiles using NJSML-CM
+108.5, with separate compilation of libraries.  System dependencies
+have been isolated in the makefiles and "portable.sml".
+
+This involved a large number of enhancments to the source files,
+most of which are documented in the 7.changes file (or will be shortly).
+See also the correpsonding email corrspondence between RJB, KLS, TFM,
+JRH and DRS that happened during this development.
+@
+text
+@d74 2
+a75 1
+    datatype thy_opt = make_binary | make_new_ascii | use_old_ascii
+@
+
+
+1.4.2.1
+log
+@The core of hol90.9.alpha now builds successfully with SML/NJ 109,
+SML/NJ 108.5 (using CM), SML/NJ 0.93, and Poly/ML 3.0.
+I have not yet tried rebuilding the theory files.
+@
+text
+@d13 1
+a13 1
+  val version_number : string
+@
+
+
+1.4.2.1.2.1
+log
+@Removed files are parse files and portability files that have
+effectively been moved elsewhere.
+
+Modified files are up to date for ML 109.26.
+@
+text
+@d35 4
+a38 1
+  val interp : bool ref
+d59 1
+a59 2
+                  stack_infixes :bool ref,
+                  in_at_end : bool ref}
+a64 2
+  val in_at_end :bool ref
+
+d69 9
+a77 1
+  val notify_on_tyvar_guess : bool ref
+@
+
+
+1.3
+log
+@Check in after merging in Konrad's changes made after
+the release of hol90.7.  This involved creating a side branch
+in which to check in Konrad's changes, then merging in that
+side branch into the main development (which contains changes
+made by Elsa Gunter).
+
+Some other small modification have been made to the source code,
+as I begun to try to make this version into a working version:
+	- hol90 will now be compiled in an environment were no
+structures can be considered opn.  This means many structures
+now need "open Lib" and other such commands at their head.
+This has not yet been completed, but has been begun.
+	- "rotl" and "rotr" have been added to Lib, something
+which I just did impulsively.   Documentation files
+have also been added in help/90.
+@
+text
+@d68 11
+@
+
+
+1.2
+log
+@Keeping you up to date:
+
+I'm about to do a checkin of elsa's modifications to the hol90.7
+sources to create her hol90.pre8.  To recap what I've done:
+	- I checked out hol90 (in /usr/groups/hol/drs1004/hol90)
+		cvs co hol90
+	  (Well, to be honest, I only checked out those
+	  parts of hol90 I knew I'd be changing, e.g. not the
+	  Manual, and only parts of the library.  Checking out the
+	  entire source takes a while, mainly due to the enormous number
+	  of help files.  The limiting factor is files/second, which
+         runs at around 5 when CVS is working on nfs over a network, not
+         KB/second, which you might at first think it would be).
+
+	- By doing a recursive diff between Elsa's source and the
+	hol90.7 source I found all the changes Elsa had made to
+	source files.  I copied relevant files from Elsa's source
+	into my checked out version.  The only new files were
+		- the sml_system files in src/0
+		- some make scripts in src/.
+	Changed files were in:
+		src/{0,1,2,3}
+		library/arith/src/thm_convs.sml
+		library/list/src/list_conv1.sml
+		library/num/src/num_lib.sml
+		library/prog_logic/src/halts_logic.sml
+		library/prog_logic/src/translation.sml
+		library/prog_logic/theories/src/mk_halts.sml
+		library/real/theories/src/Make
+		library/real/theories/src/equiv.sml
+		library/real/theories/src/seq.sml
+		library/reduce/src/arithconv.sml
+		library/string/src/string_conv.sml
+		library/unity/theories/src/aux_definitions.sml
+		library/word/theories/src/*
+
+	- I will now commit these changes, with this email as the log message.
+		cvs commit
+
+	- Tomorrow I will get this version compiling
+	with NJSML 108 (I will probably add
+	the files to enable the NJSML compilation manager to make
+	this easier), then check those changes in.  I think it's
+	good to get things in a working state.
+@
+text
+@d55 1
+a55 2
+  val pp_flags : {infix_at_front:bool ref,
+                  show_dB: bool ref,
+d58 1
+d60 1
+d63 2
+a64 1
+  val show_dB : bool ref
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d35 2
+a36 2
+  val interp : bool ref
+  val arch : string
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@
+
+
+1.1.1.1.2.1
+log
+@Konrad's bug fixes up to start of serious
+hol90.8 devel;opment.  Checked into branch revision for
+later merging with trunk (elsa's work).  See
+doc/7.chages for a full description of what's been done.
+@
+text
+@d55 2
+a56 1
+  val pp_flags : {show_dB: bool ref,
+a58 1
+                  infix_at_front:bool ref,
+a59 1
+  val show_dB : bool ref
+d62 1
+a62 2
+  val infix_at_front:bool ref
+  val stack_infixes :bool ref
+@

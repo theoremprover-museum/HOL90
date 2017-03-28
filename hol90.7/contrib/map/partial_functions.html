@@ -1,0 +1,289 @@
+<TITLE>Theory: partial_functions</TITLE>
+<H1>Theory: partial_functions</H1>
+<H1>Parents</H1>
+    <UL>
+    <LI><A HREF = "lift.html"><STRONG>lift</STRONG></A>
+    <LI><A HREF = "HOL.html"><STRONG>HOL</STRONG></A>
+    </UL>
+
+
+<HR>
+<H1>Type constants</H1>
+    <UL>
+    
+    </UL>
+
+
+<HR>
+<H1>Term constants</H1>
+    <UL>
+    <LI><STRONG>empty_part_fun</STRONG><EM>:'b -> 'a lift</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>singleton_part_fun</STRONG><EM>:'a -> 'b -> 'a -> 'b lift</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>update_fun</STRONG><EM>:('a -> 'b) -> 'a -> 'b -> 'a ->
+                                        'b</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>modify_part_fun</STRONG><EM>:('a -> 'b lift) ->
+                                             ('a -> 'b lift) -> 'a ->
+                                             'b lift</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>part_fun_range</STRONG><EM>:('a -> 'b lift) -> 'b -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>part_fun_domain</STRONG><EM>:('a -> 'b lift) -> 'a ->
+                                             bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>disjoint_domains</STRONG><EM>:('b -> 'a lift) ->
+                                              ('b -> 'a lift) -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>lift_fun</STRONG><EM>:('a -> 'b) -> 'a -> 'b lift</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>lift_compose</STRONG><EM>:('b -> 'c lift) ->
+                                          ('a -> 'b lift) -> 'a ->
+                                          'c lift</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>lift_fun_of_graph</STRONG><EM>:('a -> 'b -> bool) -> 'a ->
+                                               'b lift</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>is_part_fun_graph</STRONG><EM>:('a -> 'b -> bool) -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>mk_part_fun_graph</STRONG><EM>:('a -> 'b lift) -> 'a -> 'b ->
+                                               bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>graph_compose</STRONG><EM>:('b -> 'c -> bool) ->
+                                           ('a -> 'b -> bool) -> 'a -> 'c ->
+                                           bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    </UL>
+
+
+<HR>
+<H1>Axioms</H1>
+<DL>
+
+</DL>
+
+
+<HR>
+<H1>Definitions</H1>
+<DL>
+<DT><STRONG>empty_part_fun_DEF</STRONG>
+<DD>
+<PRE>
+|- empty_part_fun = (\y. undefined)
+</PRE>
+
+<DT><STRONG>singleton_part_fun_DEF</STRONG>
+<DD>
+<PRE>
+|- !x s. singleton_part_fun x s = (\y. (x = y) => (lift s) | undefined)
+</PRE>
+
+<DT><STRONG>update_fun_DEF</STRONG>
+<DD>
+<PRE>
+|- !f x y. update_fun f x y = (\z. (x = z) => y | (f z))
+</PRE>
+
+<DT><STRONG>modify_part_fun_DEF</STRONG>
+<DD>
+<PRE>
+|- !f g. modify_part_fun f g = (\x. (g x = undefined) => (f x) | (g x))
+</PRE>
+
+<DT><STRONG>part_fun_range_DEF</STRONG>
+<DD>
+<PRE>
+|- !f. part_fun_range f = (\y. ?x. f x = lift y)
+</PRE>
+
+<DT><STRONG>part_fun_domain_DEF</STRONG>
+<DD>
+<PRE>
+|- !f. part_fun_domain f = (\x. is_defined (f x))
+</PRE>
+
+<DT><STRONG>disjoint_domains_DEF</STRONG>
+<DD>
+<PRE>
+|- !f g.
+     disjoint_domains f g = ~(?x. part_fun_domain f x = part_fun_domain g x)
+</PRE>
+
+<DT><STRONG>lift_fun_DEF</STRONG>
+<DD>
+<PRE>
+|- !f. lift_fun f = (\x. lift (f x))
+</PRE>
+
+<DT><STRONG>lift_compose_DEF</STRONG>
+<DD>
+<PRE>
+|- !g f x.
+     lift_compose g f x =
+     ((is_defined (f x)) => (g (lower (f x))) | undefined)
+</PRE>
+
+<DT><STRONG>lift_fun_of_graph_DEF</STRONG>
+<DD>
+<PRE>
+|- !g x.
+     (?y. g x y)
+     => (is_defined (lift_fun_of_graph g x) /\
+         g x (lower (lift_fun_of_graph g x)))
+     | (lift_fun_of_graph g x = undefined)
+</PRE>
+
+<DT><STRONG>is_part_fun_graph_DEF</STRONG>
+<DD>
+<PRE>
+|- !g. is_part_fun_graph g = (!x y1 y2. g x y1 /\ g x y2 ==> (y1 = y2))
+</PRE>
+
+<DT><STRONG>mk_part_fun_graph_DEF</STRONG>
+<DD>
+<PRE>
+|- !f. mk_part_fun_graph f = (\x y. f x = lift y)
+</PRE>
+
+<DT><STRONG>graph_compose_DEF</STRONG>
+<DD>
+<PRE>
+|- !g h. graph_compose g h = (\x z. ?y. h x y /\ g y z)
+</PRE>
+
+</DL>
+
+
+<HR>
+<H1>Theorems</H1>
+<DL>
+<DT><STRONG>modify_ID</STRONG>
+<DD>
+<PRE>
+|- !f.
+     (modify_part_fun empty_part_fun f = f) /\
+     (modify_part_fun f empty_part_fun = f)
+</PRE>
+
+<DT><STRONG>part_fun_range_lemma</STRONG>
+<DD>
+<PRE>
+|- !f x. is_defined (f x) ==> part_fun_range f (lower (f x))
+</PRE>
+
+<DT><STRONG>part_fun_domain_lemma</STRONG>
+<DD>
+<PRE>
+|- !f x. part_fun_domain f x = is_defined (f x)
+</PRE>
+
+<DT><STRONG>part_fun_domain_undef_lemma</STRONG>
+<DD>
+<PRE>
+|- !x. ~(part_fun_domain (\x. undefined) x)
+</PRE>
+
+<DT><STRONG>disjoint_domians_modify_commute</STRONG>
+<DD>
+<PRE>
+|- !f g. disjoint_domains f g ==> (modify_part_fun f g = modify_part_fun g f)
+</PRE>
+
+<DT><STRONG>lift_fun_ASSOC_THM</STRONG>
+<DD>
+<PRE>
+|- !g f x. lift_fun g (f x) = lift_fun (g o f) x
+</PRE>
+
+<DT><STRONG>lift_fun_domain_TOTAL</STRONG>
+<DD>
+<PRE>
+|- !f. part_fun_domain (lift_fun f) = (\x. T)
+</PRE>
+
+<DT><STRONG>lift_compose_ASSOC</STRONG>
+<DD>
+<PRE>
+|- !h g f.
+     lift_compose h (lift_compose g f) = lift_compose (lift_compose h g) f
+</PRE>
+
+<DT><STRONG>lift_compose_lift_THM</STRONG>
+<DD>
+<PRE>
+|- !g f x. lift_compose g (lift_fun f) x = g (f x)
+</PRE>
+
+<DT><STRONG>lift_compose_lemma</STRONG>
+<DD>
+<PRE>
+|- !g f.
+     lift_compose g f =
+     (\x. (is_defined (f x)) => (g (lower (f x))) | undefined)
+</PRE>
+
+<DT><STRONG>lift_compose_ID</STRONG>
+<DD>
+<PRE>
+|- !f.
+     (lift_compose f (lift_fun (\x. x)) = f) /\
+     (lift_compose (lift_fun (\x. x)) f = f)
+</PRE>
+
+<DT><STRONG>lift_fun_compose_COMMUTE</STRONG>
+<DD>
+<PRE>
+|- !g f. lift_compose (lift_fun g) (lift_fun f) = lift_fun (g o f)
+</PRE>
+
+<DT><STRONG>range_compose</STRONG>
+<DD>
+<PRE>
+|- !f g t.
+     part_fun_range f t ==> part_fun_range (lift_compose (lift_fun g) f) (g t)
+</PRE>
+
+<DT><STRONG>lift_fun_of_graph_lemma</STRONG>
+<DD>
+<PRE>
+|- !g x.
+     ((lift_fun_of_graph g x = undefined) = (!y. ~(g x y))) /\
+     (is_defined (lift_fun_of_graph g x) =
+      g x (lower (lift_fun_of_graph g x))) /\
+     ((?y. g x y) = g x (lower (lift_fun_of_graph g x)))
+</PRE>
+
+<DT><STRONG>fun_graph_fun_THM</STRONG>
+<DD>
+<PRE>
+|- !f. lift_fun_of_graph (mk_part_fun_graph f) = f
+</PRE>
+
+<DT><STRONG>fun_fun_graph_THM</STRONG>
+<DD>
+<PRE>
+|- !g. (mk_part_fun_graph (lift_fun_of_graph g) = g) = is_part_fun_graph g
+</PRE>
+
+<DT><STRONG>graph_lift_compose_COMMUTE</STRONG>
+<DD>
+<PRE>
+|- !g f.
+     graph_compose (mk_part_fun_graph g) (mk_part_fun_graph f) =
+     mk_part_fun_graph (lift_compose g f)
+</PRE>
+
+<DT><STRONG>lift_graph_compose_is_lift_compose_graph</STRONG>
+<DD>
+<PRE>
+|- !h g.
+     is_part_fun_graph h /\ is_part_fun_graph g ==>
+     (lift_fun_of_graph (graph_compose h g) =
+      lift_compose (lift_fun_of_graph h) (lift_fun_of_graph g))
+</PRE>
+
+</DL>
+
+
+<HR>

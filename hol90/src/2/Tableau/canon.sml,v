@@ -1,0 +1,440 @@
+head	1.1;
+access;
+symbols;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	96.02.08.00.45.43;	author drs1004;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@New theory mechanism, code reorganisation and other enhancements by Don Syme.
+@
+text
+@(* ------------------------------------------------------------------------- 
+ * Utilities
+ * ------------------------------------------------------------------------- *)
+
+signature Refute_sig =
+sig
+    type conv sharing type conv = conv;
+    type thm sharing type thm = Thm.thm;
+    type term sharing type term = Thm.Term.term;
+
+    val MK_CONJ : thm -> thm -> thm
+    val MK_DISJ : thm -> thm -> thm
+    val MK_FORALL : term -> thm -> thm
+    val RIGHT_BETAS : term list -> thm -> thm
+    val ONEWAY_SKOLEM_CONV : term list -> conv
+    val NNF_CONV : conv -> bool -> conv
+    val NNF_SKOLEM_CONV : conv -> bool -> conv
+    val DISJPATH_CONV : term -> thm
+    val RATSKOL : thm -> thm
+    val SKELIM : term list -> thm -> thm
+    val SIMPLE_DISJ_CASES : thm -> thm -> thm
+    val REFUTE : conv -> bool -> conv -> conv
+    val CONV_THEN_REFUTE: conv -> conv -> conv
+end;
+
+
+structure Refute : Refute_sig =
+struct
+
+open Lib Pterms Drule Conv Ho_rewrite Trace AC Rules Theorems
+open Plain_rewrite Parse Tactic Boolean Tactical Thm_cont Quant_convs;
+   infix THENC THENL THEN
+   infixr -->
+	
+val ERR = Exception.ERR "Refute";
+val WRAP_ERR = Exception.WRAP_ERR "Refute";
+val lhand = rand o rator;
+
+fun MK_CONJ eq1 eq2 = MK_COMB(AP_TERM conjunction eq1,eq2);;
+
+fun MK_DISJ eq1 eq2 = MK_COMB(AP_TERM disjunction eq1,eq2);;
+
+fun MK_FORALL v th =
+    AP_TERM (mk_const("!",(type_of v --> bool_ty) --> bool_ty)) (ABS v th);;
+fun PINST tyin tmin =
+  let val inst_fn = inst tyin
+      val tmin' = map (fn {redex,residue} => {redex=inst_fn redex,residue=residue}) tmin
+      val iterm_fn = INST tmin'
+      and itype_fn = INST_TYPE tyin
+  in fn th => 
+      iterm_fn (itype_fn th)
+      handle e => WRAP_ERR("PINST",e)
+  end;
+      
+val RIGHT_BETAS =
+  rev_itlist (fn a => CONV_RULE (RAND_CONV BETA_CONV) o C AP_THM a);;
+val LAND_CONV = RATOR_CONV o RAND_CONV;;
+
+fun remove p l =
+  case l of
+    [] => ERR("remove","")
+  | (h::t) => if p(h) then (h,t) else
+              let val (y,n) = remove p t in (y,h::n) end;;
+
+(* ------------------------------------------------------------------------- 
+ * Sometimes useful: a 1-way Skolemization conversion, introducing defs for  
+ * epsilon-terms.                                                            
+ *
+ * Taken directly from GTT.
+ * ------------------------------------------------------------------------- *)
+
+val ONEWAY_SKOLEM_CONV =
+  let val P = (--`P:'a->bool`--) 
+      and z = (--`z:'a`--) 
+      and aty = (==`:'a`==)
+  and pth1 = prove
+   ((--`(?x:'a. P) = P`--),
+    REWRITE_TAC[EXISTS_SIMP])
+  and pth2 = prove
+   ((--`(z:'a = $@@ P) ==> ($? P = P z)`--),
+    DISCH_THEN SUBST1_TAC THEN
+    HO_REWRITE_TAC (BOOL_SIMPS@@[BETA_THM,EXISTS_DEF]))
+  in fn gvs => fn tm =>
+    let val (eq,atm) = dest_comb tm 
+	val (v,bod) = dest_abs atm 
+	val fvs = free_vars bod
+    in if mem v fvs then
+	let val nfvs = intersect fvs gvs
+	    val eps = prim_mk_const("@@",[aty |-> type_of v])
+	    val etm = mk_comb(eps,atm)
+	    val stm = list_mk_abs(nfvs,etm)
+	    val gv = genvar(type_of stm)
+	    val th1 = ASSUME(mk_eq(gv,stm))
+	    val th2 = RIGHT_BETAS nfvs th1
+	    val th3 = PINST  [aty |-> type_of v] [P |-> atm, z |-> lhs(concl th2)] pth2
+	in 
+	    CONV_RULE (RAND_CONV BETA_CONV) (MP th3 th2)
+	end
+       else
+	   let val th1 = PINST  [aty |-> type_of v] [P |-> atm] pth1
+	   in CONV_RULE (LAND_CONV(RAND_CONV(ALPHA_CONV v))) th1
+	   end
+    end
+    handle e => WRAP_ERR("ONEWAY_SKOLEM_CONV",e)
+  end
+  ;;
+
+
+(* -------------------------------------------------------------------------
+ * Conversion for negation normal form. The user has the option of          
+ * performing one-way Skolemization too, and of angling for a short         
+ * CNF (cnflag = true) or a short DNF (cnflag = false). The user can give   
+ * a conversion to be applied at literals (can always use REFL).            
+ *                                                                          
+ * This is exponential on equations; we could produce a linear version      
+ * by recursively doing NNF_CONV_P and NNF_CONV_N in parallel, but it       
+ * hardly seems worth it for practical cases. (It also makes keeping        
+ * track of bound variables to use as args to Skolem functions harder.)     
+ 
+This code comes directly from JRH's GTT.  Ported by DRS.
+
+val x = NNF_CONV REFL false (--`p ==> q = ~q ==> ~p`--);
+val x = NNF_CONV REFL false (--`~(p ==> q) ==> q ==> p`--);
+val x = NNF_CONV REFL false (--`?y:'a. !x. P y ==> P x`--)	;
+val x = NNF_CONV REFL false 
+    (--`(!x y. ?z. !w. P x /\ Q y ==> R z /\ U w) ==>
+	(?x y. P x /\ Q y) ==>
+	    (?z. R z)`--)    ;
+	
+ * ------------------------------------------------------------------------- *)
+
+val (NNF_CONV,NNF_SKOLEM_CONV) =
+    let val p = (--`p:bool`--) and q = (--`q:bool`--) and q' = (--`q':bool`--)
+	val P = (--`P:'a->bool`--) and aty = (==`:'a`==)
+	val pth_pimp = TAUT (--`(p ==> q) = q \/ ~p`--)
+	val pth_peq1 = TAUT (--`(p = q) = (p \/ ~q) /\ (~p \/ q)`--)
+	val pth_peq2 = TAUT (--`(p = q) = (p /\ q) \/ (~p /\ ~q)`--)
+	val pth_pcond1 = TAUT (--`(p => q | q') = (p \/ q') /\ (~p \/ q)`--)
+	val pth_pcond2 = TAUT (--`(p => q | q') = (p /\ q) \/ (~p /\ q')`--)
+	val pth_nnot = TAUT (--`~ (~p) = p`--)
+	val pth_nand = TAUT (--`~(p /\ q) = ~p \/ ~q`--)
+	val pth_nor = TAUT (--`~(p \/ q) = ~p /\ ~q`--)
+	val pth_nimp = TAUT (--`~(p ==> q) = ~q /\ p`--)
+	val pth_neq1 = TAUT (--`~(p = q) = (p \/ q) /\ (~p \/ ~q)`--)
+	val pth_neq2 = TAUT (--`~(p = q) = (p /\ ~q) \/ (~p /\ q)`--)
+	val pth_ncond1 = TAUT (--`~(p => q | q') = (p \/ ~q') /\ (~p \/ ~q)`--)
+	val pth_ncond2 = TAUT (--`~(p => q | q') = (p /\ ~q) \/ (~p /\ ~q')`--)
+	val EXISTS_UNIQUE_THM2 = prove
+	    ((--`!P. (?!x:'a. P x) = (?x. P x /\ !y. P y ==> (y = x))`--),
+		GEN_TAC THEN HO_REWRITE_TAC (BOOL_SIMPS@@[EXISTS_UNIQUE_DEF, LEFT_AND_EXISTS_THM,BETA_THM]) THEN
+		EQ_TAC THEN DISCH_THEN(X_CHOOSE_THEN (--`x:'a`--) STRIP_ASSUME_TAC) THEN
+		EXISTS_TAC (--`x:'a`--) THEN ASM_REWRITE_TAC[] THEN REPEAT STRIP_TAC THENL
+		[ALL_TAC, MATCH_MP_TAC EQ_TRANS THEN EXISTS_TAC (--`x:'a`--) THEN
+		 CONJ_TAC THENL [ALL_TAC, CONV_TAC SYM_CONV]] THEN
+		FIRST_ASSUM MATCH_MP_TAC THEN ASM_REWRITE_TAC[])
+	val TRIVIALIZE_CONV = HO_REWRITE_CONV (BOOL_SIMPS@@[EXISTS_UNIQUE_THM2])
+	fun LOCAL_QUANT_CONV pth tm =
+	    let val (uq,atm) = dest_comb tm
+		val (v,bod) = dest_abs atm
+		val th0 = PINST [aty |-> (type_of v)] [P |-> atm] pth
+		val (eq,rtm) = dest_comb(rand(concl th0))
+		val (vv,bod) = dest_abs rtm
+		val (nt,red) = dest_comb bod
+		val th1 = ABS vv (AP_TERM nt (BETA_CONV red))
+		val th2 = ALPHA_CONV v (rand(concl th1))
+	    in TRANS th0 (AP_TERM eq (TRANS th1 th2))
+	    end
+	val eta =  CONV_RULE ((LAND_CONV o RAND_CONV o RAND_CONV) ETA_CONV)
+	val LOCAL_NOT_FORALL_CONV =
+	    let val pth = eta (ISPEC P NOT_FORALL_THM)
+	    in LOCAL_QUANT_CONV pth 
+	    end
+	val LOCAL_NOT_EXISTS_CONV =
+	    let val pth = eta (ISPEC P NOT_EXISTS_THM)
+	    in LOCAL_QUANT_CONV pth
+	    end
+	val LOCAL_COND_ELIM_THM1 = prove
+	    ((--`!P:'a->bool. P(a => b | c) = (~a \/ P(b)) /\ (a \/ P(c))`--),
+		GEN_TAC THEN COND_CASES_TAC THEN ASM_REWRITE_TAC[]) 
+	val LOCAL_COND_ELIM_CONV1 = 
+	    HIGHER_REWRITE_CONV[LOCAL_COND_ELIM_THM1]
+	val LOCAL_COND_ELIM_THM2 = prove
+	    ((--`!P:'a->bool. P(a => b | c) = a /\ P(b) \/ ~a /\ P(c)`--),
+		GEN_TAC THEN COND_CASES_TAC THEN ASM_REWRITE_TAC[])
+	val LOCAL_COND_ELIM_CONV2 = HIGHER_REWRITE_CONV[LOCAL_COND_ELIM_THM2]
+	fun NNF_CONV_OPT baseconv skolemize cnflag =
+	    let fun NNF_CONV_P emb bvs tm =
+		let val (ll,r) = dest_comb tm
+		in let val s = fst(dest_const ll)
+		   in if s = "~" then
+		       NNF_CONV_N emb bvs r
+		      else if s = "?" then
+			  if skolemize then
+			      RIGHT_NNF emb bvs (ONEWAY_SKOLEM_CONV bvs tm)
+			  else
+			      let val (v,bod) = dest_abs r
+			      in AP_TERM ll (ABS v (NNF_CONV_P emb bvs bod))
+			      end
+		      else if s = "!" then
+			  let val (v,bod) = dest_abs r
+			  in AP_TERM ll (ABS v (NNF_CONV_P true (v::bvs) bod))
+			  end
+		      else NNF_CONV_TERMINAL emb bvs tm
+		   end
+	           handle _ =>
+		   let val (oper,l) = dest_comb ll
+		   in let val s = fst(dest_const oper)
+		       in if s = "/\\" orelse s = "\\/" then
+			   MK_COMB(AP_TERM oper (NNF_CONV_P emb bvs l),
+				   NNF_CONV_P emb bvs r)
+			  else if s = "==>" then
+			      RIGHT_NNF emb bvs (INST [p |-> l, q |-> r] pth_pimp)
+			  else if s = "=" then
+			      let val pth =
+				  if cnflag andalso emb then 
+				      INST [p |-> l, q |-> r] pth_peq1
+				  else INST [p |-> l, q |-> r] pth_peq2
+			      in RIGHT_NNF emb bvs pth
+			      end
+			  else NNF_CONV_TERMINAL emb bvs tm
+		       end
+  		       handle _ =>
+		       let val (b,c) = dest_comb oper
+		       in if fst(dest_const b) = "COND" then
+			   if cnflag andalso emb then
+			       INST [p |-> b, q |-> l, q' |-> r] pth_pcond1
+			   else INST [p |-> b, q |-> l, q' |-> r] pth_pcond2
+			  else ERR("","")
+		       end
+		       handle _ => NNF_CONV_TERMINAL emb bvs tm
+		   end
+		end
+	        handle _ => NNF_CONV_TERMINAL emb bvs tm
+		and NNF_CONV_N emb bvs tm =
+		    let val (ll,r) = dest_comb tm
+		    in let val s = fst(dest_const ll)
+		       in if s = "~" then
+			   RIGHT_NNF emb bvs (INST [p |-> r] pth_nnot)
+		       else if s = "?" then
+			   RIGHT_NNF emb bvs (LOCAL_NOT_EXISTS_CONV tm)
+		       else if s = "!" then
+			   RIGHT_NNF emb bvs (LOCAL_NOT_FORALL_CONV tm)
+		       else NNF_CONV_TERMINAL emb bvs(mk_neg tm)
+		       end
+		       handle _ =>
+		       let val (oper,l) = dest_comb ll
+		       in let val s = fst(dest_const oper)
+			  in if s = "/\\" then
+			      RIGHT_NNF emb bvs (INST [p |-> l, q |-> r] pth_nand)
+			     else if s = "\\/" then
+				 RIGHT_NNF emb bvs (INST [p |-> l, q |-> r] pth_nor)
+			     else if s = "==>" then
+				 RIGHT_NNF emb bvs (INST [p |-> l, q |-> r] pth_nimp)
+			     else if s = "=" then
+				 let val pth =
+				     if cnflag andalso emb then 
+					 INST [p |-> l, q |-> r] pth_neq1
+				     else INST [p |-> l, q |-> r] pth_neq2
+				 in RIGHT_NNF emb bvs pth
+				 end
+			     else NNF_CONV_TERMINAL emb bvs (mk_neg tm)
+			  end
+		          handle _ => 
+			  let val (b,c) = dest_comb oper
+			  in if fst(dest_const b) = "COND" then
+			      if cnflag andalso emb then 
+				  INST [p |-> b, q |-> l, q' |-> r] pth_ncond1
+			      else INST [p |-> b, q |-> l, q' |-> r] pth_ncond2
+			     else ERR("","")
+			  end
+			  handle _ => NNF_CONV_TERMINAL emb bvs (mk_neg tm)
+		       end
+		    end
+		    handle _ => NNF_CONV_TERMINAL emb bvs (mk_neg tm)
+		and RIGHT_NNF emb bvs th =
+		    TRANS th (NNF_CONV_P emb bvs (rand(concl th)))
+		and NNF_CONV_TERMINAL emb bvs tm =
+		    let val th = 
+			if cnflag andalso emb then 
+			    LOCAL_COND_ELIM_CONV1 tm
+			else LOCAL_COND_ELIM_CONV2 tm
+			val tm' = rand(concl th)
+		    in TRANS th (NNF_CONV_P emb bvs tm')
+		    end
+  		    handle _ => baseconv tm
+	    in NNF_CONV_P false
+	    end
+            handle e => WRAP_ERR("NNF_CONV_P",e);
+    in ((fn baseconv => fn cnflag => 
+	 TRIVIALIZE_CONV THENC
+	 NNF_CONV_OPT baseconv false cnflag []),
+	(fn baseconv => fn cnflag => 
+	 TRIVIALIZE_CONV THENC
+	 NNF_CONV_OPT baseconv true cnflag []))
+    end;;
+
+
+(* ------------------------------------------------------------------------- *)
+(* Reassociate an NNF to put the disjuncts with the lowest disjunctive       *)
+(* paths first (useful as input to tableaux provers).                        *)
+(* ------------------------------------------------------------------------- *)
+val DISJPATH_CONV =
+    let val DISJ_AC = EQT_ELIM o AC_CONV(DISJ_ASSOC,DISJ_SYM) 
+	fun DISJPATH_CONV tm =
+	    if is_disj tm then
+		let val djs = strip_disj tm
+		    val dnths = map DISJPATH_CONV djs 
+		    val sdths = sort (fn (_,m) => fn (_,n) => m <= n) dnths 
+		    val th1 = end_itlist MK_DISJ (map fst sdths) 
+		    val th2 = DISJ_AC(mk_eq(tm,lhand(concl th1))) 
+		in (TRANS th2 th1,itlist (fn x => fn y => y + snd x) dnths 0)
+		end
+	    else if is_conj tm then
+		let val (l,r) = dest_conj tm 
+		    val (lth,ln) = DISJPATH_CONV l
+		    and (rth,rn) = DISJPATH_CONV r 
+		in (MK_CONJ lth rth,ln * rn)
+		end
+	    
+	     else if is_forall tm then
+		let val (v,bod) = dest_forall tm
+		    val (th,n) = DISJPATH_CONV bod 
+		in (MK_FORALL v th,n)
+		end
+	     else (REFL tm,1) 
+    in fn tm => fst(DISJPATH_CONV tm)
+                handle e => WRAP_ERR("DISJPATH_CONV",e)
+    end;;
+
+(* ------------------------------------------------------------------------- *)
+(* Attempt to combine alpha-equivalent Skolem functions.                     *)
+(* ------------------------------------------------------------------------- *)
+
+val RATSKOL =
+    let fun findreps skols th =
+	case skols of
+	    [] => th
+	  | (sk::sks) =>
+		let val rsk = rand sk 
+		    val sk' = the (find (fn sk' => aconv (rand sk') rsk) sks)
+		    val th1 = TRANS (ASSUME sk') (SYM(ASSUME sk)) 
+		in findreps sks (SUBS[th1] th)
+		end
+	    handle _ => findreps sks th 
+    in fn th => findreps (hyp th) th
+                handle e => WRAP_ERR("RATSKOL",e)
+    end;;
+
+(* ------------------------------------------------------------------------- *)
+(* Eliminate Skolem functions definitions from a theorem.                    *)
+(* ------------------------------------------------------------------------- *)
+
+val SKELIM =
+    let fun skelim eq th =
+	let val (l,r) = dest_eq eq 
+	in MP (INST [(l |-> r)] (DISCH eq th)) (REFL r)
+	end
+    in fn skols => fn th =>
+	let val sskols = 
+	    sort (fn x => fn y => free_in (lhand x) (rand y)) skols 
+	in itlist skelim sskols th
+	end
+    end;;
+
+(* ------------------------------------------------------------------------- *)
+(* Wrapper to prove a term by negating it, putting it into the user's        *)
+(* chosen version of NNF, splitting up the disjuncts and calling refuter.    *)
+(*                                                                           *)
+(* The expectation is that "refute p" gives "p |- F".                        *)
+(* ------------------------------------------------------------------------- *)
+
+fun SIMPLE_DISJ_CASES th1 th2 =
+  DISJ_CASES (ASSUME(mk_disj(hd(hyp th1),hd(hyp th2)))) th1 th2;;
+
+val REFUTE =
+  let val pth = TAUT (--`(~p ==> F) ==> p`--)
+      val p = (--`p:bool`--)
+      val CONJ_AC = EQT_ELIM o AC_CONV(CONJ_ASSOC,CONJ_SYM) 
+      val pth_d = TAUT (--`(a \/ b) /\ c = (a /\ c) \/ (b /\ c)`--)
+      fun refute refuter tm =
+	  let val (l,r) = dest_disj tm 
+	  in SIMPLE_DISJ_CASES (refute refuter l) (refute refuter r)
+	  end
+      handle _ => 
+	  let val cjs = strip_conj tm 
+	      val (ourdj,ocjs) = remove is_disj cjs 
+	      val acth = CONJ_AC (mk_eq(tm,list_mk_conj(ourdj::ocjs))) 
+	      val exth = CONV_RULE (RAND_CONV(REWR_CONV pth_d)) acth 
+	      val tm' = rand(concl exth) 
+	      val rth = refute refuter tm' 
+	  in PROVE_HYP (EQ_MP exth (ASSUME tm)) rth
+	  end
+      handle _ => (trace (1,"Attempting next disjunction"); refuter tm) 
+  in fn baseconv => fn cnflag => fn refuter => fn tm =>
+    let val th1 = NNF_SKOLEM_CONV baseconv cnflag (mk_neg tm) 
+	val th2 = RATSKOL th1 
+	val (l,r) = dest_eq(concl th2) 
+	val rth = if r = falsity then ASSUME r else refute refuter r 
+	val th3 = PROVE_HYP (EQ_MP th2 (ASSUME l)) rth 
+	val th4 = DISCH_ALL (SKELIM (hyp th1) th3) 
+    in MP (INST [(p |-> tm)] pth) th4
+    end
+    handle e => WRAP_ERR("REFUTE",e)
+  end;
+  
+
+
+fun CONV_THEN_REFUTE (conv:conv) refuter tm =
+  let val th1 = conv tm
+      val tm' = rand(concl th1) 
+      val th2 = refuter tm' 
+  in PROVE_HYP (EQ_MP th1 (ASSUME tm)) th2
+  end;;
+
+
+end;
+
+@

@@ -1,0 +1,125 @@
+head	1.1;
+branch	1.1.1;
+access;
+symbols
+	HOL97:1.1.1.1.0.6
+	bpHOL97:1.1.1.1
+	hol90_9_alpha:1.1.1.1
+	hol90_pre8_for_multiple_compilers:1.1.1.1.0.4
+	hol90_pre8_after_donalds_separate_compilation_changes:1.1.1.1
+	hol90_8_after_merging_Konrad_Elsa:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	95.10.16.13.35.11;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.35.11;	author rjb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@\DOC new_infix_definition
+
+\TYPE {new_infix_definition : ((string # term) -> thm)}
+
+\SYNOPSIS
+Declares a new infix constant and installs a definitional axiom in the current
+theory.
+
+\DESCRIBE
+The function {new_infix_definition} provides a facility for definitional
+extensions to the current theory.  It takes a pair argument consisting
+of the name under which the resulting definition will be saved
+in the current theory segment, and a term giving the desired definition.  The
+value returned by {new_infix_definition} is a theorem which states the
+definition requested by the user.
+
+Let {v_1} and {v_2} be tuples of distinct variables, containing the variables
+{x_1,...,x_m}.  Evaluating {new_infix_definition (`name`, "ix v_1 v_2 = t")},
+where {ix} is not already a constant, declares the sequent {({{}},"\v_1 v_2.
+t")} to be a definition in the current theory, and declares {ix} to be
+a new constant in the current theory with this definition as its specification.
+This constant specification is returned as a theorem with the form
+{
+   |- !x_1 ... x_m. v_1 ix v_2 = t
+}
+\noindent and is saved in the current theory under
+(the name) {name}.  Optionally, the definitional term argument
+may have any of its variables universally quantified.
+The constant {ix} has infix status only after the infix
+declaration has been processed.  It is therefore necessary to use
+the constant in normal prefix position when making the definition.
+
+\FAILURE
+{new_infix_definition} fails if called when HOL is not in draft mode.  It also
+fails if there is already an axiom, definition or specification of the given
+name in the current theory segment; if {`ix`} is already a constant in the
+current theory or is not an allowed name for a constant; if {t} contains free
+variables that are not in either of the variable structures {v_1} and {v_2}
+(this is equivalent to requiring {\v_1 v_2. t} to be a closed term); or if any
+variable occurs more than once in {v_1, v_2}.  Failure also occurs if the type
+of {ix} is not of the form {:ty_1->ty_2->ty_3}.  Finally, failure occurs if
+there is a type variable in {v_1}, ..., {v_n} or {t} that does not occur in the
+type of {ix}.
+
+\EXAMPLE
+The nand function can be defined as follows.
+{
+   #new_infix_definition
+    (`nand`, "$nand in_1 in_2 = ~(in_1 /\ in_2)");;
+   |- !in_1 in_2. in_1 nand in_2 = ~(in_1 /\ in_2)
+}
+\COMMENTS
+It is a common practice among HOL users to write a {$} before
+the constant being defined as an infix to indicate that after the
+definition is made, it will have a special syntactic status; ie. to
+write:
+{
+   new_infix_definition(`ix_DEF`, "$ix m n = ... ")
+}
+\noindent This use of {$} is not necessary; but after the definition
+has been made {$} must, of course, be used if the syntactic status
+needs to be suppressed.
+
+\SEEALSO
+new_binder_definition, new_definition, new_gen_definition,
+new_infix_list_rec_definition, new_prim_rec_definition, new_list_rec_definition,
+new_prim_rec_definition.
+
+\ENDDOC
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

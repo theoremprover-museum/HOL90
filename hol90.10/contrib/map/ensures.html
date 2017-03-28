@@ -1,0 +1,162 @@
+<TITLE>Theory: ensures</TITLE>
+<H1>Theory: ensures</H1>
+<H1>Parents</H1>
+    <UL>
+    <LI><A HREF = "unless.html"><STRONG>unless</STRONG></A>
+    </UL>
+
+
+<HR>
+<H1>Type constants</H1>
+    <UL>
+    
+    </UL>
+
+
+<HR>
+<H1>Term constants</H1>
+    <UL>
+    <LI><STRONG>EXIST_TRANSITION</STRONG><EM>:('a -> bool) -> ('a -> bool) ->
+                                              ('a -> 'a) list -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Infix 425<STRONG>}</STRONG>
+    <LI><STRONG>ENSURES</STRONG><EM>:('a -> bool) -> ('a -> bool) ->
+                                     ('a -> 'a) list -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Infix 425<STRONG>}</STRONG>
+    </UL>
+
+
+<HR>
+<H1>Axioms</H1>
+<DL>
+
+</DL>
+
+
+<HR>
+<H1>Definitions</H1>
+<DL>
+<DT><STRONG>EXIST_TRANSITION</STRONG>
+<DD>
+<PRE>
+|- (!p q. (p EXIST_TRANSITION q) [] = F) /\
+   (!p q Pr st.
+     (p EXIST_TRANSITION q) (CONS st Pr) =
+     (!s. p s /\ ~(q s) ==> q (st s)) \/ (p EXIST_TRANSITION q) Pr)
+</PRE>
+
+<DT><STRONG>ENSURES</STRONG>
+<DD>
+<PRE>
+|- !p q Pr. (p ENSURES q) Pr = (p UNLESS q) Pr /\ (p EXIST_TRANSITION q) Pr
+</PRE>
+
+</DL>
+
+
+<HR>
+<H1>Theorems</H1>
+<DL>
+<DT><STRONG>EXIST_TRANSITION_thm1</STRONG>
+<DD>
+<PRE>
+|- !p q r Pr.
+     (p EXIST_TRANSITION q) Pr /\ (!s. q s ==> r s) ==>
+     (p EXIST_TRANSITION r) Pr
+</PRE>
+
+<DT><STRONG>EXIST_TRANSITION_thm2</STRONG>
+<DD>
+<PRE>
+|- !p Pr. (p EXIST_TRANSITION False) Pr ==> (!s. ~* p s)
+</PRE>
+
+<DT><STRONG>EXIST_TRANSITION_thm3</STRONG>
+<DD>
+<PRE>
+|- !p st Pr. (False EXIST_TRANSITION p) (CONS st Pr)
+</PRE>
+
+<DT><STRONG>ENSURES_thm0</STRONG>
+<DD>
+<PRE>
+|- !p q. (p ENSURES q) [] = F
+</PRE>
+
+<DT><STRONG>ENSURES_thm1</STRONG>
+<DD>
+<PRE>
+|- !p st Pr. (p ENSURES p) (CONS st Pr)
+</PRE>
+
+<DT><STRONG>ENSURES_thm2</STRONG>
+<DD>
+<PRE>
+|- !p q r Pr. (p ENSURES q) Pr /\ (!s. q s ==> r s) ==> (p ENSURES r) Pr
+</PRE>
+
+<DT><STRONG>ENSURES_thm3</STRONG>
+<DD>
+<PRE>
+|- !p Pr. (p ENSURES False) Pr ==> (!s. ~* p s)
+</PRE>
+
+<DT><STRONG>ENSURES_thm4</STRONG>
+<DD>
+<PRE>
+|- !p q p' q' Pr.
+     (p UNLESS q) Pr /\ (p' ENSURES q') Pr ==>
+     (p /\* p' ENSURES (p /\* q' \/* p' /\* q) \/* q /\* q') Pr
+</PRE>
+
+<DT><STRONG>ENSURES_thm5</STRONG>
+<DD>
+<PRE>
+|- !p q r Pr. (p ENSURES q) Pr ==> (p \/* r ENSURES q \/* r) Pr
+</PRE>
+
+<DT><STRONG>ENSURES_cor1</STRONG>
+<DD>
+<PRE>
+|- !p q st Pr. (!s. p s ==> q s) ==> (p ENSURES q) (CONS st Pr)
+</PRE>
+
+<DT><STRONG>ENSURES_cor2</STRONG>
+<DD>
+<PRE>
+|- !p q Pr. (p ENSURES q) Pr ==> (p UNLESS q) Pr
+</PRE>
+
+<DT><STRONG>ENSURES_cor3</STRONG>
+<DD>
+<PRE>
+|- !p q r Pr. (p \/* q ENSURES r) Pr ==> (p ENSURES q \/* r) Pr
+</PRE>
+
+<DT><STRONG>ENSURES_cor4</STRONG>
+<DD>
+<PRE>
+|- !p q r Pr. (p ENSURES q \/* r) Pr ==> (p /\* ~* q ENSURES q \/* r) Pr
+</PRE>
+
+<DT><STRONG>ENSURES_cor5</STRONG>
+<DD>
+<PRE>
+|- !p q r Pr. (p ENSURES q) Pr ==> (p ENSURES q \/* r) Pr
+</PRE>
+
+<DT><STRONG>ENSURES_cor6</STRONG>
+<DD>
+<PRE>
+|- !p st Pr. (False ENSURES p) (CONS st Pr)
+</PRE>
+
+<DT><STRONG>ENSURES_cor7</STRONG>
+<DD>
+<PRE>
+|- !p q r Pr. (p ENSURES q) Pr /\ r STABLE Pr ==> (p /\* r ENSURES q /\* r) Pr
+</PRE>
+
+</DL>
+
+
+<HR>

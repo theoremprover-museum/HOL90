@@ -1,0 +1,433 @@
+head	1.5;
+access;
+symbols
+	HOL97:1.4.0.4
+	bpHOL97:1.4
+	hol90_9_alpha:1.4
+	hol90_pre8_for_multiple_compilers:1.4.0.2
+	hol90_pre8_after_donalds_separate_compilation_changes:1.3
+	hol90_8_after_merging_Konrad_Elsa:1.2
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.5
+date	95.12.18.11.23.08;	author drs1004;	state Exp;
+branches;
+next	1.4;
+
+1.4
+date	95.11.15.13.29.50;	author rjb;	state Exp;
+branches
+	1.4.4.1;
+next	1.3;
+
+1.3
+date	95.10.31.15.04.36;	author drs1004;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	95.10.18.16.37.35;	author drs1004;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	95.10.16.13.30.06;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.30.06;	author rjb;	state Exp;
+branches;
+next	;
+
+1.4.4.1
+date	97.06.11.17.25.51;	author kxs;	state Exp;
+branches;
+next	1.4.4.2;
+
+1.4.4.2
+date	97.07.10.19.16.25;	author kxs;	state Exp;
+branches;
+next	1.4.4.3;
+
+1.4.4.3
+date	97.10.05.21.08.48;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.5
+log
+@Preterm and other changes, see 7.changes
+@
+text
+@(* Makes parsers and prettyprinters for ".hol_lib" files. *)
+
+functor LIB_IO (structure File : File_sig
+		structure Lib_parse : PARSER
+                structure Lib_data : Lib_data_sig
+                sharing type
+                  Lib_parse.arg = unit
+                sharing type
+                  Lib_parse.result = Lib_data.lib_data) : Lib_io_sig =
+struct
+structure Lib_data = Lib_data
+
+val LIB_IO_ERR = Exception.ERR "Lib_io";
+val WRAP_ERR = Exception.WRAP_ERR "Lib_io";
+
+val lib_suffix = ".hol_lib";
+
+
+(* Parsing library files *)
+fun lib_error (s,_,_) = 
+   (output(std_out,"library parser error: "^s^"\n");
+    LIB_IO_ERR("parse_lib",s));
+
+fun read_lib istrm =
+   let val lexer = Lib_parse.makeLexer(fn _ => Portable.input_line istrm) 
+       val (res,_) = Lib_parse.parse(0,lexer,lib_error,())
+   in res
+   end
+
+fun get_lib_by_name path =
+   #data o File.get_file_by_name{reader = read_lib,
+                                 suffix = lib_suffix} path;
+
+fun get_lib_by_uid path =
+   #data o File.get_file_by_key{reader = read_lib,
+                                suffix = lib_suffix,
+                                eq = Lib_data.lib_id_eq,
+                                key_of = #lib_id o Lib_data.dest_lib_data,
+                                name_of = Lib_data.lib_id_name} path;
+
+
+(* Pretty printing of library files *)
+
+(* Print a list of items.
+
+       pfun = print_function
+       dfun = delim_function
+       bfun = break_function
+*)
+fun pr_list pfun dfun bfun =
+   let fun pr [] = ()
+         | pr [i] = pfun i
+         | pr (i::rst) = ( pfun i; dfun(); bfun(); pr rst )
+   in pr
+   end;
+
+                                    
+fun write_lib(ostm, {lib_id,doc,path,parents,theories,code,help,loaded}) =
+   let val ppstrm = PP.mk_ppstream
+                       {linewidth=70,consumer=Lib.curry output ostm,
+                        flush=fn() => Portable.flush_out ostm}
+       val {add_string,add_break,begin_block,end_block,
+            add_newline,flush_ppstream,...} = PP.with_ppstream ppstrm
+       val bbc = begin_block PP.CONSISTENT
+       val bbi = begin_block PP.INCONSISTENT
+       val eb = end_block
+       val S = add_string 
+       fun lparen() = S "("
+       fun rparen() = S ")"
+       fun comma() = S ","
+       fun lbracket() = S "["
+       fun rbracket() = S "]"
+       fun lbrace() = S "{"
+       fun rbrace() = S "}"
+       fun space() = add_break(1,0)
+       val nl = add_newline
+       fun pr_sml_list f L = 
+          ( bbi 1;lbracket();pr_list f comma space L;rbracket();eb())
+       fun pp_lib_id lib_id = 
+          let val n = Lib_data.lib_id_name lib_id
+              and {sec,usec} =
+                   Portable.Time.dest_time(Lib_data.lib_id_timestamp lib_id)
+          in
+            bbi 1;
+            lparen();S n;comma();space();
+                     S (Lib.int_to_string sec);comma();space();
+                     S (Lib.int_to_string usec);
+            rparen();eb()
+          end
+       fun add_lib_id lib_id =
+          ( bbc 0;S "lib_id =";space();pp_lib_id lib_id;eb())
+       fun add_doc doc_string =
+          ( bbc 0;S "doc =";space();S (Lib.quote doc_string);eb())
+       fun add_path path =
+          ( bbc 0;S "path =";space();S path;eb())
+       fun add_parents lib_id_list = 
+          ( bbc 0;S "parents =";space();pr_sml_list pp_lib_id lib_id_list;
+            eb())
+       fun pr_string_list field str_list =
+          ( bbc 0;S (field^" =");space();pr_sml_list S str_list;
+            eb())
+       val add_theories = pr_string_list "theories"
+       val add_code  = pr_string_list "code"
+       val add_help = pr_string_list "help"
+(* This should be done by pattern matching against characters, but that
+   is not compatible with pre100 versions of sml-nj.*)
+       fun embed_quote {char_list = [], result_string} = result_string
+	 | embed_quote {char_list = ch::char_list, result_string} =
+	   if ch = Portable.List.hd (Portable.String.explode "\"")
+	       then embed_quote {char_list = char_list,
+				 result_string = result_string^"\\\""}
+	   else embed_quote {char_list = char_list,
+			     result_string =
+			     result_string^(Portable.String.str ch)}
+       fun add_loaded code_string =
+          ( bbc 0;S "loaded =";space();
+            S (Lib.quote (embed_quote {char_list = explode code_string,
+				       result_string = ""}));
+           eb())
+   in
+     bbc 0;
+     add_lib_id lib_id;
+     nl();
+     add_doc doc;
+     nl();
+     add_path path;
+     nl();
+     add_parents parents;
+     nl();
+     add_theories theories;
+     nl();
+     add_code code;
+     nl();
+     add_help help;
+     nl();
+     add_loaded loaded;
+     nl();
+     eb();flush_ppstream()
+   end;
+
+
+fun write_lib_to_disk (path,lib) =
+   let val ldata = Lib_data.dest_lib_data lib
+       val lib_id = #lib_id ldata
+       val name = Lib_data.lib_id_name lib_id
+       val file = path^name^lib_suffix
+       val ostm = open_out file 
+                  handle e => WRAP_ERR("write_file_to_disk",e)
+   in write_lib(ostm,ldata) handle e => (close_out ostm; raise e);
+      close_out ostm
+   end;
+end;
+
+
+@
+
+
+1.4
+log
+@The HOL90 sources have been changed to allow for the use of different
+Standard ML compilers (possibly simultaneously).
+
+ * Many files in "src/0" changed to make them more portable across different
+   ML compilers. Various additions have been made to the Portable structure
+   and files changed to access identifiers in the Portable structure rather
+   than from the global environment. Worthy of special note are:
+
+   - The pointer equality used in "src/0/term.sml" has been made into a
+     function in the Portable structure.
+
+   - The ML-Lex and ML-Yacc files for the various parsers have been changed
+     to access the Portable structure. Both the source files and the SML
+     produced from them have been changed but I have not verified that the
+     source files would reproduce the new SML versions if ML-Lex and ML-Yacc
+     were to be rerun on them. The changes involve some hacks that exploit the
+     way ML-Lex and ML-Yacc work. See the sources for details.
+
+R.J.Boulton, 15th November 1995.
+@
+text
+@d3 1
+a3 2
+functor LIB_IO ((* structure Lib : Lib_sig *)
+		structure File : File_sig
+d13 2
+a14 4
+fun LIB_IO_ERR{function,message} =
+    Exception.HOL_ERR{origin_structure = "Lib_io",
+		      origin_function = function,
+		      message = message};
+d22 1
+a22 1
+    raise LIB_IO_ERR{function = "parse_lib", message = s});
+d28 1
+a28 1
+   end;
+d148 1
+a148 2
+                  handle _ => raise LIB_IO_ERR{function="write_file_to_disk",
+                             message = "unable to write file "^Lib.quote file}
+@
+
+
+1.4.4.1
+log
+@Removed files are parse files and portability files that have
+effectively been moved elsewhere.
+
+Modified files are up to date for ML 109.26.
+@
+text
+@d3 2
+a4 1
+functor LIB_IO (structure File : File_sig
+d24 1
+a24 1
+   (Portable.output(Portable.std_out,"library parser error: "^s^"\n");
+d63 1
+a63 1
+                       {linewidth=70,consumer=Portable.outputc ostm,
+d150 1
+a150 1
+       val ostm = Portable.open_out file 
+d153 2
+a154 2
+   in write_lib(ostm,ldata) handle e => (Portable.close_out ostm; raise e);
+      Portable.close_out ostm
+@
+
+
+1.4.4.2
+log
+@Added lib_io.90.sml for backwards compatibility with SML'90.
+@
+text
+@d4 4
+a7 3
+		structure Lib_parse : sig include PARSER end 
+                                     where type arg = unit
+                structure Lib_data : Lib_data_sig 
+a12 1
+
+d156 2
+@
+
+
+1.4.4.3
+log
+@The structure Time has changed in the underling ML Library, and Portable.Time
+has changed in response, so this change reflects that change.
+@
+text
+@d88 2
+a89 2
+                     S (sec);comma();space();
+                     S (usec);
+@
+
+
+1.3
+log
+@First phase of hol90.8 development.  hol90 now compiles using NJSML-CM
+108.5, with separate compilation of libraries.  System dependencies
+have been isolated in the makefiles and "portable.sml".
+
+This involved a large number of enhancments to the source files,
+most of which are documented in the 7.changes file (or will be shortly).
+See also the correpsonding email corrspondence between RJB, KLS, TFM,
+JRH and DRS that happened during this development.
+@
+text
+@d28 1
+a28 1
+   let val lexer = Lib_parse.makeLexer(fn _ => input_line istrm) 
+d62 3
+a64 2
+   let val ppstrm = PP.mk_ppstream {linewidth=70,consumer=outputc ostm,
+                                    flush=fn() => flush_out ostm}
+d112 1
+a112 1
+	   if ch = List.hd (Portable.String.explode "\"")
+@
+
+
+1.2
+log
+@Check in after merging in Konrad's changes made after
+the release of hol90.7.  This involved creating a side branch
+in which to check in Konrad's changes, then merging in that
+side branch into the main development (which contains changes
+made by Elsa Gunter).
+
+Some other small modification have been made to the source code,
+as I begun to try to make this version into a working version:
+	- hol90 will now be compiled in an environment were no
+structures can be considered opn.  This means many structures
+now need "open Lib" and other such commands at their head.
+This has not yet been completed, but has been begun.
+	- "rotl" and "rotr" have been added to Lib, something
+which I just did impulsively.   Documentation files
+have also been added in help/90.
+@
+text
+@d84 1
+a84 1
+                   Sml_system.Time.dest_time(Lib_data.lib_id_timestamp lib_id)
+d111 1
+a111 1
+	   if ch = List.hd (Sml_system.String.explode "\"")
+d116 1
+a116 1
+			     result_string^(Sml_system.String.str ch)}
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d3 3
+a5 1
+functor LIB_IO (structure Lib_parse : PARSER
+d14 4
+a17 3
+fun LIB_IO_ERR{function,message} = HOL_ERR{origin_structure = "Lib_io",
+                                           origin_function = function,
+                                           message = message};
+d83 2
+a84 2
+              and (System.Timer.TIME{sec,usec}) =
+                   Lib_data.lib_id_timestamp lib_id
+d88 2
+a89 2
+                     S (int_to_string sec);comma();space();
+                     S (int_to_string usec);
+d107 10
+a116 2
+       fun embedded_quote "\"" = "\\\""
+         | embedded_quote s = s
+d119 2
+a120 1
+            S (Lib.quote (implode (map embedded_quote (explode code_string))));
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

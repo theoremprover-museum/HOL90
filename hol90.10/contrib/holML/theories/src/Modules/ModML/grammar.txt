@@ -1,0 +1,67 @@
+(* File: ModML/Plain_ModML/grammar.txt *)
+
+(* Description: This file gives the grammar of the syntax classes used
+   in the dynamic semantics of the ML Module system.  Those classes 
+   which form mutually recursive sets have been grouped together. *)
+
+(* References: The "Definition", Sections 3.4 and 7.1 *)
+
+(* Assumes Modules/Common/grammar.txt *)
+
+(* Mutually recursive set *)
+sigexp ::= SIGsigexp spec | 
+           SIGIDsigexp sigid
+spec ::= VALspec valdesc |
+         EXCEPTIONspec exdesc |
+         STRUCTUREspec strdesc |
+         LOCALspec spec spec |
+         OPENspec ((strid long) nonemptylist) |
+         INCLUDEspec (sigid nonemptylist) |
+         EMPTYspec |
+         SEQspec spec spec
+strdesc ::= STRIDstrdesc strid sigexp (strdesc option)
+(*******************************)
+
+sigbind ::= BINDsigbind sigid sigexp (sigbind option)
+
+sigdec ::= SIGNATUREsigdec sigbind | 
+           EMPTYsigdec | 
+           SEQsigdec sigdec sigdec
+
+(* Not included
+funsigexp ::= FUNSIG strid sigexp sigexp
+
+fundesc ::= FUNIDfundesc funid funsigexp (fundesc option)
+
+funspec ::= FUNCTORfunspec fundesc |
+            EMPTYfunspec |
+            SEQfunspec funspec funspec
+*)
+
+(* Mutually recursive type set *)
+strexp ::= STRUCTstrexp strdec | 
+           LONGSTRIDstrexp (strid long) |
+           APPstrexp funid strexp |
+           LETstrexp strdec strexp
+strdec ::= DECstrdec dec | 
+           STRUCTUREstrdec strbind |
+           LOCALstrdec strdec strdec | 
+           EMPTYstrdec |
+           SEQstrdec strdec strdec
+strbind ::= BINDstrbind strid (sigexp option) strexp (strbind option)
+(********************************)
+
+funbind ::= BINDfunbind funid strid sigexp (sigexp option)
+                        strexp (funbind option)
+fundec ::= FUNCTORfundec funbind |
+           EMPTYfundec |
+           SEQfundec fundec fundec
+
+topdec ::= STRDEC strdec |
+           SIGDEC sigdec |
+           FUNDEC fundec
+
+
+(* Grammar of programs *)
+
+program ::= BASICprogram topdec (program option)

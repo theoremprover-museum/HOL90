@@ -1,0 +1,279 @@
+head	1.1;
+access;
+symbols;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	96.02.08.00.44.59;	author drs1004;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@New theory mechanism, code reorganisation and other enhancements by Don Syme.
+@
+text
+@signature Simpsets_sig =
+sig
+    val bool_ss : Simplifier.simpset
+    val BOOL_SIMPS_ss : Simplifier.simpset      (* the rewrites *)
+    val BOOL_CONGRUENCES : Travrules.travrules  (* the opening rules *)
+    val BOOL_ss : Simplifier.simpset            (* both  *)
+	
+    val imp_congrule : Thm.thm
+    val cond_congrule : Thm.thm
+	
+    val and_congrule : Thm.thm
+    val or_congrule : Thm.thm
+
+    val pair_ss : Simplifier.simpset
+    val PAIR_ss : Simplifier.simpset
+    val SINGLE_POINT_ss : Simplifier.simpset
+    val simpset_for_datatype : Thm.thm -> Simplifier.simpset 
+    val NNF_ss_ss : Simplifier.simpset
+    val NOT_SIMP_ss : Simplifier.simpset
+    val EXISTS_NORM_ss : Simplifier.simpset;
+    val EXISTS_IN_ss : Simplifier.simpset;
+    val EXISTS_OUT_ss : Simplifier.simpset;
+    val SATISFY_DPROC : Traverse.reducer;
+    val SATISFY_ss : Simplifier.simpset
+
+
+end;
+
+
+
+structure Simpsets : Simpsets_sig =
+struct
+
+open Lib Manager0 Parse Rules Theorems Drule Pterms;
+infix |>;
+open Simplifier;
+infix ++;
+    
+open Plain_rewrite Single_point Pabs;
+open Traverse;
+open Travrules;
+infix ++
+open Pure_ss;
+
+val imp_congrule = 
+    TAUT (--`(P = P') ==> (P' ==> (Q = Q')) ==> ((P ==> Q) = (P' ==> Q'))`--);
+    
+val and_congrule = 
+    TAUT(--`(Q ==> (P = P')) ==> (P' ==> (Q = Q')) ==> ((P /\ Q) = (P' /\ Q'))`--);
+    
+val or_congrule = 
+    TAUT (--`(~Q ==> (P = P')) ==> (~P' ==> (Q = Q')) ==> ((P \/ Q) = (P' \/ Q'))`--);
+    
+val cond_congrule = 
+    TAUT (--`(g = g') ==> 
+        (g' ==> (t:'a = t')) ==> 
+        (~g' ==> (e = e')) ==> 
+	    ((g => t | e) = (g' => t' | e'))`--);
+	
+
+(* ---------------------------------------------------------------------
+ * bool_ss
+ *   This is essentially the same as the old REWRITE_TAC []
+ *   with the "basic rewrites" plus:
+ *      - ABS_SIMP removed in favour of BETA_CONV
+ *      - COND_ID added: (P => Q | Q) = Q
+ *      - contextual rewrites for P ==> Q and P => T1 | T2 added
+ *      - (t ==> t) = T removed because it matches every implication,
+ * and it is redundant due to contextual rewriting.
+ * --------------------------------------------------------------------*)
+
+val IMP_CLAUSES' = TAUT (--`(T ==> t = t) /\ 
+			    (t ==> T = T) /\ 
+                            (F ==> t = T) /\ 
+                            (t ==> F = ~t)`--);
+
+val BOOL_CONGRUENCES =
+   equality_travrules 
+   |> trav_addcongs [and_congrule, or_congrule]
+   |> trav_addcongs [imp_congrule, cond_congrule];
+
+val BOOL_SIMPS_ss =
+   pure_ss
+   |> addconvs [mk_convdata{name="BETA_CONV (beta reduction)",
+                         key=SOME ([],--`(\x:'a. y:'b) z`--),
+                         trace=1,
+                         conv=K BETA_CONV}]
+   ++ [REFL_CLAUSE,  EQ_CLAUSES,
+       NOT_CLAUSES,  AND_CLAUSES,
+       OR_CLAUSES,   IMP_CLAUSES',
+       COND_CLAUSES, FORALL_SIMP,
+       EXISTS_SIMP,  COND_ID];
+
+val BOOL_ss =
+   BOOL_SIMPS_ss
+   |> addcongs [imp_congrule, cond_congrule];
+
+val bool_ss = BOOL_ss;
+
+	   
+(*------------------------------------------------------------------------
+ * PAIR_ss
+ *------------------------------------------------------------------------*)
+
+val PAIR_ss =
+   pure_ss
+   |> addconvs [mk_convdata{name="PAIRED_BETA_CONV (beta reduction)",
+                            key=SOME ([],--`(\(x,y):('a # 'b). y:'b) (z,w)`--),
+                            trace=1,
+                            conv=K PAIRED_BETA_CONV}]
+   ++ [THM "FST", 
+       THM "SND", 
+       THM "PAIR", 
+       THM "PAIR_EQ"];
+val pair_ss = merge_ss [bool_ss, PAIR_ss];
+
+(*------------------------------------------------------------------------
+ * SINGLE_POINT_ss
+ *------------------------------------------------------------------------*)
+
+val SINGLE_POINT_ss = 
+    pure_ss
+    |> addconvs [
+             mk_convdata{name="SINGLE_POINT_EXISTS_CONV",
+                         key=SOME ([],--`?x:'a. P`--),
+                         trace=1,
+                         conv=K SINGLE_POINT_EXISTS_CONV},
+             mk_convdata{name="SINGLE_POINT_FORALL_CONV",
+                         key=SOME ([],--`!x:'a. P`--),
+                         trace=1,
+                         conv=K SINGLE_POINT_FORALL_CONV}
+    ];
+
+(*------------------------------------------------------------------------
+ * simpset_for_datatype
+ *------------------------------------------------------------------------*)
+
+
+fun simpset_for_datatype axiom = 
+    let val one_one = Rec_type_support.prove_constructors_one_one axiom
+  	handle _ => TRUTH
+	val distinct = 
+	    let val D = 
+		CONJUNCTS(Rec_type_support.prove_constructors_distinct axiom)
+	    in LIST_CONJ(D@@map Conv.GSYM D)
+	    end
+	handle _ => TRUTH
+    in
+	Pure_ss.pure_ss ++ [one_one,distinct]
+    end;
+
+(* ---------------------------------------------------------------------
+ * NNF_ss_ss
+ *
+ * Moving negations inwards.
+ * --------------------------------------------------------------------*)
+
+val NNF_ss_ss =
+    pure_ss 
+    ++ [NOT_IMP,
+	DE_MORGAN_THM,
+	NOT_FORALL_THM,
+	NOT_EXISTS_THM];
+
+(* ---------------------------------------------------------------------
+ * EXISTS_NORM_ss
+ *
+ * Moving existentials 
+ *    - inwards over disjunctions
+ *    - outwards over conjunctions
+ *    - outwards from left of implications (??? - do we want this??)
+ *    - inwards into right of implications
+ * --------------------------------------------------------------------*)
+
+val EXISTS_NORM_ss =
+    pure_ss 
+    ++ [EXISTS_OR_THM, 
+        TRIV_AND_EXISTS_THM, 
+        LEFT_AND_EXISTS_THM,
+        RIGHT_AND_EXISTS_THM,
+        LEFT_IMP_EXISTS_THM,
+        TRIV_EXISTS_IMP_THM];
+
+val EXISTS_IN_ss =
+    pure_ss 
+    ++ [EXISTS_OR_THM, 
+        LEFT_EXISTS_AND_THM,
+        RIGHT_EXISTS_AND_THM,
+        LEFT_EXISTS_IMP_THM,
+        TRIV_EXISTS_IMP_THM,
+        RIGHT_EXISTS_IMP_THM];
+
+val EXISTS_OUT_ss =
+    pure_ss 
+    ++ [EXISTS_OR_THM, 
+        LEFT_AND_EXISTS_THM,
+        RIGHT_AND_EXISTS_THM,
+        LEFT_IMP_EXISTS_THM,
+        RIGHT_IMP_EXISTS_THM];
+
+
+(* ---------------------------------------------------------------------
+ * NOT_SIMP_ss
+ *
+ * Moving negations inwards, eliminate disjuncts incolving negations,
+ * eliminate negations on either side of equalities.
+ * --------------------------------------------------------------------*)
+
+val NOT_OR_CLAUSE1 = TAUT (--`~x \/ y = (x ==> y)`--);
+val NOT_OR_CLAUSE2 = TAUT (--`x \/ ~y = (y ==> x)`--);
+    
+val NOT_11 = TAUT(--`(~p = ~q) = (p = q)`--);
+    
+val NOT_SIMP_ss =
+    NNF_ss_ss ++ [NOT_OR_CLAUSE1,NOT_OR_CLAUSE2,NOT_11];
+
+(* ---------------------------------------------------------------------
+ *
+ * --------------------------------------------------------------------*)
+
+open Satisfy_existentials;
+
+val SATISFY_DPROC =mk_reducer{
+           name="SATISFY_CONV (satisfy existentials via unification)",
+           relation = #const (const_decl "="),
+           initial = THMLIST [],
+           apply=fn {context=THMLIST thms,solver} => SATISFY_CONV thms,
+           addcontext=fn (THMLIST thms',thms) => THMLIST (flatten (map CONJUNCTS thms)@@thms')};
+    
+
+val SATISFY_ss = pure_ss |> Simplifier.adddprocs [SATISFY_DPROC];
+end;
+
+
+
+(* Tests:
+
+open Simplifier;
+open Quant_ss;
+open Trace;
+trace_level 5;
+
+prove(--`!P. ~P = (P = F)`--,SIMP_TAC bool_ss);
+prove(--`!P. P = (P = T)`--,SIMP_TAC bool_ss);
+prove(--`!P. P = (P /\ T)`--, SIMP_TAC bool_ss);
+SIMP_CONV bool_ss (--`1=1`--);
+SIMP_CONV bool_ss (--`!x:'a. 1=1`--);
+SIMP_CONV bool_ss (--`!x:'a. x = x`--);
+SIMP_CONV bool_ss (--`!x:'a. (\y. P x y) x`--);
+SIMP_CONV bool_ss (--`(x = 0) ==> (x + y = z + x)`--);
+profile2 SIMP_CONV CNF_ss (--`(x = y) ==> x ==> (~x /\ (y \/ z))`--);
+profile2 SIMP_CONV DNF_ss (--`(x = y) ==> x ==> (~x /\ (y \/ z))`--);
+*)
+
+
+
+@

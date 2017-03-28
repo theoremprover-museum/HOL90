@@ -1,0 +1,147 @@
+head	1.2;
+access;
+symbols
+	HOL97:1.2.0.4
+	bpHOL97:1.2
+	hol90_9_alpha:1.2
+	hol90_pre8_for_multiple_compilers:1.2.0.2
+	hol90_pre8_after_donalds_separate_compilation_changes:1.1.1.1
+	hol90_8_after_merging_Konrad_Elsa:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.2
+date	95.11.16.16.49.57;	author rjb;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	95.10.16.13.31.30;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.31.30;	author rjb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.2
+log
+@Support for the predecessor function, PRE, has been added to the arith
+library. It is eliminated in the pre-processing phase along with natural
+number subtraction. The modifications are due to Kim Dam Petersen of
+Tele Danmark Research.
+
+R.J.Boulton, 16th November 1995.
+@
+text
+@\DOC SUB_AND_COND_ELIM_CONV
+
+\TYPE {SUB_AND_COND_ELIM_CONV : conv}
+
+\SYNOPSIS
+Eliminates natural number subtraction, PRE, and conditional statements from a
+formula.
+
+\LIBRARY arith
+
+\DESCRIBE
+This function eliminates natural number subtraction and the predecessor
+function, {PRE}, from a formula, but in doing so may generate conditional
+statements, so these are eliminated too. The conditional statements are moved
+up through the term and if at any point the branches of the conditional become
+Boolean-valued the conditional is eliminated. Subtraction operators are moved
+up until a relation (such as less-than) is reached. The subtraction can then
+be transformed into an addition. Provided the argument term is a formula, only
+an abstraction can prevent a conditional being moved up far enough to be
+eliminated. If the term is not a formula it may not be possible to eliminate
+the subtraction. The function is also incapable of eliminating subtractions
+that appear in arguments to functions other than the standard operators of
+arithmetic.
+
+The function is not as delicate as it could be; it tries to eliminate all
+conditionals in a formula when it need only eliminate those that have to be
+removed in order to eliminate subtraction.
+
+\FAILURE
+Never fails.
+
+\EXAMPLE
+{
+#SUB_AND_COND_ELIM_CONV
+# "((p + 3) <= n) ==> (!m. ((m = 0) => (n - 1) | (n - 2)) > p)";;
+|- (p + 3) <= n ==> (!m. ((m = 0) => n - 1 | n - 2) > p) =
+   (p + 3) <= n ==>
+   (!m. (~(m = 0) \/ n > (1 + p)) /\ ((m = 0) \/ n > (2 + p)))
+
+#SUB_AND_COND_ELIM_CONV
+# "!f n. f ((SUC n = 0) => 0 | (SUC n - 1)) < (f n) + 1";;
+|- (!f n. (f((SUC n = 0) => 0 | (SUC n) - 1)) < ((f n) + 1)) =
+   (!f n.
+     (~(SUC n = 0) \/ (f 0) < ((f n) + 1)) /\
+     ((SUC n = 0) \/ (f((SUC n) - 1)) < ((f n) + 1)))
+
+#SUB_AND_COND_ELIM_CONV
+# "!f n. (\m. f ((m = 0) => 0 | (m - 1))) (SUC n) < (f n) + 1";;
+|- (!f n. ((\m. f((m = 0) => 0 | m - 1))(SUC n)) < ((f n) + 1)) =
+   (!f n. ((\m. ((m = 0) => f 0 | f(m - 1)))(SUC n)) < ((f n) + 1))
+}
+\USES
+Useful as a preprocessor to decision procedures which do not allow natural
+number subtraction in their argument formula.
+
+\SEEALSO
+COND_ELIM_CONV.
+
+\ENDDOC
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d6 1
+a6 1
+Eliminates natural number subtraction and conditional statements from a
+d12 12
+a23 11
+This function eliminates natural number subtraction from a formula, but in
+doing so may generate conditional statements, so these are eliminated too. The
+conditional statements are moved up through the term and if at any point the
+branches of the conditional become Boolean-valued the conditional is
+eliminated. Subtraction operators are moved up until a relation (such as
+less-than) is reached. The subtraction can then be transformed into an
+addition. Provided the argument term is a formula, only an abstraction can
+prevent a conditional being moved up far enough to be eliminated. If the term
+is not a formula it may not be possible to eliminate the subtraction. The
+function is also incapable of eliminating subtractions that appear in
+arguments to functions other than the standard operators of arithmetic.
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

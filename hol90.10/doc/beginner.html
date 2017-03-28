@@ -1,0 +1,138 @@
+<TITLE>Getting started with hol90</TITLE>
+<H1><A NAME = "Getting started with hol90">Getting started with hol90</A></H1>
+
+
+Before we start on an example, we will sketch just what hol90 is, for
+those who have never seen an LCF-style theorem prover. The hol90 system
+can be characterized as <A HREF = "manual.html#Using SML">SML/NJ</A>
+with a lot of added support for doing Higher Order Logic.  On top of
+SML, hol90 defines the types, terms, and theorems of the HOL logic. As
+well, a great deal of support is available for reading, printing, and
+manipulating values of these types.
+
+<P>
+
+A common style of hol90 interaction is for the user to work with the SML
+<EM>top-level loop</EM>. This loop reads input until a complete phrase
+has been found, then evaluates the phrase, then prints out the result
+before resuming its wait for input. Let us start our proof work with a 
+classic example: 
+<P>
+<EM>All men are mortal; Socrates is a man; therefore, Socrates is mortal.
+</EM>
+<P>
+
+How might this argument be represented in hol90? We start by entering our
+terms.  In order to make the interaction more clear, we are going to
+first turn off some specialized printing support:
+
+<PRE>
+    term_pp_prefix := "";  term_pp_suffix := "";
+</PRE>
+
+In the following, the dash (<KBD>-</KBD>) is the SML/NJ system prompt.
+Everything that follows on that line is user input, ending with the
+semicolon.
+
+<PRE>
+- val men_are_mortal = string_to_term "!(x:ind). Man x ==> Mortal x";
+val men_are_mortal = `!x. Man x ==> Mortal x` : term
+</PRE>
+
+The contents of the second line is what SML has printed back as the
+value of the input phrase. Let's look at the input phrase: it binds the
+name <KBD>men_are_mortal</KBD> with the value of invoking the term
+parser (<KBD>string_to_term</KBD>) on the string <KBD>"!(x:ind). Man x
+==> Mortal x"</KBD>. This may be read aloud as <EM>For all x of type
+individual, Man x implies Mortal x</EM>. The exclamation mark
+(<KBD>!</KBD>) stands for the universal quantifier, and the
+<KBD>==></KBD> symbol stands for the material implication. The
+identifiers <KBD>Man</KBD> and <KBD>Mortal</KBD> stand for
+predicates. HOL is a typed logic; the type <KBD>ind</KBD> of individuals
+is one of its primitive types.
+
+<P>
+
+SML prints out the binding and tells us that is has type
+<STRONG>term</STRONG>. The second term in our argument is introduced in
+much the same way as the first:
+
+<PRE>
+- val socrates_is_a_man = string_to_term "(Man:ind->bool) Socrates";
+val socrates_is_a_man = `Man Socrates` : term
+</PRE>
+
+The subexpression <KBD>(Man :ind -> bool)</KBD> constrains the predicate
+<KBD>Man</KBD> to belong to a certain type; the expression is read as
+<EM>Man has type individual to bool</EM>. Now we can make the argument. It
+goes in three steps: we assume our terms, and then make use of a version
+of <EM>modus ponens</EM> that uses matching to find the correct instantiation.
+
+<PRE>
+    - val th1 = ASSUME  men_are_mortal;
+    val th1 = . |- !x. Man x ==> Mortal x : thm
+
+    - val th2 = ASSUME  socrates_is_a_man;
+    val th2 = . |- Man Socrates : thm
+
+    - MATCH_MP th1 th2;
+    val it = .. |- Mortal Socrates : thm
+</PRE>
+
+Notice that the bindings <KBD>th1</KBD>, <KBD>th2</KBD>, and
+<KBD>it</KBD> are all of type <STRONG>thm</STRONG>. This means that they
+represent theorems of the HOL logic. When these values are printed out,
+there are "dots" to the left of the turnstile (<KBD>|-</KBD>): these are the
+assumptions. We can discharge these:
+
+<PRE>
+    - DISCH_ALL it;
+    val it = 
+     |- Man Socrates ==> 
+       (!x. Man x ==> Mortal x) ==> Mortal Socrates : thm
+</PRE>
+
+Using SML, we can package all this work up into one phrase and evaluate
+it (incidentally, without adding any new top-level bindings, except for
+the final theorem):
+
+<PRE>
+- MATCH_MP (ASSUME (Parse.string_to_term "!x:ind. Man x ==> Mortal x"))
+           (ASSUME (Parse.string_to_term "(Man:ind->bool) Socrates"));
+
+val it = .. |- Mortal Socrates : thm
+</PRE>
+<P>
+
+<STRONG>Note</STRONG>. Ending a session with SML/NJ, and hence hol90,
+is done by entering the end-of-file character (^D).
+<P>
+
+This example was a trivial example of reasoning in HOL. However,
+the essence of the system has been demonstrated: theorems of the HOL
+logic are proved by applying rules of inference, which are ML
+functions. Theorem proving is just functional programming!
+
+<P>
+
+The technology in HOL scales up remarkably well: some of the largest
+proofs performed to date have been done in hol90. Such efforts make
+common use of quite sophisticated reasoning tools, but these tools are
+always composed from simple inference rules such as those we have
+demonstrated here.
+
+
+<H2>Further examples</H2>
+
+<UL>
+<LI> Kathi Fisler has made her 
+     <A HREF = "http://www.cs.indiana.edu/hyplan/kfisler/HOL/hol90notes.html">
+     notes on learning hol90</A> available. 
+
+<LI> Some extensive examples are demonstrated in the
+<A HREF = "manual.html#Examples">Examples section</A> of this manual. 
+</UL>
+
+<HR>
+<A HREF = "manual.html#Table of Contents">Table of Contents</A>
+

@@ -1,0 +1,98 @@
+head	1.1;
+branch	1.1.1;
+access;
+symbols
+	HOL97:1.1.1.1.0.6
+	bpHOL97:1.1.1.1
+	hol90_9_alpha:1.1.1.1
+	hol90_pre8_for_multiple_compilers:1.1.1.1.0.4
+	hol90_pre8_after_donalds_separate_compilation_changes:1.1.1.1
+	hol90_8_after_merging_Konrad_Elsa:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	95.10.16.13.34.15;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.34.15;	author rjb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@\DOC REPEAT_TCL
+
+\TYPE {REPEAT_TCL : (thm_tactical -> thm_tactical)}
+
+\SYNOPSIS
+Repeatedly applies a theorem-tactical until it fails when applied to the
+theorem.
+
+\KEYWORDS
+theorem-tactical.
+
+\DESCRIBE
+When applied to a theorem-tactical, a theorem-tactic and a theorem:
+{
+   REPEAT_TCL ttl ttac th
+}
+\noindent {REPEAT_TCL} repeatedly modifies the theorem according to {ttl}
+until it fails when given to the theorem-tactic {ttac}.
+
+\FAILURE
+Fails iff the theorem-tactic fails immediately when applied to the theorem.
+
+\EXAMPLE
+It is often desirable to repeat the action of basic theorem-tactics. For
+example {CHOOSE_THEN} strips off a single existential quantification, so one
+might use {REPEAT_TCL CHOOSE_THEN} to get rid of them all.
+
+Alternatively, one might want to repeatedly break apart a theorem which is a
+nested conjunction and apply the same theorem-tactic to each conjunct. For
+example the following goal:
+{
+   ?- ((0 = w) /\ (0 = x)) /\ (0 = y) /\ (0 = z) ==> (w + x + y + z = 0)
+}
+\noindent might be solved by
+{
+   DISCH_THEN (REPEAT_TCL CONJUNCTS_THEN (SUBST1_TAC o SYM)) THEN
+   REWRITE_TAC[ADD_CLAUSES]
+}
+\SEEALSO
+REPEAT_GTCL, THEN_TCL.
+
+\ENDDOC
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

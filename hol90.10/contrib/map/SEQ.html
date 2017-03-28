@@ -1,0 +1,528 @@
+<TITLE>Theory: SEQ</TITLE>
+<H1>Theory: SEQ</H1>
+<H1>Parents</H1>
+    <UL>
+    <LI><A HREF = "NETS.html"><STRONG>NETS</STRONG></A>
+    </UL>
+
+
+<HR>
+<H1>Type constants</H1>
+    <UL>
+    
+    </UL>
+
+
+<HR>
+<H1>Term constants</H1>
+    <UL>
+    <LI><STRONG>--></STRONG><EM>:(num -> real) -> real -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Infix 750<STRONG>}</STRONG>
+    <LI><STRONG>convergent</STRONG><EM>:(num -> real) -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>cauchy</STRONG><EM>:(num -> real) -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>lim</STRONG><EM>:(num -> real) -> real</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>subseq</STRONG><EM>:(num -> num) -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>mono</STRONG><EM>:(num -> real) -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>sums</STRONG><EM>:(num -> real) -> real -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Infix 750<STRONG>}</STRONG>
+    <LI><STRONG>summable</STRONG><EM>:(num -> real) -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>suminf</STRONG><EM>:(num -> real) -> real</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    </UL>
+
+
+<HR>
+<H1>Axioms</H1>
+<DL>
+
+</DL>
+
+
+<HR>
+<H1>Definitions</H1>
+<DL>
+<DT><STRONG>tends_num_real</STRONG>
+<DD>
+<PRE>
+|- !x x0. x --> x0 = (x tends x0) (mtop mr1,$>=)
+</PRE>
+
+<DT><STRONG>convergent</STRONG>
+<DD>
+<PRE>
+|- !f. convergent f = (?l. f --> l)
+</PRE>
+
+<DT><STRONG>cauchy</STRONG>
+<DD>
+<PRE>
+|- !f.
+     cauchy f =
+     (!e.
+       & 0 |<| e ==> (?N. !m n. m >= N /\ n >= N ==> abs (f m |-| f n) |<| e))
+</PRE>
+
+<DT><STRONG>lim</STRONG>
+<DD>
+<PRE>
+|- !f. lim f = (@l. f --> l)
+</PRE>
+
+<DT><STRONG>subseq</STRONG>
+<DD>
+<PRE>
+|- !f. subseq f = (!m n. m < n ==> f m < f n)
+</PRE>
+
+<DT><STRONG>mono</STRONG>
+<DD>
+<PRE>
+|- !f.
+     mono f =
+     (!m n. m <= n ==> f m |<=| f n) \/ (!m n. m <= n ==> f m |>=| f n)
+</PRE>
+
+<DT><STRONG>sums</STRONG>
+<DD>
+<PRE>
+|- !f s. f sums s = (\n. sum (0,n) f) --> s
+</PRE>
+
+<DT><STRONG>summable</STRONG>
+<DD>
+<PRE>
+|- !f. summable f = (?s. f sums s)
+</PRE>
+
+<DT><STRONG>suminf</STRONG>
+<DD>
+<PRE>
+|- !f. suminf f = (@s. f sums s)
+</PRE>
+
+</DL>
+
+
+<HR>
+<H1>Theorems</H1>
+<DL>
+<DT><STRONG>SEQ</STRONG>
+<DD>
+<PRE>
+|- !x x0.
+     x --> x0 =
+     (!e. & 0 |<| e ==> (?N. !n. n >= N ==> abs (x n |-| x0) |<| e))
+</PRE>
+
+<DT><STRONG>SEQ_CONST</STRONG>
+<DD>
+<PRE>
+|- !k. (\x. k) --> k
+</PRE>
+
+<DT><STRONG>SEQ_ADD</STRONG>
+<DD>
+<PRE>
+|- !x x0 y y0. x --> x0 /\ y --> y0 ==> (\n. x n |+| y n) --> (x0 |+| y0)
+</PRE>
+
+<DT><STRONG>SEQ_MUL</STRONG>
+<DD>
+<PRE>
+|- !x x0 y y0. x --> x0 /\ y --> y0 ==> (\n. x n |*| y n) --> (x0 |*| y0)
+</PRE>
+
+<DT><STRONG>SEQ_NEG</STRONG>
+<DD>
+<PRE>
+|- !x x0. x --> x0 = (\n. -- (x n)) --> -- x0
+</PRE>
+
+<DT><STRONG>SEQ_INV</STRONG>
+<DD>
+<PRE>
+|- !x x0. x --> x0 /\ ~(x0 = & 0) ==> (\n. inv (x n)) --> inv x0
+</PRE>
+
+<DT><STRONG>SEQ_SUB</STRONG>
+<DD>
+<PRE>
+|- !x x0 y y0. x --> x0 /\ y --> y0 ==> (\n. x n |-| y n) --> (x0 |-| y0)
+</PRE>
+
+<DT><STRONG>SEQ_DIV</STRONG>
+<DD>
+<PRE>
+|- !x x0 y y0.
+     x --> x0 /\ y --> y0 /\ ~(y0 = & 0) ==> (\n. x n / y n) --> (x0 / y0)
+</PRE>
+
+<DT><STRONG>SEQ_UNIQ</STRONG>
+<DD>
+<PRE>
+|- !x x1 x2. x --> x1 /\ x --> x2 ==> (x1 = x2)
+</PRE>
+
+<DT><STRONG>SEQ_LIM</STRONG>
+<DD>
+<PRE>
+|- !f. convergent f = f --> lim f
+</PRE>
+
+<DT><STRONG>SUBSEQ_SUC</STRONG>
+<DD>
+<PRE>
+|- !f. subseq f = (!n. f n < f (SUC n))
+</PRE>
+
+<DT><STRONG>MONO_SUC</STRONG>
+<DD>
+<PRE>
+|- !f. mono f = (!n. f (SUC n) |>=| f n) \/ (!n. f (SUC n) |<=| f n)
+</PRE>
+
+<DT><STRONG>MAX_LEMMA</STRONG>
+<DD>
+<PRE>
+|- !s N. ?k. !n. n < N ==> abs (s n) |<| k
+</PRE>
+
+<DT><STRONG>SEQ_BOUNDED</STRONG>
+<DD>
+<PRE>
+|- !s. bounded (mr1,$>=) s = (?k. !n. abs (s n) |<| k)
+</PRE>
+
+<DT><STRONG>SEQ_BOUNDED_2</STRONG>
+<DD>
+<PRE>
+|- !f k k'. (!n. k |<=| f n /\ f n |<=| k') ==> bounded (mr1,$>=) f
+</PRE>
+
+<DT><STRONG>SEQ_CBOUNDED</STRONG>
+<DD>
+<PRE>
+|- !f. cauchy f ==> bounded (mr1,$>=) f
+</PRE>
+
+<DT><STRONG>SEQ_ICONV</STRONG>
+<DD>
+<PRE>
+|- !f. bounded (mr1,$>=) f /\ (!m n. m >= n ==> f m |>=| f n) ==> convergent f
+</PRE>
+
+<DT><STRONG>SEQ_NEG_CONV</STRONG>
+<DD>
+<PRE>
+|- !f. convergent f = convergent (\n. -- (f n))
+</PRE>
+
+<DT><STRONG>SEQ_NEG_BOUNDED</STRONG>
+<DD>
+<PRE>
+|- !f. bounded (mr1,$>=) (\n. -- (f n)) = bounded (mr1,$>=) f
+</PRE>
+
+<DT><STRONG>SEQ_BCONV</STRONG>
+<DD>
+<PRE>
+|- !f. bounded (mr1,$>=) f /\ mono f ==> convergent f
+</PRE>
+
+<DT><STRONG>SEQ_MONOSUB</STRONG>
+<DD>
+<PRE>
+|- !s. ?f. subseq f /\ mono (\n. s (f n))
+</PRE>
+
+<DT><STRONG>SEQ_SBOUNDED</STRONG>
+<DD>
+<PRE>
+|- !s f. bounded (mr1,$>=) s ==> bounded (mr1,$>=) (\n. s (f n))
+</PRE>
+
+<DT><STRONG>SEQ_SUBLE</STRONG>
+<DD>
+<PRE>
+|- !f. subseq f ==> (!n. n <= f n)
+</PRE>
+
+<DT><STRONG>SEQ_DIRECT</STRONG>
+<DD>
+<PRE>
+|- !f. subseq f ==> (!N1 N2. ?n. n >= N1 /\ f n >= N2)
+</PRE>
+
+<DT><STRONG>SEQ_CAUCHY</STRONG>
+<DD>
+<PRE>
+|- !f. cauchy f = convergent f
+</PRE>
+
+<DT><STRONG>SEQ_LE</STRONG>
+<DD>
+<PRE>
+|- !f g l m.
+     f --> l /\ g --> m /\ (?N. !n. n >= N ==> f n |<=| g n) ==> l |<=| m
+</PRE>
+
+<DT><STRONG>SEQ_SUC</STRONG>
+<DD>
+<PRE>
+|- !f l. f --> l = (\n. f (SUC n)) --> l
+</PRE>
+
+<DT><STRONG>SEQ_ABS</STRONG>
+<DD>
+<PRE>
+|- !f. (\n. abs (f n)) --> & 0 = f --> & 0
+</PRE>
+
+<DT><STRONG>SEQ_ABS_IMP</STRONG>
+<DD>
+<PRE>
+|- !f l. f --> l ==> (\n. abs (f n)) --> abs l
+</PRE>
+
+<DT><STRONG>SEQ_INV0</STRONG>
+<DD>
+<PRE>
+|- !f. (!y. ?N. !n. n >= N ==> f n |>| y) ==> (\n. inv (f n)) --> & 0
+</PRE>
+
+<DT><STRONG>SEQ_POWER_ABS</STRONG>
+<DD>
+<PRE>
+|- !c. abs c |<| & 1 ==> (\n. abs c pow n) --> & 0
+</PRE>
+
+<DT><STRONG>SEQ_POWER</STRONG>
+<DD>
+<PRE>
+|- !c. abs c |<| & 1 ==> (\n. c pow n) --> & 0
+</PRE>
+
+<DT><STRONG>NEST_LEMMA</STRONG>
+<DD>
+<PRE>
+|- !f g.
+     (!n. f (SUC n) |>=| f n) /\
+     (!n. g (SUC n) |<=| g n) /\
+     (!n. f n |<=| g n) ==>
+     (?l m.
+       l |<=| m /\
+       ((!n. f n |<=| l) /\ f --> l) /\
+       (!n. m |<=| g n) /\
+       g --> m)
+</PRE>
+
+<DT><STRONG>NEST_LEMMA_UNIQ</STRONG>
+<DD>
+<PRE>
+|- !f g.
+     (!n. f (SUC n) |>=| f n) /\
+     (!n. g (SUC n) |<=| g n) /\
+     (!n. f n |<=| g n) /\
+     (\n. f n |-| g n) --> & 0 ==>
+     (?l. ((!n. f n |<=| l) /\ f --> l) /\ (!n. l |<=| g n) /\ g --> l)
+</PRE>
+
+<DT><STRONG>BOLZANO_LEMMA</STRONG>
+<DD>
+<PRE>
+|- !P.
+     (!a b c. a |<=| b /\ b |<=| c /\ P (a,b) /\ P (b,c) ==> P (a,c)) /\
+     (!x.
+       ?d.
+         & 0 |<| d /\
+         (!a b. a |<=| x /\ x |<=| b /\ b |-| a |<| d ==> P (a,b))) ==>
+     (!a b. a |<=| b ==> P (a,b))
+</PRE>
+
+<DT><STRONG>SUM_SUMMABLE</STRONG>
+<DD>
+<PRE>
+|- !f l. f sums l ==> summable f
+</PRE>
+
+<DT><STRONG>SUMMABLE_SUM</STRONG>
+<DD>
+<PRE>
+|- !f. summable f ==> f sums suminf f
+</PRE>
+
+<DT><STRONG>SUM_UNIQ</STRONG>
+<DD>
+<PRE>
+|- !f x. f sums x ==> (x = suminf f)
+</PRE>
+
+<DT><STRONG>SER_0</STRONG>
+<DD>
+<PRE>
+|- !f n. (!m. n <= m ==> (f m = & 0)) ==> f sums sum (0,n) f
+</PRE>
+
+<DT><STRONG>SER_POS_LE</STRONG>
+<DD>
+<PRE>
+|- !f n.
+     summable f /\ (!m. n <= m ==> & 0 |<=| f m) ==> sum (0,n) f |<=| suminf f
+</PRE>
+
+<DT><STRONG>SER_POS_LT</STRONG>
+<DD>
+<PRE>
+|- !f n.
+     summable f /\ (!m. n <= m ==> & 0 |<| f m) ==> sum (0,n) f |<| suminf f
+</PRE>
+
+<DT><STRONG>SER_GROUP</STRONG>
+<DD>
+<PRE>
+|- !f k. summable f /\ 0 < k ==> (\n. sum (n * k,k) f) sums suminf f
+</PRE>
+
+<DT><STRONG>SER_PAIR</STRONG>
+<DD>
+<PRE>
+|- !f. summable f ==> (\n. sum (2 * n,2) f) sums suminf f
+</PRE>
+
+<DT><STRONG>SER_OFFSET</STRONG>
+<DD>
+<PRE>
+|- !f. summable f ==> (!k. (\n. f (n + k)) sums (suminf f |-| sum (0,k) f))
+</PRE>
+
+<DT><STRONG>SER_POS_LT_PAIR</STRONG>
+<DD>
+<PRE>
+|- !f n.
+     summable f /\ (!d. & 0 |<| f (n + 2 * d) |+| f (n + 2 * d + 1)) ==>
+     sum (0,n) f |<| suminf f
+</PRE>
+
+<DT><STRONG>SER_ADD</STRONG>
+<DD>
+<PRE>
+|- !x x0 y y0. x sums x0 /\ y sums y0 ==> (\n. x n |+| y n) sums (x0 |+| y0)
+</PRE>
+
+<DT><STRONG>SER_CMUL</STRONG>
+<DD>
+<PRE>
+|- !x x0 c. x sums x0 ==> (\n. c |*| x n) sums (c |*| x0)
+</PRE>
+
+<DT><STRONG>SER_NEG</STRONG>
+<DD>
+<PRE>
+|- !x x0. x sums x0 ==> (\n. -- (x n)) sums -- x0
+</PRE>
+
+<DT><STRONG>SER_SUB</STRONG>
+<DD>
+<PRE>
+|- !x x0 y y0. x sums x0 /\ y sums y0 ==> (\n. x n |-| y n) sums (x0 |-| y0)
+</PRE>
+
+<DT><STRONG>SER_CDIV</STRONG>
+<DD>
+<PRE>
+|- !x x0 c. x sums x0 ==> (\n. x n / c) sums (x0 / c)
+</PRE>
+
+<DT><STRONG>SER_CAUCHY</STRONG>
+<DD>
+<PRE>
+|- !f.
+     summable f =
+     (!e. & 0 |<| e ==> (?N. !m n. m >= N ==> abs (sum (m,n) f) |<| e))
+</PRE>
+
+<DT><STRONG>SER_ZERO</STRONG>
+<DD>
+<PRE>
+|- !f. summable f ==> f --> & 0
+</PRE>
+
+<DT><STRONG>SER_COMPAR</STRONG>
+<DD>
+<PRE>
+|- !f g. (?N. !n. n >= N ==> abs (f n) |<=| g n) /\ summable g ==> summable f
+</PRE>
+
+<DT><STRONG>SER_COMPARA</STRONG>
+<DD>
+<PRE>
+|- !f g.
+     (?N. !n. n >= N ==> abs (f n) |<=| g n) /\ summable g ==>
+     summable (\k. abs (f k))
+</PRE>
+
+<DT><STRONG>SER_LE</STRONG>
+<DD>
+<PRE>
+|- !f g.
+     (!n. f n |<=| g n) /\ summable f /\ summable g ==> suminf f |<=| suminf g
+</PRE>
+
+<DT><STRONG>SER_LE2</STRONG>
+<DD>
+<PRE>
+|- !f g.
+     (!n. abs (f n) |<=| g n) /\ summable g ==>
+     summable f /\ suminf f |<=| suminf g
+</PRE>
+
+<DT><STRONG>SER_ACONV</STRONG>
+<DD>
+<PRE>
+|- !f. summable (\n. abs (f n)) ==> summable f
+</PRE>
+
+<DT><STRONG>SER_ABS</STRONG>
+<DD>
+<PRE>
+|- !f. summable (\n. abs (f n)) ==> abs (suminf f) |<=| suminf (\n. abs (f n))
+</PRE>
+
+<DT><STRONG>GP_FINITE</STRONG>
+<DD>
+<PRE>
+|- !x.
+     ~(x = & 1) ==>
+     (!n. sum (0,n) (\n. x pow n) = (x pow n |-| & 1) / (x |-| & 1))
+</PRE>
+
+<DT><STRONG>GP</STRONG>
+<DD>
+<PRE>
+|- !x. abs x |<| & 1 ==> (\n. x pow n) sums inv (& 1 |-| x)
+</PRE>
+
+<DT><STRONG>ABS_NEG_LEMMA</STRONG>
+<DD>
+<PRE>
+|- !c. c |<=| & 0 ==> (!x y. abs x |<=| c |*| abs y ==> (x = & 0))
+</PRE>
+
+<DT><STRONG>SER_RATIO</STRONG>
+<DD>
+<PRE>
+|- !f c N.
+     c |<| & 1 /\ (!n. n >= N ==> abs (f (SUC n)) |<=| c |*| abs (f n)) ==>
+     summable f
+</PRE>
+
+</DL>
+
+
+<HR>

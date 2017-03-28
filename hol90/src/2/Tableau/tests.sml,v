@@ -1,0 +1,463 @@
+head	1.1;
+access;
+symbols;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	96.02.08.00.45.49;	author drs1004;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@New theory mechanism, code reorganisation and other enhancements by Don Syme.
+@
+text
+@(* ========================================================================= *)
+(*  HOL versions of some of the examples in:                                 *)
+(*                                                                           *)
+(*      "Seventy-Five Problems for Testing Automatic Theorem Provers"        *)
+(*                           F. J. Peletlier                                 *)
+(*         Journal of Automated Reasoning vol 2 (1986) pp. 191-216           *)
+(*                                                                           *)
+(*  Together with a few extra examples from various places.                  *)
+(* ========================================================================= *)
+
+(* ------------------------------------------------------------------------- *)
+(* Propositional Logic.                                                      *)
+(* ------------------------------------------------------------------------- *)
+
+fun prove x = Tactical.prove x handle e => Raise e;
+    
+val PROP_1 = prove
+ ((--`p ==> q = ~q ==> ~p`--),
+  TAB_TAC);;
+
+val PROP_2 = prove
+ ((--`~ (~p) = p`--),
+  TAB_TAC);;
+
+val PROP_3 = prove
+ ((--`~(p ==> q) ==> q ==> p`--),
+  TAB_TAC);;
+     
+val PROP_4 = prove
+ ((--`~p ==> q = ~q ==> p`--),
+  TAB_TAC);;
+
+val PROP_5 = prove
+ ((--`(p \/ q ==> p \/ r) ==> p \/ (q ==> r)`--),
+  TAB_TAC);;
+
+val PROP_6 = prove
+ ((--`p \/ ~p`--),
+  TAB_TAC);;
+
+val PROP_7 = prove
+ ((--`p \/ ~ (~ (~p))`--),
+  TAB_TAC);;
+
+val PROP_8 = prove
+ ((--`((p ==> q) ==> p) ==> p`--),
+  TAB_TAC);;
+
+val PROP_9 = prove
+ ((--`(p \/ q) /\ (~p \/ q) /\ (p \/ ~q) ==> ~(~q \/ ~q)`--),
+  TAB_TAC);;
+
+val PROP_10 = prove
+ ((--`(q ==> r) /\ (r ==> p /\ q) /\ (p ==> q /\ r) ==> (p = q)`--),
+  TAB_TAC);;
+
+val PROP_11 = prove
+ ((--`p:bool = p`--),
+  TAB_TAC);;
+
+val PROP_12 = prove
+ ((--`((p = q) = r) = (p = (q = r))`--),
+  TAB_TAC);;
+
+val PROP_13 = prove
+ ((--`p \/ q /\ r = (p \/ q) /\ (p \/ r)`--),
+  TAB_TAC);;
+
+val PROP_14 = prove
+ ((--`(p = q) = (q \/ ~p) /\ (~q \/ p)`--),
+  TAB_TAC);;
+
+val PROP_15 = prove
+ ((--`p ==> q = ~p \/ q`--),
+  TAB_TAC);;
+
+val PROP_16 = prove
+ ((--`(p ==> q) \/ (q ==> p)`--),
+  TAB_TAC);;
+
+val PROP_17 = prove
+ ((--`p /\ (q ==> r) ==> s = (~p \/ q \/ s) /\ (~p \/ ~r \/ s)`--),
+  TAB_TAC);;
+
+(* ------------------------------------------------------------------------- *)
+(* Monadic Predicate Logic.                                                  *)
+(* ------------------------------------------------------------------------- *)
+
+val MPRED_18 = prove
+ ((--`?y. !x. P y ==> P x`--),
+  TAB_TAC);;
+
+val MPRED_19 = prove
+ ((--`?x. !y z. (P y ==> Q z) ==> P x ==> Q x`--),
+  TAB_TAC);;
+
+val MPRED_20 = prove
+ ((--`(!x y. ?z. !w. P x /\ Q y ==> R z /\ U w) ==>
+   (?x y. P x /\ Q y) ==>
+   (?z. R z)`--),
+  TAB_TAC);;
+
+val MPRED_21 = prove
+ ((--`(?x. P ==> Q x) /\ (?x. Q x ==> P) ==> (?x. P = Q x)`--),
+  TAB_TAC);;
+
+val MPRED_22 = prove
+ ((--`(!x. P = Q x) ==> (P = (!x. Q x))`--),
+  TAB_TAC);;
+
+val MPRED_23 = prove
+ ((--`(!x. P \/ Q x) = P \/ (!x. Q x)`--),
+  TAB_TAC);;
+
+val MPRED_24 = prove
+ ((--`~(?x. U x /\ Q x) /\
+   (!x. P x ==> Q x \/ R x) /\
+   ~(?x. P x ==> (?x. Q x)) /\
+   (!x. Q x /\ R x ==> U x) ==>
+   (?x. P x /\ R x)`--),
+  TAB_TAC);;
+
+val MPRED_25 = prove
+ ((--`(?x. P x) /\
+   (!x. U x ==> ~(G x /\ R x)) /\
+   (!x. P x ==> G x /\ U x) /\
+   ((!x. P x ==> Q x) \/ (?x. Q x /\ P x)) ==>
+   (?x. Q x /\ P x)`--),
+  TAB_TAC);;
+
+val MPRED_26 = prove
+ ((--`((?x. P x) = (?x. Q x)) /\ (!x y. P x /\ Q y ==> (R x = U y)) ==>
+   ((!x. P x ==> R x) = (!x. Q x ==> U x))`--),
+  TAB_TAC);;
+
+val MPRED_27 = prove
+ ((--`(?x. P x /\ ~(Q x)) /\
+   (!x. P x ==> R x) /\
+   (!x. U x /\ V x ==> P x) /\
+   (?x. R x /\ ~(Q x)) ==>
+   (!x. U x ==> ~(R x)) ==>
+   (!x. U x ==> ~(V x))`--),
+  TAB_TAC);;
+
+val MPRED_28 = prove
+ ((--`(!x. P x ==> (!x. Q x)) /\
+   ((!x. Q x \/ R x) ==> (?x. Q x /\ R x)) /\
+   ((?x. R x) ==> (!x. L x ==> M x)) ==>
+   (!x. P x /\ L x ==> M x)`--),
+  TAB_TAC);;
+
+val MPRED_29 = prove
+ ((--`(?x. P x) /\ (?x. G x) ==>
+   ((!x. P x ==> H x) /\ (!x. G x ==> J x) =
+    (!x y. P x /\ G y ==> H x /\ J y))`--),
+  TAB_TAC);;
+
+val MPRED_30 = prove
+ ((--`(!x. P x \/ G x ==> ~(H x)) /\ (!x. (G x ==> ~(U x)) ==> P x /\ H x) ==>
+   (!x. U x)`--),
+  TAB_TAC);;
+
+val MPRED_31 = prove
+ ((--`~(?x. P x /\ (G x \/ H x)) /\ (?x. Q x /\ P x) /\ (!x. ~(H x) ==> J x) ==>
+   (?x. Q x /\ J x)`--),
+  TAB_TAC);;
+
+val MPRED_32 = prove
+ ((--`(!x. P x /\ (G x \/ H x) ==> Q x) /\
+   (!x. Q x /\ H x ==> J x) /\
+   (!x. R x ==> H x) ==>
+   (!x. P x /\ R x ==> J x)`--),
+  TAB_TAC);;
+
+val MPRED_33 = prove
+ ((--`(!x. P a /\ (P x ==> P b) ==> P c) =
+   (!x. P a ==> P x \/ P c) /\ (P a ==> P b ==> P c)`--),
+  TAB_TAC);;
+
+val MPRED_34 = prove
+ ((--`((?x. !y. P x = P y) = ((?x. Q x) = (!y. Q y))) =
+   ((?x. !y. Q x = Q y) = ((?x. P x) = (!y. P y)))`--),
+  TAB_TAC);;
+
+val P35 = prove
+ ((--`?x y. P x y ==> (!x y. P x y)`--),
+  TAB_TAC);;
+
+(* ------------------------------------------------------------------------- *)
+(*  Full predicate logic (without Identity and Functions)                    *)
+(* ------------------------------------------------------------------------- *)
+
+val P36 = prove
+ ((--`(!x. ?y. P x y) /\
+   (!x. ?y. G x y) /\
+   (!x y. P x y \/ G x y ==> (!z. P y z \/ G y z ==> H x z)) ==>
+   (!x. ?y. H x y)`--),
+  TAB_TAC);;
+
+val P37 = prove
+ ((--`(!z.
+     ?w. !x. ?y. (P x z ==> P y w) /\ P y z /\ (P y w ==> (?u. Q u w))) /\
+   (!x z. ~(P x z) ==> (?y. Q y z)) /\
+   ((?x y. Q x y) ==> (!x. R x x)) ==>
+   (!x. ?y. R x y)`--),
+  TAB_TAC);;
+
+val P38 = prove
+ ((--`(!x.
+     P a /\ (P x ==> (?y. P y /\ R x y)) ==>
+     (?z w. P z /\ R x w /\ R w z)) =
+   (!x.
+     (~(P a) \/ P x \/ (?z w. P z /\ R x w /\ R w z)) /\
+     (~(P a) \/ ~(?y. P y /\ R x y) \/ (?z w. P z /\ R x w /\ R w z)))`--),
+  TAB_TAC);;
+
+val P39 = prove
+ ((--`~(?x. !y. P y x = ~(P y y))`--),
+  TAB_TAC);;
+
+val P40 = prove
+ ((--`(?y. !x. P x y = P x x) ==> ~(!x. ?y. !z. P z y = ~(P z x))`--),
+  TAB_TAC);;
+
+val P41 = prove
+ ((--`(!z. ?y. !x. P x y = P x z /\ ~(P x x)) ==> ~(?z. !x. P x z)`--),
+  TAB_TAC);;
+
+val P42 = prove
+ ((--`~(?y. !x. P x y = ~(?z. P x z /\ P z x))`--),
+  TAB_TAC);;
+
+val P43 = prove
+ ((--`(!x y. Q x y = !z. (P:'a->'b->bool) z x = P z y)
+   ==> !x y. Q x y = Q y x`--),
+  TAB_TAC);;
+
+val P44 = prove
+ ((--`(!x. P x ==> (?y. G y /\ H x y) /\ (?y. G y /\ ~(H x y))) /\
+   (?x. J x /\ (!y. G y ==> H x y)) ==>
+   (?x. J x /\ ~(P x))`--),
+  TAB_TAC);;
+
+val P45 = prove
+ ((--`(!x.
+     P x /\ (!y. G y /\ H x y ==> J x y) ==> (!y. G y /\ H x y ==> R y)) /\
+   ~(?y. L y /\ R y) /\
+   (?x. P x /\ (!y. H x y ==> L y) /\ (!y. G y /\ H x y ==> J x y)) ==>
+   (?x. P x /\ ~(?y. G y /\ H x y))`--),
+  TAB_TAC);;
+
+val P46 = prove
+ ((--`(!x. P x /\ (!y. P y /\ H y x ==> G y) ==> G x) /\
+   ((?x. P x /\ ~(G x)) ==>
+    (?x. P x /\ ~(G x) /\ (!y. P y /\ ~(G y) ==> J x y))) /\
+   (!x y. P x /\ P y /\ H x y ==> ~(J y x)) ==>
+   (!x. P x ==> G x)`--),
+  TAB_TAC);;
+
+(* ------------------------------------------------------------------------- *)
+(* Example from Manthey and Bry, CADE-9.                                     *)
+(* ------------------------------------------------------------------------- *)
+
+val P55 = prove
+ ((--`lives(agatha) /\ lives(butler) /\ lives(charles) /\
+   (killed(agatha,agatha) \/ killed(butler,agatha) \/
+    killed(charles,agatha)) /\
+   (!x y. killed(x,y) ==> hates(x,y) /\ ~(richer(x,y))) /\
+   (!x. hates(agatha,x) ==> ~(hates(charles,x))) /\
+   (hates(agatha,agatha) /\ hates(agatha,charles)) /\
+   (!x. lives x /\ ~(richer(x,agatha)) ==> hates(butler,x)) /\
+   (!x. hates(agatha,x) ==> hates(butler,x)) /\
+   (!x. ~(hates(x,agatha)) \/ ~(hates(x,butler)) \/ ~(hates(x,charles))) ==>
+   (?x:'Person. killed(x,agatha))`--),
+  TAB_TAC);;
+
+val P57 = prove
+ ((--`P(f((a),b),f(b,c)) /\
+   P(f(b,c),f(a,c)) /\
+   (!x y z. P(x,y) /\ P(y,z) ==> P(x,z))
+   ==> P(f(a,b),f(a,c))`--),
+  TAB_TAC);;
+
+(* ------------------------------------------------------------------------- *)
+(* See info-hol, circa 1500.                                                 *)
+(* ------------------------------------------------------------------------- *)
+
+val P58 = prove
+ ((--`!P Q R. !x. ?v. ?w. !y. !z.
+    ((P x /\ Q y) ==> ((P v \/ R w)  /\ (R z ==> Q v)))`--),
+  TAB_TAC);;
+
+val P59 = prove
+ ((--`(!x. P x = ~(P(f x))) ==> (?x. P x /\ ~(P(f x)))`--),
+  TAB_TAC);;
+
+val P60 = prove
+ ((--`!x. P(x,f x) = ?y. (!z. P(z,y) ==> P(z,f x)) /\ P(x,y)`--),
+  TAB_TAC);;
+
+(* ------------------------------------------------------------------------- *)
+(* See info-hol, circa 0722.                                                 *)
+(* ------------------------------------------------------------------------- *)
+
+val P61 = prove
+ ((--`!P. !Q R (St:('a->bool)->('a->bool)).
+    (!x. P x ==> Q x) /\ (!s. Q s ==> St R s) ==> (!s. P s ==> St R s)`--),
+  TAB_TAC);;
+
+(* ------------------------------------------------------------------------- *)
+(* See info-hol, circa 1640.                                                 *)
+(* ------------------------------------------------------------------------- *)
+
+val P63 = prove
+ ((--`(!s. q s ==> r s) /\ ~(r s) /\ (!s. ~(r s) /\ ~(q s) ==> p t \/ q t)
+   ==> p t \/ r t`--),
+  TAB_TAC);;
+
+
+
+(*
+die;;
+
+(* ------------------------------------------------------------------------- *)
+(* The Steamroller.                                                          *)
+(* ------------------------------------------------------------------------- *)
+
+val P47 = prove
+ ((--`((!x. P1 x ==> P0 x) /\ (?x. P1 x)) /\
+   ((!x. P2 x ==> P0 x) /\ (?x. P2 x)) /\
+   ((!x. P3 x ==> P0 x) /\ (?x. P3 x)) /\
+   ((!x. P4 x ==> P0 x) /\ (?x. P4 x)) /\
+   ((!x. P5 x ==> P0 x) /\ (?x. P5 x)) /\
+   ((?x. Q1 x) /\ (!x. Q1 x ==> Q0 x)) /\
+   (!x. P0 x ==> (!y. Q0 y ==> R x y) \/
+    (((!y. P0 y /\ S0 y x /\ ?z. Q0 z /\ R y z) ==> R x y))) /\
+   (!x y. P3 y /\ (P5 x \/ P4 x) ==> S0 x y) /\
+   (!x y. P3 x /\ P2 y ==> S0 x y) /\
+   (!x y. P2 x /\ P1 y ==> S0 x y) /\
+   (!x y. P1 x /\ (P2 y \/ Q1 y) ==> ~(R x y)) /\
+   (!x y. P3 x /\ P4 y ==> R x y) /\
+   (!x y. P3 x /\ P5 y ==> ~(R x y)) /\
+   (!x. (P4 x \/ P5 x) ==> ?y. Q0 y /\ R x y)
+   ==> ?x y. P0 x /\ P0 y /\ ?z. Q1 z /\ R y z /\ R x y`--),
+  MESON_TAC);;
+
+(* ------------------------------------------------------------------------- *)
+(* Now problems with equality.                                               *)
+(* ------------------------------------------------------------------------- *)
+
+val P48 = prove
+ ((--`((a = b) \/ (c = d)) /\ ((a = c) \/ (b = d)) ==> (a = d) \/ (b = c)`--),
+  EQ_MESON_TAC);;
+
+val P49 = prove
+ ((--`(?x y. !z. (z = x) \/ (z = y)) /\
+   P a /\ P b /\ ~(a = b) ==> !x. P x`--),
+  EQ_MESON_TAC);;
+
+val P50 = prove
+ ((--`(!x. F0 a x \/ !y. F0 x y) ==> ?x. !y. F0 x y`--),
+  MESON_TAC);;
+
+val P51 = prove
+ ((--`(?z w. !x y. F0 x y = (x = z) /\ (y = w)) ==>
+        ?z. !x. (?w. !y. F0 x y = (y = w)) = (x = z)`--),
+  EQ_MESON_TAC);;
+
+val P52 = prove
+ ((--`(?z w. !x y. F0 x y = (x = z) /\ (y = w)) ==>
+        ?w. !y. (?z. !x. F0 x y = (x = z)) = (y = w)`--),
+  EQ_MESON_TAC);;
+
+(*** Too slow
+
+val P53 = prove
+ ((--`(?x y. ~(x = y) /\ !z. (z = x) \/ (z = y)) ==>
+     ((?z. !x. (?w. !y. F0 x y = (y = w)) = (x = z)) =
+      (?w. !y. (?z. !x. F0 x y = (x = z)) = (y = w)))`--),
+  EQ_MESON_TAC);;
+
+val P54 = prove
+ ((--`(!y. ?z. !x. F0 x z = (x = y)) ==>
+     ~ ?w. !x. F0 x w = !u. F0 x u ==> ?y. F0 y u /\ ~ ?z. F0 x u /\ F0 z y`--),
+  GEN_EQ_MESON_TAC 0 50 1);;
+
+*****)
+
+val P55 = prove
+ ((--`(?x. lives x /\ killed x agatha) /\
+   (lives(agatha) /\ lives(butler) /\ lives(charles)) /\
+   (!x. livesx ==> (x = agatha) \/ (x = butler) \/ (x = charles)) /\
+   (!y x. killed x y ==> hates x y) /\
+   (!x y. killed x y ==> ~richer x y) /\
+   (!x. hates agatha x ==> ~hates charles x) /\
+   (!x. ~(x = butler) ==> hates agatha x) /\
+   (!x. ~richer x agatha ==> hates butler x) /\
+   (!x. hates agatha x ==> hates butler x) /\
+   (!x. ?y. ~hates x y) /\
+   ~(agatha = butler)
+   ==> killed agatha agatha`--),
+  EQ_MESON_TAC);;
+
+(* ------------------------------------------------------------------------- *)
+(* That's the end of the equality-free problems. These are various other     *)
+(* miscellaneous ones.                                                       *)
+(* ------------------------------------------------------------------------- *)
+
+val P50 = prove
+ ((--`(!x. P(a,x) \/ (!y. P(x,y))) ==> ?x. !y. P(x,y)`--),
+  TAB_TAC);;
+
+(* ------------------------------------------------------------------------- *)
+(* Near-Los example suggested by Johannes Schumann, credited to Pelvalier    *)
+(* ------------------------------------------------------------------------- *)
+
+(****
+
+val P47 = prove
+ ((--`(!x y z. P(x,y) ==> P(y,z) ==> P(x,z)) ==>
+   (!x y z. Q(x,y) ==> Q(y,z) ==> Q(x,z)) ==>
+   (!x y. Q(x,y) ==> Q(y,x)) ==>
+   (!x y. P(x,y) \/ Q(x,y)) ==>
+   (!x y. P(x,y)) \/ (!x y. Q(x,y))`--),
+  TAB_TAC);;
+
+****)
+
+(* ------------------------------------------------------------------------- *)
+(* See info-hol, circa 1574. Hard even for Otter (implication easier).       *)
+(* ------------------------------------------------------------------------- *)
+
+(***
+
+val P62 = prove
+ ((--`(?!x. x=f(g x)) = (?!y. y=g(f y))`--),
+  TAB_TAC);;
+
+****)
+*)
+@

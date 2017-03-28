@@ -1,0 +1,142 @@
+<TITLE>Theory: ltree</TITLE>
+<H1>Theory: ltree</H1>
+<H1>Parents</H1>
+    <UL>
+    <LI><A HREF = "combin.html"><STRONG>combin</STRONG></A>
+    <LI><A HREF = "tree.html"><STRONG>tree</STRONG></A>
+    </UL>
+
+
+<HR>
+<H1>Type constants</H1>
+    <UL>
+    <LI><STRONG>ltree</STRONG>(Arity = 1)
+    </UL>
+
+
+<HR>
+<H1>Term constants</H1>
+    <UL>
+    <LI><STRONG>size</STRONG><EM>:tree -> num</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>Is_ltree</STRONG><EM>:tree # 'a list -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>REP_ltree</STRONG><EM>:'a ltree -> tree # 'a list</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>ABS_ltree</STRONG><EM>:tree # 'a list -> 'a ltree</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>Node</STRONG><EM>:'a -> 'a ltree list -> 'a ltree</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>AP</STRONG><EM>:('a -> 'b) list -> 'a list -> 'b list</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>SPLIT</STRONG><EM>:num -> 'a list -> 'a list # 'a list</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>PART</STRONG><EM>:num list -> 'a list -> 'a list list</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    </UL>
+
+
+<HR>
+<H1>Axioms</H1>
+<DL>
+
+</DL>
+
+
+<HR>
+<H1>Definitions</H1>
+<DL>
+<DT><STRONG>size</STRONG>
+<DD>
+<PRE>
+|- size = (@fn. !tl. fn (node tl) = SUC (SUM (MAP fn tl)))
+</PRE>
+
+<DT><STRONG>Is_ltree</STRONG>
+<DD>
+<PRE>
+|- !t l. Is_ltree (t,l) = size t = LENGTH l
+</PRE>
+
+<DT><STRONG>ltree_TY_DEF</STRONG>
+<DD>
+<PRE>
+|- ?rep. TYPE_DEFINITION Is_ltree rep
+</PRE>
+
+<DT><STRONG>ltree_ISO_DEF</STRONG>
+<DD>
+<PRE>
+|- (!a. ABS_ltree (REP_ltree a) = a) /\
+   (!r. Is_ltree r = REP_ltree (ABS_ltree r) = r)
+</PRE>
+
+<DT><STRONG>Node</STRONG>
+<DD>
+<PRE>
+|- !v tl.
+     Node v tl =
+     ABS_ltree
+       (node (MAP (FST o REP_ltree) tl),
+        CONS v (FLAT (MAP (SND o REP_ltree) tl)))
+</PRE>
+
+<DT><STRONG>AP</STRONG>
+<DD>
+<PRE>
+|- (!l. AP [] l = []) /\
+   (!h t l. AP (CONS h t) l = CONS (h (HD l)) (AP t (TL l)))
+</PRE>
+
+<DT><STRONG>SPLIT</STRONG>
+<DD>
+<PRE>
+|- (!l. SPLIT 0 l = ([],l)) /\
+   (!n l.
+     SPLIT (SUC n) l =
+     (CONS (HD l) (FST (SPLIT n (TL l))),SND (SPLIT n (TL l))))
+</PRE>
+
+<DT><STRONG>PART</STRONG>
+<DD>
+<PRE>
+|- (!l. PART [] l = []) /\
+   (!n t l.
+     PART (CONS n t) l = CONS (FST (SPLIT n l)) (PART t (SND (SPLIT n l))))
+</PRE>
+
+</DL>
+
+
+<HR>
+<H1>Theorems</H1>
+<DL>
+<DT><STRONG>ltree_Axiom</STRONG>
+<DD>
+<PRE>
+|- !f. ?!fn. !v tl. fn (Node v tl) = f (MAP fn tl) v tl
+</PRE>
+
+<DT><STRONG>ltree_Induct</STRONG>
+<DD>
+<PRE>
+|- !P. (!t. EVERY P t ==> (!h. P (Node h t))) ==> (!l. P l)
+</PRE>
+
+<DT><STRONG>Node_11</STRONG>
+<DD>
+<PRE>
+|- !v1 v2 trl1 trl2.
+     (Node v1 trl1 = Node v2 trl2) = (v1 = v2) /\ (trl1 = trl2)
+</PRE>
+
+<DT><STRONG>Node_onto</STRONG>
+<DD>
+<PRE>
+|- !l. ?v trl. l = Node v trl
+</PRE>
+
+</DL>
+
+
+<HR>

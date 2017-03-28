@@ -1,0 +1,168 @@
+head	1.1;
+access;
+symbols
+	HOL97:1.1.2.1.0.2
+	bpHOL97:1.1.2.1
+	hol90_9_alpha:1.1.2.1
+	TFL_1:1.1.2.1
+	hol90_pre8_for_multiple_compilers:1.1.0.2;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	96.06.29.15.08.17;	author rjb;	state dead;
+branches
+	1.1.2.1;
+next	;
+
+1.1.2.1
+date	96.06.29.15.08.18;	author rjb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@file heap.msg was initially added on branch hol90_pre8_for_multiple_compilers.
+@
+text
+@@
+
+
+1.1.2.1
+log
+@TFL version 1 for HOL: A well-founded recursive function definition package.
+@
+text
+@a0 125
+Article: 6007 of comp.lang.functional
+Path: informatik.tu-muenchen.de!lrz-muenchen.de!news.uni-augsburg.de!nntp.fh-augsburg.de!news.dfn.de!gina.zfn.uni-bremen.de!marvin.pc-labor.uni-bremen.de!news.uni-stuttgart.de!news.rhrz.uni-bonn.de!RRZ.Uni-Koeln.DE!nntp.gmd.de!Dortmund.Germany.EU.net!Germany.EU.net!EU.net!howland.reston.ans.net!usc!math.ohio-state.edu!jussieu.fr!oleane!pipex!warwick!lyra.csx.cam.ac.uk!news
+From: Lawrence C Paulson <lcp@@cl.cam.ac.uk>
+Newsgroups: comp.lang.functional
+Subject: Re: Heapsort -- refs required
+Date: 5 Jun 1995 14:01:55 GMT
+Organization: Computer Laboratory, University of Cambridge
+Lines: 107
+Message-ID: <3qv2oj$fq4@@lyra.csx.cam.ac.uk>
+NNTP-Posting-Host: dunlin.cl.cam.ac.uk
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 7bit
+X-Mailer: Mozilla 1.1N (X11; I; SunOS 4.1.3_U1 sun4c)
+X-URL: news:comp.lang.functional?ALL
+
+I am posting this on behalf of Philip Wadler, wadler@@dcs.gla.ac.uk, because it
+did not appear on some news servers.  Apologies if you have seen it before.
+
+Lawrence C Paulson
+
+
+	
+Larry Paulson writes:
+----------------------------------------------------------------------
+Subject: Heapsort -- refs required
+Date: 30 May 1995 11:11:05 GMT
+From: Lawrence C Paulson <lcp@@cl.cam.ac.uk>
+Organization: Computer Laboratory, University of Cambridge
+Newsgroups: comp.lang.functional
+
+Arthur Norman has passed on to me the following bit of code for building a
+Heapsort heap:
+
+datatype 'a tree = Lf
+                 | Br of 'a * 'a tree * 'a tree;
+
+fun upheap(w: real, Lf) = Br(w, Lf, Lf)
+  | upheap(w, Br(v, p, q)) =
+      if w <= v then Br(w, upheap(v, q), p)
+                 else Br(v, upheap(w, q), p);
+
+The claim is that, because the subtrees are swapped at each recursion, the
+resulting tree (after any number of calls to upheap) is guaranteed balanced.
+All that Arthur can add is that the idea comes from some Japanese sorting
+hardware.
+
+Does anybody know of any references on this?  One might like to see a
+correctness proof, code for taking apart the heap, etc.
+--
+Lawrence C Paulson, University Lecturer
+Computer Laboratory, University of Cambridge,
+Pembroke Street, Cambridge CB2 3QG, England
+Tel: +44(0)1223 334623    Fax: +44(0)1223 334678
+----------------------------------------------------------------------
+
+I don't have a formal proof, but here is a test that the routine
+yields balanced trees for all permutations of length 7.  It's written
+in Haskell/Gofer.  (You can run this message -- it's a literate program.)
+
+The tree data type.
+
+> data Tree a   =  Lf
+>               |  Br a (Tree a) (Tree a)
+
+Insert an element into the tree.
+
+> upheap :: (Ord a) => a -> Tree a -> Tree a
+> upheap w Lf   =  Br w Lf Lf
+> upheap w (Br v p q)  =
+>   if w <= v
+>     then  Br w (upheap v q) p
+>     else  Br v (upheap w q) p
+
+Sort a list, yielding a tree.
+
+> sortheap :: (Ord a) => [a] -> Tree a
+> sortheap xs = foldr upheap Lf xs
+
+Fold over trees.
+
+> foldtree :: (a -> b -> b -> b) -> b -> Tree a -> b
+> foldtree b l =
+>   let
+>     f Lf = l
+>     f (Br v p q) = b v (f p) (f q)
+>   in
+>     f
+
+Check that a tree is balanced.  Returns (d,b), where d is the
+depth of the tree, and b is true if the tree is balanced.
+
+> balancedtree :: Tree a -> (Int, Bool)
+> balancedtree t =
+>   foldtree
+>     (\v (pd,pb) (qd,qb) -> (1 + max pd qd, pb && qb && abs (pd - qd) <= 1))
+>     (0, True)
+>     t
+
+Return all permutations of a given list.
+
+> perm :: [a] -> [[a]]
+> perm xs  =  foldr (\x yss -> [ zs | ys <- yss, zs <- permins x ys]) [[]] xs
+
+Insert element x into list xs in all possible ways.
+
+> permins :: a -> [a] -> [[a]]
+> permins x ys  =  [ take n ys++[x]++drop n ys | n <- [0..length ys]]
+
+Test that sortheap yields a balanced tree for all permutations of [1..n].
+
+> test :: Int -> Bool
+> test n = all (snd . balancedtree . sortheap) (perm [1..n])
+
+
+Gofer session for:
+/local/fp/src/gofer/lib/standard.prelude
+upheap.lgs
+
+? test 7
+True
+(888245 reductions, 1730053 cells, 18 garbage collections)
+
+
+
+@

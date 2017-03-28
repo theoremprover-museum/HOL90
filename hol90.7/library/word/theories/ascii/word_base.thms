@@ -1,0 +1,578 @@
+thid = (word_base, 783977395, 463271)
+axioms = []
+definitions =
+[((WCAT_DEF),
+  [],
+  `((! :('a list -> bool) -> bool) (\(l1 :'a list).
+   ((! :('a list -> bool) -> bool) (\(l2 :'a list).
+   (((= :'a word -> 'a word -> bool)
+   ((WCAT :'a word # 'a word -> 'a word)
+   (((, :'a word -> 'a word -> 'a word # 'a word)
+   ((WORD :'a list -> 'a word) $1)) ((WORD :'a list -> 'a word) $0))))
+   ((WORD :'a list -> 'a word)
+   (((APPEND :'a list -> 'a list -> 'a list) $1) $0)))))))`),
+ ((WSPLIT_DEF),
+  [],
+  `((! :(num -> bool) -> bool) (\(m :num).
+   ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :'a word # 'a word -> 'a word # 'a word -> bool)
+   (((WSPLIT :num -> 'a word -> 'a word # 'a word) $1)
+   ((WORD :'a list -> 'a word) $0)))
+   (((, :'a word -> 'a word -> 'a word # 'a word)
+   ((WORD :'a list -> 'a word) (((BUTLASTN :num -> 'a list -> 'a list)
+   $1) $0))) ((WORD :'a list -> 'a word)
+   (((LASTN :num -> 'a list -> 'a list) $1) $0))))))))`),
+ ((LSB_DEF),
+  [],
+  `((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :'a -> 'a -> bool) ((LSB :'a word -> 'a)
+   ((WORD :'a list -> 'a word) $0))) ((LAST :'a list -> 'a) $0))))`),
+ ((MSB_DEF),
+  [],
+  `((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :'a -> 'a -> bool) ((MSB :'a word -> 'a)
+   ((WORD :'a list -> 'a word) $0))) ((HD :'a list -> 'a) $0))))`),
+ ((BIT_DEF),
+  [],
+  `((! :(num -> bool) -> bool) (\(k :num).
+   ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :'a -> 'a -> bool) (((BIT :num -> 'a word -> 'a) $1)
+   ((WORD :'a list -> 'a word) $0))) (((ELL :num -> 'a list -> 'a) $1)
+   $0))))))`),
+ ((WSEG_DEF),
+  [],
+  `((! :(num -> bool) -> bool) (\(m :num). ((! :(num -> bool) -> bool)
+   (\(k :num). ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :'a word -> 'a word -> bool)
+   ((((WSEG :num -> num -> 'a word -> 'a word) $2) $1)
+   ((WORD :'a list -> 'a word) $0))) ((WORD :'a list -> 'a word)
+   (((LASTN :num -> 'a list -> 'a list) $2)
+   (((BUTLASTN :num -> 'a list -> 'a list) $1) $0))))))))))`),
+ ((PWORDLEN_DEF),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num).
+   ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :bool -> bool -> bool) (((PWORDLEN :num -> 'a word -> bool)
+   $1) ((WORD :'a list -> 'a word) $0))) (((= :num -> num -> bool) $1)
+   ((LENGTH :'a list -> num) $0)))))))`),
+ ((WORDLEN_DEF),
+  [],
+  `((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :num -> num -> bool) ((WORDLEN :'a word -> num)
+   ((WORD :'a list -> 'a word) $0))) ((LENGTH :'a list -> num)
+   $0))))`),
+ ((WORD_DEF),
+  [],
+  `((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :'a word -> 'a word -> bool) ((WORD :'a list -> 'a word) $0))
+   ((ABS_word :'a list ltree -> 'a word)
+   (((Node :'a list -> 'a list ltree list -> 'a list ltree) $0)
+   (NIL :'a list ltree list))))))`),
+ ((word_ISO_DEF),
+  [],
+  `((/\ ((! :('a word -> bool) -> bool) (\(a :'a word).
+   (((= :'a word -> 'a word -> bool)
+   ((ABS_word :'a list ltree -> 'a word)
+   ((REP_word :'a word -> 'a list ltree) $0))) $0))))
+   ((! :('a list ltree -> bool) -> bool) (\(r :'a list ltree).
+   (((= :bool -> bool -> bool)
+   (((TRP :('a list -> 'a list ltree list -> bool) -> 'a list ltree ->
+           bool) (\(v :'a list). (\(tl :'a list ltree list). ((/\
+   ((? :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :'a list -> 'a list -> bool) $2) $0))))
+   (((= :num -> num -> bool) ((LENGTH :'a list ltree list -> num) $0))
+   0))))) $0)) (((= :'a list ltree -> 'a list ltree -> bool)
+   ((REP_word :'a word -> 'a list ltree)
+   ((ABS_word :'a list ltree -> 'a word) $0))) $0)))))`),
+ ((word_TY_DEF),
+  [],
+  `((? :(('a word -> 'a list ltree) -> bool) -> bool)
+   (\(rep :'a word -> 'a list ltree).
+   (((TYPE_DEFINITION :('a list ltree -> bool) ->
+                       ('a word -> 'a list ltree) -> bool)
+   ((TRP :('a list -> 'a list ltree list -> bool) -> 'a list ltree ->
+          bool) (\(v :'a list). (\(tl :'a list ltree list). ((/\
+   ((? :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :'a list -> 'a list -> bool) $2) $0))))
+   (((= :num -> num -> bool) ((LENGTH :'a list ltree list -> num) $0))
+   0)))))) $0)))`)]
+theorems =
+[((BIT_EQ_IMP_WORD_EQ),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num).
+   (((RES_FORALL :('a word -> bool) -> ('a word -> bool) -> bool)
+   ((PWORDLEN :num -> 'a word -> bool) $0)) (\(w1 :'a word).
+   (((RES_FORALL :('a word -> bool) -> ('a word -> bool) -> bool)
+   ((PWORDLEN :num -> 'a word -> bool) $1)) (\(w2 :'a word). ((==>
+   ((! :(num -> bool) -> bool) (\(k :num). ((==> ((< $0) $3))
+   (((= :'a -> 'a -> bool) (((BIT :num -> 'a word -> 'a) $0) $2))
+   (((BIT :num -> 'a word -> 'a) $0) $1))))))
+   (((= :'a word -> 'a word -> bool) $1) $0))))))))`),
+ ((WSEG_WCAT_WSEG),
+  [],
+  `((! :(num -> bool) -> bool) (\(n1 :num).
+   ((! :(num -> bool) -> bool) (\(n2 :num).
+   (((RES_FORALL :('a word -> bool) -> ('a word -> bool) -> bool)
+   ((PWORDLEN :num -> 'a word -> bool) $1)) (\(w1 :'a word).
+   (((RES_FORALL :('a word -> bool) -> ('a word -> bool) -> bool)
+   ((PWORDLEN :num -> 'a word -> bool) $1)) (\(w2 :'a word).
+   ((! :(num -> bool) -> bool) (\(m :num). ((! :(num -> bool) -> bool)
+   (\(k :num). ((==> ((/\ ((<= ((+ $1) $0)) ((+ $5) $4))) ((/\ ((< $0)
+   $4)) ((<= $4) ((+ $1) $0))))) (((= :'a word -> 'a word -> bool)
+   ((((WSEG :num -> num -> 'a word -> 'a word) $1) $0)
+   ((WCAT :'a word # 'a word -> 'a word)
+   (((, :'a word -> 'a word -> 'a word # 'a word) $3) $2))))
+   ((WCAT :'a word # 'a word -> 'a word)
+   (((, :'a word -> 'a word -> 'a word # 'a word)
+   ((((WSEG :num -> num -> 'a word -> 'a word) ((- ((+ $1) $0)) $4))
+   0) $3)) ((((WSEG :num -> num -> 'a word -> 'a word) ((- $4) $0))
+   $0) $2)))))))))))))))))`),
+ ((WSEG_WCAT_WSEG2),
+  [],
+  `((! :(num -> bool) -> bool) (\(n1 :num).
+   ((! :(num -> bool) -> bool) (\(n2 :num).
+   (((RES_FORALL :('a word -> bool) -> ('a word -> bool) -> bool)
+   ((PWORDLEN :num -> 'a word -> bool) $1)) (\(w1 :'a word).
+   (((RES_FORALL :('a word -> bool) -> ('a word -> bool) -> bool)
+   ((PWORDLEN :num -> 'a word -> bool) $1)) (\(w2 :'a word).
+   ((! :(num -> bool) -> bool) (\(m :num). ((! :(num -> bool) -> bool)
+   (\(k :num). ((==> ((<= ((+ $1) $0)) $4))
+   (((= :'a word -> 'a word -> bool)
+   ((((WSEG :num -> num -> 'a word -> 'a word) $1) $0)
+   ((WCAT :'a word # 'a word -> 'a word)
+   (((, :'a word -> 'a word -> 'a word # 'a word) $3) $2))))
+   ((((WSEG :num -> num -> 'a word -> 'a word) $1) $0)
+   $2)))))))))))))))`),
+ ((WSEG_WCAT_WSEG1),
+  [],
+  `((! :(num -> bool) -> bool) (\(n1 :num).
+   ((! :(num -> bool) -> bool) (\(n2 :num).
+   (((RES_FORALL :('a word -> bool) -> ('a word -> bool) -> bool)
+   ((PWORDLEN :num -> 'a word -> bool) $1)) (\(w1 :'a word).
+   (((RES_FORALL :('a word -> bool) -> ('a word -> bool) -> bool)
+   ((PWORDLEN :num -> 'a word -> bool) $1)) (\(w2 :'a word).
+   ((! :(num -> bool) -> bool) (\(m :num). ((! :(num -> bool) -> bool)
+   (\(k :num). ((==> ((/\ ((<= $1) $5)) ((<= $4) $0)))
+   (((= :'a word -> 'a word -> bool)
+   ((((WSEG :num -> num -> 'a word -> 'a word) $1) $0)
+   ((WCAT :'a word # 'a word -> 'a word)
+   (((, :'a word -> 'a word -> 'a word # 'a word) $3) $2))))
+   ((((WSEG :num -> num -> 'a word -> 'a word) $1) ((- $0) $4))
+   $3)))))))))))))))`),
+ ((BIT_WCAT1),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num).
+   (((RES_FORALL :('a word -> bool) -> ('a word -> bool) -> bool)
+   ((PWORDLEN :num -> 'a word -> bool) $0)) (\(w :'a word).
+   ((! :('a -> bool) -> bool) (\(b :'a). (((= :'a -> 'a -> bool)
+   (((BIT :num -> 'a word -> 'a) $2)
+   ((WCAT :'a word # 'a word -> 'a word)
+   (((, :'a word -> 'a word -> 'a word # 'a word)
+   ((WORD :'a list -> 'a word) (((CONS :'a -> 'a list -> 'a list) $0)
+   (NIL :'a list)))) $1)))) $0)))))))`),
+ ((BIT_WCAT_SND),
+  [],
+  `((! :(num -> bool) -> bool) (\(n1 :num).
+   ((! :(num -> bool) -> bool) (\(n2 :num).
+   (((RES_FORALL :('a word -> bool) -> ('a word -> bool) -> bool)
+   ((PWORDLEN :num -> 'a word -> bool) $1)) (\(w1 :'a word).
+   (((RES_FORALL :('a word -> bool) -> ('a word -> bool) -> bool)
+   ((PWORDLEN :num -> 'a word -> bool) $1)) (\(w2 :'a word).
+   ((! :(num -> bool) -> bool) (\(k :num). ((==> ((< $0) $3))
+   (((= :'a -> 'a -> bool) (((BIT :num -> 'a word -> 'a) $0)
+   ((WCAT :'a word # 'a word -> 'a word)
+   (((, :'a word -> 'a word -> 'a word # 'a word) $2) $1))))
+   (((BIT :num -> 'a word -> 'a) $0) $1)))))))))))))`),
+ ((BIT_WCAT_FST),
+  [],
+  `((! :(num -> bool) -> bool) (\(n1 :num).
+   ((! :(num -> bool) -> bool) (\(n2 :num).
+   (((RES_FORALL :('a word -> bool) -> ('a word -> bool) -> bool)
+   ((PWORDLEN :num -> 'a word -> bool) $1)) (\(w1 :'a word).
+   (((RES_FORALL :('a word -> bool) -> ('a word -> bool) -> bool)
+   ((PWORDLEN :num -> 'a word -> bool) $1)) (\(w2 :'a word).
+   ((! :(num -> bool) -> bool) (\(k :num). ((==> ((/\ ((<= $3) $0))
+   ((< $0) ((+ $4) $3)))) (((= :'a -> 'a -> bool)
+   (((BIT :num -> 'a word -> 'a) $0)
+   ((WCAT :'a word # 'a word -> 'a word)
+   (((, :'a word -> 'a word -> 'a word # 'a word) $2) $1))))
+   (((BIT :num -> 'a word -> 'a) ((- $0) $3)) $2)))))))))))))`),
+ ((WORD_SNOC_WCAT),
+  [],
+  `((! :('a list -> bool) -> bool) (\(l :'a list).
+   ((! :('a -> bool) -> bool) (\(x :'a).
+   (((= :'a word -> 'a word -> bool) ((WORD :'a list -> 'a word)
+   (((SNOC :'a -> 'a list -> 'a list) $0) $1)))
+   ((WCAT :'a word # 'a word -> 'a word)
+   (((, :'a word -> 'a word -> 'a word # 'a word)
+   ((WORD :'a list -> 'a word) $1)) ((WORD :'a list -> 'a word)
+   (((CONS :'a -> 'a list -> 'a list) $0) (NIL :'a list))))))))))`),
+ ((WORD_CONS_WCAT),
+  [],
+  `((! :('a -> bool) -> bool) (\(x :'a).
+   ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :'a word -> 'a word -> bool) ((WORD :'a list -> 'a word)
+   (((CONS :'a -> 'a list -> 'a list) $1) $0)))
+   ((WCAT :'a word # 'a word -> 'a word)
+   (((, :'a word -> 'a word -> 'a word # 'a word)
+   ((WORD :'a list -> 'a word) (((CONS :'a -> 'a list -> 'a list) $1)
+   (NIL :'a list)))) ((WORD :'a list -> 'a word) $0))))))))`),
+ ((WSEG_WCAT2),
+  [],
+  `((! :(num -> bool) -> bool) (\(n1 :num).
+   ((! :(num -> bool) -> bool) (\(n2 :num).
+   (((RES_FORALL :('a word -> bool) -> ('a word -> bool) -> bool)
+   ((PWORDLEN :num -> 'a word -> bool) $1)) (\(w1 :'a word).
+   (((RES_FORALL :('a word -> bool) -> ('a word -> bool) -> bool)
+   ((PWORDLEN :num -> 'a word -> bool) $1)) (\(w2 :'a word).
+   (((= :'a word -> 'a word -> bool)
+   ((((WSEG :num -> num -> 'a word -> 'a word) $2) 0)
+   ((WCAT :'a word # 'a word -> 'a word)
+   (((, :'a word -> 'a word -> 'a word # 'a word) $1) $0))))
+   $0)))))))))`),
+ ((WSEG_WCAT1),
+  [],
+  `((! :(num -> bool) -> bool) (\(n1 :num).
+   ((! :(num -> bool) -> bool) (\(n2 :num).
+   (((RES_FORALL :('a word -> bool) -> ('a word -> bool) -> bool)
+   ((PWORDLEN :num -> 'a word -> bool) $1)) (\(w1 :'a word).
+   (((RES_FORALL :('a word -> bool) -> ('a word -> bool) -> bool)
+   ((PWORDLEN :num -> 'a word -> bool) $1)) (\(w2 :'a word).
+   (((= :'a word -> 'a word -> bool)
+   ((((WSEG :num -> num -> 'a word -> 'a word) $3) $2)
+   ((WCAT :'a word # 'a word -> 'a word)
+   (((, :'a word -> 'a word -> 'a word # 'a word) $1) $0))))
+   $1)))))))))`),
+ ((WORDLEN_SUC_WCAT_BIT_WSEG_RIGHT),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num).
+   (((RES_FORALL :('a word -> bool) -> ('a word -> bool) -> bool)
+   ((PWORDLEN :num -> 'a word -> bool) (SUC $0))) (\(w :'a word).
+   (((= :'a word -> 'a word -> bool) $0)
+   ((WCAT :'a word # 'a word -> 'a word)
+   (((, :'a word -> 'a word -> 'a word # 'a word)
+   ((((WSEG :num -> num -> 'a word -> 'a word) $1) 1) $0))
+   ((WORD :'a list -> 'a word) (((CONS :'a -> 'a list -> 'a list)
+   (((BIT :num -> 'a word -> 'a) 0) $0)) (NIL :'a list))))))))))`),
+ ((WORDLEN_SUC_WCAT_BIT_WSEG),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num).
+   (((RES_FORALL :('a word -> bool) -> ('a word -> bool) -> bool)
+   ((PWORDLEN :num -> 'a word -> bool) (SUC $0))) (\(w :'a word).
+   (((= :'a word -> 'a word -> bool) $0)
+   ((WCAT :'a word # 'a word -> 'a word)
+   (((, :'a word -> 'a word -> 'a word # 'a word)
+   ((WORD :'a list -> 'a word) (((CONS :'a -> 'a list -> 'a list)
+   (((BIT :num -> 'a word -> 'a) $1) $0)) (NIL :'a list))))
+   ((((WSEG :num -> num -> 'a word -> 'a word) $1) 0) $0))))))))`),
+ ((WORDLEN_SUC_WCAT_WSEG_WSEG_RIGHT),
+  [],
+  `(((RES_FORALL :('a word -> bool) -> ('a word -> bool) -> bool)
+   ((PWORDLEN :num -> 'a word -> bool) (SUC (n :num))))
+   (\(w :'a word). (((= :'a word -> 'a word -> bool) $0)
+   ((WCAT :'a word # 'a word -> 'a word)
+   (((, :'a word -> 'a word -> 'a word # 'a word)
+   ((((WSEG :num -> num -> 'a word -> 'a word) (n :num)) 1) $0))
+   ((((WSEG :num -> num -> 'a word -> 'a word) 1) 0) $0))))))`),
+ ((WORDLEN_SUC_WCAT_WSEG_WSEG),
+  [],
+  `(((RES_FORALL :('a word -> bool) -> ('a word -> bool) -> bool)
+   ((PWORDLEN :num -> 'a word -> bool) (SUC (n :num))))
+   (\(w :'a word). (((= :'a word -> 'a word -> bool) $0)
+   ((WCAT :'a word # 'a word -> 'a word)
+   (((, :'a word -> 'a word -> 'a word # 'a word)
+   ((((WSEG :num -> num -> 'a word -> 'a word) 1) (n :num)) $0))
+   ((((WSEG :num -> num -> 'a word -> 'a word) (n :num)) 0)
+   $0))))))`),
+ ((WORD_SPLIT),
+  [],
+  `((! :(num -> bool) -> bool) (\(n1 :num).
+   ((! :(num -> bool) -> bool) (\(n2 :num).
+   (((RES_FORALL :('a word -> bool) -> ('a word -> bool) -> bool)
+   ((PWORDLEN :num -> 'a word -> bool) ((+ $1) $0))) (\(w :'a word).
+   (((= :'a word -> 'a word -> bool) $0)
+   ((WCAT :'a word # 'a word -> 'a word)
+   (((, :'a word -> 'a word -> 'a word # 'a word)
+   ((((WSEG :num -> num -> 'a word -> 'a word) $2) $1) $0))
+   ((((WSEG :num -> num -> 'a word -> 'a word) $1) 0) $0))))))))))`),
+ ((WCAT_WSEG_WSEG),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num).
+   (((RES_FORALL :('a word -> bool) -> ('a word -> bool) -> bool)
+   ((PWORDLEN :num -> 'a word -> bool) $0)) (\(w :'a word).
+   ((! :(num -> bool) -> bool) (\(m1 :num).
+   ((! :(num -> bool) -> bool) (\(m2 :num).
+   ((! :(num -> bool) -> bool) (\(k :num). ((==> ((<= ((+ $2) ((+ $1)
+   $0))) $4)) (((= :'a word -> 'a word -> bool)
+   ((WCAT :'a word # 'a word -> 'a word)
+   (((, :'a word -> 'a word -> 'a word # 'a word)
+   ((((WSEG :num -> num -> 'a word -> 'a word) $1) ((+ $2) $0)) $3))
+   ((((WSEG :num -> num -> 'a word -> 'a word) $2) $0) $3))))
+   ((((WSEG :num -> num -> 'a word -> 'a word) ((+ $2) $1)) $0)
+   $3)))))))))))))`),
+ ((WSPLIT_WSEG2),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num).
+   (((RES_FORALL :('a word -> bool) -> ('a word -> bool) -> bool)
+   ((PWORDLEN :num -> 'a word -> bool) $0)) (\(w :'a word).
+   ((! :(num -> bool) -> bool) (\(k :num). ((==> ((<= $0) $2))
+   (((= :'a word -> 'a word -> bool)
+   ((SND :'a word # 'a word -> 'a word)
+   (((WSPLIT :num -> 'a word -> 'a word # 'a word) $0) $1)))
+   ((((WSEG :num -> num -> 'a word -> 'a word) $0) 0) $1)))))))))`),
+ ((WSPLIT_WSEG1),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num).
+   (((RES_FORALL :('a word -> bool) -> ('a word -> bool) -> bool)
+   ((PWORDLEN :num -> 'a word -> bool) $0)) (\(w :'a word).
+   ((! :(num -> bool) -> bool) (\(k :num). ((==> ((<= $0) $2))
+   (((= :'a word -> 'a word -> bool)
+   ((FST :'a word # 'a word -> 'a word)
+   (((WSPLIT :num -> 'a word -> 'a word # 'a word) $0) $1)))
+   ((((WSEG :num -> num -> 'a word -> 'a word) ((- $2) $0)) $0)
+   $1)))))))))`),
+ ((WSPLIT_WSEG),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num).
+   (((RES_FORALL :('a word -> bool) -> ('a word -> bool) -> bool)
+   ((PWORDLEN :num -> 'a word -> bool) $0)) (\(w :'a word).
+   ((! :(num -> bool) -> bool) (\(k :num). ((==> ((<= $0) $2))
+   (((= :'a word # 'a word -> 'a word # 'a word -> bool)
+   (((WSPLIT :num -> 'a word -> 'a word # 'a word) $0) $1))
+   (((, :'a word -> 'a word -> 'a word # 'a word)
+   ((((WSEG :num -> num -> 'a word -> 'a word) ((- $2) $0)) $0) $1))
+   ((((WSEG :num -> num -> 'a word -> 'a word) $0) 0) $1))))))))))`),
+ ((WSEG_WSEG),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num).
+   (((RES_FORALL :('a word -> bool) -> ('a word -> bool) -> bool)
+   ((PWORDLEN :num -> 'a word -> bool) $0)) (\(w :'a word).
+   ((! :(num -> bool) -> bool) (\(m1 :num).
+   ((! :(num -> bool) -> bool) (\(k1 :num).
+   ((! :(num -> bool) -> bool) (\(m2 :num).
+   ((! :(num -> bool) -> bool) (\(k2 :num). ((==> ((/\ ((<= ((+ $3)
+   $2)) $5)) ((<= ((+ $1) $0)) $3))) (((= :'a word -> 'a word -> bool)
+   ((((WSEG :num -> num -> 'a word -> 'a word) $1) $0)
+   ((((WSEG :num -> num -> 'a word -> 'a word) $3) $2) $4)))
+   ((((WSEG :num -> num -> 'a word -> 'a word) $1) ((+ $2) $0))
+   $4)))))))))))))))`),
+ ((WORDLEN_SUC_WCAT),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num).
+   ((! :('a word -> bool) -> bool) (\(w :'a word). ((==>
+   (((PWORDLEN :num -> 'a word -> bool) (SUC $1)) $0))
+   (((RES_EXISTS :('a word -> bool) -> ('a word -> bool) -> bool)
+   ((PWORDLEN :num -> 'a word -> bool) 1)) (\(b :'a word).
+   (((RES_EXISTS :('a word -> bool) -> ('a word -> bool) -> bool)
+   ((PWORDLEN :num -> 'a word -> bool) $2)) (\(w' :'a word).
+   (((= :'a word -> 'a word -> bool) $2)
+   ((WCAT :'a word # 'a word -> 'a word)
+   (((, :'a word -> 'a word -> 'a word # 'a word) $1)
+   $0))))))))))))`),
+ ((WCAT_PWORDLEN),
+  [],
+  `((! :(num -> bool) -> bool) (\(n1 :num).
+   (((RES_FORALL :('a word -> bool) -> ('a word -> bool) -> bool)
+   ((PWORDLEN :num -> 'a word -> bool) $0)) (\(w1 :'a word).
+   ((! :(num -> bool) -> bool) (\(n2 :num).
+   (((RES_FORALL :('a word -> bool) -> ('a word -> bool) -> bool)
+   ((PWORDLEN :num -> 'a word -> bool) $0)) (\(w2 :'a word).
+   (((PWORDLEN :num -> 'a word -> bool) ((+ $3) $1))
+   ((WCAT :'a word # 'a word -> 'a word)
+   (((, :'a word -> 'a word -> 'a word # 'a word) $2) $0)))))))))))`),
+ ((WSPLIT_PWORDLEN),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num).
+   (((RES_FORALL :('a word -> bool) -> ('a word -> bool) -> bool)
+   ((PWORDLEN :num -> 'a word -> bool) $0)) (\(w :'a word).
+   ((! :(num -> bool) -> bool) (\(m :num). ((==> ((<= $0) $2)) ((/\
+   (((PWORDLEN :num -> 'a word -> bool) ((- $2) $0))
+   ((FST :'a word # 'a word -> 'a word)
+   (((WSPLIT :num -> 'a word -> 'a word # 'a word) $0) $1))))
+   (((PWORDLEN :num -> 'a word -> bool) $0)
+   ((SND :'a word # 'a word -> 'a word)
+   (((WSPLIT :num -> 'a word -> 'a word # 'a word) $0)
+   $1)))))))))))`),
+ ((WCAT_11),
+  [],
+  `((! :(num -> bool) -> bool) (\(m :num). ((! :(num -> bool) -> bool)
+   (\(n :num).
+   (((RES_FORALL :('a word -> bool) -> ('a word -> bool) -> bool)
+   ((PWORDLEN :num -> 'a word -> bool) $1)) (\(wm1 :'a word).
+   (((RES_FORALL :('a word -> bool) -> ('a word -> bool) -> bool)
+   ((PWORDLEN :num -> 'a word -> bool) $2)) (\(wm2 :'a word).
+   (((RES_FORALL :('a word -> bool) -> ('a word -> bool) -> bool)
+   ((PWORDLEN :num -> 'a word -> bool) $2)) (\(wn1 :'a word).
+   (((RES_FORALL :('a word -> bool) -> ('a word -> bool) -> bool)
+   ((PWORDLEN :num -> 'a word -> bool) $3)) (\(wn2 :'a word).
+   (((= :bool -> bool -> bool) (((= :'a word -> 'a word -> bool)
+   ((WCAT :'a word # 'a word -> 'a word)
+   (((, :'a word -> 'a word -> 'a word # 'a word) $3) $1)))
+   ((WCAT :'a word # 'a word -> 'a word)
+   (((, :'a word -> 'a word -> 'a word # 'a word) $2) $0)))) ((/\
+   (((= :'a word -> 'a word -> bool) $3) $2))
+   (((= :'a word -> 'a word -> bool) $1) $0)))))))))))))))`),
+ ((WCAT0),
+  [],
+  `((! :('a word -> bool) -> bool) (\(w :'a word). ((/\
+   (((= :'a word -> 'a word -> bool)
+   ((WCAT :'a word # 'a word -> 'a word)
+   (((, :'a word -> 'a word -> 'a word # 'a word)
+   ((WORD :'a list -> 'a word) (NIL :'a list))) $0))) $0))
+   (((= :'a word -> 'a word -> bool)
+   ((WCAT :'a word # 'a word -> 'a word)
+   (((, :'a word -> 'a word -> 'a word # 'a word) $0)
+   ((WORD :'a list -> 'a word) (NIL :'a list))))) $0))))`),
+ ((WCAT_ASSOC),
+  [],
+  `((! :('a word -> bool) -> bool) (\(w1 :'a word).
+   ((! :('a word -> bool) -> bool) (\(w2 :'a word).
+   ((! :('a word -> bool) -> bool) (\(w3 :'a word).
+   (((= :'a word -> 'a word -> bool)
+   ((WCAT :'a word # 'a word -> 'a word)
+   (((, :'a word -> 'a word -> 'a word # 'a word) $2)
+   ((WCAT :'a word # 'a word -> 'a word)
+   (((, :'a word -> 'a word -> 'a word # 'a word) $1) $0)))))
+   ((WCAT :'a word # 'a word -> 'a word)
+   (((, :'a word -> 'a word -> 'a word # 'a word)
+   ((WCAT :'a word # 'a word -> 'a word)
+   (((, :'a word -> 'a word -> 'a word # 'a word) $2) $1)))
+   $0)))))))))`),
+ ((WORD_PARTITION),
+  [],
+  `((/\ ((! :(num -> bool) -> bool) (\(n :num).
+   (((RES_FORALL :('a word -> bool) -> ('a word -> bool) -> bool)
+   ((PWORDLEN :num -> 'a word -> bool) $0)) (\(w :'a word).
+   ((! :(num -> bool) -> bool) (\(m :num). ((==> ((<= $0) $2))
+   (((= :'a word -> 'a word -> bool)
+   ((WCAT :'a word # 'a word -> 'a word)
+   (((WSPLIT :num -> 'a word -> 'a word # 'a word) $0) $1)))
+   $1))))))))) ((! :(num -> bool) -> bool) (\(n :num).
+   ((! :(num -> bool) -> bool) (\(m :num).
+   (((RES_FORALL :('a word -> bool) -> ('a word -> bool) -> bool)
+   ((PWORDLEN :num -> 'a word -> bool) $1)) (\(w1 :'a word).
+   (((RES_FORALL :('a word -> bool) -> ('a word -> bool) -> bool)
+   ((PWORDLEN :num -> 'a word -> bool) $1)) (\(w2 :'a word).
+   (((= :'a word # 'a word -> 'a word # 'a word -> bool)
+   (((WSPLIT :num -> 'a word -> 'a word # 'a word) $2)
+   ((WCAT :'a word # 'a word -> 'a word)
+   (((, :'a word -> 'a word -> 'a word # 'a word) $1) $0))))
+   (((, :'a word -> 'a word -> 'a word # 'a word) $1) $0)))))))))))`),
+ ((LSB),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num).
+   (((RES_FORALL :('a word -> bool) -> ('a word -> bool) -> bool)
+   ((PWORDLEN :num -> 'a word -> bool) $0)) (\(w :'a word). ((==> ((<
+   0) $1)) (((= :'a -> 'a -> bool) ((LSB :'a word -> 'a) $0))
+   (((BIT :num -> 'a word -> 'a) 0) $0)))))))`),
+ ((MSB),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num).
+   (((RES_FORALL :('a word -> bool) -> ('a word -> bool) -> bool)
+   ((PWORDLEN :num -> 'a word -> bool) $0)) (\(w :'a word). ((==> ((<
+   0) $1)) (((= :'a -> 'a -> bool) ((MSB :'a word -> 'a) $0))
+   (((BIT :num -> 'a word -> 'a) (PRE $1)) $0)))))))`),
+ ((BIT_WSEG),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num).
+   (((RES_FORALL :('a word -> bool) -> ('a word -> bool) -> bool)
+   ((PWORDLEN :num -> 'a word -> bool) $0)) (\(w :'a word).
+   ((! :(num -> bool) -> bool) (\(m :num). ((! :(num -> bool) -> bool)
+   (\(k :num). ((! :(num -> bool) -> bool) (\(j :num). ((==> ((<= ((+
+   $2) $1)) $4)) ((==> ((< $0) $2)) (((= :'a -> 'a -> bool)
+   (((BIT :num -> 'a word -> 'a) $0)
+   ((((WSEG :num -> num -> 'a word -> 'a word) $2) $1) $3)))
+   (((BIT :num -> 'a word -> 'a) ((+ $0) $1)) $3))))))))))))))`),
+ ((WSEG_BIT),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num).
+   (((RES_FORALL :('a word -> bool) -> ('a word -> bool) -> bool)
+   ((PWORDLEN :num -> 'a word -> bool) $0)) (\(w :'a word).
+   ((! :(num -> bool) -> bool) (\(k :num). ((==> ((< $0) $2))
+   (((= :'a word -> 'a word -> bool)
+   ((((WSEG :num -> num -> 'a word -> 'a word) 1) $0) $1))
+   ((WORD :'a list -> 'a word) (((CONS :'a -> 'a list -> 'a list)
+   (((BIT :num -> 'a word -> 'a) $0) $1)) (NIL :'a list)))))))))))`),
+ ((BIT0),
+  [],
+  `((! :('a -> bool) -> bool) (\(b :'a). (((= :'a -> 'a -> bool)
+   (((BIT :num -> 'a word -> 'a) 0) ((WORD :'a list -> 'a word)
+   (((CONS :'a -> 'a list -> 'a list) $0) (NIL :'a list))))) $0)))`),
+ ((WSEG_WORD_LENGTH),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num).
+   (((RES_FORALL :('a word -> bool) -> ('a word -> bool) -> bool)
+   ((PWORDLEN :num -> 'a word -> bool) $0)) (\(w :'a word).
+   (((= :'a word -> 'a word -> bool)
+   ((((WSEG :num -> num -> 'a word -> 'a word) $1) 0) $0)) $0)))))`),
+ ((WSEG_WORDLEN),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num).
+   (((RES_FORALL :('a word -> bool) -> ('a word -> bool) -> bool)
+   ((PWORDLEN :num -> 'a word -> bool) $0)) (\(w :'a word).
+   ((! :(num -> bool) -> bool) (\(m :num). ((! :(num -> bool) -> bool)
+   (\(k :num). ((==> ((<= ((+ $1) $0)) $3)) (((= :num -> num -> bool)
+   ((WORDLEN :'a word -> num)
+   ((((WSEG :num -> num -> 'a word -> 'a word) $1) $0) $2)))
+   $1))))))))))`),
+ ((WSEG_PWORDLEN),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num).
+   (((RES_FORALL :('a word -> bool) -> ('a word -> bool) -> bool)
+   ((PWORDLEN :num -> 'a word -> bool) $0)) (\(w :'a word).
+   ((! :(num -> bool) -> bool) (\(m :num). ((! :(num -> bool) -> bool)
+   (\(k :num). ((==> ((<= ((+ $1) $0)) $3))
+   (((PWORDLEN :num -> 'a word -> bool) $1)
+   ((((WSEG :num -> num -> 'a word -> 'a word) $1) $0)
+   $2)))))))))))`),
+ ((WSEG0),
+  [],
+  `((! :(num -> bool) -> bool) (\(k :num).
+   ((! :('a word -> bool) -> bool) (\(w :'a word).
+   (((= :'a word -> 'a word -> bool)
+   ((((WSEG :num -> num -> 'a word -> 'a word) 0) $1) $0))
+   ((WORD :'a list -> 'a word) (NIL :'a list)))))))`),
+ ((PWORDLEN1),
+  [],
+  `((! :('a -> bool) -> bool) (\(x :'a).
+   (((PWORDLEN :num -> 'a word -> bool) 1) ((WORD :'a list -> 'a word)
+   (((CONS :'a -> 'a list -> 'a list) $0) (NIL :'a list))))))`),
+ ((PWORDLEN0),
+  [],
+  `((! :('a word -> bool) -> bool) (\(w :'a word). ((==>
+   (((PWORDLEN :num -> 'a word -> bool) 0) $0))
+   (((= :'a word -> 'a word -> bool) $0) ((WORD :'a list -> 'a word)
+   (NIL :'a list))))))`),
+ ((PWORDLEN),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num).
+   ((! :('a word -> bool) -> bool) (\(w :'a word).
+   (((= :bool -> bool -> bool) (((PWORDLEN :num -> 'a word -> bool)
+   $1) $0)) (((= :num -> num -> bool) ((WORDLEN :'a word -> num) $0))
+   $1))))))`),
+ ((word_cases),
+  [],
+  `((! :('a word -> bool) -> bool) (\(w :'a word).
+   ((? :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :'a word -> 'a word -> bool) $1) ((WORD :'a list -> 'a word)
+   $0))))))`),
+ ((word_induct),
+  [],
+  `((! :(('a word -> bool) -> bool) -> bool) (\(P :'a word -> bool).
+   ((==> ((! :('a list -> bool) -> bool) (\(l :'a list). ($1
+   ((WORD :'a list -> 'a word) $0))))) ((! :('a word -> bool) -> bool)
+   (\(w :'a word). ($1 $0))))))`),
+ ((WORD_11),
+  [],
+  `((! :('a list -> bool) -> bool) (\(l :'a list).
+   ((! :('a list -> bool) -> bool) (\(l' :'a list).
+   (((= :bool -> bool -> bool) (((= :'a word -> 'a word -> bool)
+   ((WORD :'a list -> 'a word) $1)) ((WORD :'a list -> 'a word) $0)))
+   (((= :'a list -> 'a list -> bool) $1) $0))))))`),
+ ((word_Ax),
+  [],
+  `((! :(('a list -> 'a1) -> bool) -> bool) (\(f :'a list -> 'a1).
+   ((?! :(('a word -> 'a1) -> bool) -> bool) (\(fn :'a word -> 'a1).
+   ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :'a1 -> 'a1 -> bool) ($1 ((WORD :'a list -> 'a word) $0))) ($2
+   $0))))))))`)]

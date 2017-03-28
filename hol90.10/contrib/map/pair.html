@@ -1,0 +1,138 @@
+<TITLE>Theory: pair</TITLE>
+<H1>Theory: pair</H1>
+<H1>Parents</H1>
+    <UL>
+    <LI><A HREF = "bool.html"><STRONG>bool</STRONG></A>
+    </UL>
+
+
+<HR>
+<H1>Type constants</H1>
+    <UL>
+    <LI><STRONG>prod</STRONG>(Arity = 2)
+    </UL>
+
+
+<HR>
+<H1>Term constants</H1>
+    <UL>
+    <LI><STRONG>MK_PAIR</STRONG><EM>:'a -> 'b -> 'a -> 'b -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>IS_PAIR</STRONG><EM>:('a -> 'b -> bool) -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>REP_prod</STRONG><EM>:'a # 'b -> 'a -> 'b -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>,</STRONG><EM>:'a -> 'b -> 'a # 'b</EM>
+        <STRONG>{</STRONG>fixity  = Infix 50<STRONG>}</STRONG>
+    <LI><STRONG>FST</STRONG><EM>:'a # 'b -> 'a</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>SND</STRONG><EM>:'a # 'b -> 'b</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>UNCURRY</STRONG><EM>:('a -> 'b -> 'c) -> 'a # 'b -> 'c</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>CURRY</STRONG><EM>:('a # 'b -> 'c) -> 'a -> 'b -> 'c</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    </UL>
+
+
+<HR>
+<H1>Axioms</H1>
+<DL>
+
+</DL>
+
+
+<HR>
+<H1>Definitions</H1>
+<DL>
+<DT><STRONG>MK_PAIR_DEF</STRONG>
+<DD>
+<PRE>
+|- !x y. MK_PAIR x y = (\a b. (a = x) /\ (b = y))
+</PRE>
+
+<DT><STRONG>IS_PAIR_DEF</STRONG>
+<DD>
+<PRE>
+|- !p. IS_PAIR p = (?x y. p = MK_PAIR x y)
+</PRE>
+
+<DT><STRONG>prod_TY_DEF</STRONG>
+<DD>
+<PRE>
+|- ?rep. TYPE_DEFINITION IS_PAIR rep
+</PRE>
+
+<DT><STRONG>REP_prod</STRONG>
+<DD>
+<PRE>
+|- REP_prod =
+   (@rep.
+     (!p' p''. (rep p' = rep p'') ==> (p' = p'')) /\
+     (!p. IS_PAIR p = (?p'. p = rep p')))
+</PRE>
+
+<DT><STRONG>COMMA_DEF</STRONG>
+<DD>
+<PRE>
+|- !x y. (x,y) = (@p. REP_prod p = MK_PAIR x y)
+</PRE>
+
+<DT><STRONG>FST_DEF</STRONG>
+<DD>
+<PRE>
+|- !p. FST p = (@x. ?y. MK_PAIR x y = REP_prod p)
+</PRE>
+
+<DT><STRONG>SND_DEF</STRONG>
+<DD>
+<PRE>
+|- !p. SND p = (@y. ?x. MK_PAIR x y = REP_prod p)
+</PRE>
+
+<DT><STRONG>UNCURRY_DEF</STRONG>
+<DD>
+<PRE>
+|- !f x y. UNCURRY f (x,y) = f x y
+</PRE>
+
+<DT><STRONG>CURRY_DEF</STRONG>
+<DD>
+<PRE>
+|- !f x y. CURRY f x y = f (x,y)
+</PRE>
+
+</DL>
+
+
+<HR>
+<H1>Theorems</H1>
+<DL>
+<DT><STRONG>PAIR</STRONG>
+<DD>
+<PRE>
+|- !x. (FST x,SND x) = x
+</PRE>
+
+<DT><STRONG>FST</STRONG>
+<DD>
+<PRE>
+|- !x y. FST (x,y) = x
+</PRE>
+
+<DT><STRONG>SND</STRONG>
+<DD>
+<PRE>
+|- !x y. SND (x,y) = y
+</PRE>
+
+<DT><STRONG>PAIR_EQ</STRONG>
+<DD>
+<PRE>
+|- ((x,y) = (a,b)) = (x = a) /\ (y = b)
+</PRE>
+
+</DL>
+
+
+<HR>

@@ -1,0 +1,606 @@
+head	1.8;
+access;
+symbols
+	HOL97:1.4.0.4
+	bpHOL97:1.4
+	hol90_9_alpha:1.4
+	hol90_pre8_for_multiple_compilers:1.4.0.2
+	last_edition:1.7
+	hol90_pre8_after_donalds_separate_compilation_changes:1.3
+	hol90_8_after_merging_Konrad_Elsa:1.2
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.8
+date	96.02.08.00.23.45;	author drs1004;	state dead;
+branches;
+next	1.7;
+
+1.7
+date	96.02.08.00.18.45;	author drs1004;	state Exp;
+branches;
+next	1.6;
+
+1.6
+date	96.01.04.14.07.30;	author drs1004;	state Exp;
+branches;
+next	1.5;
+
+1.5
+date	95.12.18.11.22.26;	author drs1004;	state Exp;
+branches;
+next	1.4;
+
+1.4
+date	95.11.15.13.30.48;	author rjb;	state Exp;
+branches
+	1.4.4.1;
+next	1.3;
+
+1.3
+date	95.10.31.15.06.20;	author drs1004;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	95.10.18.16.37.44;	author drs1004;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	95.10.16.13.30.09;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.30.09;	author rjb;	state Exp;
+branches;
+next	;
+
+1.4.4.1
+date	97.06.11.17.26.03;	author kxs;	state Exp;
+branches;
+next	1.4.4.2;
+
+1.4.4.2
+date	97.07.10.18.38.55;	author kxs;	state Exp;
+branches;
+next	1.4.4.3;
+
+1.4.4.3
+date	97.10.05.21.09.24;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.8
+log
+@New theory mechanism, by Donald Syme
+@
+text
+@(* Makes parsers and prettyprinters for ".holsig" and ".thms" files. *)
+
+functor DISK_IO_ASCII(structure Regime : Regime_sig
+                      structure Thy_pp : Thy_pp_sig
+                      structure Thms_parse : PARSER
+                      structure Holsig_parse : PARSER
+                      sharing 
+                         Regime.Theory_data.Thm.Term = Thy_pp.Term
+                      sharing type
+                         Thms_parse.result = Regime.hol_thms
+                      sharing type
+                         Holsig_parse.result = Regime.hol_sig
+                      sharing type
+                         Thms_parse.arg = Holsig_parse.arg = unit)
+       :Disk_io_sig =
+struct
+structure Regime = Regime;
+
+val ERR = Exception.ERR "Disk_io";
+    
+
+type hol_sig = Regime.hol_sig
+type hol_thms = Regime.hol_thms;
+
+(* Parsing theory files *)
+fun holsig_error (s,_,_) = 
+   (output(std_out,"holsig parser error: "^s^"\n");
+    ERR("parse_holsig", s));
+
+fun read_hol_sig istrm =
+   let val lexer = Holsig_parse.makeLexer(fn _ => Portable.input_line istrm) 
+       val (res,_) = Holsig_parse.parse(0,lexer,holsig_error,())
+   in
+   res
+   end;
+
+fun thms_error (s,_,_) = 
+   (output(std_out,("thms parser error: "^s^"\n"));
+    ERR("parse_thms", s));
+
+fun read_hol_thms istrm =
+   let val lexer = Thms_parse.makeLexer(fn _ => Portable.input_line istrm) 
+       val (res,_) = Thms_parse.parse(0,lexer,thms_error,())
+   in
+   res
+   end;
+
+fun write_hol_sig(ostm, hsig) =
+   let val {thid,parents,type_constants,term_constants} = 
+               Regime.dest_hol_sig hsig
+       val ppstrm = PP.mk_ppstream
+	               {linewidth=70,consumer=Lib.curry output ostm,
+                        flush=fn() => Portable.flush_out ostm}
+       val {add_string,add_break,begin_block,end_block,
+            add_newline,flush_ppstream,...} = PP.with_ppstream ppstrm
+       val pp_type_rep = Thy_pp.pp_type_rep ppstrm
+       val bbc = begin_block PP.CONSISTENT
+       val bbi = begin_block PP.INCONSISTENT
+       val eb = end_block
+       val S = add_string 
+       fun lparen() = S "("
+       fun rparen() = S ")"
+       fun comma() = S ","
+       fun quote() = S "`"
+       fun lbracket() = S "["
+       fun rbracket() = S "]"
+       fun lbrace() = S "{"
+       fun rbrace() = S "}"
+       fun space() = add_break(1,0)
+       val nl = add_newline
+       fun pr_sml_list f L = 
+          ( bbc 1;lbracket();PP.pr_list f comma space L;rbracket();eb())
+       fun thid_to_string thid = 
+          let val n = Regime.Theory_data.theory_id_name thid
+              and {sec,usec} =
+		  Portable.Time.dest_time
+		  (Regime.Theory_data.theory_id_timestamp thid)
+          in
+            bbi 1;
+            lparen();S n;comma();space();
+	    S (Lib.int_to_string sec);comma();space();
+            S (Lib.int_to_string usec);rparen();
+            eb()
+          end
+       fun add_thid thid =
+          ( bbc 0;S "thid =";space();thid_to_string thid;eb())
+       fun add_parents thid_list = 
+          ( bbc 0;S "parents =";space();pr_sml_list thid_to_string thid_list;
+            eb())
+       local
+       open Regime.Theory_data
+       in
+       fun add_type_constant({name,arity,theory}) =
+            (bbi 1;lparen();S name;comma();S(Lib.int_to_string arity);rparen();
+            eb())
+          handle _ => ERR("add_type_constant","Not a type constant")
+       end
+       fun add_type_constants tyclist = 
+          ( bbc 0;S "types =";space();pr_sml_list add_type_constant tyclist;
+            eb())
+       local
+       open Regime.Theory_data
+       in
+       fun add_term_constant({const,theory}) =
+          let val {Name,Ty} = Thm.Term.dest_const const
+          in
+            bbc 1;
+            lbrace();
+              bbc 0;S "name =";space();lparen();S Name;rparen();comma();eb();
+              space();
+              bbc 0;S "ty ="; space();pp_type_rep Ty;eb();
+            rbrace();
+            eb()
+          end
+       end    
+       local
+       open Regime.Theory_data
+       val ascii_dollar = Portable.String.ordof("$",0)
+       fun is_dollared s = (Portable.String.ordof(s,0) = ascii_dollar)
+       fun keeper{const,theory} = 
+             not(is_dollared (#Name(Thm.Term.dest_const const)))
+       fun plist [] = ()
+         | plist [a] = add_term_constant a
+         | plist (a::rst) = (add_term_constant a; comma(); space(); plist rst)
+       in
+       fun add_term_constants symtab_record_list =
+          (bbc 0;S "constants =";space();
+           bbc 1;lbracket();
+	   plist(Lib.gather keeper symtab_record_list);rbracket();
+           eb();eb())
+       end
+   in
+     bbc 0;
+     add_thid thid;
+     nl();
+     add_parents parents;
+     nl();
+     add_type_constants type_constants;
+     nl();
+     add_term_constants term_constants;
+     nl();
+     eb();
+     flush_ppstream()
+   end;
+
+
+fun write_hol_thms (ostm, hthms) = 
+   let val {thid, axioms, definitions, theorems} = Regime.dest_hol_thms hthms
+       val ppstrm = PP.mk_ppstream{linewidth=70,consumer=Lib.curry output ostm,
+                                   flush=fn () => Portable.flush_out ostm}
+       val {add_string,add_break,begin_block,end_block,
+            add_newline,flush_ppstream,...} = PP.with_ppstream ppstrm
+       val bbc = begin_block PP.CONSISTENT
+       val bbi = begin_block PP.INCONSISTENT
+       val eb = end_block
+       val S = add_string 
+       fun lparen() = S "("
+       fun rparen() = S ")"
+       fun comma() = S ","
+       fun quote() = S "`"
+       fun lbracket() = S "["
+       fun rbracket() = S "]"
+       fun space() = add_break(1,0)
+       val nl = add_newline
+       fun thid_to_string thid = 
+          let val n = Regime.Theory_data.theory_id_name thid
+              and {sec,usec} =
+		  Portable.Time.dest_time
+                  (Regime.Theory_data.theory_id_timestamp thid)
+          in
+            bbi 1;
+            lparen();S n;comma();space();
+	    S (Lib.int_to_string sec);comma();space();
+            S (Lib.int_to_string usec);rparen();
+            eb()
+          end
+       fun add_thid thid =
+          ( bbc 0;S "thid =";space();thid_to_string thid;eb())
+       fun add_term tm =
+          ( bbc 0;quote(); Thy_pp.pp_term ppstrm tm; quote();eb())
+       fun pr_sml_list f L = 
+          ( bbc 1;
+            lbracket();
+            PP.pr_list f comma space L;
+            rbracket();
+            eb()
+          )
+       fun add_thm (s,th) =
+         ( bbc 1;
+           lparen();
+           lparen(); S s; rparen();
+           comma();space();
+           let val (H,C) = Regime.Theory_data.Thm.dest_thm th
+           in pr_sml_list add_term H; 
+              comma();
+              space();
+              add_term C
+           end;
+           rparen();
+           eb()
+         )
+      fun add_thm_ob s L = 
+         ( bbc 0;
+           S (s^" =");
+           space();
+           pr_sml_list add_thm L;
+           eb()
+         )
+   in
+     bbc 0;
+     add_thid thid;
+     nl();
+
+     add_thm_ob "axioms" axioms;
+     nl();
+
+     add_thm_ob "definitions" definitions;
+     nl();
+
+     add_thm_ob "theorems" theorems;
+     nl();
+     flush_ppstream()
+   end;
+  
+end; (* DISK_IO_ASCII *)
+@
+
+
+1.7
+log
+@updates for latest ML Lex and Yacc
+@
+text
+@@
+
+
+1.6
+log
+@Added simplifier components, added drule files, added MK_ABS_CONV, better error messages
+@
+text
+@a102 3
+(*       fun fixity_to_string Thm.Term.Binder = "Binder"
+         | fixity_to_string (Thm.Term.Infix i) = "Infix "^(Lib.int_to_string i)
+         | fixity_to_string Thm.Term.Prefix = "Prefix" *)
+d104 1
+a104 1
+       fun add_term_constant({const,theory (* ,place *)}) =
+d111 1
+a111 3
+              bbc 0;S "ty ="; space();pp_type_rep Ty;comma();eb();
+              space();
+              bbc 0;S"fixity =";space();S "Prefix" (* (fixity_to_string place) *);eb();
+d120 1
+a120 1
+       fun keeper{const,theory (* ,place *)} = 
+@
+
+
+1.5
+log
+@Preterm and other changes, see 7.changes
+@
+text
+@d3 1
+a3 2
+functor DISK_IO_ASCII((* structure Lib : Lib_sig *)
+		      structure Regime : Regime_sig
+d19 2
+a20 4
+fun DISK_IO_ERR{function,message} =
+    Exception.HOL_ERR{origin_structure = "Disk_io",
+		      origin_function = function,
+		      message = message}
+d28 1
+a28 1
+    raise DISK_IO_ERR{function = "parse_holsig", message = s});
+d39 1
+a39 1
+    raise DISK_IO_ERR{function = "parse_thms", message = s});
+d96 1
+a96 2
+          handle _ => raise DISK_IO_ERR{function = "add_type_constant",
+                                        message = "Not a type constant"}
+d103 1
+a103 1
+       fun fixity_to_string Thm.Term.Binder = "Binder"
+d105 1
+a105 1
+         | fixity_to_string Thm.Term.Prefix = "Prefix"
+d107 1
+a107 1
+       fun add_term_constant({const,theory,place}) =
+d116 1
+a116 1
+              bbc 0;S"fixity =";space();S(fixity_to_string place);eb();
+d125 1
+a125 1
+       fun keeper{const,theory,place} = 
+@
+
+
+1.4
+log
+@The HOL90 sources have been changed to allow for the use of different
+Standard ML compilers (possibly simultaneously).
+
+ * Many files in "src/0" changed to make them more portable across different
+   ML compilers. Various additions have been made to the Portable structure
+   and files changed to access identifiers in the Portable structure rather
+   than from the global environment. Worthy of special note are:
+
+   - The pointer equality used in "src/0/term.sml" has been made into a
+     function in the Portable structure.
+
+   - The ML-Lex and ML-Yacc files for the various parsers have been changed
+     to access the Portable structure. Both the source files and the SML
+     produced from them have been changed but I have not verified that the
+     source files would reproduce the new SML versions if ML-Lex and ML-Yacc
+     were to be rerun on them. The changes involve some hacks that exploit the
+     way ML-Lex and ML-Yacc work. See the sources for details.
+
+R.J.Boulton, 15th November 1995.
+@
+text
+@d96 3
+a98 6
+       fun add_type_constant({tyc,arity,theory}) =
+          let val {Tyop,Args=[]} = Thm.Term.Type.dest_type tyc
+          in
+            bbi 1;lparen();S Tyop;comma();S(Lib.int_to_string arity);rparen();
+            eb()
+          end
+@
+
+
+1.4.4.1
+log
+@Removed files are parse files and portability files that have
+effectively been moved elsewhere.
+
+Modified files are up to date for ML 109.26.
+@
+text
+@d3 2
+a4 1
+functor DISK_IO_ASCII(structure Regime : Regime_sig
+d30 1
+a30 1
+   (Portable.output(Portable.std_out,"holsig parser error: "^s^"\n");
+d41 1
+a41 1
+   (Portable.output(Portable.std_out,("thms parser error: "^s^"\n"));
+d55 1
+a55 1
+	               {linewidth=70,consumer=Portable.outputc ostm,
+d161 1
+a161 1
+       val ppstrm = PP.mk_ppstream{linewidth=70,consumer=Portable.outputc ostm,
+@
+
+
+1.4.4.2
+log
+@Closing up HOL so it is CM-friendly.
+@
+text
+@d1 1
+a1 3
+(*---------------------------------------------------------------------------
+ *  Makes parsers and prettyprinters for ".holsig" and ".thms" files.
+ *---------------------------------------------------------------------------*)
+d5 2
+a6 4
+                      structure Thms_parse : sig include PARSER end 
+                                             where type arg = unit
+                      structure Holsig_parse : sig include PARSER end 
+                                               where type arg = unit
+d12 3
+a14 1
+                         Holsig_parse.result = Regime.hol_sig)
+@
+
+
+1.4.4.3
+log
+@The structure Time has changed in the underling ML Library, and Portable.Time
+has changed in response, so this change reflects that change.
+
+The change to add_to_sml is so that frags are known to the system.
+@
+text
+@d85 2
+a86 2
+	    S (sec);comma();space();
+            S (usec);rparen();
+d186 2
+a187 2
+	    S (sec);comma();space();
+            S (usec);rparen();
+@
+
+
+1.3
+log
+@First phase of hol90.8 development.  hol90 now compiles using NJSML-CM
+108.5, with separate compilation of libraries.  System dependencies
+have been isolated in the makefiles and "portable.sml".
+
+This involved a large number of enhancments to the source files,
+most of which are documented in the 7.changes file (or will be shortly).
+See also the correpsonding email corrspondence between RJB, KLS, TFM,
+JRH and DRS that happened during this development.
+@
+text
+@d34 1
+a34 1
+   let val lexer = Holsig_parse.makeLexer(fn _ => input_line istrm) 
+d45 1
+a45 1
+   let val lexer = Thms_parse.makeLexer(fn _ => input_line istrm) 
+d54 3
+a56 2
+       val ppstrm = PP.mk_ppstream {linewidth=70,consumer=outputc ostm,
+                                    flush=fn() => flush_out ostm}
+d161 2
+a162 2
+       val ppstrm = PP.mk_ppstream{linewidth=70,consumer=outputc ostm,
+                                   flush=fn () => flush_out ostm}
+@
+
+
+1.2
+log
+@Check in after merging in Konrad's changes made after
+the release of hol90.7.  This involved creating a side branch
+in which to check in Konrad's changes, then merging in that
+side branch into the main development (which contains changes
+made by Elsa Gunter).
+
+Some other small modification have been made to the source code,
+as I begun to try to make this version into a working version:
+	- hol90 will now be compiled in an environment were no
+structures can be considered opn.  This means many structures
+now need "open Lib" and other such commands at their head.
+This has not yet been completed, but has been begun.
+	- "rotl" and "rotr" have been added to Lib, something
+which I just did impulsively.   Documentation files
+have also been added in help/90.
+@
+text
+@d78 1
+a78 1
+		  Sml_system.Time.dest_time
+d129 2
+a130 2
+       val ascii_dollar = Sml_system.String.ordof("$",0)
+       fun is_dollared s = (Sml_system.String.ordof(s,0) = ascii_dollar)
+d179 1
+a179 1
+		  Sml_system.Time.dest_time
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d3 2
+a4 1
+functor DISK_IO_ASCII(structure Regime : Regime_sig
+d20 4
+a23 3
+fun DISK_IO_ERR{function,message} = HOL_ERR{origin_structure = "Disk_io",
+					    origin_function = function,
+					    message = message}
+d77 3
+a79 2
+              and (System.Timer.TIME{sec,usec}) =
+                   Regime.Theory_data.theory_id_timestamp thid
+d82 3
+a84 2
+            lparen();S n;comma();space();S (int_to_string sec);comma();space();
+            S (int_to_string usec);rparen();
+d129 2
+a130 2
+       val ascii_dollar = ordof("$",0)
+       fun is_dollared s = (ordof(s,0) = ascii_dollar)
+d139 2
+a140 1
+           bbc 1;lbracket();plist(gather keeper symtab_record_list);rbracket();
+d178 3
+a180 2
+              and (System.Timer.TIME{sec,usec}) =
+                   Regime.Theory_data.theory_id_timestamp thid
+d183 3
+a185 2
+            lparen();S n;comma();space();S (int_to_string sec);comma();space();
+            S (int_to_string usec);rparen();
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

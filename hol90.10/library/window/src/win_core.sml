@@ -1,0 +1,385 @@
+(*--------------------------------------------------------------------------*)
+(*                  Copyright (c) Jim Grundy 1992                           *)
+(*                  All rights reserved                                     *)
+(*                                                                          *)
+(* Jim Grundy, hereafter referred to as `the Author', retains the copyright *)
+(* and all other legal rights to the Software contained in this file,       *)
+(* hereafter referred to as `the Software'.                                 *)
+(*                                                                          *)
+(* The Software is made available free of charge on an `as is' basis. No    *)
+(* guarantee, either express or implied, of maintenance, reliability,       *)
+(* merchantability or suitability for any purpose is made by the Author.    *)
+(*                                                                          *)
+(* The user is granted the right to make personal or internal use of the    *)
+(* Software provided that both:                                             *)
+(* 1. The Software is not used for commercial gain.                         *)
+(* 2. The user shall not hold the Author liable for any consequences        *)
+(*    arising from use of the Software.                                     *)
+(*                                                                          *)
+(* The user is granted the right to further distribute the Software         *)
+(* provided that both:                                                      *)
+(* 1. The Software and this statement of rights are not modified.           *)
+(* 2. The Software does not form part or the whole of a system distributed  *)
+(*    for commercial gain.                                                  *)
+(*                                                                          *)
+(* The user is granted the right to modify the Software for personal or     *)
+(* internal use provided that all of the following conditions are observed: *)
+(* 1. The user does not distribute the modified software.                   *)
+(* 2. The modified software is not used for commercial gain.                *)
+(* 3. The Author retains all rights to the modified software.               *)
+(*                                                                          *)
+(* Anyone seeking a licence to use this software for commercial purposes is *)
+(* invited to contact the Author.                                           *)
+(*--------------------------------------------------------------------------*)
+(*==========================================================================*)
+(* CONTENTS: the core functional window inference system                    *)
+(*==========================================================================*)
+(*$Id: win_core.sml,v 1.2.4.1 1997/07/15 13:10:01 kxs Exp $ *)
+
+structure WinCore :
+sig
+ type term
+ type thm
+ type goal
+ type tactic
+ type conv
+    type window
+    val win_thm : window -> thm
+    val relation : window -> term
+    val focus : window -> term
+    val origin : window -> term
+    val bound : window -> term list
+    val hyp_thms : window -> thm list
+    val hypotheses : window -> term list
+    val disp_hypotheses : window -> term list
+    val all_hypotheses : window -> term list
+    val used_hypotheses : window -> term list
+    val lemma_thms : window -> thm list
+    val suppositions : window -> goal list
+    val lemmas : window -> term list
+    val conjectures : window -> term list
+    val used_conjectures : window -> term list
+    val context : window -> term list
+    val make_win : term ->
+                   term ->
+                   (term list * term) list ->
+                   term list ->
+                   thm list ->
+                   thm list ->  window
+    val create_win : term -> term -> term list -> thm list -> window
+    val get_thm : term -> window -> thm
+    val add_suppose : goal -> window -> window
+    val conjecture : term -> window -> window
+    val add_theorem : thm -> window -> window
+    val transform_win : thm -> window -> window
+    val match_transform_win : thm -> window -> window
+    val convert_win : conv -> window -> window
+    val rule_win : (thm -> thm) -> window -> window
+    val thm_rule_win : (thm -> thm) -> window -> window
+    val foc_rule_win : (term -> thm) -> window -> window
+    val tactic_win : tactic -> window -> window
+    val transfer_sups_thms : window -> window -> window
+end
+
+=
+
+struct
+
+type term = CoreHol.Term.term
+type thm = CoreHol.Thm.thm;
+type goal = Abbrev.goal
+type tactic = Abbrev.tactic
+type conv = Abbrev.conv
+
+open ML_ext Hol_ext;
+open Lib CoreHol;
+open Term Dsyntax Thm Drule Conv Relations;
+
+(* A window is a tuple with the following components.                       *)
+(*   A theorem which records the progress of the window.                    *)
+(*   A set of theorems, the hyps of which are set of hyptheses that can     *)
+(*       appear in the window's theorem.                                    *)
+(*   A set of theorems relavent to the window.                              *)
+(*   A set of suppositions relavent to the window.                          *)
+(*   A list of variables which are implicitly bound by this window.         *)
+(*       (The closer to the front of the list the tighter the binding.)     *)
+
+datatype window =
+    WIN of (thm * (thm list) * (thm list) * (goal list) * (term list));
+
+(* Find the theorem being held by a window.                                 *)
+fun win_thm (WIN(th, _, _, _, _)) = th;
+
+(* Find the relation being preserved by a window.                           *)
+fun relation (WIN(th, _, _, _, _)) = rator (rator (concl th));
+
+(* Find the focus of a window.                                              *)
+fun focus (WIN(th, _, _, _, _)) = rand (concl th);
+
+(* Find the original focus of a window.                                     *)
+fun origin (WIN(th, _, _, _, _)) = rand (rator (concl th));
+
+(* Find the variables bound by a window.                                    *)
+fun bound (WIN(_, _, _, _, bnd)) = bnd;
+
+(* Find the hypotheses theorems a window.                                   *)
+fun hyp_thms (WIN(_, hyps, _, _, _)) = hyps;
+
+(* Find the hypotheses of a window.                                         *)
+fun hypotheses (WIN(_, hyps, _, _, _)) = term_setify (flatten (map hyp hyps));
+
+(* Find the displayed hypotheses of a window.                               *)
+fun disp_hypotheses (WIN(_, hyps, _, _, _)) =
+    term_setify (subtract (map concl hyps) [true_tm]);
+
+(* Find the _all_ hypotheses of a window.                                   *)
+fun all_hypotheses w = term_union (hypotheses w) (disp_hypotheses w);
+
+(* Find the hypotheses that have been used in a window.                     *)
+fun used_hypotheses (WIN(th, _, _, _, _):window) = hyp th;
+
+(* Find the relavent theorems of a window.                                  *)
+fun lemma_thms (WIN(_, _, thms, _, _)) = thms;
+
+(* Find the suppositions of a window.                                       *)
+fun suppositions (WIN(_, _, _, sups, _)) = sups;
+
+(* Find the conjectures of a window.                                        *)
+fun conjectures win = 
+    let val hyps = all_hypotheses win 
+        and sups = suppositions win
+    in
+        term_setify (map snd (filter (fn s => term_subset (fst s) hyps) sups))
+    end;
+
+(* Find the used conjectures of a window.                                   *)
+fun used_conjectures win =
+    let val used = hyp (win_thm win)
+        and hyps = all_hypotheses win
+    in
+        term_subtract used hyps
+    end;
+
+(* Find the lemmas of a window.                                             *)
+fun lemmas win =
+    let val handcs = term_union (all_hypotheses win) (conjectures win)
+        and thms = lemma_thms win
+    in
+        term_setify
+            (map concl (filter (fn t => term_subset (hyp t) handcs) thms))
+    end;
+
+(* The context of a window.                                                 *)
+fun context win =
+    term_setify ((all_hypotheses win) @ (lemmas win) @ (conjectures win));
+
+(* Start transforming "foc" to arrive at (hyps |- foc' rel foc).            *)
+(* Call with create_win rel foc [hypotheses] [lemma_thms]                   *)
+fun make_win rel foc sups bnds hyps thms = 
+    WIN(
+        (reflexive (mk_comb{Rator=(mk_comb{Rator=rel,Rand=foc}),Rand=foc})),
+        (thm_setify hyps),
+        (thm_setify thms),
+        (goal_setify sups),
+        bnds
+    )
+
+fun create_win rel foc hyps = make_win rel foc [] [] (map ASSUME hyps);
+
+(* Hand back, if possible, a theorem with conclusion c and hypotheses,      *)
+(*   a subset of the current hypotheses and conjectures.                    *)
+(*   (Tries to avoid assumptions which are bound by the window.)            *)
+(*   (The fewer unused conjectures the better)                              *)
+fun get_thm c win = 
+    if ((term_mem c (lemmas win)) orelse (term_mem c (disp_hypotheses win)))
+    then
+        let val okhyps = term_union (used_hypotheses win) (hypotheses win)
+            and handcs = term_union (hypotheses win) (conjectures win)
+            and bnds = bound win
+            and thms =
+                (lemma_thms win)@(hyp_thms win)@(map ASSUME (hypotheses win)) in
+        let val potentials =
+                filter
+                    (fn th =>
+                            (aconv (concl th) c)
+                        andalso
+                            (term_subset (hyp th) handcs))
+                    thms
+        in
+        let fun better (t1,t2) =
+            let val nh1 = filter (fn h => not (term_mem h okhyps)) (hyp t1)
+                val nh2 = filter (fn h => not (term_mem h okhyps)) (hyp t2)
+                val bh1 =
+                    filter
+                        (fn h => not (null (intersect (free_vars h) bnds)))
+                        nh1
+                and bh2 =
+                    filter
+                        (fn h => not (null (intersect (free_vars h) bnds)))
+                        nh2
+            in
+                if (length bh1) < (length bh2) then
+                    true
+                else if (length bh1) > (length bh2) then
+                    false
+                else (* (length bh1) = (length bh2) *)
+                    if (length nh1) < (length nh2) then
+                        true
+                    else if (length nh1) > (length nh2) then
+                        false
+                    else (* (length nh1) = (length nh2) *)
+                        if (dest_thm t1) = ([concl t1], concl t1) then
+                            true
+                        else if (dest_thm t2) = ([concl t2], concl t2) then
+                            false
+                        else (* they are both just assumed. *)
+                            if (concl t1) = c then true else false
+            end
+        in
+            best better potentials
+        end end end
+    else
+        ASSUME c;
+
+(* Add a supposition to a window.                                           *)
+local
+    fun resolve gs =
+        let val matches =
+                goal_setify (flatten (map (fn g => map (prove_hyp g) gs) gs)) in
+        let val news = goal_subtract matches gs in
+            if null news then gs else resolve (news@gs)
+        end end
+in
+    fun add_suppose sup (WIN(wthm,hyps,lthms,sups,bnds)) =
+        let val lgls = map dest_thm lthms in
+            WIN(
+                wthm,
+                hyps,
+                lthms,
+                goal_subtract (resolve (sup::sups@lgls)) lgls,
+                bnds
+            )
+        end
+end;
+
+(* Add a conjecture to the current window.                                  *)
+fun conjecture tm win = add_suppose (hypotheses win, tm) win;
+
+(* Add a theorem to a window's relavent theorems set.                       *)
+local
+    fun resolve ts =
+        let val matches =
+                thm_setify (flatten (map (fn t => map (PROVE_HYP t) ts) ts)) in
+        let val news = thm_subtract matches ts in
+            if null news then ts else resolve (news@ts)
+        end end
+    fun crunch [] th _ = th
+     |  crunch (b::bs) th f = crunch bs (PROVE_HYP (f b) th) f
+    fun clean_thm (win as WIN(wthm,hyps,lthms,sups,bnds)) =
+        let val bads = term_intersect (lemmas win) (used_conjectures win) in
+            WIN(crunch bads wthm (C get_thm win),hyps,lthms,sups,bnds)
+        end
+in
+    fun add_theorem th (WIN(wthm,hyps,lthms,sups,bnds)) =
+        let val nthms = resolve (th::lthms@hyps) in
+        let val nsups = goal_subtract sups (map dest_thm nthms) in
+            clean_thm (WIN(wthm,hyps,thm_subtract nthms hyps,nsups,bnds))
+        end end
+end;
+
+(* If the current focus is f and relation is s and the transformation       *)
+(*   tr = (h |- f s g) where h is a subset of the current hyps and conjs    *)
+(*   and s is stronger than r then we transform the focus to g.             *)
+local
+    fun crunch [] th _ = th
+     |  crunch (b::bs) th f = crunch bs (PROVE_HYP (f b) th) f
+    fun clean_thm th win =
+        let val bads = term_subtract
+                            (term_intersect
+                                (hyp th)
+                                (term_union (lemmas win) (disp_hypotheses win)))
+                            (term_union (hypotheses win) (used_hypotheses win))
+        in
+            crunch bads th (C get_thm win)
+        end
+in
+    fun transform_win tr (win as WIN(wthm,hyps,lthms,sups,bnds)) =
+        let val ctr = clean_thm tr win in
+            if (term_subset (hyp ctr)
+                            (term_union (hypotheses win) (conjectures win)))
+            then 
+                let val r = rator (rator (concl wthm)) in
+                let val newth = transitive (CONJ wthm (weaken r ctr)) in
+                    WIN(newth, hyps, lthms, sups, bnds)
+                end end
+            else
+                WIN_ERR{function="transform_win",
+                        message="Transformation has bad hypothese."}
+        end
+end;
+
+(* If the current focus is f and relation is s and the transformation       *)
+(* tr = (h |- !x1...xn. f' s g') where h is a subset of the current         *)
+(* and s is stronger than r and f' can be matched to f after x1...xn        *)
+(* have been specialised, then we transformt the focus to g                 *)
+(* (that is g' with the same instantiations applied to it).                 *)
+fun match_transform_win tr win =
+    transform_win (PART_MATCH (rand o rator) tr (focus win)) win;
+
+(* Apply the conversion to the focus.                                       *)
+fun convert_win (c : conv) win = transform_win (c (focus win)) win;
+
+(* Apply an inference rule(thm -> thm) to the current focus.                *)
+(* Only works if the relation is "==>" or weaker.                           *)
+fun rule_win inf win = 
+    let val f = focus win in
+        transform_win (DISCH f (inf (ASSUME f))) win
+    end handle _ => WIN_ERR{function="rule_win",message="only preserves ==>"};
+
+(* Apply an inference rule to the theorem of a window.                      *)
+fun thm_rule_win inf (win as WIN(wthm,hyps,lthms,sups,bnds)) =
+    let val wthm' = inf wthm in
+    let val rel = rator (rator (concl wthm))
+        and rel' = rator (rator (concl wthm'))
+        and orig = rand (rator (concl wthm))
+        and orig' = rand (rator (concl wthm'))
+        and used' = hyp wthm'
+    in
+        if (orig' = orig)
+        andalso (is_weaker rel rel')
+        andalso (term_subset used'
+                    (term_union (hypotheses win) (conjectures win)))
+        then
+            WIN(weaken rel wthm',hyps,lthms,sups,bnds)
+        else
+            fail ()
+    end end 
+    handle _ => WIN_ERR{function="thm_rule_win",message="wrong rule form"};
+
+(* Apply an inference rule to the focus of a window.                        *)
+(* Rule must take the focus f and return the theorem |- f' r f.             *)
+fun foc_rule_win inf (win : window) = (transform_win (inf (focus win)) win)
+    handle _ => WIN_ERR{function="foc_rule_win",message="wrong rule form"};
+
+(* Apply a tactic to the current focus.                                     *)
+(* Only works if the tactic results in just 1 subgoal.                      *)
+(* Only works if the relation is "<==".                                     *)
+(* Only works sometimes.                                                    *)
+fun tactic_win (tac:tactic) win =
+    let val give_hyps = used_hypotheses win in
+    let val ([(new_hyps, newfoc)], proof) = tac (give_hyps, (focus win))
+    in
+        transform_win
+	    (IMP_PMI (DISCH
+			newfoc
+			(proof [itlist ADD_ASSUM give_hyps (ASSUME newfoc)])))
+	    win
+    end end
+    handle _ => WIN_ERR{function="foc_rule_win",message="wrong rule form"};
+
+(* Transfer the supposition and theorem sets from one window to another.    *)
+fun transfer_sups_thms (WIN(_, _, thms1, sups1, bnd1):window)
+                       (WIN(res2, hyps2, _, _, _):window) =
+    WIN(res2, hyps2, thms1, sups1, bnd1);
+
+end;

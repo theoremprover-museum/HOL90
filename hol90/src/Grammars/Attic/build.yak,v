@@ -1,0 +1,102 @@
+head	1.1;
+access;
+symbols
+	HOL97:1.1.0.2;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	97.06.11.17.08.02;	author kxs;	state dead;
+branches
+	1.1.2.1;
+next	;
+
+1.1.2.1
+date	97.06.11.17.08.04;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@file build.yak was initially added on branch HOL97.
+@
+text
+@@
+
+
+1.1.2.1
+log
+@Directory for all HOL grammars.
+@
+text
+@a0 63
+(*---------------------------------------------------------------------------
+ * How to write your own HOL parser.
+ *
+ * First, generate the lexer and parser from the specification files 
+ * (in this example, hol.lex and hol.yak). These extend and curtail the 
+ * standard HOL lex/parser specification files.
+ *
+      /home/kxs/109.26/bin/ml-lex  hol.lex
+      /home/kxs/109.26/bin/ml-yacc hol.yak
+ *
+ * Then load the rest of this file into a HOL session.
+ *---------------------------------------------------------------------------*)
+
+
+(*---------------------------------------------------------------------------
+ * Load library routines for the parser.
+ *---------------------------------------------------------------------------*)
+cd "ParseBase"; CM.make(); cd "..";
+
+
+(*---------------------------------------------------------------------------
+ * Compile the parser and lexer code.
+ *---------------------------------------------------------------------------*)
+app use ["hol.yak.sig","hol.yak.sml","hol.lex.sml"];
+
+
+
+(*---------------------------------------------------------------------------
+ * Build the parser and lexer structures
+ *---------------------------------------------------------------------------*)
+structure PD_Tokens = HolLrValsFun(LrParser.Token);
+
+structure Lex = HolLex(structure Tokens = PD_Tokens.Tokens
+                       structure Parse_support = Parse_support);
+
+structure P = JoinWithArg(structure ParserData = PD_Tokens.ParserData
+                          structure Lex = Lex
+                          structure LrParser = LrParser);
+
+
+(*---------------------------------------------------------------------------
+ * Build parser.
+ *---------------------------------------------------------------------------*)
+local fun error (s,_,_) = 
+           raise HOL_ERR{origin_structure = "",origin_function="p",message=s}
+
+      fun format [] ol ml = (ol, rev ml) 
+        | format (ANTIQUOTE  x::rst) ol ml = format rst (ol^"^") (x::ml)
+        | format (QUOTE s::rst) ol ml = format rst (ol^s) ml
+in
+fun p ol_frag_list =
+   let val tyvStrm = Type.reset_typevar_stream()
+       val _ = Globals.in_type_spec := NONE
+       val (s,antiq_list) = format ol_frag_list "" []
+       val strm = open_string s
+       val lexer = P.makeLexer (fn _ => input_line strm) (ref antiq_list)
+       val (res,_) = P.parse(0,lexer,error,tyvStrm)
+   in case res
+        of Parse_support.PTM ptm   => Parse_support.Preterm.typecheck ptm
+         | otherwise               => error ("not a term",0,0) 
+   end
+   handle e => Raise e
+end;
+@

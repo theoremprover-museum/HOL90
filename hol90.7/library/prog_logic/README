@@ -1,0 +1,126 @@
++ =====================================================================	+
+|									|
+| LIBRARY	: prog_logic88						|
+|									|
+| DESCRIPTION   : Experimental tools to support programming logics as   |
+|		  described in the paper "Mechanizing Programming       |
+|		  Logics in Higher Order Logic", M.J.C. Gordon, in      |
+|		  "Current Trends in Hardware Verification and          |
+|		  Automated Theorem Proving" edited by 			|
+|		  P.A. Subrahmanyam and Graham Birtwistle, 		|
+|		  Springer-Verlag, 1989.				|
+|									|
+| AUTHOR        : M. Gordon						|
+| DATE		: 23 March 89                                           |
+|									|
+| TRANSLATOR    : MJ Morley, University of Edinburgh [Feb 1993]         |
+|									|
++ =====================================================================	+
+
+
++ --------------------------------------------------------------------- +
+|									|
+| FILES: theories/src                                                   |
+|									|
++ --------------------------------------------------------------------- +
+
+    mk_semantics.ml          defines the semantice of the programming
+                             language
+
+    mk_hoare_thms.sml        derives theorems validating the axioms and
+                             rules of Hoare logic
+
+    mk_hoare_logic_pc.sml    makes a theory with hoare_thms as parents; the 
+                             theory of partial correctness specifications
+
+    mk_halts.sml             build a theory to support a program termination
+                             predicate
+
+    mk_halts_thms.sml        derives theorems validating the axioms and
+                             rules of Hoare logic for total correctness
+
+    mk_hoare_logic_tc.sml    makes a theory with hoare_thms and halts_thms
+                             as parents: total correctness specifications
+
+    mk_dijkstra.sml          creates a theory with definitions and properties
+                             of weakest preconditions and weakest liberal
+                             preconditions
+
+    mk_prog_logic.sml        creates a theory with parents: hoare_logic_pc, 
+                             hoare_logic_th and dijkstra 
+
++ --------------------------------------------------------------------- +
+|									|
+| FILES: src                                                            |
+|									|
++ --------------------------------------------------------------------- +
+
+    syntax_functions.sml     auxiliary syntactic functions for processing
+                             terms representing programs
+
+    hol_match.sml            some special purpose higher-order matching
+                             routines
+
+    hoare_logic.sml          definition of derived rules to support
+                             forward proof in Hoare logic, and tactics to 
+                             support backward proof.
+
+    halts_logic.ml           definition of derived rules to support
+                             forward proof in a version of Hoare logic for
+                             total correctness, aswell as  tactics to 
+                             support backward proof.
+
+    bnd_conv.sml             some supporting CONVersions used in logic
+                             modules
+
+    translations.sml         some (dodgy looking) translations
+
+    prog_logic.sml           builds the system, providing top level
+                             structures PC and TC containing rules and
+                             tactics for partial and total correctness
+                             specifications 
+
++ --------------------------------------------------------------------- +
+|									|
+| FILES: .                                                              |
+|									|
++ --------------------------------------------------------------------- +
+
+    examples.ml              some examples to show the use of Hoare logic
+                             in HOL
+
+    make_prog_logic          make file (makes the theories above)
+
++ --------------------------------------------------------------------- +
+|									|
+| TO REBUILD THE LIBRARY:						|
+|									|
++ --------------------------------------------------------------------- +
+
+     It shouldn't be necessary, but if it is: make_prog_logic <hol90>
+     will reconstruct the theories. See the library help document for
+     details on how to declare this (new) library to HOL90. The
+     contents of files decl_lib.sml hol-init.sml gives the general
+     idea.
+
++ --------------------------------------------------------------------- +
+|									|
+| TO USE THE LIBRARY:							|
+|									|
++ --------------------------------------------------------------------- +
+
+     load_library{lib=prog_logic_lib,theory="foo"} loads everything. 
+     The file examples.ml contains some examples that can be used to
+     exercise the various tools. Working through these would be a good
+     way to learn about them.
+
+     Please note that the contents of this library was produced to
+     test out the ideas reported in the paper "Mechanizing Programming
+     Logics in Higher Order Logic"; they DO NOT provide a robust tool
+     for verifying programs. The library is included here primarily to
+     help readers of the paper who want more details. Eventually, it
+     is hoped to implement (using the ideas here) practical tools to
+     support reasoning about imperative programs. 
+
+
+

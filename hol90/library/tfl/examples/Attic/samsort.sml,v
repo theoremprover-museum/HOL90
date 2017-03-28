@@ -1,0 +1,170 @@
+head	1.1;
+access;
+symbols
+	HOL97:1.1.2.2.0.2
+	bpHOL97:1.1.2.2
+	hol90_9_alpha:1.1.2.2
+	TFL_1:1.1.2.1
+	hol90_pre8_for_multiple_compilers:1.1.0.2;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	96.06.29.15.08.27;	author rjb;	state dead;
+branches
+	1.1.2.1;
+next	;
+
+1.1.2.1
+date	96.06.29.15.08.27;	author rjb;	state Exp;
+branches;
+next	1.1.2.2;
+
+1.1.2.2
+date	96.08.05.15.40.54;	author rjb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@file samsort.sml was initially added on branch hol90_pre8_for_multiple_compilers.
+@
+text
+@@
+
+
+1.1.2.1
+log
+@TFL version 1 for HOL: A well-founded recursive function definition package.
+@
+text
+@a0 89
+(*---------------------------------------------------------------------------
+ *
+ *               SMOOTH APPLICATIVE MERGE SORT
+ *
+ * from Richard O'Keefe, as found in Paulson's ML book 
+ *
+ * This file is just a test of the "auto-definition" facility.
+ *---------------------------------------------------------------------------*)
+
+
+cons_path "../" theory_path;
+new_theory"samsort" handle _ => ();
+map new_parent ["kls_list", "sorting"];
+
+
+(*---------------------------------------------------------------------------
+ *     Merge two lists using R.
+ *---------------------------------------------------------------------------*)
+val merge_def = 
+    function  `(merge(R,[],x) = (x:'a list)) /\
+               (merge(R,CONS h t,[]) = CONS h t)     /\
+               (merge(R, CONS h1 t1, CONS h2 t2) = 
+                 (R h1 h2 => CONS h1 (merge(R,t1,CONS h2 t2))
+                           | CONS h2 (merge(R,CONS h1 t1,t2))))`;
+
+
+(*---------------------------------------------------------------------------
+ *     Reverse a list.
+ *---------------------------------------------------------------------------*)
+val rev_def = function  `(rev([]:'a list, rl) = rl)     /\
+                         (rev(CONS h t, rl) = rev(t, CONS h rl))`;
+
+val reverse_def = 
+    Q.new_definition("reverse", 
+                     `reverse (L:'a list) = rev(L,[])`);
+
+
+(*---------------------------------------------------------------------------
+ *     Merge adjacent lists.
+ *---------------------------------------------------------------------------*)
+val mergepairs_def =
+ function`(mergepairs(R,[],k) = [])           /\
+          (mergepairs(R,[l],k) = [l:'a list]) /\
+          (mergepairs(R,CONS l1 (CONS l2 rst), k) =
+           ((k MOD 2 = 1) => (CONS l1 (CONS l2 rst))
+                       |  mergepairs(R,CONS (merge(R,l1,l2)) rst, k DIV 2)))`;
+
+
+(*---------------------------------------------------------------------------
+ *     Unbundled bottom-up merge sort 
+ *---------------------------------------------------------------------------*)
+val msort_def = 
+function
+    `(msort(R, ([]:'a list), ll, k) = HD(mergepairs(R,ll,0))) /\
+     (msort(R, CONS h t,ll,k) = 
+             msort(R, t, mergepairs(R, CONS [h] ll, k+1), k+1))`;
+
+
+(*---------------------------------------------------------------------------
+ *     Break the next Rchain off from the list. 
+ *---------------------------------------------------------------------------*)
+val nextrun_def =
+     function  `(nextrun(R, run, []) = (reverse run:'a list, [])) /\
+                (nextrun(R, run, CONS h t) =
+                   (R h (HD run) => (reverse run, CONS h t)
+                                 |  nextrun(R, CONS h run, t)))`;
+
+
+(*---------------------------------------------------------------------------
+ *     Unbundled "smooth" bottom-up merge sort.
+ *---------------------------------------------------------------------------*)
+val samsortl_def = 
+       function  `(samsortl(R,[],ll,k):'a list = HD(mergepairs(R,ll,0))) /\
+                  (samsortl(R, CONS h t, ll, k) =
+                     let (run,rst) = nextrun(R,[h],t)
+                     in
+                     samsortl(R, rst, mergepairs(R, CONS run ll, k+1), k+1))`;
+
+
+(*---------------------------------------------------------------------------
+ *     Bundled bottom-up smooth merge sort.
+ *---------------------------------------------------------------------------*)
+val samsort_def = 
+   Q.new_definition("samsort",
+                    `samsort(R, alist):'a list = samsortl(R,alist,[],0)`);
+
+
+
+(* Now all we have to do is prove termination and properties! *)
+@
+
+
+1.1.2.2
+log
+@Updated to TFL release 4.
+@
+text
+@d6 2
+a13 1
+(* map add_theory_to_sml["list", "kls_list", "sorting"]; *)
+d20 2
+a21 2
+    function  `(merge(R, [], x) = (x:'a list)) /\
+               (merge(R, CONS h t, []) = CONS h t)     /\
+d42 5
+a46 5
+   function  `(mergepairs(R,[],k) = [])           /\
+              (mergepairs(R,[l],k) = [l:'a list]) /\
+              (mergepairs(R,CONS l1 (CONS l2 rst), k) =
+               ((k MOD 2 = 1) => CONS l1 (CONS l2 rst)
+                        |  mergepairs(R,CONS (merge(R,l1,l2)) rst, k DIV 2)))`;
+d53 4
+a56 3
+  function
+ `(msort(R, ([]:'a list), ll, k) = HD(mergepairs(R,ll,0))) /\
+  (msort(R, CONS h t,ll,k) = msort(R, t,mergepairs(R,CONS [h] ll, k+1), k+1))`;
+d74 1
+a74 1
+                  (samsortl(R,CONS h t,ll,k) =
+d77 1
+a77 1
+                     samsortl(R, rst, mergepairs(R,CONS run ll, k+1), k+1))`;
+@

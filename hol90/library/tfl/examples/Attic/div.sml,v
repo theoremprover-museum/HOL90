@@ -1,0 +1,97 @@
+head	1.1;
+access;
+symbols
+	HOL97:1.1.2.2.0.2
+	bpHOL97:1.1.2.2
+	hol90_9_alpha:1.1.2.2
+	TFL_1:1.1.2.1
+	hol90_pre8_for_multiple_compilers:1.1.0.2;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	96.06.29.15.08.07;	author rjb;	state dead;
+branches
+	1.1.2.1;
+next	;
+
+1.1.2.1
+date	96.06.29.15.08.07;	author rjb;	state Exp;
+branches;
+next	1.1.2.2;
+
+1.1.2.2
+date	96.08.05.15.40.30;	author rjb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@file div.sml was initially added on branch hol90_pre8_for_multiple_compilers.
+@
+text
+@@
+
+
+1.1.2.1
+log
+@TFL version 1 for HOL: A well-founded recursive function definition package.
+@
+text
+@a0 36
+(* An algorithm for division *)
+
+new_theory"div";
+
+
+val div_def = 
+Rfunction `inv_image ^pred FST`
+   `(div(0,x) = (0,0)) /\
+    (div(SUC x, y) = let (q,r) = div(x,y)
+                     in y <= SUC r => (SUC q, 0) 
+                                   |  (q, SUC r))`;
+
+
+val induction = save_thm("div_induction", #induction div_def);
+val eqns = save_thm("div_eqns", #rules div_def);
+
+val ARITH_TAC = REPEAT (POP_ASSUM MP_TAC) THEN CONV_TAC ARITH_CONV;
+val ABS_PAIR_THM = #nchotomy(assoc "prod" (Hol_datatype.current()));
+
+
+(* Note: We should be able to handle paired let-bindings better. *)
+val div_correctness = Q.store_thm("div_correctness",
+`!a b. 0<b ==> let (q,r) = div(a,b) in (a = b*q + r) /\ r<b`,
+Tfl.REC_INDUCT_TAC induction THEN RW_TAC[eqns] THEN CONJ_TAC THENL
+ [ CONV_TAC (DEPTH_CONV let_CONV) THEN ARITH_TAC, 
+   REPEAT GEN_TAC THEN CHOOSE_THEN(CHOOSE_THEN SUBST1_TAC)
+   (ISPEC(Term`div(x,y)`) ABS_PAIR_THM) THEN RW_TAC[LET_DEF] THEN 
+   CONV_TAC (DEPTH_CONV GEN_BETA_CONV) THEN
+   DISCH_THEN (fn th1 => DISCH_THEN (fn th2 =>  let val th = MP th1 th2 
+   in SUBST1_TAC(CONJUNCT1 th) THEN MP_TAC (CONJ th2 (CONJUNCT2 th)) end)) THEN
+   STRIP_TAC THEN COND_CASES_TAC THEN
+   ASM_RW_TAC(map(theorem"arithmetic")["MULT_CLAUSES","ADD_CLAUSES"]) THEN
+   ARITH_TAC]);
+
+
+html_theory"-";
+@
+
+
+1.1.2.2
+log
+@Updated to TFL release 4.
+@
+text
+@d5 1
+d13 1
+d20 1
+a21 1
+
+@

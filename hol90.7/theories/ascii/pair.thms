@@ -1,0 +1,103 @@
+thid = (pair, 783973474, 929815)
+axioms = []
+definitions =
+[((CURRY_DEF),
+  [],
+  `((! :(('a # 'b -> 'c) -> bool) -> bool) (\(f :'a # 'b -> 'c).
+   ((! :('a -> bool) -> bool) (\(x :'a). ((! :('b -> bool) -> bool)
+   (\(y :'b). (((= :'c -> 'c -> bool)
+   ((((CURRY :('a # 'b -> 'c) -> 'a -> 'b -> 'c) $2) $1) $0)) ($2
+   (((, :'a -> 'b -> 'a # 'b) $1) $0)))))))))`),
+ ((UNCURRY_DEF),
+  [],
+  `((! :(('a -> 'b -> 'c) -> bool) -> bool) (\(f :'a -> 'b -> 'c).
+   ((! :('a -> bool) -> bool) (\(x :'a). ((! :('b -> bool) -> bool)
+   (\(y :'b). (((= :'c -> 'c -> bool)
+   (((UNCURRY :('a -> 'b -> 'c) -> 'a # 'b -> 'c) $2)
+   (((, :'a -> 'b -> 'a # 'b) $1) $0))) (($2 $1) $0))))))))`),
+ ((SND_DEF),
+  [],
+  `((! :('a # 'b -> bool) -> bool) (\(p :'a # 'b).
+   (((= :'b -> 'b -> bool) ((SND :'a # 'b -> 'b) $0))
+   ((@ :('b -> bool) -> 'b) (\(y :'b). ((? :('a -> bool) -> bool)
+   (\(x :'a). (((= :('a -> 'b -> bool) -> ('a -> 'b -> bool) -> bool)
+   (((MK_PAIR :'a -> 'b -> 'a -> 'b -> bool) $0) $1))
+   ((REP_prod :'a # 'b -> 'a -> 'b -> bool) $2)))))))))`),
+ ((FST_DEF),
+  [],
+  `((! :('a # 'b -> bool) -> bool) (\(p :'a # 'b).
+   (((= :'a -> 'a -> bool) ((FST :'a # 'b -> 'a) $0))
+   ((@ :('a -> bool) -> 'a) (\(x :'a). ((? :('b -> bool) -> bool)
+   (\(y :'b). (((= :('a -> 'b -> bool) -> ('a -> 'b -> bool) -> bool)
+   (((MK_PAIR :'a -> 'b -> 'a -> 'b -> bool) $1) $0))
+   ((REP_prod :'a # 'b -> 'a -> 'b -> bool) $2)))))))))`),
+ ((COMMA_DEF),
+  [],
+  `((! :('a -> bool) -> bool) (\(x :'a). ((! :('b -> bool) -> bool)
+   (\(y :'b). (((= :'a # 'b -> 'a # 'b -> bool)
+   (((, :'a -> 'b -> 'a # 'b) $1) $0))
+   ((@ :('a # 'b -> bool) -> 'a # 'b) (\(p :'a # 'b).
+   (((= :('a -> 'b -> bool) -> ('a -> 'b -> bool) -> bool)
+   ((REP_prod :'a # 'b -> 'a -> 'b -> bool) $0))
+   (((MK_PAIR :'a -> 'b -> 'a -> 'b -> bool) $2) $1)))))))))`),
+ ((REP_prod),
+  [],
+  `(((= :('a # 'b -> 'a -> 'b -> bool) ->
+         ('a # 'b -> 'a -> 'b -> bool) -> bool)
+   (REP_prod :'a # 'b -> 'a -> 'b -> bool))
+   ((@ :(('a # 'b -> 'a -> 'b -> bool) -> bool) -> 'a # 'b -> 'a ->
+        'b -> bool) (\(rep :'a # 'b -> 'a -> 'b -> bool). ((/\
+   ((! :('a # 'b -> bool) -> bool) (\(p' :'a # 'b).
+   ((! :('a # 'b -> bool) -> bool) (\(p'' :'a # 'b). ((==>
+   (((= :('a -> 'b -> bool) -> ('a -> 'b -> bool) -> bool) ($2 $1))
+   ($2 $0))) (((= :'a # 'b -> 'a # 'b -> bool) $1) $0)))))))
+   ((! :(('a -> 'b -> bool) -> bool) -> bool) (\(p :'a -> 'b -> bool).
+   (((= :bool -> bool -> bool) ((IS_PAIR :('a -> 'b -> bool) -> bool)
+   $0)) ((? :('a # 'b -> bool) -> bool) (\(p' :'a # 'b).
+   (((= :('a -> 'b -> bool) -> ('a -> 'b -> bool) -> bool) $1) ($2
+   $0)))))))))))`),
+ ((prod_TY_DEF),
+  [],
+  `((? :(('a # 'b -> 'a -> 'b -> bool) -> bool) -> bool)
+   (\(rep :'a # 'b -> 'a -> 'b -> bool).
+   (((TYPE_DEFINITION :(('a -> 'b -> bool) -> bool) ->
+                       ('a # 'b -> 'a -> 'b -> bool) -> bool)
+   (IS_PAIR :('a -> 'b -> bool) -> bool)) $0)))`),
+ ((IS_PAIR_DEF),
+  [],
+  `((! :(('a -> 'b -> bool) -> bool) -> bool) (\(p :'a -> 'b -> bool).
+   (((= :bool -> bool -> bool) ((IS_PAIR :('a -> 'b -> bool) -> bool)
+   $0)) ((? :('a -> bool) -> bool) (\(x :'a).
+   ((? :('b -> bool) -> bool) (\(y :'b).
+   (((= :('a -> 'b -> bool) -> ('a -> 'b -> bool) -> bool) $2)
+   (((MK_PAIR :'a -> 'b -> 'a -> 'b -> bool) $1) $0)))))))))`),
+ ((MK_PAIR_DEF),
+  [],
+  `((! :('a -> bool) -> bool) (\(x :'a). ((! :('b -> bool) -> bool)
+   (\(y :'b). (((= :('a -> 'b -> bool) -> ('a -> 'b -> bool) -> bool)
+   (((MK_PAIR :'a -> 'b -> 'a -> 'b -> bool) $1) $0)) (\(a :'a).
+   (\(b :'b). ((/\ (((= :'a -> 'a -> bool) $1) $3))
+   (((= :'b -> 'b -> bool) $0) $2)))))))))`)]
+theorems =
+[((PAIR_EQ),
+  [],
+  `(((= :bool -> bool -> bool) (((= :'a # 'b -> 'a # 'b -> bool)
+   (((, :'a -> 'b -> 'a # 'b) (x :'a)) (y :'b)))
+   (((, :'a -> 'b -> 'a # 'b) (a :'a)) (b :'b)))) ((/\
+   (((= :'a -> 'a -> bool) (x :'a)) (a :'a))) (((= :'b -> 'b -> bool)
+   (y :'b)) (b :'b))))`),
+ ((SND),
+  [],
+  `((! :('a -> bool) -> bool) (\(x :'a). ((! :('b -> bool) -> bool)
+   (\(y :'b). (((= :'b -> 'b -> bool) ((SND :'a # 'b -> 'b)
+   (((, :'a -> 'b -> 'a # 'b) $1) $0))) $0)))))`),
+ ((FST),
+  [],
+  `((! :('a -> bool) -> bool) (\(x :'a). ((! :('b -> bool) -> bool)
+   (\(y :'b). (((= :'a -> 'a -> bool) ((FST :'a # 'b -> 'a)
+   (((, :'a -> 'b -> 'a # 'b) $1) $0))) $1)))))`),
+ ((PAIR),
+  [],
+  `((! :('a # 'b -> bool) -> bool) (\(x :'a # 'b).
+   (((= :'a # 'b -> 'a # 'b -> bool) (((, :'a -> 'b -> 'a # 'b)
+   ((FST :'a # 'b -> 'a) $0)) ((SND :'a # 'b -> 'b) $0))) $0)))`)]

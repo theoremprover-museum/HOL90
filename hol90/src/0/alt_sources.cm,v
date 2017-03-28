@@ -1,0 +1,263 @@
+head	1.1;
+access;
+symbols;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	96.02.08.00.30.22;	author drs1004;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@New theory mechanism, by Donald Syme, and many other enhancements.
+@
+text
+@
+(*------------------------------------------------------------------------
+ * $Id$
+ *
+ * Alternative Sources description for core hol90 (level 0) 
+ *
+
+sml-cm.108
+Compiler.Control.quotation := true;
+fun m () = CM.make' (CM.cmfile "0/alt_sources.cm");
+ * 
+ *-----------------------------------------------------------------------*)
+
+
+
+Group
+
+
+is
+
+	sml_system.sig
+	sml_system.sml
+
+	globals.sig
+	globals.sml
+
+	exception.sig
+	exception.sml
+
+    	lib.sig
+	lib.sml
+
+	uid.sig
+	uid.sml
+
+	file.sig
+	file.sml
+
+	help.sig
+	help.sml
+
+	save_hol.sig
+	save_hol.sml
+
+	pp.sig
+	pp.sml
+
+	lexis.sig
+	lexis.sml
+
+	type.sig
+	type.sml
+
+	term.sig
+	term.sml
+
+	match.sig
+	match.sml
+
+	dsyntax.sig
+	dsyntax.sml
+
+	hol_pp.extensible.sig
+	hol_pp.extensible.sml
+
+	preterm.sig
+	preterm.sml
+
+	parse_support.sig
+	parse_support.sml
+
+	base.qaq.sml
+	hol_yak.sig
+	hol_yak.sml
+	hol_lex.sml
+
+(*	thy_yak.sig
+	thy_yak.sml
+	thy_lex.sml *)
+
+	parse.sig
+	parse.sml
+
+	thm.sig
+	thm.sml
+
+	net.sig
+	net.sml
+
+	theory/add_to_sml.sml
+	theory/add_to_sml.sig
+
+ 	theory/theory.sig 
+ 	alt_theory.sig 
+        alt_theory.sml
+
+ 	alt_theories.sig 
+        alt_theories.sml
+
+(* 	cache.sml *)
+
+	library/lib_data.sig
+	library/lib_data.sml
+
+	library/lib.yak.sig
+	library/lib.yak.sml
+	library/lib.lex.sml
+
+	library/lib_io.sig
+	library/lib_io.sml
+
+	library/lib.sig
+	library/lib.sml
+
+	install.sig
+	install.sml 
+
+	exists_def.sig
+	exists_def.sml
+
+	const_spec.sig
+	const_spec.sml
+
+	type_def.sig
+	type_def.sml
+
+	const_def.sig
+	const_def.sml
+
+	term_io.sig
+
+	(* base_logic.sig *)
+	alt_hol0.sml
+
+	(* remake theoris essential to th base logic *)
+	../theories/src/mk_min.sig
+	../theories/src/mk_min.sml
+
+(*	../theories/src/mk_exists.sig
+	../theories/src/mk_exists.sml
+
+        ../theories/src/mk_bool.sig
+        ../theories/src/mk_bool.sml *)
+
+(*
+open Base_logic;
+
+val _ = Sml_system.hol_make [((!Globals.HOLdir)^"theories/src/mk_bool.sig")];
+
+val _ = if Globals.remake_theory_files
+	    then Sml_system.hol_make
+		[((!Globals.HOLdir)^"theories/src/mk_bool.sml")]
+	else ();
+
+val _ = if Globals.remake_theory_files
+	    then ()
+	else Sml_system.hol_make ["bool_fix.sml"]
+
+
+local
+fun top_pp_thm ppstrm th =  
+   ( Sml_system.PrettyPrint.begin_block
+       ppstrm
+       Sml_system.PrettyPrint.CONSISTENT 0;
+     Base_logic.Thm.pp_thm ppstrm th; 
+     Sml_system.PrettyPrint.end_block ppstrm)
+in
+val _ = Sml_system.PrettyPrint.install_pp ["Base_logic","Thm","thm"] top_pp_thm
+end;
+
+val _ = Sml_system.PrettyPrint.install_pp
+         ["Base_logic","Type","hol_type"] 
+	 Base_logic.Term_io.Hol_pp.pp_self_parsing_type;
+val _ = Sml_system.PrettyPrint.install_pp
+         ["Base_logic","Term","term"] 
+	 Base_logic.Term_io.Hol_pp.pp_self_parsing_term;
+val _ = Sml_system.PrettyPrint.install_pp
+         ["Base_logic","Library","lib"] 
+	 Base_logic.Library.pp_library;
+
+
+local
+open Base_logic.Thm
+open Base_logic.Term
+in
+  type conv = term -> thm
+  type goal = (term list * term)
+  type validation = thm list -> thm
+  type tactic_result = goal list * validation;
+  type tactic = goal -> tactic_result;
+  type thm_tactic = thm -> tactic
+  type thm_tactical = thm_tactic -> thm_tactic;
+end;
+
+
+structure EMPTY = struct end;
+functor GLOBALS() = EMPTY;
+functor EXCEPTION() = EMPTY;
+functor LIB() = EMPTY;
+functor FILE() = EMPTY;
+functor HELP() = EMPTY;
+functor SAVE_HOL() = EMPTY;
+functor LEXIS() = EMPTY;
+functor TYPE() = EMPTY;
+functor TERM() = EMPTY;
+functor MATCH() = EMPTY;
+functor SYMTAB() = EMPTY;
+functor DSYNTAX() = EMPTY;
+functor HOL_PP() = EMPTY;
+functor PRETERM() = EMPTY;
+functor PARSE_SUPPORT() = EMPTY;
+functor HOL_LEX() = EMPTY;
+functor THM() = EMPTY;
+functor THEORY_DATA() = EMPTY;
+functor THY_PP() = EMPTY;
+functor THY_PARSE() = EMPTY;
+functor DISK_IO_ASCII() = EMPTY;
+functor CACHE() = EMPTY;
+functor DAG() = EMPTY;
+functor THEORY_IO() = EMPTY;
+functor THEORY_OPS() = EMPTY;
+functor THEORY() = EMPTY;
+functor ADD_TO_SML() = EMPTY;
+functor LIB_IO() = EMPTY;
+functor LIBRARY() = EMPTY;
+functor EXISTS_DEF() = EMPTY;
+
+structure bool_theory = EMPTY;
+
+signature EMPTY = sig end
+signature Type_sig = EMPTY
+signature Term_sig = EMPTY
+signature Symtab_sig = EMPTY
+signature Dsyntax_sig = EMPTY;
+
+*)
+
+
+
+
+@

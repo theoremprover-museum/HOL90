@@ -1,0 +1,50 @@
+head	1.1;
+access;
+symbols;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	96.02.08.00.30.13;	author drs1004;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@New theory mechanism, by Donald Syme, and many other enhancements.
+@
+text
+@
+
+ML_LEX=/usr/groups/hol/drs1004/mldist.108.19/bin/ml-lex
+ML_YACC=/usr/groups/hol/drs1004/mldist.108.19/bin/ml-yacc
+
+all: \
+	hol_yak.sig hol_yak.sml hol_lex.sml \
+	thy_yak.sig thy_yak.sml thy_lex.sml
+
+
+thy_yak.sig thy_yak.sml: thy_yak
+	$(ML_YACC) thy_yak
+
+thy_lex.sml: thy_lex thy_yak.sig
+	$(ML_LEX) thy_lex
+
+hol_yak.sig hol_yak.sml: hol_yak
+	$(ML_YACC) hol_yak
+
+hol_lex.sml: hol_lex hol_yak.sig
+	$(ML_LEX) hol_lex
+
+
+
+
+
+
+@

@@ -1,0 +1,507 @@
+<TITLE>Theory: automata</TITLE>
+<H1>Theory: automata</H1>
+<H1>Parents</H1>
+    <UL>
+    <LI><A HREF = "koenig.html"><STRONG>koenig</STRONG></A>
+    <LI><A HREF = "zip.html"><STRONG>zip</STRONG></A>
+    <LI><A HREF = "HOL.html"><STRONG>HOL</STRONG></A>
+    </UL>
+
+
+<HR>
+<H1>Type constants</H1>
+    <UL>
+    
+    </UL>
+
+
+<HR>
+<H1>Term constants</H1>
+    <UL>
+    <LI><STRONG>Trace</STRONG><EM>:('a # 'b -> bool) #
+                                   ('a # 'b -> 'a # 'b -> bool) ->
+                                   (num -> 'a) -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>Implements</STRONG><EM>:('a # 'a1 -> bool) #
+                                        ('a # 'a1 -> 'a # 'a1 -> bool) ->
+                                        ('a # 'a2 -> bool) #
+                                        ('a # 'a2 -> 'a # 'a2 -> bool) ->
+                                        bool</EM>
+        <STRONG>{</STRONG>fixity  = Infix 2000<STRONG>}</STRONG>
+    <LI><STRONG>Simulates</STRONG><EM>:('a # 'a1 -> bool) #
+                                       ('a # 'a1 -> 'a # 'a1 -> bool) ->
+                                       ('a # 'a2 -> bool) #
+                                       ('a # 'a2 -> 'a # 'a2 -> bool) ->
+                                       bool</EM>
+        <STRONG>{</STRONG>fixity  = Infix 2000<STRONG>}</STRONG>
+    <LI><STRONG>Trace_Inv</STRONG><EM>:('a # 'b -> bool) # ('a # 'b -> bool) #
+                                       ('a # 'b -> 'a # 'b -> bool) ->
+                                       (num -> 'a) -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>Deterministic</STRONG><EM>:('a # 'b -> bool) #
+                                           ('a # 'b -> 'a # 'b -> bool) ->
+                                           bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>Prefix_Trace</STRONG><EM>:num ->
+                                          ('a # 'b -> bool) #
+                                          ('a # 'b -> 'a # 'b -> bool) ->
+                                          (num -> 'a) -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>Limit_Trace</STRONG><EM>:('a # 'b -> bool) #
+                                         ('a # 'b -> 'a # 'b -> bool) ->
+                                         (num -> 'a) -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>Reachable</STRONG><EM>:('a # 'b -> bool) #
+                                       ('a # 'b -> 'a # 'b -> bool) ->
+                                       'a # 'b -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>Finite_State</STRONG><EM>:('a # 'b -> bool) #
+                                          ('a # 'b -> 'a # 'b -> bool) ->
+                                          bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>Fin_Non_Det</STRONG><EM>:('a # 'b -> bool) #
+                                         ('a # 'b -> 'a # 'b -> bool) ->
+                                         bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>No_Dead</STRONG><EM>:('a # 'b -> bool) #
+                                     ('a # 'b -> 'a # 'b -> bool) -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>Stuttering</STRONG><EM>:('a # 'b -> bool) #
+                                        ('a # 'b -> 'a # 'b -> bool) ->
+                                        bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>Subset</STRONG><EM>:('a # 'b -> bool) #
+                                    ('a # 'b -> 'a # 'b -> bool) ->
+                                    ('a # ('b -> bool) -> bool) #
+                                    ('a # ('b -> bool) -> 'a # ('b -> bool) ->
+                                    bool)</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>Powerset</STRONG><EM>:('a # 'b -> bool) #
+                                      ('a # 'b -> 'a # 'b -> bool) ->
+                                      ('a # ('b -> bool) -> bool) #
+                                      ('a # ('b -> bool) ->
+                                      'a # ('b -> bool) -> bool)</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>Finite_Powerset</STRONG><EM>:('a # 'b -> bool) #
+                                             ('a # 'b -> 'a # 'b -> bool) ->
+                                             ('a # ('b -> bool) -> bool) #
+                                             ('a # ('b -> bool) ->
+                                             'a # ('b -> bool) -> bool)</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    </UL>
+
+
+<HR>
+<H1>Axioms</H1>
+<DL>
+
+</DL>
+
+
+<HR>
+<H1>Definitions</H1>
+<DL>
+<DT><STRONG>Trace</STRONG>
+<DD>
+<PRE>
+|- !Q N e.
+     Trace (Q,N) e =
+     (?s. Q (e 0,s 0) /\ (!t. N (e t,s t) (e (SUC t),s (SUC t))))
+</PRE>
+
+<DT><STRONG>Implements</STRONG>
+<DD>
+<PRE>
+|- !Q1 N1 Q2 N2.
+     (Q1,N1) Implements (Q2,N2) = (!e. Trace (Q1,N1) e ==> Trace (Q2,N2) e)
+</PRE>
+
+<DT><STRONG>Simulates</STRONG>
+<DD>
+<PRE>
+|- !Q1 N1 Q2 N2.
+     (Q1,N1) Simulates (Q2,N2) =
+     (?R.
+       (!e s1. Q1 (e,s1) ==> (?s2. Q2 (e,s2) /\ R e s1 s2)) /\
+       (!e e' s1 s1' s2.
+         R e s1 s2 /\ N1 (e,s1) (e',s1') ==>
+         (?s2'. R e' s1' s2' /\ N2 (e,s2) (e',s2'))))
+</PRE>
+
+<DT><STRONG>Trace_Inv</STRONG>
+<DD>
+<PRE>
+|- !Q P N e.
+     Trace_Inv (Q,P,N) e =
+     (?s.
+       Q (e 0,s 0) /\
+       (!t. P (e t,s t)) /\
+       (!t. N (e t,s t) (e (SUC t),s (SUC t))))
+</PRE>
+
+<DT><STRONG>Deterministic</STRONG>
+<DD>
+<PRE>
+|- !Q N.
+     Deterministic (Q,N) =
+     (!e s s'. Q (e,s) /\ Q (e,s') ==> (s = s')) /\
+     (!e s e' s' s''. N (e,s) (e',s') /\ N (e,s) (e',s'') ==> (s' = s''))
+</PRE>
+
+<DT><STRONG>Prefix_Trace</STRONG>
+<DD>
+<PRE>
+|- !n Q N e.
+     Prefix_Trace n (Q,N) e =
+     (?s. Q (e 0,s 0) /\ (!t. t < n ==> N (e t,s t) (e (SUC t),s (SUC t))))
+</PRE>
+
+<DT><STRONG>Limit_Trace</STRONG>
+<DD>
+<PRE>
+|- !G e. Limit_Trace G e = (!n. Prefix_Trace n G e)
+</PRE>
+
+<DT><STRONG>Reachable</STRONG>
+<DD>
+<PRE>
+|- !Q N e' s'.
+     Reachable (Q,N) (e',s') =
+     (?n e s.
+       (e n = e') /\
+       (s n = s') /\
+       Q (e 0,s 0) /\
+       (!t. t < n ==> N (e t,s t) (e (SUC t),s (SUC t))))
+</PRE>
+
+<DT><STRONG>Finite_State</STRONG>
+<DD>
+<PRE>
+|- !Q N. Finite_State (Q,N) = Finite (Reachable (Q,N))
+</PRE>
+
+<DT><STRONG>Fin_Non_Det</STRONG>
+<DD>
+<PRE>
+|- !Q N.
+     Fin_Non_Det (Q,N) =
+     (!e. Finite (\s. Q (e,s))) /\ (!e s e'. Finite (\s'. N (e,s) (e',s')))
+</PRE>
+
+<DT><STRONG>No_Dead</STRONG>
+<DD>
+<PRE>
+|- !Q N.
+     No_Dead (Q,N) =
+     (!e s. Reachable (Q,N) (e,s) ==> (?e' s'. N (e,s) (e',s')))
+</PRE>
+
+<DT><STRONG>Stuttering</STRONG>
+<DD>
+<PRE>
+|- !Q N. Stuttering (Q,N) = (!e s. Reachable (Q,N) (e,s) ==> N (e,s) (e,s))
+</PRE>
+
+<DT><STRONG>Subset</STRONG>
+<DD>
+<PRE>
+|- !Q N.
+     Subset (Q,N) =
+     ((\(e,x). (!s. x s = Q (e,s)) /\ (?s. x s)),
+      (\(e,x) (e',x').
+        (!s'. x' s' = (?s. x s /\ N (e,s) (e',s'))) /\ (?s'. x' s')))
+</PRE>
+
+<DT><STRONG>Powerset</STRONG>
+<DD>
+<PRE>
+|- !Q N.
+     Powerset (Q,N) =
+     ((\(e,x). (!s. x s ==> Q (e,s)) /\ (?s. x s)),
+      (\(e,x) (e',x').
+        (!s'. x' s' ==> (?s. x s /\ N (e,s) (e',s'))) /\ (?s'. x' s')))
+</PRE>
+
+<DT><STRONG>Finite_Powerset</STRONG>
+<DD>
+<PRE>
+|- !Q N.
+     Finite_Powerset (Q,N) =
+     ((\(e,x). (!s. x s ==> Q (e,s)) /\ (?s. x s) /\ Finite x),
+      (\(e,x) (e',x').
+        (!s'. x' s' ==> (?s. x s /\ N (e,s) (e',s'))) /\
+        (?s'. x' s') /\
+        Finite x'))
+</PRE>
+
+</DL>
+
+
+<HR>
+<H1>Theorems</H1>
+<DL>
+<DT><STRONG>Naive_Lemma</STRONG>
+<DD>
+<PRE>
+|- !P. ?Q N. P = Trace (Q,N)
+</PRE>
+
+<DT><STRONG>Sim_imp_Imp</STRONG>
+<DD>
+<PRE>
+|- !Q1 Q2 N1 N2.
+     (Q1,N1) Simulates (Q2,N2) ==> (!e. Trace (Q1,N1) e ==> Trace (Q2,N2) e)
+</PRE>
+
+<DT><STRONG>Sim_Trans</STRONG>
+<DD>
+<PRE>
+|- !Q1 N1 Q2 N2 Q3 N3.
+     (Q1,N1) Simulates (Q2,N2) /\ (Q2,N2) Simulates (Q3,N3) ==>
+     (Q1,N1) Simulates (Q3,N3)
+</PRE>
+
+<DT><STRONG>Trace_Inv_Trace</STRONG>
+<DD>
+<PRE>
+|- !e Q P N. Trace_Inv (Q,P,N) e = Trace (Q,(\s s'. P s /\ N s s')) e
+</PRE>
+
+<DT><STRONG>Trace_Inv_Trace'</STRONG>
+<DD>
+<PRE>
+|- !e Q P N. Trace_Inv (Q,P,N) e = Trace (Q,(\s s'. P s /\ P s' /\ N s s')) e
+</PRE>
+
+<DT><STRONG>Trace_imp_Trace_Inv</STRONG>
+<DD>
+<PRE>
+|- !Q P N.
+     (?P'.
+       (!e s. Q (e,s) ==> P (e,s) /\ P' (e,s)) /\
+       (!e s e' s'.
+         N (e,s) (e',s') /\ P (e,s) /\ P' (e,s) ==>
+         P (e',s') /\ P' (e',s'))) ==>
+     (!e. Trace (Q,N) e ==> Trace_Inv (Q,P,N) e)
+</PRE>
+
+<DT><STRONG>Trace_Inv_imp_Trace</STRONG>
+<DD>
+<PRE>
+|- !Q P N e. Trace_Inv (Q,P,N) e ==> Trace (Q,N) e
+</PRE>
+
+<DT><STRONG>Trace_eq_Trace_Inv'</STRONG>
+<DD>
+<PRE>
+|- !N P Q.
+     (?P'.
+       (!e s. Q (e,s) ==> P (e,s) /\ P' (e,s)) /\
+       (!e s e' s'.
+         N (e,s) (e',s') /\ P (e,s) /\ P' (e,s) ==>
+         P (e',s') /\ P' (e',s'))) ==>
+     (!e. Trace (Q,N) e = Trace_Inv (Q,P,N) e)
+</PRE>
+
+<DT><STRONG>Trace_eq_Trace_Inv</STRONG>
+<DD>
+<PRE>
+|- !Q P N.
+     (!e s. Q (e,s) ==> P (e,s)) /\
+     (!e s e' s'. N (e,s) (e',s') /\ P (e,s) ==> P (e',s')) ==>
+     (!e. Trace (Q,N) e = Trace_Inv (Q,P,N) e)
+</PRE>
+
+<DT><STRONG>Trace_imp_Limit</STRONG>
+<DD>
+<PRE>
+|- !Q N e. Trace (Q,N) e ==> Limit_Trace (Q,N) e
+</PRE>
+
+<DT><STRONG>Deterministic_Limit_imp_Trace</STRONG>
+<DD>
+<PRE>
+|- !Q N. Deterministic (Q,N) ==> (!e. Limit_Trace (Q,N) e ==> Trace (Q,N) e)
+</PRE>
+
+<DT><STRONG>Deterministic_Limit_eq_Trace</STRONG>
+<DD>
+<PRE>
+|- !Q N. Deterministic (Q,N) ==> (!e. Trace (Q,N) e = Limit_Trace (Q,N) e)
+</PRE>
+
+<DT><STRONG>Prefix_Trace_imp_Prefix_Trace</STRONG>
+<DD>
+<PRE>
+|- !Q1 Q2 N1 N2.
+     (?R.
+       (!e s1. Q1 (e,s1) ==> (?s2. Q2 (e,s2) /\ R e s1 s2)) /\
+       (!e e' s1 s1' s2.
+         R e s1 s2 /\ N1 (e,s1) (e',s1') ==>
+         (?s2'. R e' s1' s2' /\ N2 (e,s2) (e',s2')))) ==>
+     (!e n. Prefix_Trace n (Q1,N1) e ==> Prefix_Trace n (Q2,N2) e)
+</PRE>
+
+<DT><STRONG>Deterministic_Subset</STRONG>
+<DD>
+<PRE>
+|- !Q N. Deterministic (Subset (Q,N))
+</PRE>
+
+<DT><STRONG>Prefix_imp_Prefix_Subset</STRONG>
+<DD>
+<PRE>
+|- !Q N e n. Prefix_Trace n (Q,N) e ==> Prefix_Trace n (Subset (Q,N)) e
+</PRE>
+
+<DT><STRONG>Prefix_Powerset_imp_Prefix</STRONG>
+<DD>
+<PRE>
+|- !Q N e n. Prefix_Trace n (Powerset (Q,N)) e ==> Prefix_Trace n (Q,N) e
+</PRE>
+
+<DT><STRONG>Prefix_Subset_imp_Prefix_Powerset</STRONG>
+<DD>
+<PRE>
+|- !Q N e n.
+     Prefix_Trace n (Subset (Q,N)) e ==> Prefix_Trace n (Powerset (Q,N)) e
+</PRE>
+
+<DT><STRONG>Limit_imp_Limit_Subset</STRONG>
+<DD>
+<PRE>
+|- !Q N e. Limit_Trace (Q,N) e ==> Limit_Trace (Subset (Q,N)) e
+</PRE>
+
+<DT><STRONG>Limit_Subset_imp_Trace_Subset</STRONG>
+<DD>
+<PRE>
+|- !N Q e. Limit_Trace (Subset (Q,N)) e ==> Trace (Subset (Q,N)) e
+</PRE>
+
+<DT><STRONG>Trace_Subset_imp_Trace_Powerset</STRONG>
+<DD>
+<PRE>
+|- !Q N e. Trace (Subset (Q,N)) e ==> Trace (Powerset (Q,N)) e
+</PRE>
+
+<DT><STRONG>Trace_Powerset_imp_Limit_Powerset</STRONG>
+<DD>
+<PRE>
+|- !N Q e. Trace (Powerset (Q,N)) e ==> Limit_Trace (Powerset (Q,N)) e
+</PRE>
+
+<DT><STRONG>Limit_Powerset_imp_Limit</STRONG>
+<DD>
+<PRE>
+|- !Q N e. Limit_Trace (Powerset (Q,N)) e ==> Limit_Trace (Q,N) e
+</PRE>
+
+<DT><STRONG>Trace_Finite_Powerset_eq_Trace</STRONG>
+<DD>
+<PRE>
+|- !Q N e. Trace (Finite_Powerset (Q,N)) e = Trace (Q,N) e
+</PRE>
+
+<DT><STRONG>Sim_imp_Imp'</STRONG>
+<DD>
+<PRE>
+|- !N2 Q2 N1 Q1.
+     (Q1,N1) Simulates Finite_Powerset (Q2,N2) ==>
+     (!e. Trace (Q1,N1) e ==> Trace (Q2,N2) e)
+</PRE>
+
+<DT><STRONG>No_Dead_THM</STRONG>
+<DD>
+<PRE>
+|- No_Dead (Q,N) =
+   (!e' s'.
+     Reachable (Q,N) (e',s') ==>
+     (?e s.
+       (e 0 = e') /\ (s 0 = s') /\ (!t. N (e t,s t) (e (SUC t),s (SUC t)))))
+</PRE>
+
+<DT><STRONG>Stutter_No_Dead</STRONG>
+<DD>
+<PRE>
+|- !Q N. Stuttering (Q,N) ==> No_Dead (Q,N)
+</PRE>
+
+<DT><STRONG>Complete_Deterministic</STRONG>
+<DD>
+<PRE>
+|- !Q1 Q2 N1 N2.
+     No_Dead (Q1,N1) /\ Deterministic (Q2,N2) ==>
+     (!e. Trace (Q1,N1) e ==> Trace (Q2,N2) e) ==>
+     (Q1,N1) Simulates (Q2,N2)
+</PRE>
+
+<DT><STRONG>Simulates_Subset_Powerset</STRONG>
+<DD>
+<PRE>
+|- !Q1 N1 Q2 N2.
+     (Q1,N1) Simulates Subset (Q2,N2) ==> (Q1,N1) Simulates Powerset (Q2,N2)
+</PRE>
+
+<DT><STRONG>Subset_sim_Powerset</STRONG>
+<DD>
+<PRE>
+|- !Q N. Subset (Q,N) Simulates Powerset (Q,N)
+</PRE>
+
+<DT><STRONG>Trace_Infinite_Path</STRONG>
+<DD>
+<PRE>
+|- !Q N.
+     Trace (Q,N) e =
+     Infinite_Path (0,x)
+       (\(t,s) (t',s').
+         (t' = SUC t) /\
+         ((t = 0) => (Q (e 0,s')) | (N (e (PRE t),s) (e t,s'))))
+</PRE>
+
+<DT><STRONG>Limit_Unbounded</STRONG>
+<DD>
+<PRE>
+|- !Q N.
+     Limit_Trace (Q,N) e =
+     Unbounded_Path (0,x)
+       (\(t,s) (t',s').
+         (t' = SUC t) /\
+         ((t = 0) => (Q (e 0,s')) | (N (e (PRE t),s) (e t,s'))))
+</PRE>
+
+<DT><STRONG>Fin_Non_Det_Powerset_Trace</STRONG>
+<DD>
+<PRE>
+|- !Q N.
+     Fin_Non_Det (Q,N) ==> (!e. Trace (Powerset (Q,N)) e ==> Trace (Q,N) e)
+</PRE>
+
+<DT><STRONG>Fin_Sim_Powerset_imp_Imp</STRONG>
+<DD>
+<PRE>
+|- !Q1 N1 Q2 N2.
+     Fin_Non_Det (Q2,N2) ==>
+     (Q1,N1) Simulates Powerset (Q2,N2) ==>
+     (!e. Trace (Q1,N1) e ==> Trace (Q2,N2) e)
+</PRE>
+
+<DT><STRONG>Complete_No_Dead</STRONG>
+<DD>
+<PRE>
+|- !Q1 N1 Q2 N2.
+     No_Dead (Q1,N1) /\ (!e. Trace (Q1,N1) e ==> Trace (Q2,N2) e) ==>
+     (Q1,N1) Simulates Powerset (Q2,N2)
+</PRE>
+
+<DT><STRONG>Subset_Simulates_Finite_Powerset</STRONG>
+<DD>
+<PRE>
+|- !Q N. Fin_Non_Det (Q,N) ==> Subset (Q,N) Simulates Finite_Powerset (Q,N)
+</PRE>
+
+</DL>
+
+
+<HR>

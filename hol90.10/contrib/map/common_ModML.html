@@ -1,0 +1,908 @@
+<TITLE>Theory: common_ModML</TITLE>
+<H1>Theory: common_ModML</H1>
+<H1>Parents</H1>
+    <UL>
+    <LI><A HREF = "holML_Plain_Core.html"><STRONG>holML_Plain_Core</STRONG></A>
+    <LI><A HREF = "finite_functions.html"><STRONG>finite_functions</STRONG></A>
+    <LI><A HREF = "partial_functions.html"><STRONG>partial_functions</STRONG></A>
+    <LI><A HREF = "lift.html"><STRONG>lift</STRONG></A>
+    </UL>
+
+
+<HR>
+<H1>Type constants</H1>
+    <UL>
+    <LI><STRONG>sigid</STRONG>(Arity = 0)
+    <LI><STRONG>funid</STRONG>(Arity = 0)
+    <LI><STRONG>joint_ty_valdesc_valdesc_option_valdesc</STRONG>(Arity = 0)
+    <LI><STRONG>valdesc</STRONG>(Arity = 0)
+    <LI><STRONG>valdesc_option_valdesc</STRONG>(Arity = 0)
+    <LI><STRONG>joint_ty_exdesc_exdesc_option_exdesc</STRONG>(Arity = 0)
+    <LI><STRONG>exdesc</STRONG>(Arity = 0)
+    <LI><STRONG>exdesc_option_exdesc</STRONG>(Arity = 0)
+    </UL>
+
+
+<HR>
+<H1>Term constants</H1>
+    <UL>
+    <LI><STRONG>REP_sigid</STRONG><EM>:sigid -> string ltree</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>ABS_sigid</STRONG><EM>:string ltree -> sigid</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>SIGID</STRONG><EM>:string -> sigid</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>SIGID_arg</STRONG><EM>:sigid -> string</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>REP_funid</STRONG><EM>:funid -> string ltree</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>ABS_funid</STRONG><EM>:string ltree -> funid</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>FUNID</STRONG><EM>:string -> funid</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>FUNID_arg</STRONG><EM>:funid -> string</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>less_funid</STRONG><EM>:funid -> funid -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>REP_joint_ty_valdesc_valdesc_option_valdesc</STRONG><EM>:joint_ty_valdesc_valdesc_option_valdesc ->
+                                                                         (var +
+                                                                         one +
+                                                                         one)
+                                                                         ltree</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>ABS_joint_ty_valdesc_valdesc_option_valdesc</STRONG><EM>:(var +
+                                                                         one +
+                                                                         one)
+                                                                         ltree ->
+                                                                         joint_ty_valdesc_valdesc_option_valdesc</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>JOINT_int_VARvaldesc</STRONG><EM>:var ->
+                                                  joint_ty_valdesc_valdesc_option_valdesc ->
+                                                  joint_ty_valdesc_valdesc_option_valdesc</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>JOINT_int_valdesc_NONE_valdesc</STRONG><EM>:joint_ty_valdesc_valdesc_option_valdesc</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>JOINT_int_valdesc_SOME_valdesc</STRONG><EM>:joint_ty_valdesc_valdesc_option_valdesc ->
+                                                            joint_ty_valdesc_valdesc_option_valdesc</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>joint_ty_valdesc_valdesc_option_valdesc_select</STRONG><EM>:joint_ty_valdesc_valdesc_option_valdesc ->
+                                                                            num</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>valdesc_rep</STRONG><EM>:valdesc ->
+                                         joint_ty_valdesc_valdesc_option_valdesc</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>valdesc_abs</STRONG><EM>:joint_ty_valdesc_valdesc_option_valdesc ->
+                                         valdesc</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>valdesc_option_valdesc_rep</STRONG><EM>:valdesc_option_valdesc ->
+                                                        joint_ty_valdesc_valdesc_option_valdesc</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>valdesc_option_valdesc_abs</STRONG><EM>:joint_ty_valdesc_valdesc_option_valdesc ->
+                                                        valdesc_option_valdesc</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>int_VARvaldesc</STRONG><EM>:var -> valdesc_option_valdesc ->
+                                            valdesc</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>int_valdesc_NONE_valdesc</STRONG><EM>:valdesc_option_valdesc</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>int_valdesc_SOME_valdesc</STRONG><EM>:valdesc ->
+                                                      valdesc_option_valdesc</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>int_inj_valdesc_option_valdesc</STRONG><EM>:valdesc option ->
+                                                            valdesc_option_valdesc</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>int_inv_valdesc_option_valdesc</STRONG><EM>:valdesc_option_valdesc ->
+                                                            valdesc
+                                                            option</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>VARvaldesc</STRONG><EM>:var -> valdesc option -> valdesc</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>dist_aux_ftn_valdesc</STRONG><EM>:valdesc -> num</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>dist_aux_ftn_valdesc_option_valdesc</STRONG><EM>:valdesc_option_valdesc ->
+                                                                 num</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>int_VARvaldesc_arg1</STRONG><EM>:valdesc -> var</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>int_VARvaldesc_arg2</STRONG><EM>:valdesc ->
+                                                 valdesc_option_valdesc</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>int_valdesc_SOME_valdesc_arg</STRONG><EM>:valdesc_option_valdesc ->
+                                                          valdesc</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>REP_joint_ty_exdesc_exdesc_option_exdesc</STRONG><EM>:joint_ty_exdesc_exdesc_option_exdesc ->
+                                                                      (excon +
+                                                                      one +
+                                                                      one)
+                                                                      ltree</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>ABS_joint_ty_exdesc_exdesc_option_exdesc</STRONG><EM>:(excon +
+                                                                      one +
+                                                                      one)
+                                                                      ltree ->
+                                                                      joint_ty_exdesc_exdesc_option_exdesc</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>JOINT_int_EXCONexdesc</STRONG><EM>:excon ->
+                                                   joint_ty_exdesc_exdesc_option_exdesc ->
+                                                   joint_ty_exdesc_exdesc_option_exdesc</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>JOINT_int_exdesc_NONE_exdesc</STRONG><EM>:joint_ty_exdesc_exdesc_option_exdesc</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>JOINT_int_exdesc_SOME_exdesc</STRONG><EM>:joint_ty_exdesc_exdesc_option_exdesc ->
+                                                          joint_ty_exdesc_exdesc_option_exdesc</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>joint_ty_exdesc_exdesc_option_exdesc_select</STRONG><EM>:joint_ty_exdesc_exdesc_option_exdesc ->
+                                                                         num</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>exdesc_rep</STRONG><EM>:exdesc ->
+                                        joint_ty_exdesc_exdesc_option_exdesc</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>exdesc_abs</STRONG><EM>:joint_ty_exdesc_exdesc_option_exdesc ->
+                                        exdesc</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>exdesc_option_exdesc_rep</STRONG><EM>:exdesc_option_exdesc ->
+                                                      joint_ty_exdesc_exdesc_option_exdesc</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>exdesc_option_exdesc_abs</STRONG><EM>:joint_ty_exdesc_exdesc_option_exdesc ->
+                                                      exdesc_option_exdesc</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>int_EXCONexdesc</STRONG><EM>:excon -> exdesc_option_exdesc ->
+                                             exdesc</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>int_exdesc_NONE_exdesc</STRONG><EM>:exdesc_option_exdesc</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>int_exdesc_SOME_exdesc</STRONG><EM>:exdesc ->
+                                                    exdesc_option_exdesc</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>int_inj_exdesc_option_exdesc</STRONG><EM>:exdesc option ->
+                                                          exdesc_option_exdesc</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>int_inv_exdesc_option_exdesc</STRONG><EM>:exdesc_option_exdesc ->
+                                                          exdesc option</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>EXCONexdesc</STRONG><EM>:excon -> exdesc option -> exdesc</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>dist_aux_ftn_exdesc</STRONG><EM>:exdesc -> num</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>dist_aux_ftn_exdesc_option_exdesc</STRONG><EM>:exdesc_option_exdesc ->
+                                                               num</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>int_EXCONexdesc_arg1</STRONG><EM>:exdesc -> excon</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>int_EXCONexdesc_arg2</STRONG><EM>:exdesc ->
+                                                  exdesc_option_exdesc</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>int_exdesc_SOME_exdesc_arg</STRONG><EM>:exdesc_option_exdesc ->
+                                                        exdesc</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>eval_valdesc</STRONG><EM>:valdesc -> state -> state ->
+                                          var set -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>eval_exdesc</STRONG><EM>:exdesc -> state -> state ->
+                                         excon set -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    </UL>
+
+
+<HR>
+<H1>Axioms</H1>
+<DL>
+
+</DL>
+
+
+<HR>
+<H1>Definitions</H1>
+<DL>
+<DT><STRONG>sigid_TY_DEF</STRONG>
+<DD>
+<PRE>
+|- ?rep. TYPE_DEFINITION (TRP (\v tl. (?s. v = s) /\ (LENGTH tl = 0))) rep
+</PRE>
+
+<DT><STRONG>sigid_ISO_DEF</STRONG>
+<DD>
+<PRE>
+|- (!a. ABS_sigid (REP_sigid a) = a) /\
+   (!r.
+     TRP (\v tl. (?s. v = s) /\ (LENGTH tl = 0)) r =
+     REP_sigid (ABS_sigid r) =
+     r)
+</PRE>
+
+<DT><STRONG>SIGID_DEF</STRONG>
+<DD>
+<PRE>
+|- !s. SIGID s = ABS_sigid (Node s [])
+</PRE>
+
+<DT><STRONG>SIGID_arg_DEF</STRONG>
+<DD>
+<PRE>
+|- !s. SIGID_arg (SIGID s) = s
+</PRE>
+
+<DT><STRONG>funid_TY_DEF</STRONG>
+<DD>
+<PRE>
+|- ?rep. TYPE_DEFINITION (TRP (\v tl. (?s. v = s) /\ (LENGTH tl = 0))) rep
+</PRE>
+
+<DT><STRONG>funid_ISO_DEF</STRONG>
+<DD>
+<PRE>
+|- (!a. ABS_funid (REP_funid a) = a) /\
+   (!r.
+     TRP (\v tl. (?s. v = s) /\ (LENGTH tl = 0)) r =
+     REP_funid (ABS_funid r) =
+     r)
+</PRE>
+
+<DT><STRONG>FUNID_DEF</STRONG>
+<DD>
+<PRE>
+|- !s. FUNID s = ABS_funid (Node s [])
+</PRE>
+
+<DT><STRONG>FUNID_arg_DEF</STRONG>
+<DD>
+<PRE>
+|- !s. FUNID_arg (FUNID s) = s
+</PRE>
+
+<DT><STRONG>less_funid_DEF</STRONG>
+<DD>
+<PRE>
+|- !f1 f2. less_funid f1 f2 = ltstring (FUNID_arg f1) (FUNID_arg f2)
+</PRE>
+
+<DT><STRONG>joint_ty_valdesc_valdesc_option_valdesc_TY_DEF</STRONG>
+<DD>
+<PRE>
+|- ?rep.
+     TYPE_DEFINITION
+       (TRP
+         (\v tl.
+           (?v. v = INL v) /\ (LENGTH tl = SUC 0) \/
+           (v = INR (INL one)) /\ (LENGTH tl = 0) \/
+           (v = INR (INR one)) /\ (LENGTH tl = SUC 0)))
+       rep
+</PRE>
+
+<DT><STRONG>joint_ty_valdesc_valdesc_option_valdesc_ISO_DEF</STRONG>
+<DD>
+<PRE>
+|- (!a.
+     ABS_joint_ty_valdesc_valdesc_option_valdesc
+       (REP_joint_ty_valdesc_valdesc_option_valdesc a) =
+     a) /\
+   (!r.
+     TRP
+       (\v tl.
+         (?v. v = INL v) /\ (LENGTH tl = SUC 0) \/
+         (v = INR (INL one)) /\ (LENGTH tl = 0) \/
+         (v = INR (INR one)) /\ (LENGTH tl = SUC 0))
+       r =
+     REP_joint_ty_valdesc_valdesc_option_valdesc
+       (ABS_joint_ty_valdesc_valdesc_option_valdesc r) =
+     r)
+</PRE>
+
+<DT><STRONG>JOINT_int_VARvaldesc_DEF</STRONG>
+<DD>
+<PRE>
+|- !v' j.
+     JOINT_int_VARvaldesc v' j =
+     ABS_joint_ty_valdesc_valdesc_option_valdesc
+       (Node (INL v') [REP_joint_ty_valdesc_valdesc_option_valdesc j])
+</PRE>
+
+<DT><STRONG>JOINT_int_valdesc_NONE_valdesc_DEF</STRONG>
+<DD>
+<PRE>
+|- JOINT_int_valdesc_NONE_valdesc =
+   ABS_joint_ty_valdesc_valdesc_option_valdesc (Node (INR (INL one)) [])
+</PRE>
+
+<DT><STRONG>JOINT_int_valdesc_SOME_valdesc_DEF</STRONG>
+<DD>
+<PRE>
+|- !j.
+     JOINT_int_valdesc_SOME_valdesc j =
+     ABS_joint_ty_valdesc_valdesc_option_valdesc
+       (Node (INR (INR one)) [REP_joint_ty_valdesc_valdesc_option_valdesc j])
+</PRE>
+
+<DT><STRONG>joint_ty_valdesc_valdesc_option_valdesc_select_DEF</STRONG>
+<DD>
+<PRE>
+|- (!v' j.
+     joint_ty_valdesc_valdesc_option_valdesc_select
+       (JOINT_int_VARvaldesc v' j) =
+     ((joint_ty_valdesc_valdesc_option_valdesc_select j = 2) => 1 | 0)) /\
+   (joint_ty_valdesc_valdesc_option_valdesc_select
+      JOINT_int_valdesc_NONE_valdesc =
+    2) /\
+   (!j.
+     joint_ty_valdesc_valdesc_option_valdesc_select
+       (JOINT_int_valdesc_SOME_valdesc j) =
+     ((joint_ty_valdesc_valdesc_option_valdesc_select j = 1) => 2 | 0))
+</PRE>
+
+<DT><STRONG>valdesc_TY_DEF</STRONG>
+<DD>
+<PRE>
+|- ?rep.
+     TYPE_DEFINITION
+       (\x. joint_ty_valdesc_valdesc_option_valdesc_select x = 1)
+       rep
+</PRE>
+
+<DT><STRONG>valdesc_REP_ABS</STRONG>
+<DD>
+<PRE>
+|- (!a. valdesc_abs (valdesc_rep a) = a) /\
+   (!r.
+     (\x. joint_ty_valdesc_valdesc_option_valdesc_select x = 1) r =
+     valdesc_rep (valdesc_abs r) =
+     r)
+</PRE>
+
+<DT><STRONG>valdesc_option_valdesc_TY_DEF</STRONG>
+<DD>
+<PRE>
+|- ?rep.
+     TYPE_DEFINITION
+       (\x. joint_ty_valdesc_valdesc_option_valdesc_select x = 2)
+       rep
+</PRE>
+
+<DT><STRONG>valdesc_option_valdesc_REP_ABS</STRONG>
+<DD>
+<PRE>
+|- (!a. valdesc_option_valdesc_abs (valdesc_option_valdesc_rep a) = a) /\
+   (!r.
+     (\x. joint_ty_valdesc_valdesc_option_valdesc_select x = 2) r =
+     valdesc_option_valdesc_rep (valdesc_option_valdesc_abs r) =
+     r)
+</PRE>
+
+<DT><STRONG>int_VARvaldesc_DEF</STRONG>
+<DD>
+<PRE>
+|- !x1 x2.
+     int_VARvaldesc x1 x2 =
+     valdesc_abs (JOINT_int_VARvaldesc x1 (valdesc_option_valdesc_rep x2))
+</PRE>
+
+<DT><STRONG>int_valdesc_NONE_valdesc_DEF</STRONG>
+<DD>
+<PRE>
+|- int_valdesc_NONE_valdesc =
+   valdesc_option_valdesc_abs JOINT_int_valdesc_NONE_valdesc
+</PRE>
+
+<DT><STRONG>int_valdesc_SOME_valdesc_DEF</STRONG>
+<DD>
+<PRE>
+|- !x1.
+     int_valdesc_SOME_valdesc x1 =
+     valdesc_option_valdesc_abs
+       (JOINT_int_valdesc_SOME_valdesc (valdesc_rep x1))
+</PRE>
+
+<DT><STRONG>int_inj_valdesc_option_valdesc</STRONG>
+<DD>
+<PRE>
+|- (int_inj_valdesc_option_valdesc NONE = int_valdesc_NONE_valdesc) /\
+   (!x0.
+     int_inj_valdesc_option_valdesc (SOME x0) = int_valdesc_SOME_valdesc x0)
+</PRE>
+
+<DT><STRONG>int_inv_valdesc_option_valdesc</STRONG>
+<DD>
+<PRE>
+|- (int_inv_valdesc_option_valdesc int_valdesc_NONE_valdesc = NONE) /\
+   (!x1.
+     int_inv_valdesc_option_valdesc (int_valdesc_SOME_valdesc x1) = SOME x1)
+</PRE>
+
+<DT><STRONG>VARvaldesc</STRONG>
+<DD>
+<PRE>
+|- VARvaldesc =
+   (\x0 x1. int_VARvaldesc x0 (int_inj_valdesc_option_valdesc x1))
+</PRE>
+
+<DT><STRONG>dist_aux_ftn_valdesc_DEF</STRONG>
+<DD>
+<PRE>
+|- (!x1 x2. dist_aux_ftn_valdesc (int_VARvaldesc x1 x2) = 0) /\
+   (dist_aux_ftn_valdesc_option_valdesc int_valdesc_NONE_valdesc = 1) /\
+   (!x1.
+     dist_aux_ftn_valdesc_option_valdesc (int_valdesc_SOME_valdesc x1) = 2)
+</PRE>
+
+<DT><STRONG>int_VARvaldesc_arg1_DEF</STRONG>
+<DD>
+<PRE>
+|- !x1 x2. int_VARvaldesc_arg1 (int_VARvaldesc x1 x2) = x1
+</PRE>
+
+<DT><STRONG>int_VARvaldesc_arg2_DEF</STRONG>
+<DD>
+<PRE>
+|- !x1 x2. int_VARvaldesc_arg2 (int_VARvaldesc x1 x2) = x2
+</PRE>
+
+<DT><STRONG>int_valdesc_SOME_valdesc_arg_DEF</STRONG>
+<DD>
+<PRE>
+|- (!x1. int_valdesc_SOME_valdesc_arg (int_valdesc_SOME_valdesc x1) = x1) /\
+   (int_valdesc_SOME_valdesc_arg int_valdesc_NONE_valdesc = (@x. T))
+</PRE>
+
+<DT><STRONG>joint_ty_exdesc_exdesc_option_exdesc_TY_DEF</STRONG>
+<DD>
+<PRE>
+|- ?rep.
+     TYPE_DEFINITION
+       (TRP
+         (\v tl.
+           (?e. v = INL e) /\ (LENGTH tl = SUC 0) \/
+           (v = INR (INL one)) /\ (LENGTH tl = 0) \/
+           (v = INR (INR one)) /\ (LENGTH tl = SUC 0)))
+       rep
+</PRE>
+
+<DT><STRONG>joint_ty_exdesc_exdesc_option_exdesc_ISO_DEF</STRONG>
+<DD>
+<PRE>
+|- (!a.
+     ABS_joint_ty_exdesc_exdesc_option_exdesc
+       (REP_joint_ty_exdesc_exdesc_option_exdesc a) =
+     a) /\
+   (!r.
+     TRP
+       (\v tl.
+         (?e. v = INL e) /\ (LENGTH tl = SUC 0) \/
+         (v = INR (INL one)) /\ (LENGTH tl = 0) \/
+         (v = INR (INR one)) /\ (LENGTH tl = SUC 0))
+       r =
+     REP_joint_ty_exdesc_exdesc_option_exdesc
+       (ABS_joint_ty_exdesc_exdesc_option_exdesc r) =
+     r)
+</PRE>
+
+<DT><STRONG>JOINT_int_EXCONexdesc_DEF</STRONG>
+<DD>
+<PRE>
+|- !e j.
+     JOINT_int_EXCONexdesc e j =
+     ABS_joint_ty_exdesc_exdesc_option_exdesc
+       (Node (INL e) [REP_joint_ty_exdesc_exdesc_option_exdesc j])
+</PRE>
+
+<DT><STRONG>JOINT_int_exdesc_NONE_exdesc_DEF</STRONG>
+<DD>
+<PRE>
+|- JOINT_int_exdesc_NONE_exdesc =
+   ABS_joint_ty_exdesc_exdesc_option_exdesc (Node (INR (INL one)) [])
+</PRE>
+
+<DT><STRONG>JOINT_int_exdesc_SOME_exdesc_DEF</STRONG>
+<DD>
+<PRE>
+|- !j.
+     JOINT_int_exdesc_SOME_exdesc j =
+     ABS_joint_ty_exdesc_exdesc_option_exdesc
+       (Node (INR (INR one)) [REP_joint_ty_exdesc_exdesc_option_exdesc j])
+</PRE>
+
+<DT><STRONG>joint_ty_exdesc_exdesc_option_exdesc_select_DEF</STRONG>
+<DD>
+<PRE>
+|- (!e' j.
+     joint_ty_exdesc_exdesc_option_exdesc_select
+       (JOINT_int_EXCONexdesc e' j) =
+     ((joint_ty_exdesc_exdesc_option_exdesc_select j = 2) => 1 | 0)) /\
+   (joint_ty_exdesc_exdesc_option_exdesc_select JOINT_int_exdesc_NONE_exdesc =
+    2) /\
+   (!j.
+     joint_ty_exdesc_exdesc_option_exdesc_select
+       (JOINT_int_exdesc_SOME_exdesc j) =
+     ((joint_ty_exdesc_exdesc_option_exdesc_select j = 1) => 2 | 0))
+</PRE>
+
+<DT><STRONG>exdesc_TY_DEF</STRONG>
+<DD>
+<PRE>
+|- ?rep.
+     TYPE_DEFINITION (\x. joint_ty_exdesc_exdesc_option_exdesc_select x = 1)
+       rep
+</PRE>
+
+<DT><STRONG>exdesc_REP_ABS</STRONG>
+<DD>
+<PRE>
+|- (!a. exdesc_abs (exdesc_rep a) = a) /\
+   (!r.
+     (\x. joint_ty_exdesc_exdesc_option_exdesc_select x = 1) r =
+     exdesc_rep (exdesc_abs r) =
+     r)
+</PRE>
+
+<DT><STRONG>exdesc_option_exdesc_TY_DEF</STRONG>
+<DD>
+<PRE>
+|- ?rep.
+     TYPE_DEFINITION (\x. joint_ty_exdesc_exdesc_option_exdesc_select x = 2)
+       rep
+</PRE>
+
+<DT><STRONG>exdesc_option_exdesc_REP_ABS</STRONG>
+<DD>
+<PRE>
+|- (!a. exdesc_option_exdesc_abs (exdesc_option_exdesc_rep a) = a) /\
+   (!r.
+     (\x. joint_ty_exdesc_exdesc_option_exdesc_select x = 2) r =
+     exdesc_option_exdesc_rep (exdesc_option_exdesc_abs r) =
+     r)
+</PRE>
+
+<DT><STRONG>int_EXCONexdesc_DEF</STRONG>
+<DD>
+<PRE>
+|- !x1 x2.
+     int_EXCONexdesc x1 x2 =
+     exdesc_abs (JOINT_int_EXCONexdesc x1 (exdesc_option_exdesc_rep x2))
+</PRE>
+
+<DT><STRONG>int_exdesc_NONE_exdesc_DEF</STRONG>
+<DD>
+<PRE>
+|- int_exdesc_NONE_exdesc =
+   exdesc_option_exdesc_abs JOINT_int_exdesc_NONE_exdesc
+</PRE>
+
+<DT><STRONG>int_exdesc_SOME_exdesc_DEF</STRONG>
+<DD>
+<PRE>
+|- !x1.
+     int_exdesc_SOME_exdesc x1 =
+     exdesc_option_exdesc_abs (JOINT_int_exdesc_SOME_exdesc (exdesc_rep x1))
+</PRE>
+
+<DT><STRONG>int_inj_exdesc_option_exdesc</STRONG>
+<DD>
+<PRE>
+|- (int_inj_exdesc_option_exdesc NONE = int_exdesc_NONE_exdesc) /\
+   (!x0. int_inj_exdesc_option_exdesc (SOME x0) = int_exdesc_SOME_exdesc x0)
+</PRE>
+
+<DT><STRONG>int_inv_exdesc_option_exdesc</STRONG>
+<DD>
+<PRE>
+|- (int_inv_exdesc_option_exdesc int_exdesc_NONE_exdesc = NONE) /\
+   (!x1. int_inv_exdesc_option_exdesc (int_exdesc_SOME_exdesc x1) = SOME x1)
+</PRE>
+
+<DT><STRONG>EXCONexdesc</STRONG>
+<DD>
+<PRE>
+|- EXCONexdesc =
+   (\x0 x1. int_EXCONexdesc x0 (int_inj_exdesc_option_exdesc x1))
+</PRE>
+
+<DT><STRONG>dist_aux_ftn_exdesc_DEF</STRONG>
+<DD>
+<PRE>
+|- (!x1 x2. dist_aux_ftn_exdesc (int_EXCONexdesc x1 x2) = 0) /\
+   (dist_aux_ftn_exdesc_option_exdesc int_exdesc_NONE_exdesc = 1) /\
+   (!x1. dist_aux_ftn_exdesc_option_exdesc (int_exdesc_SOME_exdesc x1) = 2)
+</PRE>
+
+<DT><STRONG>int_EXCONexdesc_arg1_DEF</STRONG>
+<DD>
+<PRE>
+|- !x1 x2. int_EXCONexdesc_arg1 (int_EXCONexdesc x1 x2) = x1
+</PRE>
+
+<DT><STRONG>int_EXCONexdesc_arg2_DEF</STRONG>
+<DD>
+<PRE>
+|- !x1 x2. int_EXCONexdesc_arg2 (int_EXCONexdesc x1 x2) = x2
+</PRE>
+
+<DT><STRONG>int_exdesc_SOME_exdesc_arg_DEF</STRONG>
+<DD>
+<PRE>
+|- (!x1. int_exdesc_SOME_exdesc_arg (int_exdesc_SOME_exdesc x1) = x1) /\
+   (int_exdesc_SOME_exdesc_arg int_exdesc_NONE_exdesc = (@x. T))
+</PRE>
+
+<DT><STRONG>eval_valdesc_DEF</STRONG>
+<DD>
+<PRE>
+|- ((!var s1 s2. eval_valdesc (VARvaldesc var NONE) s1 s2 {var}) /\
+    (!valdesc s1 s2 vars.
+      eval_valdesc valdesc s1 s2 vars ==>
+      (!var.
+        eval_valdesc (VARvaldesc var (SOME valdesc)) s1 s2
+          ({var} UNION vars)))) /\
+   (!P.
+     (!var s1 s2. P (VARvaldesc var NONE) s1 s2 {var}) /\
+     (!valdesc s1 s2 vars.
+       P valdesc s1 s2 vars ==>
+       (!var. P (VARvaldesc var (SOME valdesc)) s1 s2 ({var} UNION vars))) ==>
+     (!valdesc s1 s2 vars.
+       eval_valdesc valdesc s1 s2 vars ==> P valdesc s1 s2 vars))
+</PRE>
+
+<DT><STRONG>eval_exdesc_DEF</STRONG>
+<DD>
+<PRE>
+|- ((!excon s1 s2. eval_exdesc (EXCONexdesc excon NONE) s1 s2 {excon}) /\
+    (!exdesc s1 s2 excons.
+      eval_exdesc exdesc s1 s2 excons ==>
+      (!excon.
+        eval_exdesc (EXCONexdesc excon (SOME exdesc)) s1 s2
+          ({excon} UNION excons)))) /\
+   (!P.
+     (!excon s1 s2. P (EXCONexdesc excon NONE) s1 s2 {excon}) /\
+     (!exdesc s1 s2 excons.
+       P exdesc s1 s2 excons ==>
+       (!excon.
+         P (EXCONexdesc excon (SOME exdesc)) s1 s2
+           ({excon} UNION excons))) ==>
+     (!exdesc s1 s2 excons.
+       eval_exdesc exdesc s1 s2 excons ==> P exdesc s1 s2 excons))
+</PRE>
+
+</DL>
+
+
+<HR>
+<H1>Theorems</H1>
+<DL>
+<DT><STRONG>sigid_Axiom</STRONG>
+<DD>
+<PRE>
+|- !f. ?!fn. !s. fn (SIGID s) = f s
+</PRE>
+
+<DT><STRONG>sigid_induction_thm</STRONG>
+<DD>
+<PRE>
+|- !P. (!s. P (SIGID s)) ==> (!s. P s)
+</PRE>
+
+<DT><STRONG>sigid_cases_thm</STRONG>
+<DD>
+<PRE>
+|- !s. ?s'. s = SIGID s'
+</PRE>
+
+<DT><STRONG>sigid_constructors_one_one</STRONG>
+<DD>
+<PRE>
+|- !s s'. (SIGID s = SIGID s') = s = s'
+</PRE>
+
+<DT><STRONG>funid_Axiom</STRONG>
+<DD>
+<PRE>
+|- !f. ?!fn. !s. fn (FUNID s) = f s
+</PRE>
+
+<DT><STRONG>funid_induction_thm</STRONG>
+<DD>
+<PRE>
+|- !P. (!s. P (FUNID s)) ==> (!f. P f)
+</PRE>
+
+<DT><STRONG>funid_cases_thm</STRONG>
+<DD>
+<PRE>
+|- !f. ?s. f = FUNID s
+</PRE>
+
+<DT><STRONG>funid_constructors_one_one</STRONG>
+<DD>
+<PRE>
+|- !s s'. (FUNID s = FUNID s') = s = s'
+</PRE>
+
+<DT><STRONG>joint_ty_valdesc_valdesc_option_valdesc_Axiom</STRONG>
+<DD>
+<PRE>
+|- !f0 e f1.
+     ?!fn.
+       (!v' j. fn (JOINT_int_VARvaldesc v' j) = f0 (fn j) v' j) /\
+       (fn JOINT_int_valdesc_NONE_valdesc = e) /\
+       (!j. fn (JOINT_int_valdesc_SOME_valdesc j) = f1 (fn j) j)
+</PRE>
+
+<DT><STRONG>valdesc_rec_thm</STRONG>
+<DD>
+<PRE>
+|- !VARvaldesc_case valdesc_NONE_valdesc_case valdesc_SOME_valdesc_case.
+     ?y y'.
+       (!x1 x2. y (VARvaldesc x1 x2) = VARvaldesc_case (y' x2) x1 x2) /\
+       (y' NONE = valdesc_NONE_valdesc_case) /\
+       (!x1. y' (SOME x1) = valdesc_SOME_valdesc_case (y x1) x1)
+</PRE>
+
+<DT><STRONG>valdesc_induction_thm</STRONG>
+<DD>
+<PRE>
+|- !valdesc_Prop valdesc_option_valdesc_Prop.
+     (!y y'.
+       valdesc_option_valdesc_Prop y' ==> valdesc_Prop (VARvaldesc y y')) /\
+     valdesc_option_valdesc_Prop NONE /\
+     (!y. valdesc_Prop y ==> valdesc_option_valdesc_Prop (SOME y)) ==>
+     (!x1. valdesc_Prop x1) /\ (!x2. valdesc_option_valdesc_Prop x2)
+</PRE>
+
+<DT><STRONG>valdesc_unique_thm</STRONG>
+<DD>
+<PRE>
+|- !VARvaldesc_case valdesc_NONE_valdesc_case valdesc_SOME_valdesc_case fn1
+    fn2 fn1' fn2'.
+     (!y y'. fn1 (VARvaldesc y y') = VARvaldesc_case (fn2 y') y y') /\
+     (fn2 NONE = valdesc_NONE_valdesc_case) /\
+     (!y. fn2 (SOME y) = valdesc_SOME_valdesc_case (fn1 y) y) ==>
+     (!y y'. fn1' (VARvaldesc y y') = VARvaldesc_case (fn2' y') y y') /\
+     (fn2' NONE = valdesc_NONE_valdesc_case) /\
+     (!y. fn2' (SOME y) = valdesc_SOME_valdesc_case (fn1' y) y) ==>
+     (fn1 = fn1') /\ (fn2 = fn2')
+</PRE>
+
+<DT><STRONG>valdesc_constructors_distinct</STRONG>
+<DD>
+<PRE>
+|- !x1'. ~(NONE = SOME x1')
+</PRE>
+
+<DT><STRONG>valdesc_constructors_one_one</STRONG>
+<DD>
+<PRE>
+|- (!x1 x2 x1' x2'.
+     (VARvaldesc x1 x2 = VARvaldesc x1' x2') = (x1 = x1') /\ (x2 = x2')) /\
+   (!x1 x1'. (SOME x1 = SOME x1') = x1 = x1')
+</PRE>
+
+<DT><STRONG>valdesc_cases_thm</STRONG>
+<DD>
+<PRE>
+|- (!x1. ?y y'. x1 = VARvaldesc y y') /\
+   (!x2. (x2 = NONE) \/ (?y. x2 = SOME y))
+</PRE>
+
+<DT><STRONG>joint_ty_exdesc_exdesc_option_exdesc_Axiom</STRONG>
+<DD>
+<PRE>
+|- !f0 e f1.
+     ?!fn.
+       (!e' j. fn (JOINT_int_EXCONexdesc e' j) = f0 (fn j) e' j) /\
+       (fn JOINT_int_exdesc_NONE_exdesc = e) /\
+       (!j. fn (JOINT_int_exdesc_SOME_exdesc j) = f1 (fn j) j)
+</PRE>
+
+<DT><STRONG>exdesc_rec_thm</STRONG>
+<DD>
+<PRE>
+|- !EXCONexdesc_case exdesc_NONE_exdesc_case exdesc_SOME_exdesc_case.
+     ?y y'.
+       (!x1 x2. y (EXCONexdesc x1 x2) = EXCONexdesc_case (y' x2) x1 x2) /\
+       (y' NONE = exdesc_NONE_exdesc_case) /\
+       (!x1. y' (SOME x1) = exdesc_SOME_exdesc_case (y x1) x1)
+</PRE>
+
+<DT><STRONG>exdesc_induction_thm</STRONG>
+<DD>
+<PRE>
+|- !exdesc_Prop exdesc_option_exdesc_Prop.
+     (!y y'.
+       exdesc_option_exdesc_Prop y' ==> exdesc_Prop (EXCONexdesc y y')) /\
+     exdesc_option_exdesc_Prop NONE /\
+     (!y. exdesc_Prop y ==> exdesc_option_exdesc_Prop (SOME y)) ==>
+     (!x1. exdesc_Prop x1) /\ (!x2. exdesc_option_exdesc_Prop x2)
+</PRE>
+
+<DT><STRONG>exdesc_unique_thm</STRONG>
+<DD>
+<PRE>
+|- !EXCONexdesc_case exdesc_NONE_exdesc_case exdesc_SOME_exdesc_case fn1 fn2
+    fn1' fn2'.
+     (!y y'. fn1 (EXCONexdesc y y') = EXCONexdesc_case (fn2 y') y y') /\
+     (fn2 NONE = exdesc_NONE_exdesc_case) /\
+     (!y. fn2 (SOME y) = exdesc_SOME_exdesc_case (fn1 y) y) ==>
+     (!y y'. fn1' (EXCONexdesc y y') = EXCONexdesc_case (fn2' y') y y') /\
+     (fn2' NONE = exdesc_NONE_exdesc_case) /\
+     (!y. fn2' (SOME y) = exdesc_SOME_exdesc_case (fn1' y) y) ==>
+     (fn1 = fn1') /\ (fn2 = fn2')
+</PRE>
+
+<DT><STRONG>exdesc_constructors_distinct</STRONG>
+<DD>
+<PRE>
+|- !x1'. ~(NONE = SOME x1')
+</PRE>
+
+<DT><STRONG>exdesc_constructors_one_one</STRONG>
+<DD>
+<PRE>
+|- (!x1 x2 x1' x2'.
+     (EXCONexdesc x1 x2 = EXCONexdesc x1' x2') = (x1 = x1') /\ (x2 = x2')) /\
+   (!x1 x1'. (SOME x1 = SOME x1') = x1 = x1')
+</PRE>
+
+<DT><STRONG>exdesc_cases_thm</STRONG>
+<DD>
+<PRE>
+|- (!x1. ?y y'. x1 = EXCONexdesc y y') /\
+   (!x2. (x2 = NONE) \/ (?y. x2 = SOME y))
+</PRE>
+
+<DT><STRONG>Rule184a</STRONG>
+<DD>
+<PRE>
+|- !var s1 s2. eval_valdesc (VARvaldesc var NONE) s1 s2 {var}
+</PRE>
+
+<DT><STRONG>Rule184b</STRONG>
+<DD>
+<PRE>
+|- !valdesc s1 s2 vars.
+     eval_valdesc valdesc s1 s2 vars ==>
+     (!var.
+       eval_valdesc (VARvaldesc var (SOME valdesc)) s1 s2 ({var} UNION vars))
+</PRE>
+
+<DT><STRONG>eval_valdesc_induction_thm</STRONG>
+<DD>
+<PRE>
+|- !P.
+     (!var s1 s2. P (VARvaldesc var NONE) s1 s2 {var}) /\
+     (!valdesc s1 s2 vars.
+       P valdesc s1 s2 vars ==>
+       (!var. P (VARvaldesc var (SOME valdesc)) s1 s2 ({var} UNION vars))) ==>
+     (!valdesc s1 s2 vars.
+       eval_valdesc valdesc s1 s2 vars ==> P valdesc s1 s2 vars)
+</PRE>
+
+<DT><STRONG>Rule185a</STRONG>
+<DD>
+<PRE>
+|- !excon s1 s2. eval_exdesc (EXCONexdesc excon NONE) s1 s2 {excon}
+</PRE>
+
+<DT><STRONG>Rule185b</STRONG>
+<DD>
+<PRE>
+|- !exdesc s1 s2 excons.
+     eval_exdesc exdesc s1 s2 excons ==>
+     (!excon.
+       eval_exdesc (EXCONexdesc excon (SOME exdesc)) s1 s2
+         ({excon} UNION excons))
+</PRE>
+
+<DT><STRONG>eval_exdesc_induction_thm</STRONG>
+<DD>
+<PRE>
+|- !P.
+     (!excon s1 s2. P (EXCONexdesc excon NONE) s1 s2 {excon}) /\
+     (!exdesc s1 s2 excons.
+       P exdesc s1 s2 excons ==>
+       (!excon.
+         P (EXCONexdesc excon (SOME exdesc)) s1 s2
+           ({excon} UNION excons))) ==>
+     (!exdesc s1 s2 excons.
+       eval_exdesc exdesc s1 s2 excons ==> P exdesc s1 s2 excons)
+</PRE>
+
+</DL>
+
+
+<HR>

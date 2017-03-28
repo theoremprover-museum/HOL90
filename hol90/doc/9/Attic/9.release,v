@@ -1,0 +1,324 @@
+head	1.1;
+access;
+symbols
+	HOL97:1.1.2.3.0.2
+	bpHOL97:1.1.2.3
+	hol90_9_alpha:1.1.2.2
+	hol90_pre8_for_multiple_compilers:1.1.0.2;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	96.09.04.16.55.11;	author rjb;	state dead;
+branches
+	1.1.2.1;
+next	;
+
+1.1.2.1
+date	96.09.04.16.55.13;	author rjb;	state Exp;
+branches;
+next	1.1.2.2;
+
+1.1.2.2
+date	96.09.06.10.51.26;	author rjb;	state Exp;
+branches;
+next	1.1.2.3;
+
+1.1.2.3
+date	96.10.01.13.19.35;	author rjb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@file 9.release was initially added on branch hol90_pre8_for_multiple_compilers.
+@
+text
+@@
+
+
+1.1.2.1
+log
+@Release notes for hol90.9.
+@
+text
+@a0 226
+
+            HOL90 VERSION 9 RELEASE NOTICE
+
+The following is an overview of some of the more interesting changes to the
+system in hol90.9.
+
+
+Syntax of Quotations
+--------------------
+
+A front-end filter is now used to implement quotations and antiquotations for
+HOL terms and types. The syntax is as follows:
+
+  `...`                 a generic quotation
+  ``...``               a HOL term quotation
+  ``:...``              a HOL type quotation
+  --`...`--             a HOL term quotation (for backward compatibility)
+  ==`:...`==            a HOL type quotation (for backward compatibility)
+
+  `... ^(...) ...`      antiquotation in a generic quotation
+  ``... ^(...) ...``    term antiquotation in a HOL term
+  ``... :^(...) ...``   type antiquotation in a HOL term
+  ``:... ^(...) ...``   type antiquotation in a HOL type
+
+where (...) may be an alphanumeric or symbolic ML identifier or a
+parenthesized expression. The number of lines in the processed text remains
+unchanged.
+
+No carriage return or line feed may appear between the `--' or `==' and the
+quotation marks in the old-style quotations.
+
+
+Portability
+-----------
+
+The system now builds with Standard ML of New Jersey 0.93, some more recent
+versions of SML/NJ, and Poly/ML 3.0. Earlier versions of Poly/ML may also
+work. Poly/ML uses a persistent store in the form of databases. Note that
+changes to the HOL state in a child database may not be committed (persist).
+
+
+New Libraries
+-------------
+
+simp
+
+  A conditional/contextual Isabelle-style simplifier, with additional
+  integration of the "ARITH" decision procedure for natural numbers. There is
+  some documentation for this in library/simp/doc/simp.tex. Some test code is
+  included in library/simp/src/test.sml.
+
+  Structures: Simplifier, Simpsets, arith_ss, Trace, Theorems and others
+
+  Important functions:
+
+    Tactics:         SIMP_TAC, ASM_SIMP_TAC, FULL_SIMP_TAC.
+    Making simpsets: rewrites, mk_simpset, etc.
+                     See examples in library/simp/src/Simpsets.sml
+    Tracing:         trace_level := ...
+
+  Author: Donald Syme
+
+ho_match
+
+  Higher order rewriting and matching. Matching is limited to simple patterns
+  and is deterministic, e.g. structural inductions can now be performed by
+  using MATCH_MP_TAC <induction theorem>. Higher order rewriting can subsume
+  many of the conversions in the HOL system (e.g. the quantifier movements can
+  be done using matching, when used in conjunction with the theorems in the
+  "Theorems" structure).
+
+  Relevant structures: Ho_match, Ho_rewrite, Resolve
+
+  Important functions:
+
+    All standard rewriting functions are replaced when "Ho_rewrite" is opened.
+    MATCH_MP, MATCH_MP_TAC are now higher order.
+
+  Author: John Harrison
+  Ported by: Donald Syme
+
+tfl
+
+  A well founded function definitions package. See the following paper:
+
+    K. Slind
+    "Function Definition in Higher Order Logic"
+    In J. von Wright, J. Grundy and J. Harrison (editors),
+    "Proceedings of the 9th International Conference on Theorem Proving in
+     Higher Order Logics (TPHOLs'96)", Turku, Finland, August 1996,
+    pages 381-398. Volume 1125 of Lecture Notes in Computer Science,
+    Springer-Verlag.
+
+  Author: Konrad Slind.
+
+ind_def_new
+
+  An inductive definitions package based on well founded recursion. See the
+  following paper:
+
+    J. Harrison
+    "Inductive Definitions: Automation and Application"
+    In E. T. Schubert, P. J. Windley and J. Alves-Foss (editors),
+    "Proceedings of the 8th International Workshop on Higher Order Logic
+     Theorem Proving and Its Applications", Aspen Grove, UT, USA,
+    September 1995, pages 200-213. Volume 971 of Lecture Notes in Computer
+    Science, Springer-Verlag.
+
+  Relevant structures: Ind_defs
+
+  Functions:
+
+    val new_inductive_definition : ...
+    val gen_new_inductive_definition : ...
+    val new_simple_inductive_definition : ...
+
+  Author: John Harrison
+  Ported by: Donald Syme
+
+meson
+
+  A MESON Model Elimination first order theorem prover.
+
+  Relevant structures: Meson
+
+  Functions:
+
+    val MESON : mset list -> thm list -> term -> thm
+    val MESON_TAC : mset list -> thm list -> tactic
+    val mk_mset : thm list -> mset
+
+  Author: John Harrison
+  Ported by: Donald Syme
+
+tab
+
+  A Tableau-based first order theorem prover.
+
+  Relevant structures: Tab
+
+  Functions:
+
+    val TAB : thm list -> term -> thm
+    val TAB_TAC : thm list -> tactic
+
+  Author: John Harrison
+  Ported by: Donald Syme
+
+decision
+
+  Co-operating decision procedures for quantifier-free formulas built up from
+  linear natural number arithmetic, propositional logic, and the equational
+  theories of pairs, recursive types, and uninterpreted function symbols.
+  Subterms from other theories may also be accepted if they do not contribute
+  to the truth of the formula. Formulas that when placed in prenex normal form
+  contain only universal quantifiers are accepted in addition to
+  quantifier-free formulas.
+
+  The procedure either proves that the formula is equal to false or raises an
+  exception. There is some incompleteness in the procedures. Properties of
+  the natural numbers that depend fundamentally on the discreteness of the
+  naturals are not proved. Nor are acyclicity properties of recursive types
+  (e.g. lists). There is also much scope for improvements to the efficiency.
+
+  Relevant structures: DecisionUser, DecideTypes, HOLTypeInfo
+
+  Important functions:
+
+    val DECIDE_CONV : conv
+    val DECIDE : term -> thm
+    val DECIDE_TAC : tactic
+    val show_proving : bool ref
+
+    val add_type : thm HOLTypeInfo.hol_type_info -> unit
+    val delete_type : string -> unit
+
+    val define_type_info : {...} -> thm HOLTypeInfo.hol_type_info
+
+  Further documentation can be found in library/decision/READ-ME.
+  For details of the implementation of the decision procedure, see the
+  following paper:
+
+    R. J. Boulton
+    "Combining Decision Procedures in the HOL System"
+    In E. T. Schubert, P. J. Windley and J. Alves-Foss (editors),
+    "Proceedings of the 8th International Workshop on Higher Order Logic
+     Theorem Proving and Its Applications", Aspen Grove, UT, USA,
+    September 1995, pages 75-89. Volume 971 of Lecture Notes in Computer
+    Science, Springer-Verlag.
+
+  Author: Richard Boulton
+
+option
+
+  Definitions for, and theorems about, a type "option" like the one in
+  Standard ML of New Jersey:
+
+    datatype 'a option = SOME of 'a | NONE
+
+  Author: Donald Syme
+
+retrieve
+
+  A Theorem Retrieval System. A tool for finding stored theorems by specifying
+  a template for the term structure of the theorem. It is a port of the HOL88
+  "trs" library.
+
+  Author: Richard Boulton
+
+
+Other Changes
+-------------
+
+Support for the predecessor function, PRE, has been added to the arith
+library. PRE is eliminated in the pre-processing phase along with natural
+number subtraction. The modifications are due to Kim Dam Petersen of
+Tele Danmark Research.
+
+
+Acknowledgements
+----------------
+
+The following people have been involved in this release of hol90:
+Richard Boulton, Mike Gordon, Elsa Gunter, John Harrison, Tom Melham,
+Konrad Slind, Donald Syme.
+
+@
+
+
+1.1.2.2
+log
+@*** empty log message ***
+@
+text
+@a218 2
+A first cut at a new Description manual by Donald Syme. It describes hol90
+instead of HOL88.
+a219 1
+
+@
+
+
+1.1.2.3
+log
+@Modified to be consistent with the announcement sent out for hol90.9.alpha.
+@
+text
+@d47 4
+a50 5
+  A conditional/contextual Isabelle-style simplifier, with a limited form of
+  higher order matching and additional integration of the "ARITH" decision
+  procedure for natural numbers.
+  There is some documentation for this in library/simp/doc/simp.tex.
+  Some test code is included in library/simp/src/test.sml.
+d70 1
+a70 3
+  "Theorems" structure). This tool may be used when higher order matching
+  is required but the full power of the conditional/contextual simplifier is
+  not. For interactive use, one should normally use the simplifier instead.
+d84 1
+a84 2
+  A well-founded recursive function definitions package. See the following
+  paper:
+d98 2
+a99 1
+  A new, more general, inductive definitions package. See the following paper:
+d133 1
+a133 1
+  Ported and enhanced by: Donald Syme
+d147 1
+a147 1
+  Ported and enhanced by: Donald Syme
+@

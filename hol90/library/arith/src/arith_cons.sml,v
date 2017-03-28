@@ -1,0 +1,375 @@
+head	1.3;
+access;
+symbols
+	HOL97:1.3.0.4
+	bpHOL97:1.3
+	hol90_9_alpha:1.3
+	hol90_pre8_for_multiple_compilers:1.3.0.2
+	hol90_pre8_after_donalds_separate_compilation_changes:1.2
+	hol90_8_after_merging_Konrad_Elsa:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.3
+date	95.11.16.16.53.03;	author rjb;	state Exp;
+branches
+	1.3.4.1;
+next	1.2;
+
+1.2
+date	95.10.31.14.01.34;	author drs1004;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	95.10.16.13.31.31;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.31.31;	author rjb;	state Exp;
+branches;
+next	;
+
+1.3.4.1
+date	97.07.11.19.28.28;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.3
+log
+@Support for the predecessor function, PRE, has been added to the arith
+library. It is eliminated in the pre-processing phase along with natural
+number subtraction. The modifications are due to Kim Dam Petersen of
+Tele Danmark Research.
+
+R.J.Boulton, 16th November 1995.
+@
+text
+@(*****************************************************************************)
+(* FILE          : arith_cons.sml                                            *)
+(* DESCRIPTION   : Constructor, destructor and discriminator functions for   *)
+(*                 arithmetic terms.                                         *)
+(*                                                                           *)
+(* READS FILES   : <none>                                                    *)
+(* WRITES FILES  : <none>                                                    *)
+(*                                                                           *)
+(* AUTHOR        : R.J.Boulton, University of Cambridge                      *)
+(* DATE          : 4th March 1991                                            *)
+(*                                                                           *)
+(* TRANSLATOR    : R.J.Boulton, University of Cambridge                      *)
+(* DATE          : 4th February 1993                                         *)
+(*                                                                           *)
+(* LAST MODIFIED : R.J.Boulton                                               *)
+(* DATE          : 16th November 1995                                        *)
+(*****************************************************************************)
+
+structure Arith_cons : Arith_cons_sig =
+struct
+
+open Core; (* open up all of the HOL 0/1 Core - could be replaced by more *)
+           (* explicit opens to avoid endless recompilation of libraries  *)
+           (* during system development                                   *)
+
+fun failwith function = raise HOL_ERR{origin_structure = "Arith_cons",
+                                      origin_function = function,
+                                      message = ""};
+open Rsyntax;
+
+(*===========================================================================*)
+(* Constructors, destructors and discriminators for +,-,*                    *)
+(*===========================================================================*)
+
+(*---------------------------------------------------------------------------*)
+(* mk_plus, mk_minus, mk_mult                                                *)
+(*---------------------------------------------------------------------------*)
+
+fun mk_arith_op tok ftok =
+ let val num_ty = mk_type{Tyop = "num",Args = []}
+     val fun_ty = mk_type{Tyop = "fun",
+                          Args = [num_ty,mk_type{Tyop = "fun",
+                                                 Args = [num_ty,num_ty]}]}
+ in  fn (t1,t2) => (mk_comb{Rator = mk_comb{Rator = mk_const{Name = tok,
+                                                             Ty = fun_ty},
+                                            Rand = t1},
+                            Rand = t2}
+                    handle _ => failwith ftok)
+ end;
+
+val mk_plus  = mk_arith_op "+" "mk_plus"
+and mk_minus = mk_arith_op "-" "mk_minus"
+and mk_mult  = mk_arith_op "*" "mk_mult";
+
+(*---------------------------------------------------------------------------*)
+(* dest_plus, dest_minus, dest_mult                                          *)
+(*---------------------------------------------------------------------------*)
+
+fun dest_arith_op tok ftok =
+ let val num_ty = mk_type{Tyop = "num",Args = []}
+     val fun_ty = mk_type{Tyop = "fun",
+                          Args = [num_ty,mk_type{Tyop = "fun",
+                                                 Args = [num_ty,num_ty]}]}
+     val check = Lib.assert (fn c => dest_const c = {Name = tok,Ty = fun_ty})
+ in  fn tm => ((let val {Rator,Rand = c2} = dest_comb tm
+                    val {Rator,Rand = c1} = dest_comb Rator
+                    val _ = check Rator
+                in  (c1,c2)
+                end)
+               handle _ => failwith ftok)
+ end;
+
+val dest_plus  = dest_arith_op "+" "dest_plus"
+and dest_minus = dest_arith_op "-" "dest_minus"
+and dest_mult  = dest_arith_op "*" "dest_mult";
+
+(*---------------------------------------------------------------------------*)
+(* is_plus, is_minus, is_mult, is_arith_op                                   *)
+(*---------------------------------------------------------------------------*)
+
+val is_plus  = can dest_plus
+and is_minus = can dest_minus
+and is_mult  = can dest_mult;
+
+val is_arith_op =
+ let val num_ty = mk_type{Tyop = "num",Args = []}
+     val fun_ty = mk_type{Tyop = "fun",
+                          Args = [num_ty,mk_type{Tyop = "fun",
+                                                 Args = [num_ty,num_ty]}]}
+ in  fn tm => (type_of (rator (rator tm)) = fun_ty handle _ => false)
+ end;
+
+(*===========================================================================*)
+(* Constructors, destructors and discriminators for <,<=,>,>=                *)
+(*===========================================================================*)
+
+(*---------------------------------------------------------------------------*)
+(* mk_less, mk_leq, mk_great, mk_geq                                         *)
+(*---------------------------------------------------------------------------*)
+
+fun mk_num_reln tok ftok =
+ let val bool_ty = mk_type{Tyop = "bool",Args = []}
+     val num_ty = mk_type{Tyop = "num",Args = []}
+     val fun_ty = mk_type{Tyop = "fun",
+                          Args = [num_ty,mk_type{Tyop = "fun",
+                                                 Args = [num_ty,bool_ty]}]}
+ in  fn (t1,t2) => (mk_comb{Rator = mk_comb{Rator = mk_const{Name = tok,
+                                                             Ty = fun_ty},
+                                            Rand = t1},
+                            Rand = t2}
+                    handle _ => failwith ftok)
+ end;
+
+val mk_less  = mk_num_reln "<" "mk_less"
+and mk_leq   = mk_num_reln "<=" "mk_leq"
+and mk_great = mk_num_reln ">" "mk_great"
+and mk_geq   = mk_num_reln ">=" "mk_geq";
+
+(*---------------------------------------------------------------------------*)
+(* dest_less, dest_leq, dest_great, dest_geq                                 *)
+(*---------------------------------------------------------------------------*)
+
+fun dest_num_reln tok ftok =
+ let val bool_ty = mk_type{Tyop = "bool",Args = []}
+     val num_ty = mk_type{Tyop = "num",Args = []}
+     val fun_ty = mk_type{Tyop = "fun",
+                          Args = [num_ty,mk_type{Tyop = "fun",
+                                                 Args = [num_ty,bool_ty]}]}
+     val check = Lib.assert (fn c => dest_const c = {Name = tok,Ty = fun_ty})
+ in  fn tm => ((let val {Rator,Rand = c2} = dest_comb tm
+                    val {Rator,Rand = c1} = dest_comb Rator
+                    val _ = check Rator
+                in  (c1,c2)
+                end)
+               handle _ => failwith ftok)
+ end;
+
+val dest_less  = dest_num_reln "<" "dest_less"
+and dest_leq   = dest_num_reln "<=" "dest_leq"
+and dest_great = dest_num_reln ">" "dest_great"
+and dest_geq   = dest_num_reln ">=" "dest_geq";
+
+(*---------------------------------------------------------------------------*)
+(* is_less, is_leq, is_great, is_geq, is_num_reln                            *)
+(*---------------------------------------------------------------------------*)
+
+val is_less  = can dest_less
+and is_leq   = can dest_leq
+and is_great = can dest_great
+and is_geq   = can dest_geq;
+
+val is_num_reln =
+ let val bool_ty = mk_type{Tyop = "bool",Args = []}
+     val num_ty = mk_type{Tyop = "num",Args = []}
+     val fun_ty = mk_type{Tyop = "fun",
+                          Args = [num_ty,mk_type{Tyop = "fun",
+                                                 Args = [num_ty,bool_ty]}]}
+ in  fn tm => (type_of (rator (rator tm)) = fun_ty handle _ => false)
+ end;
+
+(*===========================================================================*)
+(* Constructor, destructor and discriminator for SUC                         *)
+(*===========================================================================*)
+
+val mk_suc =
+ let val num_ty = mk_type{Tyop = "num",Args = []}
+     val fun_ty = mk_type{Tyop = "fun",Args = [num_ty,num_ty]}
+ in  fn t => (mk_comb{Rator = mk_const{Name = "SUC",Ty = fun_ty},Rand = t}
+              handle _ => failwith "mk_suc")
+ end;
+
+val dest_suc =
+ let val num_ty = mk_type{Tyop = "num",Args = []}
+     val fun_ty = mk_type{Tyop = "fun",Args = [num_ty,num_ty]}
+     val check = Lib.assert (fn c => dest_const c = {Name = "SUC",Ty = fun_ty})
+ in  fn tm => ((let val {Rator,Rand = c} = dest_comb tm
+                    val _ = check Rator
+                in  c
+                end)
+               handle _ => failwith "dest_suc")
+ end;
+
+val is_suc = can dest_suc;
+
+(*===========================================================================*)
+(* Constructor, destructor and discriminator for PRE                         *)
+(*===========================================================================*)
+
+val mk_pre =
+ let val num_ty = mk_type{Tyop = "num",Args = []}
+     val fun_ty = mk_type{Tyop = "fun",Args = [num_ty,num_ty]}
+ in  fn t => (mk_comb{Rator = mk_const{Name = "PRE",Ty = fun_ty},Rand = t}
+              handle _ => failwith "mk_pre")
+ end;
+
+val dest_pre =
+ let val num_ty = mk_type{Tyop = "num",Args = []}
+     val fun_ty = mk_type{Tyop = "fun",Args = [num_ty,num_ty]}
+     val check = assert (fn c => dest_const c = {Name = "PRE",Ty = fun_ty})
+ in  fn tm => ((let val {Rator,Rand = c} = dest_comb tm
+                    val _ = check Rator
+                in  c
+                end)
+               handle _ => failwith "dest_pre")
+ end;
+
+val is_pre = can dest_pre;
+
+(*===========================================================================*)
+(* Discriminators for numbers                                                *)
+(*===========================================================================*)
+
+fun is_num_const tm =
+ dest_type (#Ty (dest_const tm)) = {Tyop = "num",Args = []}
+ handle _ => false;
+
+fun is_zero tm =
+ #Name (dest_const tm) = "0" handle _ => false;
+
+(*===========================================================================*)
+(* Conversions between ML integers and numeric constant terms                *)
+(*===========================================================================*)
+
+fun int_of_term tm =
+ string_to_int (#Name (dest_const tm)) handle _ => failwith "int_of_term"
+
+val term_of_int =
+ let val num_ty = mk_type{Tyop = "num",Args = []}
+ in  fn n => (mk_const{Name = int_to_string n,Ty = num_ty}
+              handle _ => failwith "term_of_int")
+ end;
+
+(*===========================================================================*)
+(* Generation of a numeric variable from a name                              *)
+(*===========================================================================*)
+
+val mk_num_var =
+ let val num_ty = mk_type{Tyop = "num",Args = []}
+ in  fn s => (mk_var{Name = s,Ty = num_ty} handle _ => failwith "mk_num_var")
+ end;
+
+(*===========================================================================*)
+(* Functions to extract the arguments from an application of a binary op.    *)
+(*===========================================================================*)
+
+val arg1 = rand o rator
+and arg2 = rand;
+
+end
+@
+
+
+1.3.4.1
+log
+@Changes to accomodate CM, and also the differences between  SML'90 and SML'97.
+@
+text
+@d22 3
+a24 1
+type term = CoreHol.Term.term
+d26 3
+a28 5
+fun failwith function = raise 
+ Exception.HOL_ERR{origin_structure = "Arith_cons",
+                   origin_function = function,
+                           message = ""};
+open Lib;
+a29 4
+open CoreHol;
+open Type;
+open Term;
+
+@
+
+
+1.2
+log
+@First phase of hol90.8 development.  hol90 now compiles using NJSML-CM
+108.5, with separate compilation of libraries.  System dependencies
+have been isolated in the makefiles and "portable.sml".
+
+This involved a large number of enhancments to the source files,
+most of which are documented in the 7.changes file (or will be shortly).
+See also the correpsonding email corrspondence between RJB, KLS, TFM,
+JRH and DRS that happened during this development.
+@
+text
+@d16 1
+a16 1
+(* DATE          : 12th February 1993                                        *)
+d185 24
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d22 4
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

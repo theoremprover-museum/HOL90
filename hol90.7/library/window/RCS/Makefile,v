@@ -1,0 +1,174 @@
+head	4.1;
+access;
+symbols
+	HOL90-7:4.1;
+locks; strict;
+comment	@# @;
+
+
+4.1
+date	94.09.10.03.27.58;	author jim;	state Exp;
+branches;
+next	0.2;
+
+0.2
+date	94.09.09.16.33.10;	author jim;	state Exp;
+branches;
+next	0.1;
+
+0.1
+date	94.05.24.04.14.41;	author jug;	state Exp;
+branches;
+next	0.0;
+
+0.0
+date	94.05.12.01.17.14;	author jug;	state Exp;
+branches;
+next	;
+
+
+desc
+@This is the makefile for the HOL90 version of the window library.
+@
+
+
+4.1
+log
+@This is the version released with HOL90.7
+@
+text
+@# =====================================================================
+#
+# 		 MAKEFILE FOR THE HOL LIBRARY: window
+#
+# $Id: Makefile,v 0.2 1994/09/09 16:33:10 jim Exp jim $
+# =====================================================================
+
+# =====================================================================
+# MAIN ENTRIES:
+#
+#    make all	    : make the source and theory files.
+#
+#    make source    : check out the source code (see REVISION)
+#
+#    make install   : make the source and theories and define the
+#                     library.
+#
+#    make clean	    : remove the theories.
+#	
+#    make clobber   : remove theories, and source code that isn't
+#                     different to that in REVISION.
+#
+# ---------------------------------------------------------------------
+# MACROS:
+#
+#    HOL            : the pathname of the version of hol used
+#    SOURCE         : all the source files
+#    REVISION       : The rcs revision of the source code to get
+# =====================================================================
+
+HOL=hol90.7
+
+SOURCE=src/basic_close.sml src/defined.sml src/eq_close.sml		\
+      src/history.sml src/hol_ext.sml src/imp_close.sml src/inter.sml	\
+      src/ml_ext.sml src/relations.sml src/rules.sml src/signal.sml	\
+      src/tactic.sml src/tty.sml src/win.sml src/win_core.sml src/window.sml
+
+REVISION=
+
+# =====================================================================
+# Basic functions.
+# =====================================================================
+
+all: source theories
+	@@echo "===> library window built"
+
+install: all install.sml
+	${HOL} < install.sml
+	@@echo "===> library window installed"
+
+source: ${SOURCE}
+	@@echo "===> library window source code built"
+
+theories: theories/ascii/window.holsig theories/ascii/window.thms
+	@@echo "===> library window theories built"
+
+theories/ascii/window.holsig theories/ascii/window.thms:	\
+		theories/src/mk_window.sml
+	cd theories/src; ${HOL} < mk_window.sml
+	mv theories/src/window.holsig theories/ascii/window.holsig
+	mv theories/src/window.thms theories/ascii/window.thms
+
+clean:
+	rm -f theories/ascii/window.holsig theories/ascii/window.thms
+	@@echo "===> library window: all theory files deleted"
+
+clobber: clean
+	rcsclean -r${REVISION} ${SOURCE}
+	rcsclean -r${REVISION} install.sml make_window
+	rcsclean -r${REVISION} theories/src/mk_window.sml
+	@@echo "===> library window: all source code deleted"
+
+.FAILED:
+	@@echo "===> library window build failed"
+
+.DEFAULT:
+	co -r${REVISION} $@@
+@
+
+
+0.2
+log
+@Pointed HOL at hol90.7.
+@
+text
+@d5 1
+a5 1
+# $Id: Makefile,v 0.1 1994/05/24 04:14:41 jug Exp jim $
+a46 3
+source: ${SOURCE}
+	@@echo "===> library window source code built"
+
+d51 3
+d55 1
+d58 2
+a59 2
+		theories/src/mk_window.sml make_window
+	./make_window ${HOL}
+@
+
+
+0.1
+log
+@Removed the destroy target, I just used it to lose half a day's work!
+@
+text
+@d5 1
+a5 1
+# $Id: Makefile,v 0.0 1994/05/12 01:17:14 jug Exp $
+d31 1
+a31 1
+HOL=/home2/hol90.6/bin/hol90
+@
+
+
+0.0
+log
+@*** empty log message ***
+@
+text
+@d5 1
+a5 1
+# $Id: Makefile,v 0.0 1994/05/11 23:44:07 jug Exp $
+a22 3
+#    make destroy   : remove theories, compiled code and source code.
+#                     HANDLE WITH CARE
+#
+d68 2
+a70 5
+
+destroy: clean
+	rm -f ${SOURCE}
+	rm -f install.sml theories/src/mk_window.sml make_window
+	@@echo "===> library pair: all source code deleted"
+@

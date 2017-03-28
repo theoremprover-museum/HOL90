@@ -1,0 +1,93 @@
+head	1.1;
+branch	1.1.1;
+access;
+symbols
+	HOL97:1.1.1.1.0.6
+	bpHOL97:1.1.1.1
+	hol90_9_alpha:1.1.1.1
+	hol90_pre8_for_multiple_compilers:1.1.1.1.0.4
+	hol90_pre8_after_donalds_separate_compilation_changes:1.1.1.1
+	hol90_8_after_merging_Konrad_Elsa:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	95.10.16.13.31.29;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.31.29;	author rjb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@\DOC INSTANCE_T_CONV
+
+\TYPE {INSTANCE_T_CONV : ((term -> term list) -> conv -> conv)}
+
+\SYNOPSIS
+Function which allows a proof procedure to work on substitution instances of
+terms that are in the domain of the procedure.
+
+\LIBRARY arith
+
+\DESCRIBE
+This function generalises a conversion that is used to prove formulae true. It
+does this by first replacing any syntactically unacceptable subterms with
+variables. It then attempts to prove the resulting generalised formula and if
+successful it re-instantiates the variables.
+
+The first argument should be a function which computes a list of subterms of a
+term which are syntactically unacceptable to the proof procedure. This
+function should include in its result any variables that do not appear in
+other subterms returned. The second argument is the proof procedure to be
+generalised; this should be a conversion which when successful returns an
+equation between the argument formula and {T} (true).
+
+\FAILURE
+Fails if either of the applications of the argument functions fail, or if the
+conversion does not return an equation of the correct form.
+
+\EXAMPLE
+{
+#FORALL_ARITH_CONV "!f m (n:num). (m < (f n)) ==> (m <= (f n))";;
+evaluation failed     FORALL_ARITH_CONV -- formula not in the allowed subset
+
+#INSTANCE_T_CONV non_presburger_subterms FORALL_ARITH_CONV
+# "!f m (n:num). (m < (f n)) ==> (m <= (f n))";;
+|- (!f m n. m < (f n) ==> m <= (f n)) = T
+}
+\ENDDOC
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

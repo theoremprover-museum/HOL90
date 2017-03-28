@@ -1,0 +1,217 @@
+head	1.2;
+access;
+symbols
+	HOL97:1.2.2.1.0.2
+	bpHOL97:1.2.2.1
+	hol90_9_alpha:1.2.2.1
+	hol90_pre8_for_multiple_compilers:1.2.0.2
+	hol90_pre8_after_donalds_separate_compilation_changes:1.2
+	hol90_8_after_merging_Konrad_Elsa:1.2
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.2
+date	95.10.16.17.48.07;	author drs1004;	state Exp;
+branches
+	1.2.2.1;
+next	1.1;
+
+1.1
+date	95.10.16.13.30.54;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.30.54;	author rjb;	state Exp;
+branches;
+next	;
+
+1.2.2.1
+date	96.08.23.10.59.57;	author rjb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.2
+log
+@I'm about to do a checkin of Elsa Gunter's modifications to the hol90.7
+sources to create her hol90.pre8.  To recap what I've done:
+	- I checked out hol90 (in /usr/groups/hol/drs1004/hol90)
+		cvs co hol90
+
+	- By doing a recursive diff between Elsa's source and the
+	hol90.7 source I found all the changes Elsa had made to
+	source files.  I copied relevant files from Elsa's source
+	into my checked out version.  The only new files were
+		- the sml_system files in src/0
+		- some make scripts in src/.
+	Changed files were in:
+		src/{0,1,2,3}
+		library/arith/src/thm_convs.sml
+		library/list/src/list_conv1.sml
+		library/num/src/num_lib.sml
+		library/prog_logic/src/halts_logic.sml
+		library/prog_logic/src/translation.sml
+		library/prog_logic/theories/src/mk_halts.sml
+		library/real/theories/src/Make
+		library/real/theories/src/equiv.sml
+		library/real/theories/src/seq.sml
+		library/reduce/src/arithconv.sml
+		library/string/src/string_conv.sml
+		library/unity/theories/src/aux_definitions.sml
+		library/word/theories/src/*
+
+	- I will now commit these changes, with this email as the log message.
+		cvs commit
+
+	- Tomorrow I will get this version compiling
+	with NJSML 108 (I will probably add
+	the files to enable the NJSML compilation manager to make
+	this easier), then check those changes in.  I think it's
+	good to get things working.
+@
+text
+@(* -*- Emacs Mode: sml -*- *)
+
+infix 5 |->
+
+(*----------------------------------------------------------------------*)
+(* HOL88 system related functions					*)
+(*----------------------------------------------------------------------*)
+val delete_theory = fn name =>
+    Sml_system.system("/bin/rm "^name^".thms "^name^".holsig")
+
+val prove_thm = fn (name,tm,t) => save_thm(name, TAC_PROOF(([],tm),t))
+
+(* Uniform error facility *)
+fun UNITY_ERR{func,mesg} = 
+      HOL_ERR{origin_structure = "Unity library",
+              origin_function = func,
+              message = mesg};
+
+(*----------------------------------------------------------------------*)
+(* Auxilliary definitions						*)
+(*----------------------------------------------------------------------*)
+
+val UNDISCH_ALL_TAC =
+    let
+	fun th_tac (th:thm) (tac:tactic) = (MP_TAC th) THEN tac
+	fun u_asml (thml:thm list) = itlist  th_tac thml ALL_TAC
+    in
+	POP_ASSUM_LIST u_asml
+    end
+
+val UNDISCH_ONE_TAC =
+    let
+	fun th_tac (th:thm) (tac:tactic) = (UNDISCH_TAC (concl th)) THEN tac
+	fun u_asm  (th:thm) = itlist  th_tac [th] ALL_TAC
+    in
+	FIRST_ASSUM u_asm
+    end
+
+val list_INDUCT = theorem "list" "list_INDUCT";
+
+(* --------------------------------------------------------------------*)
+(*   LIST_INDUCT: (thm # thm) -> thm			               *)
+(*							               *)
+(*     A1 |- t[[]]      A2 |- !tl. t[tl] ==> !h. t[CONS h t]           *)
+(* ----------------------------------------------------------          *)
+(*                   A1 u A2 |- !l. t[l]			       *)
+(*							               *)
+(* --------------------------------------------------------------------*)
+
+fun LIST_INDUCT (base,step) =
+   let val % = Parse.term_parser
+       val alpha_ty = Parse.type_parser `:'a`
+       val bool_ty = Parse.type_parser `:bool`
+       val {Bvar,Body} = dest_forall(concl step)
+       val {ant,conseq} = dest_imp Body
+       val {Bvar=h,Body=con} = dest_forall conseq
+       val P  = %`\^Bvar.^ant` 
+       val b1 = genvar bool_ty
+       val b2 = genvar bool_ty
+       val base'  = EQ_MP (SYM(BETA_CONV (%`^P []`))) base 
+       val step'  = DISCH ant (SPEC h (UNDISCH(SPEC Bvar step)))
+       val hypth  = SYM(RIGHT_BETA(REFL (%`^P ^Bvar`)))
+       val concth = SYM(RIGHT_BETA(REFL (%`^P(CONS ^h ^Bvar)`)))
+       val IND    = SPEC P (INST_TYPE [alpha_ty |-> type_of h] list_INDUCT)
+       val th1 = SUBST[{var=b1,thm=hypth},{var=b2,thm=concth}]
+                      (%`^(concl step') = (^b1 ==> ^b2)`)
+                      (REFL (concl step'))
+       val th2 = GEN Bvar (DISCH (%`^P ^Bvar`)
+                                 (GEN h(UNDISCH (EQ_MP th1 step'))))
+       val th3 = SPEC Bvar (MP IND (CONJ base' th2))
+   in
+   GEN Bvar (EQ_MP (BETA_CONV(concl th3)) th3)
+   end
+   handle _ => raise UNITY_ERR{func = "LIST_INDUCT", mesg = ""};
+
+
+(* --------------------------------------------------------------------*)
+(*							               *)
+(* LIST_INDUCT_TAC					               *)
+(*							               *)
+(*             [A] !l.t[l]				               *)
+(*  ================================			               *)
+(*   [A] t[[]],  [A,t[l]] !h. t[CONS h t]		               *)
+(*							               *)
+(* --------------------------------------------------------------------*)
+
+val LIST_INDUCT_TAC  = INDUCT_THEN list_INDUCT ASSUME_TAC;
+
+
+(* Emacs editor information
+|  Local variables:
+|  mode:sml
+|  sml-prog-name:"hol90"
+|  End:
+*)
+@
+
+
+1.2.2.1
+log
+@Structure Sml_system changed to Portable.
+@
+text
+@d9 1
+a9 1
+    Portable.system("/bin/rm "^name^".thms "^name^".holsig")
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d3 2
+d9 1
+a9 1
+    System.system("/bin/rm "^name^".thms "^name^".holsig")
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

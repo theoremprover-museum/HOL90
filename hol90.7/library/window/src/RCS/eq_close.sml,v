@@ -1,0 +1,482 @@
+head	4.1;
+access;
+symbols
+	HOL90-7:4.1;
+locks
+	slind:4.1; strict;
+comment	@# @;
+
+
+4.1
+date	94.09.10.03.42.51;	author jim;	state Exp;
+branches;
+next	0.1;
+
+0.1
+date	94.05.24.05.42.00;	author jug;	state Exp;
+branches;
+next	0.0;
+
+0.0
+date	94.05.12.00.13.36;	author jug;	state Exp;
+branches;
+next	;
+
+
+desc
+@window rules that preserve equality.
+@
+
+
+4.1
+log
+@Version released with HOL90.7.
+@
+text
+@(*--------------------------------------------------------------------------*)
+(*                  Copyright (c) Jim Grundy 1992                           *)
+(*                  All rights reserved                                     *)
+(*                                                                          *)
+(* Jim Grundy, hereafter referred to as `the Author', retains the copyright *)
+(* and all other legal rights to the Software contained in this file,       *)
+(* hereafter referred to as `the Software'.                                 *)
+(*                                                                          *)
+(* The Software is made available free of charge on an `as is' basis. No    *)
+(* guarantee, either express or implied, of maintenance, reliability,       *)
+(* merchantability or suitability for any purpose is made by the Author.    *)
+(*                                                                          *)
+(* The user is granted the right to make personal or internal use of the    *)
+(* Software provided that both:                                             *)
+(* 1. The Software is not used for commercial gain.                         *)
+(* 2. The user shall not hold the Author liable for any consequences        *)
+(*    arising from use of the Software.                                     *)
+(*                                                                          *)
+(* The user is granted the right to further distribute the Software         *)
+(* provided that both:                                                      *)
+(* 1. The Software and this statement of rights are not modified.           *)
+(* 2. The Software does not form part or the whole of a system distributed  *)
+(*    for commercial gain.                                                  *)
+(*                                                                          *)
+(* The user is granted the right to modify the Software for personal or     *)
+(* internal use provided that all of the following conditions are observed: *)
+(* 1. The user does not distribute the modified software.                   *)
+(* 2. The modified software is not used for commercial gain.                *)
+(* 3. The Author retains all rights to the modified software.               *)
+(*                                                                          *)
+(* Anyone seeking a licence to use this software for commercial purposes is *)
+(* invited to contact the Author.                                           *)
+(*--------------------------------------------------------------------------*)
+(*==========================================================================*)
+(* CONTENTS: window infernce rules preserving equality                      *)
+(*==========================================================================*)
+(*$Id: eq_close.sml,v 0.1 1994/05/24 05:42:00 jug Exp $*)
+
+structure EqClose : sig end =
+
+struct
+
+val CONJ1_THM =
+    prove
+    (
+        (--`!A B C. (B ==> (A = C)) ==> ((A /\ B) = (C /\ B))`--)
+    ,
+        (REPEAT GEN_TAC) THEN
+        BOOL_CASES_TAC (--`A:bool`--) THEN
+        BOOL_CASES_TAC (--`B:bool`--) THEN
+        REWRITE_TAC []
+    );
+
+(*        (B |- A = C)                                                      *)
+(* --------------------------    CONJ1_CLOSE "A /\ B"                       *)
+(*  (|- (A /\ B) = (C /\ B))                                                *)
+fun CONJ1_CLOSE tm th =
+    let val {conj1=a,conj2=b} = dest_conj tm
+        and  c = rand (concl th)
+    in
+        MP (SPECL [a,b,c] CONJ1_THM) (DISCH b th)
+    end;
+
+val CONJ2_THM =
+    prove
+    (
+        (--`!A B C. (A ==> (B = C)) ==> ((A /\ B) = (A /\ C))`--)
+    ,
+        (REPEAT GEN_TAC) THEN
+        BOOL_CASES_TAC (--`A:bool`--) THEN
+        BOOL_CASES_TAC (--`B:bool`--) THEN
+        REWRITE_TAC []
+    );
+
+(*        (A |- B = C)                                                      *)
+(* --------------------------    CONJ2_CLOSE "A /\ B"                       *)
+(*  (|- (A /\ B) = (A /\ C))                                                *)
+fun CONJ2_CLOSE tm th =
+    let val {conj1=a,conj2=b} = dest_conj tm
+        and c = rand (concl th)
+    in
+        MP (SPECL [a,b,c] CONJ2_THM) (DISCH a th)
+    end;
+
+val IMP1_THM =
+    prove
+    (
+        (--`!A B C. (~B ==> (A = C)) ==> ((A ==> B) = (C ==> B))`--)
+    ,
+        (REPEAT GEN_TAC) THEN
+        BOOL_CASES_TAC (--`A:bool`--) THEN
+        BOOL_CASES_TAC (--`B:bool`--) THEN
+        REWRITE_TAC []
+    );
+            
+(*         (~B |- A = C)                                                    *)
+(* ----------------------------  IMP1_CLOSE "A ==> B"                       *)
+(*  (|- (A ==> B) = (C ==> B))                                              *)
+fun IMP1_CLOSE tm th = 
+    let val {ant=a,conseq=b} = dest_imp tm
+        and c = rand (concl th)
+    in
+        MP (SPECL [a,b,c] IMP1_THM) (DISCH (mk_neg b) th)
+    end;
+
+val IMP2_THM =
+    prove
+    (
+        (--`!A B C. (A ==> (B = C)) ==> ((A ==> B) = (A ==> C))`--)
+    ,
+        (REPEAT GEN_TAC) THEN
+        BOOL_CASES_TAC (--`A:bool`--) THEN
+        BOOL_CASES_TAC (--`B:bool`--) THEN
+        REWRITE_TAC []
+    );
+
+(*         (A |- B = C)                                                     *)
+(* ----------------------------  IMP2_CLOSE "A ==> B"                       *)
+(*  (|- (A ==> B) = (A ==> C))                                              *)
+fun IMP2_CLOSE tm th =
+    let val {ant=a,conseq=b} = dest_imp tm 
+        and c = rand (concl th)
+    in
+        MP (SPECL [a,b,c] IMP2_THM) (DISCH a th)
+    end;
+
+val PMI1_THM =
+    prove
+    (
+        (--`!A B C. (B ==> (A = C)) ==> ((A <== B) = (C <== B))`--)
+    ,
+        (REPEAT GEN_TAC) THEN
+        (PURE_REWRITE_TAC [PMI_DEF]) THEN
+        BOOL_CASES_TAC (--`A:bool`--) THEN
+        BOOL_CASES_TAC (--`B:bool`--) THEN
+        REWRITE_TAC []
+    );
+
+(*         (B |- A = C)                                                     *)
+(* ----------------------------  PMI1_CLOSE "A <== B"                       *)
+(*  (|- (A <== B) = (C <== B))                                              *)
+fun PMI1_CLOSE tm th = 
+    let val {conseq=a,ant=b} = dest_pmi tm
+        and c = rand (concl th)
+    in
+        MP (SPECL [a,b,c] PMI1_THM) (DISCH b th)
+    end;
+
+val PMI2_THM =
+    prove
+    (
+        (--`!A B C. (~A ==> (B = C)) ==> ((A <== B) = (A <== C))`--)
+    ,
+        (REPEAT GEN_TAC) THEN
+        (PURE_REWRITE_TAC [PMI_DEF]) THEN
+        BOOL_CASES_TAC (--`A:bool`--) THEN
+        BOOL_CASES_TAC (--`B:bool`--) THEN
+        REWRITE_TAC []
+    );
+
+(*         (~A |- B = C)                                                    *)
+(* ----------------------------  PMI2_CLOSE "A <== B"                       *)
+(*  (|- (A <== B) = (A <== C))                                              *)
+fun PMI2_CLOSE tm th = 
+    let val {conseq=a,ant=b} = dest_pmi tm
+        and c = rand (concl th)
+    in
+        MP (SPECL [a,b,c] PMI2_THM) (DISCH (mk_neg a) th)
+    end;
+
+val DISJ1_THM =
+    prove
+    (
+        (--`!A B C. (~B ==> (A = C)) ==> ((A \/ B) = (C \/ B))`--)
+    ,
+        (REPEAT GEN_TAC) THEN
+        BOOL_CASES_TAC (--`A:bool`--) THEN
+        BOOL_CASES_TAC (--`B:bool`--) THEN
+        REWRITE_TAC []
+    );
+
+(*        (~B |- A = C)                                                     *)
+(* --------------------------    DISJ1_CLOSE "A \/ B"                       *)
+(*  (|- (A \/ B) = (C \/ B))                                                *)
+fun DISJ1_CLOSE tm th =
+    let val {disj1=a,disj2=b} = dest_disj tm
+        and c = rand (concl th)
+    in
+        MP (SPECL [a,b,c] DISJ1_THM) (DISCH (mk_neg b) th)
+    end;
+
+val DISJ2_THM =
+    prove
+    (
+        (--`!A B C. (~A ==> (B = C)) ==> ((A \/ B) = (A \/ C))`--)
+    ,
+        (REPEAT GEN_TAC) THEN
+        BOOL_CASES_TAC (--`A:bool`--) THEN
+        BOOL_CASES_TAC (--`B:bool`--) THEN
+        REWRITE_TAC []
+    );
+
+(*        (~A |- B = C)                                                     *)
+(* ---------------------------   DISJ2_CLOSE "B \/ C"                       *)
+(*  (|- (A \/ B) = (A \/ C))                                                *)
+fun DISJ2_CLOSE tm th =
+    let val {disj1=a,disj2=b} = dest_disj tm
+        and c = rand (concl th)
+    in
+        MP (SPECL [a,b,c] DISJ2_THM) (DISCH (mk_neg a) th)
+    end;
+
+(* Put all those rules in the data base.                                    *)
+
+val dummy =
+(
+store_rule
+    (
+        [RATOR,RAND],
+        is_conj,
+        K (K equiv_tm),
+        K (K equiv_tm),
+        (fn tm => SMASH (ASSUME (rand tm))),
+        CONJ1_CLOSE
+    );
+store_rule
+    (
+        [RAND],
+        is_conj,
+        K (K equiv_tm),
+        K (K equiv_tm),
+        (fn tm => SMASH (ASSUME (rand (rator tm)))),
+        CONJ2_CLOSE
+    );
+store_rule
+    (
+        [RATOR,RAND],
+        is_trueimp,
+        K (K equiv_tm),
+        K (K equiv_tm),
+        (fn tm => SMASH (ASSUME (mk_neg (rand tm)))),
+        IMP1_CLOSE
+    );
+store_rule
+    (
+        [RAND],
+        is_trueimp,
+        K (K equiv_tm),
+        K (K equiv_tm),
+        (fn tm => SMASH (ASSUME (rand (rator tm)))),
+        IMP2_CLOSE
+    );
+store_rule
+    (
+        [RATOR,RAND],
+        is_pmi,
+        K (K equiv_tm),
+        K (K equiv_tm),
+        (fn tm => SMASH (ASSUME (rand tm))),
+        PMI1_CLOSE
+    );
+store_rule
+    (
+        [RAND],
+        is_pmi,
+        K (K equiv_tm),
+        K (K equiv_tm),
+        (fn tm => SMASH (ASSUME (mk_neg (rand (rator tm))))),
+        PMI2_CLOSE
+    );
+store_rule
+    (
+        [RATOR,RAND],
+        is_disj,
+        K (K equiv_tm),
+        K (K equiv_tm),
+        (fn tm => SMASH (ASSUME (mk_neg (rand tm)))),
+        DISJ1_CLOSE
+    );
+store_rule
+    (
+        [RAND],
+        is_disj,
+        K (K equiv_tm),
+        K (K equiv_tm),
+        (fn tm => SMASH (ASSUME (mk_neg (rand (rator tm))))),
+        DISJ2_CLOSE
+    )
+);
+
+end;
+@
+
+
+0.1
+log
+@Reverse the direction of all the close rules as relations in the
+system now have the opposite since.
+The extry in the rule table for finding the assumptions of the child
+window now just gets passed the focus of the parent and just returns
+the new assumptions.
+The entry in the rule table for finding the variables bound by a rule has
+been dropped.
+@
+text
+@d37 1
+a37 1
+(*$Id: eq_close.sml,v 0.0 1994/05/12 00:13:36 jug Exp jug $*)
+@
+
+
+0.0
+log
+@*** empty log message ***
+@
+text
+@d37 1
+a37 1
+(*$Id: eq_close.ml,v 3.1 1993/12/07 14:15:19 jg Exp $*)
+d46 1
+a46 1
+        (--`!A B C. (B ==> (C = A)) ==> ((C /\ B) = (A /\ B))`--)
+d54 1
+a54 1
+(*        (B |- C = A)                                                      *)
+d56 1
+a56 1
+(*  (|- (C /\ B) = (A /\ B))                                                *)
+d59 1
+a59 1
+        and  c = rand (rator (concl th))
+d67 1
+a67 1
+        (--`!A B C. (A ==> (C = B)) ==> ((A /\ C) = (A /\ B))`--)
+d75 1
+a75 1
+(*        (A |- C = B)                                                      *)
+d77 1
+a77 1
+(*  (|- (A /\ C) = (A /\ B))                                                *)
+d80 1
+a80 1
+        and c = rand (rator (concl th))
+d88 1
+a88 1
+        (--`!A B C. (~B ==> (C = A)) ==> ((C ==> B) = (A ==> B))`--)
+d96 1
+a96 1
+(*         (~B |- C = A)                                                    *)
+d98 1
+a98 1
+(*  (|- (C ==> B) = (A ==> B))                                              *)
+d101 1
+a101 1
+        and c = rand (rator (concl th))
+d109 1
+a109 1
+        (--`!A B C. (A ==> (C = B)) ==> ((A ==> C) = (A ==> B))`--)
+d117 1
+a117 1
+(*         (A |- C = B)                                                     *)
+d119 1
+a119 1
+(*  (|- (A ==> C) = (A ==> B))                                              *)
+d122 1
+a122 1
+        and c = rand (rator (concl th))
+d130 1
+a130 1
+        (--`!A B C. (B ==> (C = A)) ==> ((C <== B) = (A <== B))`--)
+d139 1
+a139 1
+(*         (B |- C = A)                                                     *)
+d141 1
+a141 1
+(*  (|- (C <== B) = (A <== B))                                              *)
+d144 1
+a144 1
+        and c = rand (rator (concl th))
+d152 1
+a152 1
+        (--`!A B C. (~A ==> (C = B)) ==> ((A <== C) = (A <== B))`--)
+d161 1
+a161 1
+(*         (~A |- C = B)                                                    *)
+d163 1
+a163 1
+(*  (|- (A <== C) = (A <== B))                                              *)
+d166 1
+a166 1
+        and c = rand (rator (concl th))
+d174 1
+a174 1
+        (--`!A B C. (~B ==> (C = A)) ==> ((C \/ B) = (A \/ B))`--)
+d182 1
+a182 1
+(*        (~B |- C = A)                                                     *)
+d184 1
+a184 1
+(*  (|- (C \/ B) = (A \/ B))                                                *)
+d187 1
+a187 1
+        and c = rand (rator (concl th))
+d195 1
+a195 1
+        (--`!A B C. (~A ==> (C = B)) ==> ((A \/ C) = (A \/ B))`--)
+d203 3
+a205 3
+(*        (~A |- C = B)                                                     *)
+(* ---------------------------   DISJ2_CLOSE "A \/ B"                       *)
+(*  (|- (A \/ C) = (A \/ B))                                                *)
+d208 1
+a208 1
+        and c = rand (rator (concl th))
+d223 1
+a223 2
+        (fn tm => fn tl => (SMASH (ASSUME (rand tm))) @@ tl),
+        K [],
+d232 1
+a232 2
+        (fn tm => fn tl => (SMASH (ASSUME (rand (rator tm)))) @@ tl), 
+        K [],
+d241 1
+a241 2
+        (fn tm => fn tl => (SMASH (ASSUME (mk_neg (rand tm)))) @@ tl),
+        K [],
+d250 1
+a250 2
+        (fn tm => fn tl => (SMASH (ASSUME (rand (rator tm)))) @@ tl),
+        K [],
+d259 1
+a259 2
+        (fn tm => fn tl => (SMASH (ASSUME (rand tm))) @@ tl),
+        K [],
+d268 1
+a268 2
+        (fn tm => fn tl => (SMASH (ASSUME (mk_neg (rand (rator tm))))) @@ tl),
+        K [],
+d277 1
+a277 2
+        (fn tm => fn tl => (SMASH (ASSUME (mk_neg (rand tm)))) @@ tl),
+        K [],
+d286 1
+a286 2
+        (fn tm => fn tl => (SMASH (ASSUME (mk_neg (rand (rator tm))))) @@ tl),
+        K [],
+@

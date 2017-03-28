@@ -1,0 +1,289 @@
+head	1.4;
+access;
+symbols
+	HOL97:1.3.0.4
+	bpHOL97:1.3
+	hol90_9_alpha:1.3
+	hol90_pre8_for_multiple_compilers:1.3.0.2
+	hol90_pre8_after_donalds_separate_compilation_changes:1.3
+	hol90_8_after_merging_Konrad_Elsa:1.2
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.4
+date	95.12.18.11.35.07;	author drs1004;	state Exp;
+branches;
+next	1.3;
+
+1.3
+date	95.10.31.13.56.28;	author drs1004;	state Exp;
+branches
+	1.3.4.1;
+next	1.2;
+
+1.2
+date	95.10.17.17.07.18;	author drs1004;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	95.10.16.13.29.58;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.29.58;	author rjb;	state Exp;
+branches;
+next	;
+
+1.3.4.1
+date	97.06.11.17.24.30;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.4
+log
+@Preterm and other changes, see 7.changes
+@
+text
+@structure PP = Portable.PrettyPrint;
+
+@
+
+
+1.3
+log
+@First phase of hol90.8 development.  hol90 now compiles using NJSML-CM
+108.5, with separate compilation of libraries.  System dependencies
+have been isolated in the makefiles and "portable.sml".
+
+This involved a large number of enhancments to the source files,
+most of which are documented in the 7.changes file (or will be shortly).
+See also the correpsonding email corrspondence between RJB, KLS, TFM,
+JRH and DRS that happened during this development.
+@
+text
+@d1 1
+a1 5
+(* *************************************************************************
+ * Adapted from utilities in the SML/NJ compiler, which were written by 
+ * Konrad Slind and Dave MacQueen.
+ *
+ ***************************************************************************)
+a2 63
+structure PP : PP_sig =
+struct
+
+open Portable.PrettyPrint;
+type ppconsumer = {consumer : string -> unit,
+		   linewidth : int,
+		   flush : unit -> unit}
+fun mk_consumer c = c;
+
+(* Simple and heavily used.
+ * pfun = item printing function
+ * dfun = delimiter printing function
+ * bfun = break printer function
+ *******************************************)
+fun pr_list pfun dfun bfun =
+   let fun pr [] = ()
+         | pr [i] = pfun i
+         | pr (i::rst) = ( pfun i; dfun() ; bfun() ; pr rst )
+   in  pr 
+   end;
+
+(****************************************************************************
+ * 
+ *  fun pp_seq0 ppstream (sep:ppstream->unit,pr) =
+ *     let val prstrm = pr ppstream
+ *         fun prElems [el] = prstrm el
+ *           | prElems (el::rest) = (prstrm el; sep ppstream; prElems rest)
+ *           | prElems [] = ()
+ *     in prElems 
+ *     end
+ * 
+ * fun pp_seq ppstream {sep:ppstream->unit, 
+ *                      pr:ppstream->'a->unit, 
+ *                      indent:int, style:break_style} alist =
+ *     (begin_block ppstream style indent;
+ *      pp_seq0 ppstream (sep,pr) alist;
+ *      end_block ppstream)
+ *
+ * fun pp_seqC ppstream {sep,pr,indent} = 
+ *         pp_seq ppstream {sep = sep, pr = pr, indent = indent,
+ *                          style = CONSISTENT};
+ *
+ * fun pp_seqI ppstream {sep,pr,indent} = 
+ *         pp_seq ppstream {sep = sep, pr = pr, indent = indent,
+ *                          style = INCONSISTENT};
+ *
+ * fun pp_vseq ppstrm {indent, sep:string, pr} =
+ *    pp_seqC ppstrm {sep = fn ppstrm =>(add_string ppstrm sep; 
+ *                                       add_newline ppstrm), 
+ *                    pr = pr, indent = indent};
+ *
+ * fun pp_delimited_seq ppstream
+ *          {front:ppstream->unit,
+ *           back:ppstream->unit,
+ *           pr:ppstream->'a list->unit} (elems:'a list) =
+ *     (begin_block ppstream CONSISTENT 0;
+ *      front ppstream;
+ *      pr ppstream elems; 
+ *      back ppstream;
+ *      end_block ppstream)
+ ***************************************************************************)
+
+end; (* PPutil *)
+@
+
+
+1.3.4.1
+log
+@Removed files are parse files and portability files that have
+effectively been moved elsewhere.
+
+Modified files are up to date for ML 109.26.
+@
+text
+@d1 6
+d11 4
+a14 2
+
+val mk_consumer = Lib.I;
+d16 1
+a16 2
+(*---------------------------------------------------------------------------
+ * Simple and heavily used.
+d20 1
+a20 1
+ *---------------------------------------------------------------------------*)
+d28 40
+d69 1
+a69 1
+end; (* PP *)
+@
+
+
+1.2
+log
+@Keeping you up to date:
+
+I'm about to do a checkin of elsa's modifications to the hol90.7
+sources to create her hol90.pre8.  To recap what I've done:
+	- I checked out hol90 (in /usr/groups/hol/drs1004/hol90)
+		cvs co hol90
+	  (Well, to be honest, I only checked out those
+	  parts of hol90 I knew I'd be changing, e.g. not the
+	  Manual, and only parts of the library.  Checking out the
+	  entire source takes a while, mainly due to the enormous number
+	  of help files.  The limiting factor is files/second, which
+         runs at around 5 when CVS is working on nfs over a network, not
+         KB/second, which you might at first think it would be).
+
+	- By doing a recursive diff between Elsa's source and the
+	hol90.7 source I found all the changes Elsa had made to
+	source files.  I copied relevant files from Elsa's source
+	into my checked out version.  The only new files were
+		- the sml_system files in src/0
+		- some make scripts in src/.
+	Changed files were in:
+		src/{0,1,2,3}
+		library/arith/src/thm_convs.sml
+		library/list/src/list_conv1.sml
+		library/num/src/num_lib.sml
+		library/prog_logic/src/halts_logic.sml
+		library/prog_logic/src/translation.sml
+		library/prog_logic/theories/src/mk_halts.sml
+		library/real/theories/src/Make
+		library/real/theories/src/equiv.sml
+		library/real/theories/src/seq.sml
+		library/reduce/src/arithconv.sml
+		library/string/src/string_conv.sml
+		library/unity/theories/src/aux_definitions.sml
+		library/word/theories/src/*
+
+	- I will now commit these changes, with this email as the log message.
+		cvs commit
+
+	- Tomorrow I will get this version compiling
+	with NJSML 108 (I will probably add
+	the files to enable the NJSML compilation manager to make
+	this easier), then check those changes in.  I think it's
+	good to get things in a working state.
+@
+text
+@d10 1
+a10 1
+open Sml_system.PrettyPrint;
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d10 5
+a14 3
+(* sml/nj 93 open System.PrettyPrint; *)
+(* sml/nj 102 open Compiler.PrettyPrint; open Compiler.PPTable; *)
+open System.PrettyPrint;
+a15 31
+val mk_consumer = Lib.I;
+
+(* sml/nj 93
+ * fun defaultConsumer () =
+ *       {consumer = System.Print.say,
+ *        linewidth = !System.Print.linewidth,
+ *        flush = System.Print.flush};
+ **********************************************************)
+(* sml/nj 102
+ * fun defaultConsumer () =
+ *         {consumer = Lib.say,
+ *          linewidth = !Globals.linewidth,
+ *          flush = Compiler.Control.Print.flush};
+ ***********************************************************)
+
+fun defaultConsumer () =
+       {consumer = System.Print.say,
+        linewidth = !System.Print.linewidth,
+        flush = System.Print.flush};
+
+fun with_ppstream ppstrm = 
+   {add_string = add_string ppstrm, 
+    add_break = add_break ppstrm, 
+    begin_block = begin_block ppstrm, 
+    end_block=fn () => end_block ppstrm, 
+    add_newline=fn () => add_newline ppstrm, 
+    clear_ppstream=fn () => clear_ppstream ppstrm, 
+    flush_ppstream=fn () => flush_ppstream ppstrm};
+
+
+
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

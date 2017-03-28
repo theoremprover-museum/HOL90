@@ -1,0 +1,449 @@
+head	1.5;
+access;
+symbols
+	HOL97:1.3.0.4
+	bpHOL97:1.3
+	hol90_9_alpha:1.3
+	hol90_pre8_for_multiple_compilers:1.3.0.2
+	hol90_pre8_after_donalds_separate_compilation_changes:1.2
+	hol90_8_after_merging_Konrad_Elsa:1.2
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.5
+date	96.02.08.00.30.45;	author drs1004;	state dead;
+branches;
+next	1.4;
+
+1.4
+date	96.01.04.13.45.08;	author drs1004;	state Exp;
+branches;
+next	1.3;
+
+1.3
+date	95.11.15.13.24.17;	author rjb;	state Exp;
+branches
+	1.3.4.1;
+next	1.2;
+
+1.2
+date	95.10.17.17.06.47;	author drs1004;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	95.10.16.13.29.51;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.29.51;	author rjb;	state Exp;
+branches;
+next	;
+
+1.3.4.1
+date	97.07.11.15.05.24;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.5
+log
+@New theory mechanism, by Donald Syme, and many other enhancements.
+@
+text
+@(* ===================================================================== *)
+(* FILE          : exists_def.sml                                        *)
+(* DESCRIPTION   : An embarrassment, somewhat hidden in hol88, made      *)
+(*                 public in hol90. There is an attempt to reduce the    *)
+(*                 principle of definition to the principle of constant  *)
+(*                 specification. This falls down when trying to define  *)
+(*                 the existential quantifier with a constant spec.,     *)
+(*                 which requires an existence theorem. I could do as    *)
+(*                 in hol88 - just grandfather in "?" as a definition -  *)
+(*                 but I provide a separate principle of definition, that*)
+(*                 just gets used once, to define "?".                   *)
+(*                                                                       *)
+(*                 Uses the "pre-constant spec" principle of definition  *)
+(*                 from hol88.                                           *)
+(*                                                                       *)
+(* AUTHORS       : (c) Mike Gordon, University of Cambridge, for hol88   *)
+(*                     Konrad Slind, University of Calgary               *)
+(* DATE          : September 11, 1991                                    *)
+(* ===================================================================== *)
+
+
+(* A reiteration.
+
+   There are actually two principles of definition operating in the system:
+
+       1. The one used here to define ?.
+       2. The one used everywhere else. It is a special version
+          of the principle of constant specification. 
+
+   It is not possible to use the principle of constant specification
+   to define ?, for the PCS uses mk_exists, which will fail since we
+   have not defined the existential quantifier yet.
+*)
+
+functor EXISTS_DEF(structure Theory : Theory_sig
+                   structure Dsyntax : Dsyntax_sig
+                   sharing 
+                     Theory.Thm.Term = Dsyntax.Term) : Exists_def_sig  =
+struct
+structure Thm = Theory.Thm
+open Dsyntax;
+    infix -->
+open Theory.Thm.Term;
+open Lib;
+    infix 5 |->
+
+val ERR = Exception.ERR "Exists_def";
+
+(*----------------------------------------------------------------------
+ * check that tm is a <lhs> where:
+ * 
+ *    <lhs> ::= <var> | <lhs> <var> 
+ * 
+ *  and that no variables are repeated. Return list of variables.
+ *--------------------------------------------------------------------*)
+fun check_lhs tm =
+   if (is_var tm)
+   then [tm]
+   else if (is_const tm)
+        then ERR("check_lhs","attempt to redefine constant")
+        else if (is_comb tm)
+             then let val {Rator,Rand} = dest_comb tm
+                      val l1 = check_lhs Rator
+                      and l2 = [Rand]
+                  in
+                  if (null_intersection l1 l2)
+                  then (l1@@l2)
+                  else ERR("check_lhs","bad lhs in def")
+                  end
+             else ERR("check_lhs","bad lhs in def");
+
+
+(*****************************************************************************
+ * if "C ... = (...:ty)" then  (get_type "C ..." ty) gives the
+ *   type of C.
+ *
+ * fun get_type (Fv _) rightty = rightty
+ *   | get_type (Comb{Rator, Rand}) rightty = 
+ *       get_type Rator (Type.Tyapp{Tyop = "fun", 
+ *                                  Args = [type_of Rand,rightty]})
+ *   | get_type _ _ = ERR("get_type", "bad lhs in def");
+ *****************************************************************************)
+fun get_type tm rightty = 
+   if (is_var tm)
+   then rightty
+   else if (is_comb tm)
+   then let val {Rator,Rand} = dest_comb tm
+        in get_type Rator (type_of Rand --> rightty)
+        end
+   else ERR("get_type","bad lhs in def");
+
+fun new_simple_definition(tok,tm) =
+ let val (vars,tm') = strip_forall tm
+     val {lhs,rhs} = dest_eq tm'
+     val leftvars  = check_lhs lhs
+     and ty        = get_type lhs (type_of rhs)
+     and rightvars = free_vars rhs
+ in
+ if not(set_eq(intersect leftvars rightvars)rightvars)
+ then ERR("new_simple_definition","unbound var in rhs")
+ else if (mem (hd leftvars) rightvars)
+ then ERR("new_simple_definition","def would be recursive")
+ else let val v  = hd leftvars
+	  val Name = #Name(dest_var v)
+	  val c = {Name = Name, Ty = ty}
+	  fun mk_def_thm () = 
+	      Thm.mk_definition_thm([],list_mk_forall(vars, mk_eq{lhs = subst [v |-> mk_const c] lhs,rhs = rhs}))
+      in Theory.store_definition(tok, [], [c], mk_def_thm)
+      end
+ end;
+
+
+end; (* EXISTS_DEF *)
+@
+
+
+1.4
+log
+@Fixed types, pretypes, fixities, parsing.
+@
+text
+@@
+
+
+1.3
+log
+@The HOL90 sources have been changed to allow for the use of different
+Standard ML compilers (possibly simultaneously).
+
+ * Many files in "src/0" changed to make them more portable across different
+   ML compilers. Various additions have been made to the Portable structure
+   and files changed to access identifiers in the Portable structure rather
+   than from the global environment. Worthy of special note are:
+
+   - The pointer equality used in "src/0/term.sml" has been made into a
+     function in the Portable structure.
+
+   - The ML-Lex and ML-Yacc files for the various parsers have been changed
+     to access the Portable structure. Both the source files and the SML
+     produced from them have been changed but I have not verified that the
+     source files would reproduce the new SML versions if ML-Lex and ML-Yacc
+     were to be rerun on them. The changes involve some hacks that exploit the
+     way ML-Lex and ML-Yacc work. See the sources for details.
+
+R.J.Boulton, 15th November 1995.
+@
+text
+@d35 1
+a35 2
+functor EXISTS_DEF((* structure Lib : Lib_sig *)
+		   structure Theory : Theory_sig
+d40 1
+a40 1
+structure Theory = Theory
+d42 1
+d44 2
+d47 1
+a47 2
+val |-> = Lib.|->
+infix 5 |->
+d49 7
+a55 28
+fun EXISTS_DEF_ERR{function,message} =
+    Exception.HOL_ERR{origin_structure = "Exists_def",
+		      origin_function = function,
+		      message = message}
+
+(* check that tm is a <lhs> where:
+
+   <lhs> ::= <var> | <lhs> <var> 
+
+ and that no variables are repeated. Return list of variables.
+*)
+(*
+fun check_lhs (v as Fv _) = [v]
+  | check_lhs (c as Const _) =
+      raise(EXISTS_DEF_ERR {function = "check_lhs",
+	                    message = "attempt_to_redefine_constant"})
+  | check_lhs (Comb{Rator, Rand as Fv _}) =
+       let val l1 = check_lhs Rator
+           and l2 = [Rand]
+       in
+       if (null_intersection l1 l2)
+       then (l1@@l2)
+       else raise(EXISTS_DEF_ERR{function = "check_lhs",
+	                         message = "bad lhs in def"})
+       end
+  | check_lhs _ = raise(EXISTS_DEF_ERR{function = "check_lhs",
+                                       message = "bad lhs in def"});
+*)
+d60 1
+a60 2
+        then raise EXISTS_DEF_ERR{function = "check_lhs",
+                                  message = "attempt_to_redefine_constant"}
+d66 1
+a66 1
+                  if (Lib.null_intersection l1 l2)
+d68 1
+a68 2
+                  else raise EXISTS_DEF_ERR{function = "check_lhs",
+					    message = "bad lhs in def"}
+d70 1
+a70 2
+             else raise EXISTS_DEF_ERR{function = "check_lhs",
+				       message = "bad lhs in def"};
+d81 1
+a81 2
+ *   | get_type _ _ = raise EXISTS_DEF_ERR{function = "get_type",
+ *                                         message = "bad lhs in def"};
+d87 4
+a90 7
+        then let val {Rator,Rand} = dest_comb tm
+             in
+             get_type Rator (Type.mk_type{Tyop ="fun", 
+                                          Args = [type_of Rand,rightty]})
+             end
+        else raise EXISTS_DEF_ERR{function = "get_type",
+				  message = "bad lhs in def"};
+d92 1
+a92 1
+fun new_binder_definition(tok,tm) =
+d99 11
+a109 15
+ if not(Lib.set_eq(Lib.intersect leftvars rightvars)rightvars)
+ then raise EXISTS_DEF_ERR{function = "new_binder_definition",
+			   message = "unbound var in rhs"}
+ else if (Lib.mem (Portable.List.hd leftvars) rightvars)
+      then raise EXISTS_DEF_ERR{function = "new_binder_definition",
+                                message = "def would be recursive"}
+      else let val v  = Portable.List.hd leftvars
+               val Name = #Name(dest_var v)
+               val c = {Name = Name, Ty = ty}
+           in
+             Theory.new_binder c;
+             Theory.store_definition(tok, 
+             list_mk_forall(vars, mk_eq{lhs = subst [v |-> mk_const c] lhs, 
+                                         rhs = rhs}))
+           end
+d112 1
+@
+
+
+1.3.4.1
+log
+@Massive minor changes to close HOL up so as to make it CM-friendly and
+some changes to accomodate SML'97.
+@
+text
+@d22 1
+a22 2
+(*---------------------------------------------------------------------------
+ A reiteration.
+d33 1
+a33 1
+ *---------------------------------------------------------------------------*)
+d35 2
+a36 1
+functor EXISTS_DEF(structure Theory : Theory_sig
+d53 23
+a75 7
+(*---------------------------------------------------------------------------
+ * Check that tm is a <lhs> where:
+ *
+ *   <lhs> ::= <var> | <lhs> <var> 
+ *
+ * and that no variables are repeated. Return list of variables.
+ *---------------------------------------------------------------------------*)
+d96 1
+a96 1
+(*---------------------------------------------------------------------------
+d106 1
+a106 1
+ *---------------------------------------------------------------------------*)
+d121 4
+a124 4
+     val {lhs,rhs}  = dest_eq tm'
+     val leftvars   = check_lhs lhs
+     and ty         = get_type lhs (type_of rhs)
+     and rightvars  = free_vars rhs
+d132 3
+a134 2
+      else let val v = Portable.List.hd leftvars
+               val c = {Name = #Name(dest_var v), Ty=ty}
+d139 1
+a139 1
+                                        rhs = rhs}))
+@
+
+
+1.2
+log
+@Keeping you up to date:
+
+I'm about to do a checkin of elsa's modifications to the hol90.7
+sources to create her hol90.pre8.  To recap what I've done:
+	- I checked out hol90 (in /usr/groups/hol/drs1004/hol90)
+		cvs co hol90
+	  (Well, to be honest, I only checked out those
+	  parts of hol90 I knew I'd be changing, e.g. not the
+	  Manual, and only parts of the library.  Checking out the
+	  entire source takes a while, mainly due to the enormous number
+	  of help files.  The limiting factor is files/second, which
+         runs at around 5 when CVS is working on nfs over a network, not
+         KB/second, which you might at first think it would be).
+
+	- By doing a recursive diff between Elsa's source and the
+	hol90.7 source I found all the changes Elsa had made to
+	source files.  I copied relevant files from Elsa's source
+	into my checked out version.  The only new files were
+		- the sml_system files in src/0
+		- some make scripts in src/.
+	Changed files were in:
+		src/{0,1,2,3}
+		library/arith/src/thm_convs.sml
+		library/list/src/list_conv1.sml
+		library/num/src/num_lib.sml
+		library/prog_logic/src/halts_logic.sml
+		library/prog_logic/src/translation.sml
+		library/prog_logic/theories/src/mk_halts.sml
+		library/real/theories/src/Make
+		library/real/theories/src/equiv.sml
+		library/real/theories/src/seq.sml
+		library/reduce/src/arithconv.sml
+		library/string/src/string_conv.sml
+		library/unity/theories/src/aux_definitions.sml
+		library/word/theories/src/*
+
+	- I will now commit these changes, with this email as the log message.
+		cvs commit
+
+	- Tomorrow I will get this version compiling
+	with NJSML 108 (I will probably add
+	the files to enable the NJSML compilation manager to make
+	this easier), then check those changes in.  I think it's
+	good to get things in a working state.
+@
+text
+@d129 1
+a129 1
+ else if (Lib.mem (hd leftvars) rightvars)
+d132 1
+a132 1
+      else let val v  = hd leftvars
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d35 2
+a36 1
+functor EXISTS_DEF(structure Theory : Theory_sig
+d45 3
+d49 3
+a51 3
+      HOL_ERR{origin_structure = "Exists_def",
+	      origin_function = function,
+	      message = message}
+d87 1
+a87 1
+                  if (null_intersection l1 l2)
+d126 1
+a126 1
+ if not(set_eq(intersect leftvars rightvars)rightvars)
+d129 1
+a129 1
+ else if (mem (hd leftvars) rightvars)
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

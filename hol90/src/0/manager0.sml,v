@@ -1,0 +1,1028 @@
+head	1.1;
+access;
+symbols;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	96.02.08.00.31.29;	author drs1004;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@New theory mechanism, by Donald Syme, and many other enhancements.
+@
+text
+@
+structure Manager0 : Manager0_sig =
+struct
+    structure Fixity = Fixity;
+    structure Thm = Thm;
+	
+    open Lib;
+	infix |-->
+    open Pterms;
+    open Fixity;
+    open Thm;
+    open Extension Theory;
+    open Sexprs Sdict_io;
+    open Parse;
+	
+    val ERR = Exception.ERR "Manager0";
+    val WRAP_ERR = Exception.WRAP_ERR "Manager0";	
+
+    (*--------------------------------------------------------------------
+     * I/O for fixity files
+     *  write_fixities "/tmp/junk" [("a",Prefix),("b",Infix 100)];
+     * read_fixities "/tmp/junk";
+     *-------------------------------------------------------------------*)
+
+    fun fixity_to_sexpr (Infix x) = SAPP [SCON "Infix",SCON (int_to_string x)]
+      | fixity_to_sexpr Prefix = SCON "Prefix"
+      | fixity_to_sexpr Binder = SCON "Binder";
+	
+    fun sexpr_to_fixity (SAPP [SCON "Infix",SCON x]) = Infix (string_to_int x)
+      | sexpr_to_fixity (SCON "Prefix") = Prefix
+      | sexpr_to_fixity (SCON "Binder") = Binder
+      | sexpr_to_fixity _ = ERR("sexpr_to_fixity","bad sexpr construction");
+	
+    fun write_fixities file fixities =
+	write_sdict file (map (I ## fixity_to_sexpr) fixities);
+    fun read_fixities file =
+	map (I ## sexpr_to_fixity) (read_sdict file)
+        handle e => WRAP_ERR("read_fixities ("^file^")",e);
+
+    fun write_map file m =
+	write_sdict file (map (I ## string_to_sexpr) m);
+    fun read_map file =
+	map (I ## sexpr_to_string) (read_sdict file)
+        handle e => WRAP_ERR("read_map ("^file^")",e);
+
+    fun write_names file names =
+	write_sdict file [("",list_to_sexpr string_to_sexpr names)];
+    fun read_names file =
+	let val [(_,names)] = read_sdict file
+	in sexpr_to_list sexpr_to_string names
+	end
+        handle e => WRAP_ERR("read_names ("^file^")",e);
+	
+    fun pretype_to_sexpr (Preterm.Tyapp (s,args)) = 
+	SAPP (SCON s::map pretype_to_sexpr args)
+      | pretype_to_sexpr (Preterm.Utv n) = SCON n
+      | pretype_to_sexpr _ = ERR("pretype_to_sexpr","STV's not allowed");
+	
+	
+    fun sexpr_to_pretype (SAPP (SCON s::args)) =
+	Preterm.Tyapp (s,map sexpr_to_pretype args)
+      | sexpr_to_pretype (SCON n) = Preterm.Utv n
+      | sexpr_to_pretype _ = ERR("sexpr_to_pretype","bad sexpr construction");
+
+    fun preterm_to_sexpr (Preterm.Comb (l,r)) = 
+	SAPP [SCON "C",preterm_to_sexpr l,preterm_to_sexpr r]
+      | preterm_to_sexpr (Preterm.Abs (l,r)) = 
+	SAPP [SCON "A",preterm_to_sexpr l,preterm_to_sexpr r]
+      | preterm_to_sexpr (Preterm.Const (l,r)) = 
+	SAPP [SCON "K",string_to_sexpr l,pretype_to_sexpr r]
+      | preterm_to_sexpr (Preterm.Constrained (l,r)) = 
+	SAPP [SCON "Q",preterm_to_sexpr l,pretype_to_sexpr r]
+      | preterm_to_sexpr (Preterm.Var n) = 
+	SCON n
+      | preterm_to_sexpr (Preterm.Antiq n) = ERR("preterm_to_sexpr","Antiq not allowed");
+	
+	
+    fun sexpr_to_preterm (SAPP [SCON "C",l,r]) =
+	Preterm.Comb (sexpr_to_preterm l, sexpr_to_preterm r)
+      | sexpr_to_preterm (SAPP [SCON "A",l,r]) =
+	Preterm.Abs (sexpr_to_preterm l, sexpr_to_preterm r)
+      | sexpr_to_preterm (SAPP [SCON "Q",l,r]) =
+	Preterm.Constrained (sexpr_to_preterm l, sexpr_to_pretype r)
+      | sexpr_to_preterm (SAPP [SCON "K",l,r]) =
+	Preterm.Const (sexpr_to_string l, sexpr_to_pretype r)
+      | sexpr_to_preterm (SCON n) =
+	Preterm.Var n
+      | sexpr_to_preterm _ = ERR("sexpr_to_preterm","bad sexpr construction");
+
+	
+    fun write_overloads file overloads =
+	write_sdict file (map (I ## preterm_to_sexpr) overloads);
+
+    fun read_overloads file =
+	map (I ## sexpr_to_preterm) (read_sdict file)
+        handle e => WRAP_ERR("read_overloads ("^file^")",e);
+
+    fun write_resbinders file resbinders =
+	write_sdict file (map (I ## string_to_sexpr) resbinders);
+
+    fun read_resbinders file =
+	map (I ## sexpr_to_string) (read_sdict file)
+        handle e => WRAP_ERR("read_resbinders ("^file^")",e);
+
+	    
+
+    (*--------------------------------------------------------------------
+     * Theories
+     *-------------------------------------------------------------------*)
+
+    datatype context = 
+	CONTEXT of {parents : string list ref,
+		   base: string ref,
+		   changed: bool ref,
+		   fixities:(string * fixity) list ref,
+		   resbinders:(string * string) list ref,
+		   overloads:(string * preterm) list ref,
+		   term_map:Io_transformers.term_map ref,
+		   type_map:Io_transformers.type_map ref,
+ 		   tyc:string list ref,
+		   tmc:string list ref, 
+		   thmnames: string list ref,
+		   axiomsf: (unit -> (string * Thm.thm) list) ref,
+		   definitionsf: (unit -> (string * Thm.thm) list) ref,
+		   theoremsf: (unit -> (string * Thm.thm) list) ref};
+	
+    fun empty ()  = 
+	CONTEXT {parents=ref [],
+		base=ref "",
+		changed=ref true,
+		overloads = ref [],
+		resbinders = ref [],
+		fixities = ref [],
+		thmnames = ref [],
+		type_map = ref [],
+		term_map = ref [],
+		tmc = ref [],
+		tyc = ref [],
+		axiomsf = ref (fn () => []),
+		definitionsf = ref (fn () => []),
+		theoremsf = ref (fn () => [])};
+	    
+    val current_context_ref = ref "nil";
+    fun current_context() = (!current_context_ref);
+	
+    val contexts_ref = ref ([("nil",empty ())]: (string * context) list);
+    fun contexts() = (!contexts_ref);
+    val contexts = contexts;
+    fun dest_CONTEXT (CONTEXT x) = x;
+
+    (*-------------------------------------------------------------------
+     * accessors
+     *------------------------------------------------------------------*)
+
+    fun ctxtdata "-" = dest_CONTEXT (assoc (current_context()) (contexts()))
+      | ctxtdata ctxt = dest_CONTEXT (assoc ctxt (contexts()))
+
+    fun get_object f ctxt s = assoc s (!(f (ctxtdata ctxt)) ());
+    val theorem = get_object #theoremsf;
+    val definition = get_object #definitionsf;
+    val axiom = get_object #axiomsf;
+	
+    fun theorems ctxt = !(#theoremsf (ctxtdata ctxt)) ();
+    fun definitions ctxt = !(#definitionsf (ctxtdata ctxt)) ();
+    fun axioms ctxt = !(#axiomsf (ctxtdata ctxt)) ();
+    fun thmnames ctxt = !(#thmnames (ctxtdata ctxt));
+    fun parents ctxt = !(#parents (ctxtdata ctxt));
+	
+    fun ancestry_seq "-" = ancestry_seq (current_context())
+      | ancestry_seq ctxt =
+	let val sofar = ref []
+	    fun p ctxt = 
+	    if mem ctxt (!sofar) then Sequence.null
+	    else (sofar := (ctxt::(!sofar));
+		  Sequence.cons (ctxt,Sequence.its_right (fn (a,b) => Sequence.append (p a,b)) (Sequence.s_of_list (parents ctxt),Sequence.null)))
+	in p ctxt
+	end;
+
+    fun tryfind_seq f s = 
+	case (Sequence.pull s) of 
+	    SOME (h,t) => (f h handle _ => tryfind_seq f t)
+	  | NONE => ERR("tyfind_seq","");
+		
+
+    fun THM s = 
+	let fun find ctxt  =
+	    if mem s (thmnames ctxt) then 
+		(theorem ctxt s
+		 handle _ => definition ctxt s
+		     handle _ => axiom ctxt s)
+	    else ERR("find","")
+	in tryfind_seq find (ancestry_seq (current_context()))
+	    handle _ => ERR("THM","theorem "^s^" not found")
+	end
+    handle e => Exception.Raise e;
+	
+	
+	
+    fun parents ctxt = !(#parents (ctxtdata ctxt));
+	
+    fun ancestry "-" = ancestry (current_context())
+      | ancestry ctxt =
+	let fun p ctxt sofar =
+	    if mem ctxt sofar then sofar
+	    else itlist p (parents ctxt) (ctxt::sofar)
+	in p ctxt []
+	end;
+
+    fun hidden_term_map ctxt = ! (#term_map (ctxtdata ctxt));
+    fun hidden_type_map ctxt = ! (#type_map (ctxtdata ctxt));
+    fun hidden_term_map_for_context ctxt = 
+	U (map hidden_term_map (ancestry ctxt));
+    fun hidden_type_map_for_context ctxt = 
+	U (map hidden_type_map (ancestry ctxt));
+    fun fixities_for_context ctxt = 
+	U (map (! o #fixities o ctxtdata) (ancestry ctxt));
+    fun tmc_for_context ctxt = 
+	U (map (! o #tmc o ctxtdata) (ancestry ctxt));
+    fun tyc_for_context ctxt = 
+	U (map (! o #tyc o ctxtdata) (ancestry ctxt));
+    fun overloads_for_context ctxt = 
+	U (map (! o #overloads o ctxtdata) (ancestry ctxt));
+    fun resbinders_for_context ctxt = 
+	U (map (! o #resbinders o ctxtdata) (ancestry ctxt));
+
+    fun types ctxt = map (fn x => let val {arity,name} = Type.type_decl x
+				 in (name,arity)
+				 end) (tyc_for_context ctxt);
+    fun constants ctxt = map (fn x => let val {const} = Term.const_decl x
+				     in (x,type_of const)
+				     end) (tmc_for_context ctxt);
+	
+
+    fun constant_resolver_for_context ctxt =
+	let val tmc = tmc_for_context ctxt
+	    val tyc = tyc_for_context ctxt
+	    val overloads = overloads_for_context ctxt
+	in fn s =>
+	    let fun check (r,ptm) = 
+		if (r = s) then ptm else raise Fail ""
+		val overload_poss = mapfilter check overloads
+		val ptm =
+		    if mem s tmc then
+			case dest_term (#const (const_decl s)) of
+			    CONST (Name,Ty) => 
+				SOME (Preterm.Const (Name,Preterm.type_to_pretype Ty))
+			  | _ => ERR("constant_resolver_for_context","")
+		    else if Lexis.is_num_literal s then
+			SOME (Preterm.Const (s, Preterm.Tyapp ("num",[])))
+			 else if Lexis.is_string_literal s then
+			     SOME (Preterm.Const (s,Preterm.Tyapp ("string",[])))
+			      else NONE
+	    in case ptm of
+		SOME x => x::overload_poss
+	      | NONE => overload_poss
+	    end
+	end;
+	 
+    (* ---------------------------------------------------------------------
+     * Pretty printer for contexts
+     * ---------------------------------------------------------------------*)
+   
+    local
+	open PP;
+    in 
+    fun  pp_context ppstrm "-" = pp_context ppstrm (current_context())
+      | pp_context ppstrm ctxt =
+    let val {add_string,add_break,begin_block,end_block,add_newline,...} = 
+               with_ppstream ppstrm
+	val ancestry' = subtract (ancestry ctxt) [ctxt]
+	val location = !(#base (ctxtdata ctxt))
+	val fixities = fixities_for_context ctxt
+	val overloads = overloads_for_context ctxt
+	val tmc = tmc_for_context ctxt
+	val tyc = tyc_for_context ctxt
+	val resbinders = resbinders_for_context ctxt
+	val add_quote = add_string o quote
+	fun with_types f x =
+	    let val old = !Globals.show_types
+	    in (Globals.show_types := true;
+		f x;
+		Globals.show_types := old)
+	    end
+    in begin_block PP.CONSISTENT 0;
+       begin_block PP.INCONSISTENT 4;
+       add_string("Ancestors: ");
+       if (length ancestry' = 0)
+       then (add_string "<none>")
+       else (pr_list (add_quote)
+                      (fn () => add_string ",")
+                      (fn () => add_break(1,0)) ancestry');
+       end_block();
+	   
+       add_newline();
+
+       add_string "Storage Location: ";
+       add_quote location;
+       add_newline();
+
+       begin_block PP.INCONSISTENT 4;
+       add_string("Fixities: ");
+       if (length fixities = 0)
+       then (add_string "<none>")
+       else ( add_newline();
+	     pr_list (fn (n,Prefix) => (add_string n;add_string " (Prefix)")
+		       | (n,Binder) => (add_string n;add_string " (Binder)")
+		       | (n,Infix p) => (add_string n;add_string (" (Infix "^int_to_string p^")")))
+                      (fn () => add_string",")
+                      (fn () => add_break(1,0)) fixities);
+	   end_block();
+	   
+       add_newline();
+
+       add_string("Macros: ");
+       add_string "<not yet stored in contexts>";
+       add_newline();
+
+       begin_block PP.INCONSISTENT 4;
+       add_string("Restricted Binders: ");
+       if (length resbinders = 0)
+       then (add_string "<none>")
+       else ( add_newline();
+	      pr_list (fn (x,y) => (add_quote x; add_string " --> "; add_quote y))
+                      (fn () => add_string",")
+                      (fn () => add_break(1,0)) resbinders);
+	   end_block();
+       add_newline();
+
+       begin_block PP.INCONSISTENT 4;
+       add_string("Overloads: ");
+       if (length overloads = 0)
+       then (add_string "<none>")
+       else ( add_newline();
+	     pr_list (fn (x,y) => (add_quote x; 
+				   add_string " --> "; 
+				   with_types (Preterm.pp_preterm ppstrm) y))
+	     (fn () => add_string",")
+	     (fn () => add_break(1,0)) overloads);
+	   end_block();
+       add_newline();
+
+       begin_block PP.INCONSISTENT 4;
+       add_string("Constants: ");
+       if (length tmc = 0)
+       then (add_string "<none>")
+       else ( add_newline();
+	      pr_list add_string
+                      (fn () => add_string",")
+                      (fn () => add_break(1,0)) tmc);
+	   end_block();
+       add_newline();
+
+       begin_block PP.INCONSISTENT 4;
+       add_string("Type Constants: ");
+       if (length tyc = 0)
+       then (add_string "<none>")
+       else ( add_newline();
+	      pr_list add_quote
+                      (fn () => add_string",")
+                      (fn () => add_break(1,0)) tyc);
+	   end_block();
+       add_newline();
+
+       end_block()
+     end;
+
+
+     fun show_context ctxt =
+	 let val context_to_string =
+	     PP.pp_to_string (!Globals.linewidth) pp_context
+	 in output(std_out,context_to_string ctxt)
+	 end;
+    end;
+
+    (*-------------------------------------------------------------------
+     * construction and I/O
+     *------------------------------------------------------------------*)
+
+    fun memoize f =
+	let val cell = ref NONE
+	    fun f0 () = let val res = f () 
+			in (cell := SOME (fn _ => res); res)
+			end
+	    val _ = cell := SOME f0
+	in fn () => (the (!cell)) ()
+	end;
+
+    fun locate_context ctxtname =
+	let val {path,file} = 
+	    File.find_file (!Globals.theory_path) (ctxtname^".definitions.holsig")
+	in path^ctxtname
+	end
+    handle e => WRAP_ERR("locate_context",e);
+	
+	
+	    
+    fun read_context (base,parents) = 
+	let val axs as (axioms,_) = read_thmdb (base^".axioms")
+	    val defs as (definitions,_) = read_thmdb (base^".definitions")
+	    val thms as (theorems,_) = read_thmdb (base^".theorems")
+	    val (tyc,tmc) = read_consts (base^".consts")
+	    val term_map = read_map (base^".term_map")
+	    val type_map = read_map (base^".type_map")
+	    fun remem (names,f) = memoize (fn () => zip names (f ()))
+	    val fixities = read_fixities (base^".fixities")
+	    val overloads = read_overloads (base^".overloads") handle e => []
+	    val resbinders = read_resbinders (base^".resbinders") handle e => []
+	in CONTEXT {parents=ref parents,
+		   base=ref base,
+		   changed=ref false,
+		   resbinders = ref resbinders,
+		   overloads = ref overloads,
+		   fixities = ref fixities,
+		   term_map = ref term_map,
+		   type_map = ref type_map,
+		   tyc= ref (map #1 tyc),
+		   tmc= ref (map #1 tmc),
+		   thmnames = ref (axioms@@definitions@@theorems),
+		   axiomsf = ref (remem axs),
+		   definitionsf = ref (remem defs),
+		   theoremsf = ref (remem thms)}
+	end;
+	
+	
+    fun write_ld_file file ctxt =
+	let val os = open_out file
+	in let fun S s = output(os,s)
+	       val _ = S ("structure "^ctxt^" : sig end = \nstruct \n")
+	       fun wp p = S("open "^p^"\n")
+	       val _ = app wp (parents ctxt)
+	       val _ = S("val _ = Manager0.load_context "^quote ctxt^";\n")
+	       val _ = S("end; (* struct *)\n")
+	   in close_out os
+	   end handle e => (close_out os; raise e)
+	end;
+			 
+			 
+		
+
+    fun write_context (ctxtname,CONTEXT data) =
+	if ! (#changed data) then 
+	    let val base = 
+		case (#base data) of 
+		    (r as ref "") => 
+			let val f = hd (!Globals.theory_path@@["./"])^ctxtname
+			in (r := f; f)
+			end
+		  | ref f => f
+		val axioms = !(#axiomsf data) ()
+		val definitions = !(#definitionsf data) ()
+		val theorems = !(#theoremsf data) ()
+	    in (write_thmdb (base^".axioms") axioms;
+		write_thmdb (base^".definitions") definitions;
+		write_thmdb (base^".theorems") theorems;
+		write_consts (base^".consts") (!(#tyc data),!(#tmc data));
+		write_fixities (base^".fixities") (!(#fixities data));
+		write_overloads (base^".overloads") (!(#overloads data));
+		write_resbinders (base^".resbinders") (!(#resbinders data));
+		write_map (base^".term_map") (!(#term_map data));
+		write_map (base^".type_map") (!(#type_map data));
+		write_ld_file (base^".ld.sml") ctxtname;
+		write_names (base^".parents") (!(#parents data));
+		#changed data := false)
+	    end
+	else ();
+	
+	
+    fun save () = 
+	app write_context (contexts());
+
+    fun export_context () = 
+	write_context (current_context (),
+		      assoc (current_context()) (contexts()));
+
+	
+	
+    (*-------------------------------------------------------------------
+     * atomic wrapper for things that change the current context in 
+     * fairly unpredicatable big ways,
+     * Reinstall correct syntax tables after an
+     * operation.
+     *------------------------------------------------------------------*)
+
+
+    fun concat_ref s r = (r := (!r)^s);
+    fun insert_ref s r = (r := insert s (!r));
+    fun append_ref s r = (r := s@@(!r));
+    fun add_assoc_ref s r = (r := add_assoc s (!r));
+    fun add_assoc_reff s f = let val oldf = !f
+		   in f := (fn () => add_assoc s (oldf ()))
+		   end;
+	
+    fun touch ctxt = (#changed (ctxtdata ctxt) := true);
+			     
+    fun atomic_manager_op f x =
+	let val ctxt = current_context ()
+	    val constants = Term.all_constants()
+	    val types = Type.all_types()
+	    val cr = current_constant_resolver()
+	    val fix = fixities()
+	    val t1 = current_term_map ()
+	    val t2 = current_type_map()
+	    val res = f x 
+		handle e => (set_fixities fix;
+			     set_term_map t1;
+			     set_type_map t2;
+			     set_constant_resolver cr;
+			     raise e)
+	in (set_fixities (fixities_for_context (current_context()));
+	    set_term_map (hidden_term_map_for_context (current_context()));
+	    set_type_map (hidden_type_map_for_context (current_context()));
+	    let val new_constants = subtract (Term.all_constants()) constants
+		val new_types = subtract (Type.all_types()) types
+	    in append_ref new_constants (#tmc (ctxtdata ctxt)); 
+		append_ref new_types (#tyc (ctxtdata ctxt))
+	    end;
+	    set_constant_resolver (constant_resolver_for_context (current_context()));
+	    touch ctxt;
+	    res)
+	end;
+	
+    (*-------------------------------------------------------------------
+     * big ops
+     *------------------------------------------------------------------*)
+		   
+
+    val new_context = 
+	let fun f s =
+	    let val existed = can (assoc s) (contexts())
+	    in (if existed
+		   then say ("[warning: context "^quote s^" already existed - its old contents will be lost]\n")
+	       else ();
+               add_assoc_ref (s,empty ()) contexts_ref;
+	       if existed then () 
+	       else insert_ref (current_context()) (#parents (ctxtdata s));
+               current_context_ref := s)
+	    end
+	in fn s => (atomic_manager_op f s
+		    handle e => WRAP_ERR("new_context",e))
+ 	    handle e => Exception.Raise e
+	end;
+	
+    val empty_context = 
+	let fun f s =
+	    let val existed = can (assoc s) (contexts())
+	    in (if existed
+		   then say ("[warning: context "^quote s^" already existed - its old contents will be lost]\n")
+	       else ();
+               add_assoc_ref (s,empty ()) contexts_ref;
+               current_context_ref := s)
+	    end
+	in fn s => (atomic_manager_op f s
+		    handle e => WRAP_ERR("empty_context",e))
+ 	    handle e => Exception.Raise e
+ 	end;
+	
+    val switch_context = 
+	let fun f s = current_context_ref := s
+	in atomic_manager_op f
+	end;
+	
+
+    fun load1 ctxt =
+	if can (assoc ctxt) (contexts()) then ()
+	else let val base = locate_context ctxt
+		 val parents = read_names (base^".parents")
+		 val _ = map load1 parents
+		 val context = read_context (base,parents)
+	     in contexts_ref := add_assoc (ctxt,context) (contexts())
+	     end;
+
+    val load_context  = 
+	let fun f ctxt =
+	    if can (assoc ctxt) (contexts())
+		then say ("[load_context - context "^quote ctxt^" is already loaded]\n")
+	    else (load1 ctxt;
+		  current_context_ref := ctxt)
+	in fn ctxt => (atomic_manager_op f ctxt
+		      handle e => WRAP_ERR("load_context",e))
+		handle e => Exception.Raise e
+	end;
+	
+
+	
+
+    val import  = 
+	let fun f ctxt =
+	    if can (assoc ctxt) (contexts()) then
+		  insert_ref ctxt (#parents (ctxtdata (current_context())))
+	    else (load1 ctxt;
+		  insert_ref ctxt (#parents (ctxtdata (current_context()))))
+	in fn ctxt => (atomic_manager_op f ctxt
+		      handle e => WRAP_ERR("import",e))
+		handle e => Exception.Raise e
+	end;
+	
+	
+
+
+
+    (*-------------------------------------------------------------------
+     * mutators 
+     *------------------------------------------------------------------*)
+
+    fun save_object (cat,f) (s,thm) = 
+	let val data = ctxtdata (current_context())
+	in (if mem s (!(#thmnames data))
+		then say ("[overwriting old value for "^cat^" "^s^" in the context "^quote(current_context())^"]\n")
+	    else ();
+	    insert_ref s (#thmnames data);
+	    add_assoc_reff (s,thm) (f data);
+	    touch (current_context());
+	    thm)
+	end;
+
+    val save_thm = save_object ("theorem",#theoremsf);
+    val save_definition = save_object ("definition",#definitionsf);
+    val save_axiom = save_object ("axiom",#axiomsf);
+
+    fun add_to_term_map ctxt maplet = 
+	(add_assoc_ref maplet (#term_map (ctxtdata ctxt)); 
+	 touch ctxt);
+	
+    fun add_to_type_map ctxt maplet = 
+	(add_assoc_ref maplet (#type_map (ctxtdata ctxt)); 
+	 touch ctxt);
+	
+	
+    fun add_to_fixities ctxt maplet = 
+	(add_assoc_ref maplet (#fixities (ctxtdata ctxt)); 
+	 touch ctxt);
+	
+    fun add_to_overloads ctxt maplet = 
+	(add_assoc_ref maplet (#overloads (ctxtdata ctxt)); 
+	 touch ctxt);
+	
+    fun add_to_resbinders ctxt maplet = 
+	(add_assoc_ref maplet (#resbinders (ctxtdata ctxt)); 
+	 touch ctxt);
+	
+
+	
+    (*--------------------------------------------------------------------
+     * Choosing variants of constant names.  
+      * - Wrap atomic_manager_op around anything which
+     * calls these functions, since they side effect contexts.  This will
+     * cause the changes to the interface map to be properly registered
+     * with the parser and pretty printer.
+     *-------------------------------------------------------------------*)
+
+    fun unvariant s =
+	let fun strip n = 
+		if n <= 0 then s
+		else if Portable.String.substring (s,n,3) = "__V" then
+		    Portable.String.substring (s,0,n)
+		else strip (n-1)
+	in strip (Portable.String.size s - 3)
+	end;
+		    
+    fun unsymbolic s =
+	if (Lexis.ok_symbolic s) then "symbolic" else s;
+
+    fun const_variant f n =
+	let val n' = unvariant n
+	in if f n' then
+	    let fun variant i = unsymbolic n'^"__V"^int_to_string i
+		val tag = ref 1
+		val _ = while (f (variant (!tag))) do
+		    inc tag
+		val new = variant (!tag)
+		val _ = say ("[redefining "^quote n'^"... choosing "^quote new^" as the internal variant.]\n")
+	    in new
+	    end
+	   else n'
+	end;
+   (* BUG: variant shouldn't be recorded in term map until after constant is successfully introduced *)
+    fun tmc_variant n = 
+	let val n' = const_variant is_constant n
+	in if (n = n') then n'
+	   else
+       (add_to_term_map (current_context()) (unvariant n |--> n');
+	add_to_term_map (current_context()) (("old__"^unsymbolic (unvariant n)) |--> n);
+	n')
+	end;
+    fun tyc_variant n = 
+	let val n' = const_variant is_type n
+	in if (n = n') then n'
+	   else
+       (add_to_type_map (current_context()) (unvariant n |--> n');
+	add_to_type_map (current_context()) (("old__"^unsymbolic (unvariant n)) |--> n);
+	n')
+	end;
+	
+
+	
+    (*--------------------------------------------------------------------
+     * Syntax
+     *-------------------------------------------------------------------*)
+
+
+    fun hol_infix p s =
+	atomic_manager_op (add_to_fixities (current_context())) (s,Infix p);
+	
+    fun hol_prefix s =
+	atomic_manager_op (add_to_fixities (current_context())) (s,Prefix);
+
+    fun hol_binder s =
+	atomic_manager_op (add_to_fixities (current_context())) (s,Binder);
+
+
+    val associate_restriction = 
+	let fun f (b,c) =
+	    if (can (assoc b) (resbinders_for_context (current_context())))
+		then if is_constant c
+			 then add_to_resbinders (current_context()) (b,c)
+		     else ERR("restrict_binder",
+			      quote c^" is not the name of a constant")
+	    else ERR("restrict_binder",
+		     quote b^" is not the name of a binder")
+	in atomic_manager_op f
+	end;
+	
+
+(*
+    val delete_restriction 
+	let fun f (b,c) =
+	    if (can (assoc b) (resbinders_for_context (current_context())))
+		then ERR("delete_restriction", quote binder^" is not restricted")
+	    else delete_resbinder (current_context()) (b,c)
+	in atomic_manager_op f
+	end;
+*)
+
+		
+
+    fun overloaded [QUOTE const] f =
+	let (* term_to_preterm where preterm contains Const nodes, *)
+	    (* and abstractions and variables aren't allowed. *)
+	    fun constcomb_to_preterm tm =
+		case (dest_term tm) of
+		       COMB (Rator,Rand) => 
+			   Preterm.Comb (constcomb_to_preterm Rator,
+					 constcomb_to_preterm Rand)
+		     | CONST (Name,Ty) => 
+			   Preterm.Const (Name,Preterm.type_to_pretype Ty)
+		     | _ => ERR("consts_to_preterm","");
+	    val tm = Parse.simple_term_parser f
+	    val ptm = constcomb_to_preterm tm
+	in atomic_manager_op (add_to_overloads (current_context())) (const,ptm)
+	    handle e => WRAP_ERR("overloaded",e)
+	end
+	 | overloaded _ _ = ERR("overloaded","usage: overloaded `..` `..`");
+
+    (*--------------------------------------------------------------------
+     * New versions of primitive interaction functions.  These choose
+     * new names for the constants if they already exist.
+     *-------------------------------------------------------------------*)
+
+
+    val new_definition = 
+	let fun f (s,tm) =
+	    let val (bv,bd) = strip_forall tm
+		val (l,r) = dest_eq bd
+		val (const,args) = strip_comb l
+		val (cname,ty) = dest_var const handle _ => dest_const const
+		val cname' = tmc_variant cname
+		val new_tm = list_mk_forall (bv,mk_eq(list_mk_comb (mk_var (cname',ty),args),r))
+	    in save_definition (s,Extension.new_definition new_tm)
+	    end
+	in atomic_manager_op f
+	end;
+	
+
+
+    val new_open_axiom =
+	let fun f (s,tm) = 
+	    save_axiom (s,Extension.new_axiom tm)
+	in atomic_manager_op f
+	end;
+	
+    val new_type_definition =
+	let fun f (recd as {name,pred,inhab_thm}) = 
+	    let val name' = tyc_variant name
+	    in save_definition (name^"_TY_DEF",
+				Extension.new_type_definition {name=name',
+							       pred=pred,
+							       inhab_thm=inhab_thm})
+	    end
+	in atomic_manager_op f
+	end;
+
+	
+    val new_simple_definition =
+	let fun f (s,tm) = 
+	    let val (bv,bd) = strip_forall tm
+		val (l,r) = dest_eq bd
+		val (const,args) = strip_comb l
+		val (cname,ty) = dest_var const handle _ => dest_const const
+		val cname' = tmc_variant cname
+		val new_tm = list_mk_forall (bv,mk_eq(list_mk_comb (mk_var (cname',ty),args),r))
+	    in save_definition (s,Extension.new_simple_definition new_tm)
+	    end
+	in atomic_manager_op f
+	end;
+
+	
+    val new_constant =
+	let fun f {Name,Ty} =
+	    let val Name' = tmc_variant Name
+	    in Theory.new_extension {tyc=[],tmc=[{Name=Name',Ty=Ty}],
+				     mk_axiom=fn () => NONE};
+		()
+	    end
+	in atomic_manager_op f
+	end;
+	
+	
+    val new_type =
+	let fun f {Name,Arity} =
+	    let val Name' = tyc_variant Name
+	    in Theory.new_extension {tyc=[{Name=Name',Arity=Arity}],
+				      tmc=[],
+				      mk_axiom=fn () => NONE};
+	       ()
+	    end
+	in atomic_manager_op f
+	end;
+
+	
+    val new_specification' = 
+	let fun f (s,c,tm) = 
+	    let val c' = map tmc_variant c
+	    in save_definition (s,Extension.new_specification (c',tm))
+	    end
+	in atomic_manager_op f
+	end;
+
+    fun new_specification{name, consts, sat_thm} =
+	let fun app_fix {fixity = Prefix,const_name} = hol_prefix const_name
+	      | app_fix {fixity = Infix n,const_name} = hol_infix n const_name
+	      | app_fix {fixity = Binder,const_name} = hol_binder const_name;
+	    val def = new_specification'(name,map #const_name consts,sat_thm)
+	    val _ = map app_fix consts
+	in def
+	end
+	handle e => WRAP_ERR("new_specification",e);
+
+    (*--------------------------------------------------------------------
+     * Obsolete Extensions
+     *-------------------------------------------------------------------*)
+
+    fun new_binder (c as {Name,Ty}) = 
+	let val is_binder_ty = can (dest_fun_ty o #1 o dest_fun_ty)
+	in if is_binder_ty Ty then
+	    let val x = new_constant c
+		val _ = hol_binder Name
+	    in x
+	    end
+	   else ERR ("new_binder", 
+		     "the type given for the new constant is not a binder type")
+	end
+	       
+
+    fun new_infix {Name,Ty,Prec} = 
+	let val is_infix_ty = can (dest_fun_ty o #2 o dest_fun_ty)
+	in if is_infix_ty Ty then
+	    let val x = new_constant {Name=Name,Ty=Ty}
+		val _ = hol_infix Prec Name
+	    in x
+	    end
+	   else ERR ("new_infix", 
+		     "the type given for the new constant is not an infix type")
+	end;
+	
+
+	
+    fun cname_of_def thm = #1(dest_const(#1(strip_comb(lhs(#2(strip_forall (concl thm)))))));
+	
+    fun new_infix_definition(name,def,prec) = 
+	let val thm = new_definition (name,def)
+	    val _ = hol_infix prec (cname_of_def thm)
+	in thm
+	end    
+	handle e => WRAP_ERR("new_infix_definition",e);
+	    
+    fun new_binder_definition(name,def) = 
+	let val thm = new_definition(name,def)
+	    val _ = hol_binder (cname_of_def thm)
+	in thm
+	end
+	handle e => WRAP_ERR("new_binder_definition",e);
+
+
+
+	
+
+    (*--------------------------------------------------------------------
+     * Compat.
+     *-------------------------------------------------------------------*)
+
+    val load_theory = load_context
+    val new_theory = new_context
+    val current_theory = current_context
+    val export_theory = export_context
+    val empty_theory = empty_context
+    val new_parent = import;
+	
+
+    (*--------------------------------------------------------------------
+     * Obsoletes
+     *-------------------------------------------------------------------*)
+
+    fun binders ctxt = (say "warning: \"binders\" is now obsolete"; [])
+    fun infixes ctxt = (say "warning: \"infixes\" is now obsolete"; [])
+    fun close_theory _ = 
+	say "[Note: close_theory is now obsolete]\n";
+    fun extend_theory s = 
+	(switch_context s;
+	 say "[Note: extend_theory is now obsolete and has same meaning as load_theory]\n");
+	
+    fun draft_mode s = 
+	(say "[Note: draft_mode is now obsolete]\n"; true);
+
+   
+	
+end;
+
+    
+
+
+(*-----------------------------------------------------------------------
+
+Tests:
+
+
+
+(* a starting basis *)
+val _ = new_context "min";
+val _ = new_type{Name = "bool", Arity = 0};
+val _ = new_type{Name = "ind", Arity = 0};
+val _ = new_type{Name = "fun", Arity = 2};
+
+val _ = hol_infix 100 "=";
+val _ = hol_infix 200 "==>";
+val _ = hol_binder "@@";
+    
+val _ = new_constant{Name = "=", Ty = ==`:'a -> 'a -> bool`==};
+val _ = new_constant{Name = "==>", Ty = ==`:bool->bool->bool`==};
+val _ = new_constant{Name = "@@",  Ty = ==`:('a -> bool) -> 'a`==};
+
+val _ = hol_binder "\\";
+val _ = hol_binder "?";
+val _ = hol_binder "!";
+val _ = hol_infix 400 "/\\";
+val _ = hol_infix 300 "\\/";
+val _ = hol_binder "?!";
+
+val _ = PP.install_pp
+         ["Term","term"] 
+	 Hol_pp.pp_self_parsing_term;
+(* redefine a binder symbolic using new_simple_definition *)
+val t1 = new_simple_definition("EXISTS_DEF",
+			      --`$? = \P:'a->bool. P ($@@ P)`--);
+val t2 = new_simple_definition("EXISTS_DEF",
+			      --`$? = \P:'b->bool. P ($@@ P)`--);
+
+    t1;
+    (--`?x. P x`--);
+    
+(* redefine a normal constant using new_definition *)
+val _ = new_definition("TRUTH", 
+     --`T = ((\x:bool. x) = \x:bool. x)`--) handle e => Raise e;
+
+val _ = new_definition("TRUTH", 
+     --`T = ((\x:bool. x) = \x:bool. x)`--) handle e => Raise e;
+
+    export_context();
+    
+
+(* incorporate a saved context with redefined constants *)
+
+    load_context "min";
+
+
+(* test overloading *)
+
+new_definition("BIGNOT_DEF",
+     --`BIGNOT f x = ~f x`--);
+ hol_infix 400 "BIGAND";
+ new_definition("BIGAND_DEF",
+     --`(f1 BIGAND f2) x = f1 x /\ f2 x`--);
+    
+    overloaded `/\` `$BIGAND: ('a -> bool) -> ('a -> bool) -> 'a -> bool`;
+    overloaded `/\` `$BIGAND`;
+    (--`$/\`--);
+    (--`T /\ T`--);
+    (--`x /\ T`--);
+    (--`(\y. T) /\ f`--);
+    (--`x /\ x`--);
+    (--`T /\ x /\ x /\ x /\ x /\ x /\ x /\ x /\ x`--);
+    (--`T /\ x /\ x /\ x /\ x /\ x /\ x /\ x /\ x`--);
+    
+
+ *----------------------------------------------------------------------*)
+
+@

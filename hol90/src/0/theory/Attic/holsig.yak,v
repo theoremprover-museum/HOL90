@@ -1,0 +1,488 @@
+head	1.8;
+access;
+symbols
+	HOL97:1.4.0.4
+	bpHOL97:1.4
+	hol90_9_alpha:1.4
+	hol90_pre8_for_multiple_compilers:1.4.0.2
+	last_edition:1.7
+	hol90_pre8_after_donalds_separate_compilation_changes:1.3
+	hol90_8_after_merging_Konrad_Elsa:1.2
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.8
+date	96.02.08.00.23.55;	author drs1004;	state dead;
+branches;
+next	1.7;
+
+1.7
+date	96.02.08.00.18.51;	author drs1004;	state Exp;
+branches;
+next	1.6;
+
+1.6
+date	96.01.04.14.07.31;	author drs1004;	state Exp;
+branches;
+next	1.5;
+
+1.5
+date	95.12.18.11.22.27;	author drs1004;	state Exp;
+branches;
+next	1.4;
+
+1.4
+date	95.11.15.13.30.54;	author rjb;	state Exp;
+branches
+	1.4.4.1;
+next	1.3;
+
+1.3
+date	95.10.31.15.06.26;	author drs1004;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	95.10.18.16.37.50;	author drs1004;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	95.10.16.13.30.11;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.30.11;	author rjb;	state Exp;
+branches;
+next	;
+
+1.4.4.1
+date	97.06.11.17.26.08;	author kxs;	state dead;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.8
+log
+@New theory mechanism, by Donald Syme
+@
+text
+@structure Theory_data = Theory_data
+structure Term = Term
+
+type type_record = {name:string, arity :int, theory:string}
+type term_record = {const:Term.term, theory:string};
+
+type hol_sig = { thid: Theory_data.theory_id,
+                 parents : Theory_data.theory_id list,
+                 type_constants : type_record list,
+                 term_constants : term_record list
+               };
+
+val global_theory_name = ref "";
+
+(* The next "end" closes the Header structure in the compiled file so that
+   the declarations below are available in the rest of the compiled code.
+   The Empty structure then matches with the "end" that should have closed
+   the Header structure.
+*)
+end
+
+open Portable;
+open General;
+
+structure Empty =
+struct
+%%
+%term lbrace | rbrace
+    | lbracket | rbracket
+    | lparen | rparen
+    | comma
+    | eq
+    | thid
+    | name
+    | ty
+    | parents
+    | types
+    | constants
+    | type_var of string
+    | symbolic of string
+    | string_constant of string
+    | id of string
+    | num of string
+    | EOLEX
+    | EOF 
+
+%nonterm START of hol_sig
+       | HOLSIG of hol_sig
+       | CURR_THID of Theory_data.theory_id
+       | THID of Theory_data.theory_id
+       | TYC of type_record
+       | TY of Term.Type.hol_type
+       | CID of string
+       | TMC of term_record
+       | TY_LIST of Term.Type.hol_type list
+       | TYC_LIST of type_record list
+       | TMC_LIST of term_record list
+       | THID_LIST of Theory_data.theory_id list
+
+
+%start START
+%eop EOF EOLEX
+%pos int
+%header (functor holsigLrValsFun (structure Token : TOKEN
+                                  structure Theory_data : Theory_data_sig
+                                  structure Term: Private_term_sig
+                                  sharing
+                                    Theory_data.Thm.Term = Term))
+%name holsig
+%noshift EOF
+%pure
+%%
+
+START : HOLSIG (HOLSIG)
+
+HOLSIG : thid eq CURR_THID 
+         parents eq lbracket THID_LIST rbracket
+         types eq lbracket TYC_LIST rbracket
+         constants eq lbracket TMC_LIST rbracket
+                 ({ thid = CURR_THID,
+                    parents = THID_LIST,
+                    type_constants = TYC_LIST,
+                    term_constants = TMC_LIST})
+
+CURR_THID : lparen CID comma num comma num rparen
+       (global_theory_name := CID;
+        Theory_data.mk_theory_id
+            {name = CID, 
+             timestamp =
+             Portable.Time.mk_time{sec = Lib.string_to_int num1,
+				   usec = Lib.string_to_int num2}})
+
+THID : lparen CID comma num comma num rparen
+       (Theory_data.mk_theory_id
+            {name = CID, 
+             timestamp =
+             Portable.Time.mk_time{sec = Lib.string_to_int num1,
+				   usec = Lib.string_to_int num2}})
+
+TYC : lparen CID comma num rparen
+      ({name=CID,
+        arity = Lib.string_to_int num, theory = (!global_theory_name)})
+
+TY  : type_var (Term.Type.Utv type_var)
+      |
+      CID (Term.Type.Tyapp {Tyop=CID,Args=[]})
+      |
+      lparen CID comma lbracket TY_LIST rbracket rparen
+      (Term.Type.Tyapp{Tyop = CID, Args = TY_LIST})
+        
+
+CID : id (id)
+      |
+      eq ("=")
+      |
+      comma (",")
+      |
+      thid ("thid")
+      |
+      name ("name")
+      |
+      ty ("ty")
+      |
+      parents ("parents")
+      |
+      types ("types")
+      |
+      constants ("constants")
+      |
+      num (num)
+      |
+      string_constant (string_constant)
+      |
+      symbolic (symbolic)
+
+
+TMC : lbrace name eq lparen CID rparen comma ty eq TY rbrace 
+     ({const = Term.Const{Name = CID, Ty = TY},
+       theory = !global_theory_name })
+
+
+THID_LIST : ([])
+            |
+            THID ([THID])
+            |
+            THID comma THID_LIST(THID::THID_LIST)
+
+TY_LIST : ([])
+           |
+           TY ([TY])
+           |
+           TY comma TY_LIST(TY::TY_LIST)
+TYC_LIST : ([])
+            |
+            TYC ([TYC])
+            |
+            TYC comma TYC_LIST(TYC::TYC_LIST)
+
+TMC_LIST : ([])
+            |
+            TMC ([TMC])
+            |
+            TMC comma TMC_LIST(TMC::TMC_LIST)
+@
+
+
+1.7
+log
+@updates for latest ML Lex and Yacc
+@
+text
+@@
+
+
+1.6
+log
+@Added simplifier components, added drule files, added MK_ABS_CONV, better error messages
+@
+text
+@d5 1
+a5 1
+type term_record = {const:Term.term, theory:string (* , place:Term.fixity *)};
+a14 5
+fun THEORY_PARSE_ERR(s1,s2) =
+	 Exception.HOL_ERR{origin_structure = "Theory_parse",
+        	                              origin_function = s1,
+                	                      message = s2};
+
+a35 4
+    | fixity
+    | Binder
+    | Prefix
+    | Infix
+a53 1
+    (*   | FIX of int  Term.fixity *)
+d64 1
+a64 2
+%header (functor holsigLrValsFun (structure Lib : Lib_sig
+                                  structure Token : TOKEN
+d91 1
+a91 1
+                                     usec = Lib.string_to_int num2}})
+d98 1
+a98 1
+                                     usec = Lib.string_to_int num2}})
+a121 8
+(*      fixity ("fixity")
+      |
+      Binder ("Binder")
+      |
+      Prefix ("Prefix")
+      |
+      Infix ("Infix") 
+      | *)
+a135 7
+(* FIX : Binder (0) (* (Term.Binder) *)
+      |
+      Prefix (0) (* (Term.Prefix) *)
+      |
+      Infix num (0) (* (Term.Infix (Lib.string_to_int num)) *)
+*)
+
+d137 1
+a137 4
+TMC : lbrace name eq lparen CID rparen comma
+               ty eq TY comma
+(*           fixity eq FIX *)
+      rbrace
+d139 1
+a139 2
+       theory = !global_theory_name (*,
+       place = FIX *)})
+@
+
+
+1.5
+log
+@Preterm and other changes, see 7.changes
+@
+text
+@d5 1
+a5 1
+type term_record = {const:Term.term, theory:string, place:Term.fixity};
+d63 1
+a63 1
+       | FIX of Term.fixity
+d133 1
+a133 1
+      fixity ("fixity")
+d139 2
+a140 2
+      Infix ("Infix")
+      |
+d155 1
+a155 1
+FIX : Binder (Term.Binder)
+d157 1
+a157 1
+      Prefix (Term.Prefix)
+d159 3
+a161 1
+      Infix num (Term.Infix (Lib.string_to_int num))
+d165 1
+a165 1
+           fixity eq FIX
+d168 2
+a169 2
+       theory = !global_theory_name,
+       place = FIX})
+@
+
+
+1.4
+log
+@The HOL90 sources have been changed to allow for the use of different
+Standard ML compilers (possibly simultaneously).
+
+ * Many files in "src/0" changed to make them more portable across different
+   ML compilers. Various additions have been made to the Portable structure
+   and files changed to access identifiers in the Portable structure rather
+   than from the global environment. Worthy of special note are:
+
+   - The pointer equality used in "src/0/term.sml" has been made into a
+     function in the Portable structure.
+
+   - The ML-Lex and ML-Yacc files for the various parsers have been changed
+     to access the Portable structure. Both the source files and the SML
+     produced from them have been changed but I have not verified that the
+     source files would reproduce the new SML versions if ML-Lex and ML-Yacc
+     were to be rerun on them. The changes involve some hacks that exploit the
+     way ML-Lex and ML-Yacc work. See the sources for details.
+
+R.J.Boulton, 15th November 1995.
+@
+text
+@d4 1
+a4 1
+type type_record = {tyc:Term.Type.hol_type, arity :int, theory:string}
+d77 1
+a77 1
+                                  structure Term: Term_sig
+d112 1
+a112 1
+      ({tyc = Term.Type.Tyc CID,
+d117 1
+a117 1
+      CID (Term.Type.Tyc CID)
+@
+
+
+1.4.4.1
+log
+@Removed files are parse files and portability files that have
+effectively been moved elsewhere.
+
+Modified files are up to date for ML 109.26.
+@
+text
+@@
+
+
+1.3
+log
+@First phase of hol90.8 development.  hol90 now compiles using NJSML-CM
+108.5, with separate compilation of libraries.  System dependencies
+have been isolated in the makefiles and "portable.sml".
+
+This involved a large number of enhancments to the source files,
+most of which are documented in the 7.changes file (or will be shortly).
+See also the correpsonding email corrspondence between RJB, KLS, TFM,
+JRH and DRS that happened during this development.
+@
+text
+@d20 12
+@
+
+
+1.2
+log
+@Check in after merging in Konrad's changes made after
+the release of hol90.7.  This involved creating a side branch
+in which to check in Konrad's changes, then merging in that
+side branch into the main development (which contains changes
+made by Elsa Gunter).
+
+Some other small modification have been made to the source code,
+as I begun to try to make this version into a working version:
+	- hol90 will now be compiled in an environment were no
+structures can be considered opn.  This means many structures
+now need "open Lib" and other such commands at their head.
+This has not yet been completed, but has been begun.
+	- "rotl" and "rotr" have been added to Lib, something
+which I just did impulsively.   Documentation files
+have also been added in help/90.
+@
+text
+@d89 1
+a89 1
+             Sml_system.Time.mk_time{sec = Lib.string_to_int num1,
+d96 1
+a96 1
+             Sml_system.Time.mk_time{sec = Lib.string_to_int num1,
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d15 4
+a18 3
+fun THEORY_PARSE_ERR(s1,s2) = HOL_ERR{origin_structure = "Theory_parse",
+                                      origin_function = s1,
+                                      message = s2};
+d62 2
+a63 1
+%header (functor holsigLrValsFun (structure Token : TOKEN
+d88 3
+a90 2
+             timestamp = System.Timer.TIME{sec = string_to_int num1,
+                                           usec = string_to_int num2}})
+d95 3
+a97 2
+             timestamp = System.Timer.TIME{sec = string_to_int num1,
+                                           usec = string_to_int num2}})
+d101 1
+a101 1
+        arity = string_to_int num, theory = (!global_theory_name)})
+d147 1
+a147 1
+      Infix num (Term.Infix (string_to_int num))
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

@@ -1,0 +1,45 @@
+(* The following SML was used to get a rough layout, then some
+ * hand-editing was done to remove some duplications and e.g., include
+ * "pred_set". Separate invocations of ML are needed.
+ **************************************************************************)
+
+
+(* Invocation 1: Libraries *)
+new_theory "library_map";
+map new_parent
+    (Lib.set_diff 
+        (Lib.U (map (#theories o dest_library) (known_libraries())))
+        ["BASIC_HOL","pred_set"]);
+
+html_theory "-";
+map html_theory (ancestry "-");
+
+(* Invocation 2 *)
+load_theory "pred_set";
+html_theory "pred_set";
+
+
+(* Invocation 3: Contrib *)
+new_theory "contrib_map";
+
+map new_parent
+(Lib.U (map (#theories o dest_library)
+            (mapfilter find_library
+                 ["automata", "mutrec", "nested_rec", "bmark", 
+                  "assoc_comm", "knuth_bendix", "fixpoint", "CSP", 
+                  "orsml", "cond", "more_utils", "generator", 
+                  "pev_rewrite", "part_fun", "holML"])));
+
+(* Define a useful function *)
+
+fun html_ancestry{theory, until} =
+   let val A = theory::ancestry theory
+       val stoppers = Lib.U (map ancestry until)
+       val remains = set_diff A stoppers
+   in
+   map (fn x => (html_theory x; delete_theory_from_cache x))
+       remains
+   end;
+
+html_ancestry {theory = "-", until = ["HOL", "set"]};
+

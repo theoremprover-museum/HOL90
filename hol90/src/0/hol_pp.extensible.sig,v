@@ -1,0 +1,142 @@
+head	1.3;
+access;
+symbols
+	HOL97:1.1.1.1.0.6
+	bpHOL97:1.1.1.1
+	hol90_9_alpha:1.1.1.1
+	hol90_pre8_for_multiple_compilers:1.1.1.1.0.4
+	hol90_pre8_after_donalds_separate_compilation_changes:1.1.1.1
+	hol90_8_after_merging_Konrad_Elsa:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.3
+date	96.02.08.00.31.05;	author drs1004;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	96.01.04.13.45.17;	author drs1004;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	95.10.16.13.30.04;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.30.04;	author rjb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.3
+log
+@New theory mechanism, by Donald Syme, and many other enhancements.
+@
+text
+@(* ===================================================================== *)
+(* FILE          : hol_pp.sig                                            *)
+(* DESCRIPTION   : Signature for the prettyprinting of HOL terms and     *)
+(*                 types.                                                *)
+(*                                                                       *)
+(* AUTHOR        : Konrad Slind, University of Calgary                   *)
+(* DATE          : August 26, 1991                                       *)
+(* EXTENDED      : Richard Boulton, March 2, 1994                        *)
+(* ===================================================================== *)
+
+
+signature Hol_pp_sig =
+sig
+  structure Term : Public_term_sig
+  val pp_type : PP.ppstream -> Term.Type.typ -> int -> unit
+  val pp_term : PP.ppstream -> Term.term -> unit
+  val pp_self_parsing_type : PP.ppstream -> Term.Type.typ -> unit
+  val pp_self_parsing_term : PP.ppstream -> Term.term -> unit
+  val type_to_string : Term.Type.typ -> string
+  val term_to_string : Term.term -> string
+  val print_type : Term.Type.typ -> unit
+  val print_term : Term.term -> unit
+  
+  structure Extend_hol_pp :
+  sig
+    datatype gravity = TOP | APPL | INFIX of int | WEAK | BOTTOM
+    val gravity_geq : gravity -> gravity -> bool
+    val extend_pp_type :
+       (({depth:int, gravity:gravity} ->
+         Term.Type.typ -> PP.ppstream -> unit) ->
+        ({depth:int, gravity:gravity} ->
+         Term.Type.typ -> PP.ppstream -> unit)) -> unit
+    val extend_pp_term :
+       (({boundvars:Term.term list, depth:int, gravity:gravity} ->
+         Term.term -> PP.ppstream -> unit) ->
+        ({boundvars:Term.term list, depth:int, gravity:gravity} ->
+         Term.term -> PP.ppstream -> unit)) -> unit
+    val set_pp_term_string_mapper : (string -> string) -> unit
+    val set_pp_type_string_mapper : (string -> string) -> unit
+    val reset_pp_type : unit -> unit
+    val reset_pp_term : unit -> unit
+  end
+end;
+@
+
+
+1.2
+log
+@Fixed types, pretypes, fixities, parsing.
+@
+text
+@d38 2
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d15 1
+a15 1
+  val pp_type : PP.ppstream -> Term.Type.hol_type -> int -> unit
+d17 1
+a17 1
+  val pp_self_parsing_type : PP.ppstream -> Term.Type.hol_type -> unit
+d19 1
+a19 1
+  val type_to_string : Term.Type.hol_type -> string
+d21 1
+a21 1
+  val print_type : Term.Type.hol_type -> unit
+d30 1
+a30 1
+         Term.Type.hol_type -> PP.ppstream -> unit) ->
+d32 1
+a32 1
+         Term.Type.hol_type -> PP.ppstream -> unit)) -> unit
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

@@ -1,0 +1,885 @@
+head	1.1;
+access;
+symbols;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	96.02.08.00.36.13;	author drs1004;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@New theory mechanism, code reorganisation and other enhancements by Don Syme.
+@
+text
+@(*=========================================================================
+ * Basic theorems which derived rules implement and which plain rewriting
+ * depends upon.  The derived rules implement these but do not use them
+ * directly.
+ *========================================================================*)
+
+signature Rules_sig =
+sig
+
+    type thm sharing type thm = Thm.thm
+    include Boolean_sig
+    val FORALL_SIMP : thm
+    val EXISTS_SIMP : thm
+    val ABS_SIMP : thm
+    val EQ_CLAUSES : thm
+    val REFL_CLAUSE : thm
+    val AND_CLAUSES : thm
+    val OR_CLAUSES : thm
+    val IMP_CLAUSES : thm
+    val COND_CLAUSES : thm
+    val COND_ID : thm
+    val EQ_REFL : thm
+    val EQ_SYM : thm
+    val EQ_SYM_EQ : thm
+    val EQ_EXT : thm
+    val EQ_TRANS : thm
+    val BOOL_EQ_DISTINCT : thm
+    val NOT_CLAUSES : thm
+    val SELECT_REFL : thm
+    val SELECT_UNIQUE : thm
+    val NOT_F : thm
+    val NOT_AND : thm
+    val OR_ELIM_THM : thm
+    val OR_INTRO_THM1 : thm
+    val OR_INTRO_THM2 : thm
+    val CONJ_SYM : thm
+    val CONJ_ASSOC : thm
+    val AND2_THM : thm
+    val AND1_THM : thm
+    val AND_INTRO_THM : thm
+    val FALSITY : thm
+    val BOOL_SIMPS :thm list;
+end;
+
+
+structure Rules : Rules_sig =
+struct
+
+open Lib Parse Rterms;
+open Thm Drule;
+open Boolean;
+    
+infix |-->;
+    
+val _ = set_typetable ["x" |--> (==`:'a`==),
+		       "y" |--> (==`:'a`==),
+		       "z" |--> (==`:'a`==),
+		       "t" |--> (==`:bool`==),
+		       "t1" |--> (==`:'a`==),
+		       "t2" |--> (==`:'a`==),
+		       "f" |--> (==`:'a -> 'b`==),
+		       "g" |--> (==`:'a -> 'b`==)];
+    
+val _ = say "Proving some fundamental theorems (rules.sml)...";
+    
+
+(* ------------------------------------------------------------------------- *)
+(* More stuff about equality.                                                *)
+(* ------------------------------------------------------------------------- *)
+
+
+(* |- !x. x=x *)
+val EQ_REFL = optimize_thm(GEN (--`x`--) (REFL (--`x`--)));
+
+
+(* |- !x. (x=x) = T *)
+val REFL_CLAUSE = optimize_thm(GEN (--`x`--) (EQT_INTRO(SPEC (--`x`--) EQ_REFL)));
+
+
+(* |- !x y. x=y  ==>  y=x  *)
+val EQ_SYM =
+    optimize_thm(GEN (--`x`--) (GEN (--`y`--) (DISCH (--`x = y`--) (SYM(ASSUME (--`x = y`--))))));
+    
+
+
+(* |- !x y. (x = y) = (y = x) *)
+val EQ_SYM_EQ =
+   GEN (--`x:'a`--)
+    (GEN (--`y:'a`--) 
+      (IMP_ANTISYM_RULE (SPEC (--`y:'a`--) (SPEC (--`x:'a`--) EQ_SYM))
+                        (SPEC (--`x:'a`--) (SPEC (--`y:'a`--) EQ_SYM))));
+
+(* |- !f g. (!x. f x = g x)  ==>  f=g *)
+val EQ_EXT =
+   let val f = (--`f:'a->'b`--)
+       and g = (--`g: 'a -> 'b`--)
+   in
+   GEN f (GEN g (DISCH (--`!x:'a. ^f (x:'a) = ^g (x:'a)`--)
+                       (EXT(ASSUME (--`!x:'a. ^f (x:'a) = ^g (x:'a)`--)))))
+   end;
+
+
+(* |- !x y z. x=y  /\  y=z  ==>  x=z *)
+val EQ_TRANS =
+   let val xyyz  = (--`(x = y) /\ (y = z)`--)
+   in
+   optimize_thm(GEN (--`x`--)
+    (GEN (--`y`--)
+     (GEN (--`z`--)
+      (DISCH xyyz
+       (TRANS (CONJUNCT1(ASSUME xyyz)) 
+              (CONJUNCT2(ASSUME xyyz)))))))
+   end;
+
+
+(*--------------------------------------------------------------------
+ * |- !t. F ==> t 
+ *-------------------------------------------------------------------*)
+
+val FALSITY =
+   let val t = --`t:bool`--
+   in
+   optimize_thm(GEN t (DISCH falsity 
+                (SPEC t (EQ_MP Boolean.F_DEF 
+                               (ASSUME falsity)))))
+   end;
+(*--------------------------------------------------------------------
+ * |- !t1 t2. t1 ==> t2 ==> t1 /\ t2 
+ *-------------------------------------------------------------------*)
+
+val AND_INTRO_THM =
+   let val t = --`t:bool`--
+       and t1 = --`t1:bool`--
+       and t2 = --`t2:bool`--
+       val t12 = --`^t1 ==> (^t2 ==> ^t)`--
+       val th1 = GEN t (DISCH t12 (MP (MP (ASSUME t12)
+                                          (ASSUME t1))
+                                      (ASSUME t2)))
+       val th2 = RIGHT_BETA(AP_THM (RIGHT_BETA(AP_THM Boolean.AND_DEF t1)) t2)
+   in
+   optimize_thm(GEN t1 (GEN t2 (DISCH t1 (DISCH t2 (EQ_MP (SYM th2) th1)))))
+   end;
+
+(*--------------------------------------------------------------------
+ * |- !t1 t2. t1 /\ t2 ==> t1
+ *-------------------------------------------------------------------*)
+
+val AND1_THM =
+  let val t1 = --`t1:bool`--
+      and t2 = --`t2:bool`--
+      val th1 = ASSUME (--`^t1 /\ ^t2`--)
+      val th2 = RIGHT_BETA(AP_THM (RIGHT_BETA(AP_THM Boolean.AND_DEF t1)) t2)
+      val th3 = SPEC t1 (EQ_MP th2 th1)
+      val th4 = DISCH t1 (DISCH t2 (ADD_ASSUM t2 (ASSUME t1)))
+  in
+  optimize_thm(GEN t1 (GEN t2 (DISCH (--`^t1 /\ ^t2`--) (MP th3 th4))))
+  end;
+
+(*--------------------------------------------------------------------
+ * |- !t1 t2. t1 /\ t2 ==> t2
+ *-------------------------------------------------------------------*)
+
+val AND2_THM =
+  let val t1 = --`t1:bool`--
+      and t2 = --`t2:bool`--
+      val th1 = ASSUME (--`^t1 /\ ^t2`--)
+      val th2 = RIGHT_BETA(AP_THM (RIGHT_BETA(AP_THM Boolean.AND_DEF t1)) t2)
+      val th3 = SPEC t2 (EQ_MP th2 th1)
+      val th4 = DISCH t1 (DISCH t2 (ADD_ASSUM t1 (ASSUME t2)))
+  in
+  optimize_thm(GEN t1 (GEN t2 (DISCH (--`^t1 /\ ^t2`--) (MP th3 th4))))
+  end;
+
+(*--------------------------------------------------------------------
+ *  |- !t1 t2. (t1 /\ t2) = (t2 /\ t1) 
+ *-------------------------------------------------------------------*)
+
+val CONJ_SYM =
+  let val t1 = --`t1:bool`--
+      and t2 = --`t2:bool`--
+      val th1 = ASSUME (--`^t1 /\ ^t2`--)
+      and th2 = ASSUME (--`^t2 /\ ^t1`--)
+  in
+  optimize_thm(GEN t1 (GEN t2 (IMP_ANTISYM_RULE
+                 (DISCH (--`^t1 /\ ^t2`--)
+                        (CONJ(CONJUNCT2 th1)(CONJUNCT1 th1)))
+                 (DISCH (--`^t2 /\ ^t1`--)
+                        (CONJ(CONJUNCT2 th2)(CONJUNCT1 th2))))))
+  end;
+
+
+(*--------------------------------------------------------------------
+ * |- !t1 t2 t3. t1 /\ (t2 /\ t3) = (t1 /\ t2) /\ t3 
+ *-------------------------------------------------------------------*)
+
+val CONJ_ASSOC =
+  let val t1 = --`t1:bool`--
+      and t2 = --`t2:bool`--
+      and t3 = --`t3:bool`--
+      val th1 = ASSUME (--`^t1 /\ (^t2 /\ ^t3)`--)
+      val th2 = ASSUME (--`(^t1 /\ ^t2) /\ ^t3`--)
+      val th3 = DISCH (--`^t1 /\ (^t2 /\ ^t3)`--)
+                   (CONJ (CONJ(CONJUNCT1 th1)
+                              (CONJUNCT1(CONJUNCT2 th1)))
+                         (CONJUNCT2(CONJUNCT2 th1)))
+      and th4 = DISCH (--`(^t1 /\ ^t2) /\ ^t3`--)
+                   (CONJ (CONJUNCT1(CONJUNCT1 th2))
+                         (CONJ(CONJUNCT2(CONJUNCT1 th2))
+                              (CONJUNCT2 th2)))
+  in
+  optimize_thm(GEN t1 (GEN t2 (GEN t3 (IMP_ANTISYM_RULE th3 th4))))
+  end;
+
+(*--------------------------------------------------------------------
+ * |- !t. (T /\ t) = t 
+ *-------------------------------------------------------------------*)
+
+val AND_CLAUSE1 =
+   let val th1 = DISCH (--`T /\ t`--) (CONJUNCT2(ASSUME (--`T /\ t`--)))
+       and th2 = DISCH (--`t`--) (CONJ TRUTH (ASSUME (--`t`--)))
+   in
+   optimize_thm(GEN (--`t`--) (IMP_ANTISYM_RULE th1 th2))
+   end;
+
+
+(*--------------------------------------------------------------------
+ * |- !t. (t /\ T) = t 
+ *-------------------------------------------------------------------*)
+
+val AND_CLAUSE2 =
+   let val th1 = DISCH (--`t /\ T`--) (CONJUNCT1(ASSUME (--`t /\ T`--)))
+       and th2 = DISCH (--`t`--) (CONJ (ASSUME (--`t`--)) TRUTH)
+   in
+   optimize_thm(GEN (--`t`--) (IMP_ANTISYM_RULE th1 th2))
+   end;
+
+
+(*--------------------------------------------------------------------
+ * |- !t. (F /\ t) = F 
+ *-------------------------------------------------------------------*)
+
+val AND_CLAUSE3 =
+   let val t = --`t`--
+       val th1 = IMP_TRANS (SPEC t (SPEC falsity AND1_THM)) 
+                           (SPEC falsity FALSITY)
+       and th2 = SPEC (--`F /\ t`--) FALSITY
+   in
+   optimize_thm(GEN t (IMP_ANTISYM_RULE th1 th2))
+   end;
+
+(*--------------------------------------------------------------------
+ * |- !t. (t /\ F) = F 
+ *-------------------------------------------------------------------*)
+
+val AND_CLAUSE4 =
+   let val t = --`t`--
+       val th1 = IMP_TRANS (SPEC falsity (SPEC t AND2_THM)) 
+                           (SPEC falsity FALSITY)
+       and th2 = SPEC (--`t /\ F`--) FALSITY
+   in
+   optimize_thm(GEN t (IMP_ANTISYM_RULE th1 th2))
+   end;
+
+
+(*--------------------------------------------------------------------
+ * |- !t. (t /\ t) = t 
+ *-------------------------------------------------------------------*)
+
+val AND_CLAUSE5 =
+   let val t = --`t`--
+       val th1 = DISCH (--`t /\ t`--) (CONJUNCT1(ASSUME (--`t /\ t`--)))
+       and th2 = DISCH t (CONJ(ASSUME t)(ASSUME t))
+   in
+   optimize_thm(GEN t (IMP_ANTISYM_RULE th1 th2))
+   end;
+
+(*--------------------------------------------------------------------
+ * |- !t. (T /\ t) = t /\
+ *           (t /\ T) = t /\
+ *           (F /\ t) = F /\
+ *           (t /\ F) = F /\
+ *           (t /\ t) = t
+ *-------------------------------------------------------------------*)
+
+val AND_CLAUSES =
+   let val t = --`t`--
+   in
+   optimize_thm(GEN t (CONJ 
+           (SPEC t AND_CLAUSE1)
+            (CONJ
+             (SPEC t AND_CLAUSE2)
+              (CONJ
+               (SPEC t AND_CLAUSE3)
+                 (CONJ (SPEC t AND_CLAUSE4) 
+                       (SPEC t AND_CLAUSE5))))))
+   end;
+
+
+(*--------------------------------------------------------------------
+ * |- !t1 t2. t1 ==> t1 \/ t2 
+ *-------------------------------------------------------------------*)
+
+val OR_INTRO_THM1 =
+  let val t = --`t:bool`--
+      and t1 = --`t1:bool`--
+      and t2 = --`t2:bool`--
+      val th1 = ADD_ASSUM (--`^t2 ==> ^t`--) (MP (ASSUME (--`^t1 ==> ^t`--))
+                                              (ASSUME t1))
+      val th2 = GEN t (DISCH (--`^t1 ==> ^t`--) (DISCH (--`^t2 ==> ^t`--) th1))
+      val th3 = RIGHT_BETA(AP_THM (RIGHT_BETA(AP_THM Boolean.OR_DEF t1)) t2)
+  in
+  optimize_thm(GEN t1 (GEN t2 (DISCH t1 (EQ_MP (SYM th3) th2))))
+  end;
+
+(*--------------------------------------------------------------------
+ * |- !t1 t2. t2 ==> t1 \/ t2 
+ *-------------------------------------------------------------------*)
+
+val OR_INTRO_THM2 =
+  let val t = --`t:bool`--
+      and t1 = --`t1:bool`--
+      and t2 = --`t2:bool`--
+      val th1 = ADD_ASSUM (--`^t1 ==> ^t`--) (MP (ASSUME (--`^t2 ==> ^t`--)) 
+                                                         (ASSUME t2))
+      val th2 = GEN t (DISCH (--`^t1 ==> ^t`--) (DISCH (--`^t2 ==> ^t`--) th1))
+      val th3 = RIGHT_BETA(AP_THM (RIGHT_BETA(AP_THM Boolean.OR_DEF t1)) t2)
+  in
+  optimize_thm(GEN t1 (GEN t2 (DISCH t2 (EQ_MP (SYM th3) th2))))
+  end;
+
+(*--------------------------------------------------------------------
+ * |- !t t1 t2. (t1 \/ t2) ==> (t1 ==> t) ==> (t2 ==> t) ==> t
+ *-------------------------------------------------------------------*)
+
+val OR_ELIM_THM =
+   let val t = --`t:bool`--
+       and t1 = --`t1:bool`--
+       and t2 = --`t2:bool`--
+       val th1 = ASSUME (--`^t1 \/ ^t2`--)
+       and th2 = RIGHT_BETA(AP_THM (RIGHT_BETA(AP_THM Boolean.OR_DEF t1)) t2)
+       val th3 = SPEC t (EQ_MP th2 th1)
+       val th4 = MP (MP th3 (ASSUME (--`^t1 ==> ^t`--)))
+                    (ASSUME (--`^t2 ==> ^t`--))
+       val th4 = DISCH (--`^t1 ==> ^t`--) (DISCH (--`^t2 ==> ^t`--) th4)
+   in
+   optimize_thm(GEN t (GEN t1 (GEN t2 (DISCH (--`^t1 \/ ^t2`--) th4))))
+   end;
+
+(*--------------------------------------------------------------------
+ * |- !t. (T \/ t) = T 
+ *-------------------------------------------------------------------*)
+
+val OR_CLAUSE1 =
+   let val t = --`t`--
+       val th1 = DISCH (--`T \/ t`--) TRUTH
+       and th2 = DISCH truth (DISJ1 TRUTH t)
+   in
+   optimize_thm(GEN t (IMP_ANTISYM_RULE th1 th2))
+   end;
+
+(*--------------------------------------------------------------------
+ * |- !t. (t \/ T) = T 
+ *-------------------------------------------------------------------*)
+
+val OR_CLAUSE2 =
+   let val t = --`t`--
+       val th1 = DISCH (--`t \/ T`--) TRUTH
+       and th2 = DISCH truth (DISJ2 t TRUTH)
+   in
+   optimize_thm(GEN t (IMP_ANTISYM_RULE th1 th2))
+   end;
+
+(*--------------------------------------------------------------------
+ * |- (F \/ t) = t 
+ *-------------------------------------------------------------------*)
+
+val OR_CLAUSE3 =
+   let val t = --`t`--
+       val th1 = DISCH (--`F \/ t`--) (DISJ_CASES (ASSUME (--`F \/ t`--))
+                                        (UNDISCH (SPEC t FALSITY))
+                                        (ASSUME t))
+       and th2 = SPEC t (SPEC falsity OR_INTRO_THM2)
+   in
+   optimize_thm(GEN t (IMP_ANTISYM_RULE th1 th2))
+   end;
+
+(*--------------------------------------------------------------------
+ * |- !t. (t \/ F) = t 
+ *-------------------------------------------------------------------*)
+
+val OR_CLAUSE4 =
+   let val t = --`t`--
+       val th1 = DISCH (--`t \/ F`--) (DISJ_CASES (ASSUME (--`t \/ F`--))
+                                             (ASSUME t)
+                                             (UNDISCH (SPEC t FALSITY)))
+       and th2 = SPEC falsity (SPEC t OR_INTRO_THM1)
+   in
+   optimize_thm(GEN t (IMP_ANTISYM_RULE th1 th2))
+   end;
+
+(*--------------------------------------------------------------------
+ * |- !t. (t \/ t) = t 
+ *-------------------------------------------------------------------*)
+
+val OR_CLAUSE5 =
+   let val t = --`t`--
+       val th1 = DISCH (--`t \/ t`--) (DISJ_CASES(ASSUME (--`t \/ t`--))
+                                                (ASSUME t)
+                                                (ASSUME t))
+       and th2 = DISCH t (DISJ1(ASSUME t)t)
+   in
+   optimize_thm(GEN t (IMP_ANTISYM_RULE th1 th2))
+   end;
+
+(*--------------------------------------------------------------------
+ * |- !t. (T \/ t) = T /\
+ *           (t \/ T) = T /\
+ *           (F \/ t) = t /\
+ *           (t \/ F) = t /\
+ *           (t \/ t) = t
+ *-------------------------------------------------------------------*)
+
+val OR_CLAUSES =
+   let val t = --`t`--
+   in
+   optimize_thm(GEN t (CONJ 
+          (SPEC t OR_CLAUSE1)
+          (CONJ
+           (SPEC t OR_CLAUSE2)
+           (CONJ 
+            (SPEC t OR_CLAUSE3)
+            (CONJ (SPEC t OR_CLAUSE4) 
+                  (SPEC t OR_CLAUSE5))))))
+   end;
+
+
+(*--------------------------------------------------------------------
+ * |- !t. (T ==> t) = t  
+ *-------------------------------------------------------------------*)
+
+val IMP_CLAUSE1 =
+   let val t = --`t`--
+       val th1 = DISCH (--`T ==> t`--) (MP (ASSUME (--`T ==> t`--)) TRUTH)
+       and th2 = DISCH t (DISCH truth (ADD_ASSUM truth (ASSUME t)))
+       and th3 = SPEC t (SPEC (--`T ==> t`--) Boolean.IMP_ANTISYM_AX)
+   in
+   optimize_thm(GEN t (MP (MP th3 th1) th2))
+   end;
+
+(*--------------------------------------------------------------------
+ * |- !t. (F ==> t) = T 
+ *-------------------------------------------------------------------*)
+
+val IMP_CLAUSE2 =
+   let val t = --`t`--
+   in
+   optimize_thm(GEN t (EQT_INTRO(SPEC t FALSITY)))
+   end;
+
+(*--------------------------------------------------------------------
+ * |- !t. (t ==> T) = T 
+ *-------------------------------------------------------------------*)
+
+val IMP_CLAUSE3 =
+   let val t = --`t`--
+   in
+   optimize_thm(GEN t (EQT_INTRO(DISCH t (ADD_ASSUM t TRUTH))))
+   end;
+
+(*--------------------------------------------------------------------
+ * |- ((T ==> F) = F) /\ ((F ==> F) = T) 
+ *-------------------------------------------------------------------*)
+
+val IMP_CLAUSE4 =
+   let val th1 = DISCH (--`T ==> F`--) (MP (ASSUME (--`T ==> F`--)) TRUTH)
+       and th2 = SPEC (--`T ==> F`--) FALSITY
+       and th3 = EQT_INTRO(DISCH falsity (ASSUME falsity))
+   in
+   optimize_thm(CONJ(MP (MP (SPEC falsity
+               (SPEC (--`T ==> F`--) Boolean.IMP_ANTISYM_AX)) th1) th2) th3)
+   end;
+
+(*--------------------------------------------------------------------
+ * |- !t. (t ==> F) = ~t 
+ *-------------------------------------------------------------------*)
+
+val IMP_CLAUSE5 =
+    let val t = --`t`--
+        val th1 = SPEC t IMP_F
+        and th2 = SPEC t F_IMP
+    in
+    optimize_thm(GEN t (IMP_ANTISYM_RULE th1 th2))
+    end;
+
+(*--------------------------------------------------------------------
+ *
+ *   |- !t. (T ==> t) = t /\
+ *          (t ==> T) = T /\
+ *          (F ==> t) = T /\
+ *          (t ==> t) = t /\
+ *          (t ==> F) = ~t
+ *-------------------------------------------------------------------*)
+
+val IMP_CLAUSES =
+   let val t = --`t`--
+   in
+   optimize_thm(GEN 
+    t
+    (CONJ 
+     (SPEC t IMP_CLAUSE1)
+     (CONJ
+      (SPEC t IMP_CLAUSE3)
+      (CONJ 
+       (SPEC t IMP_CLAUSE2)
+       (CONJ
+        (EQT_INTRO(DISCH t (ASSUME t)))
+        (SPEC t IMP_CLAUSE5))))))
+   end;
+
+(*--------------------------------------------------------------------
+ * |- !t. ~t ==> (t=F) 
+ *-------------------------------------------------------------------*)
+
+val NOT_F =
+   let val t = --`t`--
+       val th1 = MP (SPEC t F_IMP) (ASSUME (--`~ t`--))
+       and th2 = SPEC t FALSITY
+       and th3 = SPEC falsity (SPEC t Boolean.IMP_ANTISYM_AX)
+   in
+   optimize_thm(GEN t (DISCH (--`~t`--) (MP (MP th3 th1) th2)))
+   end;
+
+
+(*--------------------------------------------------------------------
+ * |- !t. ~(t /\ ~t) 
+ *-------------------------------------------------------------------*)
+
+val NOT_AND =
+   let val th = ASSUME (--`t /\ ~t`--)
+   in
+   optimize_thm(NOT_INTRO(DISCH (--`t /\ ~t`--)
+                   (MP(CONJUNCT2 th)
+                      (CONJUNCT1 th))))
+   end;
+
+(*--------------------------------------------------------------------
+ * |- ~(T=F) /\ ~(F=T) 
+ *-------------------------------------------------------------------*)
+
+val BOOL_EQ_DISTINCT =
+   let val TF = --`T = F`--
+       and FT = --`F = T`--
+   in
+   optimize_thm(CONJ
+    (NOT_INTRO(DISCH TF (EQ_MP (ASSUME TF) TRUTH)))
+    (NOT_INTRO(DISCH FT (EQ_MP (SYM(ASSUME FT)) TRUTH))))
+   end;
+
+
+(*--------------------------------------------------------------------
+ * |- !t. (T = t) = t 
+ *-------------------------------------------------------------------*)
+val EQ_CLAUSE1 =
+   let val t = --`t`--
+       val Tt = --`T = t`--
+       val th1 = DISCH Tt (EQ_MP (ASSUME Tt) TRUTH)
+       and th2 = DISCH t (SYM(EQT_INTRO(ASSUME t)))
+   in
+   optimize_thm(GEN t (IMP_ANTISYM_RULE th1 th2))
+   end;
+
+
+(*--------------------------------------------------------------------
+ * |- !t. (t = T) = t 
+ *-------------------------------------------------------------------*)
+val EQ_CLAUSE2 =
+   let val t = --`t`--
+       val tT = --`t = T`--
+       val th1 = DISCH tT (EQ_MP (SYM (ASSUME tT)) TRUTH)
+       and th2 = DISCH t (EQT_INTRO(ASSUME t))
+   in
+   optimize_thm(GEN t (IMP_ANTISYM_RULE th1 th2))
+   end;
+
+ 
+(*--------------------------------------------------------------------
+ * |- !t. (F = t) = ~t 
+ *-------------------------------------------------------------------*)
+val EQ_CLAUSE3 =
+   let val t = --`t`--
+       val Ft = --`F = t`--
+       val tF = --`t = F`--
+       val th1 = DISCH Ft (MP (SPEC t IMP_F)
+                              (DISCH t (EQ_MP(SYM(ASSUME Ft))
+                                             (ASSUME t))))
+       and th2 = IMP_TRANS (SPEC t NOT_F)
+                           (DISCH tF (SYM(ASSUME tF)))
+   in
+   optimize_thm(GEN t (IMP_ANTISYM_RULE th1 th2))
+   end;
+
+
+(*--------------------------------------------------------------------
+ * |- !t. (t = F) = ~t 
+ *-------------------------------------------------------------------*)
+val EQ_CLAUSE4 =
+   let val t = --`t`--
+       val tF = --`t = F`--
+       val th1 = DISCH tF (MP (SPEC t IMP_F)
+                              (DISCH t (EQ_MP(ASSUME tF)
+                                             (ASSUME t))))
+       and th2 = SPEC t NOT_F
+   in
+   optimize_thm(GEN t (IMP_ANTISYM_RULE th1 th2))
+   end;
+ 
+
+(*--------------------------------------------------------------------
+ *
+  |- !t.  (T = t)  =  t  /\
+          (t = T)  =  t  /\
+          (F = t)  =  ~t /\
+          (t = F)  =  ~t
+ *-------------------------------------------------------------------*)
+val EQ_CLAUSES =
+   let val t = --`t`--
+   in
+   optimize_thm(GEN t (CONJ
+           (SPEC t EQ_CLAUSE1)
+            (CONJ
+              (SPEC t EQ_CLAUSE2)
+                (CONJ (SPEC t EQ_CLAUSE3)
+                      (SPEC t EQ_CLAUSE4)))))
+   end;
+
+(*--------------------------------------------------------------------
+ * |- (~~t = t) /\ (~T = F) /\ (~F = T) 
+ *-------------------------------------------------------------------*)
+
+val NOT_CLAUSES =
+ optimize_thm(CONJ
+  (GEN (--`t`--)
+    (IMP_ANTISYM_RULE
+      (DISJ_IMP(IMP_ELIM(DISCH (--`t`--) (ASSUME (--`t`--)))))
+      (DISCH (--`t`--)
+       (NOT_INTRO(DISCH (--`~t`--) (UNDISCH (NOT_ELIM(ASSUME (--`~t`--)))))))))
+  (CONJ (IMP_ANTISYM_RULE
+          (DISCH (--`~T`--) 
+                 (MP (MP (SPEC truth F_IMP) (ASSUME (--`~T`--))) TRUTH))
+          (SPEC (--`~T`--) FALSITY))
+        (IMP_ANTISYM_RULE (DISCH (--`~F`--) TRUTH)
+                          (DISCH truth (MP (SPEC falsity IMP_F)
+                                               (SPEC falsity FALSITY))))));
+
+(* ---------------------------------------------------------------------*)
+(* SELECT_REFL = |- !x. (@@y. y = x) = x                                 *)
+(*                                                                      *)
+(* changed ISPECL to nested ISPEC since ISPECL requires tupling in the  *)
+(* logic, but at this stage we don't have the theory of pairs.  (KLS)   *)
+(* ---------------------------------------------------------------------*)
+
+val SELECT_REFL =
+  let val th1 = ISPEC (--`x`--) (ISPEC (--`\y. y = x`--) Boolean.SELECT_AX)
+      val ths = map BETA_CONV [--`(\y. y = x) x`--, 
+                               --`(\y. y = x)(@@y. y = x)`--]
+      val th2 = SUBST[{var= --`u:bool`--, thm=el 1 ths},
+                      {var= --`v:bool`--, thm=el 2 ths}]
+                     (--`u ==> v`--) th1 
+  in
+  optimize_thm(GEN (--`x`--) (MP th2 (REFL (--`x`--))))
+  end;
+
+(*---------------------------------------------------------------------------*)
+(* SELECT_UNIQUE = |- !P x. (!y. P y = (y = x)) ==> ($@@ P = x)               *)
+(*---------------------------------------------------------------------------*)
+
+val SELECT_UNIQUE =
+  let fun mksym tm = DISCH tm (SYM(ASSUME tm))
+      val th0 = IMP_ANTISYM_RULE (mksym (--`y = x`--))
+                                 (mksym (--`x = y`--))
+      val th1 = SPEC (--`y`--) (ASSUME (--`!y. P y = (y = x)`--))
+      val th2 = EXT(GEN (--`y`--) (TRANS th1 th0))
+      val th3 = AP_TERM (--`$@@ :('a->bool)->'a`--) th2
+      val th4 = TRANS (BETA_CONV (--`(\y. y = x) y`--)) th0
+      val th5 = AP_TERM (--`$@@ :('a->bool)->'a`--) (EXT(GEN (--`y`--) th4))
+      val th6 = TRANS (TRANS th3 (SYM th5)) (SPEC (--`x`--) SELECT_REFL) 
+  in
+  optimize_thm(GENL [(--`P:'a->bool`--), (--`x`--)] 
+       (DISCH (--`!y. P y = (y = x)`--) th6))
+  end;
+
+(*--------------------------------------------------------------------
+ * |- !t1: 'a.!t2:'a. COND T t1 t2 = t1 
+ *-------------------------------------------------------------------*)
+
+val COND_CLAUSE1 =
+ let val (x,t1,t2,v) = (--`x`--, 
+                        --`t1`--,
+                        --`t2`--, 
+                        genvar(==`:bool`==))
+     val th1 = RIGHT_BETA(AP_THM
+                 (RIGHT_BETA(AP_THM
+                    (RIGHT_BETA(AP_THM Boolean.COND_DEF truth)) t1))t2)
+     val TT = EQT_INTRO(REFL truth)
+     val th2 = SUBST [{var = v, thm = SYM TT}]
+                     (--`(^v ==> (x=t1)) = (x=t1)`--) 
+                     (el 1 (CONJUNCTS(SPEC (--`x=t1`--) IMP_CLAUSES)))
+     and th3 = DISCH (--`T=F`--)
+                     (MP (SPEC (--`x=t2`--) FALSITY)
+                         (UNDISCH(MP (SPEC (--`T=F`--) F_IMP) 
+                                     (CONJUNCT1 BOOL_EQ_DISTINCT))))
+     val th4 = DISCH (--`x=t1`--)
+                     (CONJ(EQ_MP(SYM th2)(ASSUME (--`x=t1`--)))th3)
+     and th5 = DISCH (--`((T=T) ==> (x=t1))/\((T=F) ==> (x=t2))`--)
+                     (MP (CONJUNCT1(ASSUME (--`((T=T) ==> (x=t1))/\
+                                               ((T=F) ==> (x=t2))`--)))
+                         (REFL truth))
+     val th6 = MP (MP (SPEC (--`((T=T) ==> (x=t1))/\((T=F) ==> (x=t2))`--) 
+                            (SPEC (--`x=t1`--) Boolean.IMP_ANTISYM_AX))
+                      th4)
+                  th5
+     val th7 = TRANS th1 (SYM(SELECT_EQ x th6))
+     val th8 = EQ_MP (SYM(BETA_CONV (--`(\x.x = t1) t1`--))) (REFL t1)
+     val th9 = MP (SPEC t1 (SPEC (--`\x.x = t1`--) Boolean.SELECT_AX)) th8
+ in
+ optimize_thm(GEN t1 (GEN t2 (TRANS th7 (EQ_MP (BETA_CONV(concl th9)) th9))))
+ end;
+
+
+(*--------------------------------------------------------------------
+ * |- !tm1:'a.!tm2:'a. COND F tm1 tm2 = tm2 
+
+   Note that there is a bound variable conflict if we use use t1
+   and t2 as the variable names. That would be a good test of the 
+   substitution algorithm.
+ *-------------------------------------------------------------------*)
+
+val COND_CLAUSE2 =
+   let val (x,t1,t2,v) = (--`x`--,
+                          --`t1:'a`--,
+                          --`t2:'a`--, 
+                          genvar (==`:bool`==))
+       val th1 = RIGHT_BETA(AP_THM
+                   (RIGHT_BETA(AP_THM
+                     (RIGHT_BETA(AP_THM Boolean.COND_DEF falsity)) t1))t2)
+       val FF = EQT_INTRO(REFL falsity)
+       val th2 = SUBST [{var = v, thm = SYM FF}]
+                       (--`(^v ==> (x=t2))=(x=t2)`--)
+                       (el 1 (CONJUNCTS(SPEC (--`x=t2`--) IMP_CLAUSES)))
+       and th3 = DISCH (--`F=T`--) (MP (SPEC (--`x=t1`--) FALSITY)
+                                 (UNDISCH (MP (SPEC (--`F=T`--) F_IMP) 
+                                              (CONJUNCT2 BOOL_EQ_DISTINCT))))
+       val th4 = DISCH (--`x=t2`--)
+                       (CONJ th3 (EQ_MP(SYM th2)(ASSUME (--`x=t2`--))))
+       and th5 = DISCH (--`((F=T) ==> (x=t1)) /\ ((F=F) ==> (x=t2))`--)
+                       (MP (CONJUNCT2(ASSUME (--`((F=T) ==> (x=t1)) /\
+                                                 ((F=F) ==> (x=t2))`--)))
+                           (REFL falsity))
+       val th6 = MP (MP (SPEC (--`((F=T) ==> (x=t1)) /\
+                                  ((F=F) ==> (x=t2))`--)
+                              (SPEC (--`x=t2`--) Boolean.IMP_ANTISYM_AX))
+                        th4)
+                    th5
+       val th7 = TRANS th1 (SYM(SELECT_EQ x th6))
+       val th8 = EQ_MP (SYM(BETA_CONV (--`(\x.x = t2) t2`--)))
+                       (REFL t2)
+       val th9 = MP (SPEC t2 (SPEC (--`\x.x = t2`--) Boolean.SELECT_AX)) th8
+   in
+   optimize_thm(GEN t1 (GEN t2 (TRANS th7 (EQ_MP (BETA_CONV(concl th9)) th9))))
+   end;
+
+(*--------------------------------------------------------------------
+ * |- !t1:'a.!t2:'a. ((T => t1 | t2) = t1) /\ ((T => t1 | t2) = t2) 
+ *-------------------------------------------------------------------*)
+val COND_CLAUSES =
+   let val (t1,t2) = (--`t1:'a`--, --`t2:'a`--)
+   in
+   optimize_thm(GEN t1 (GEN t2 (CONJ(SPEC t2(SPEC t1 COND_CLAUSE1))
+				(SPEC t2(SPEC t1 COND_CLAUSE2)))))
+   end;
+
+
+(* --------------------------------------------------------------------- *)
+(* COND_ID: 								*)
+(*									*)
+(* |- b. !t:*. (b => t | t) = t						*)
+(*									*)
+(*					                   TFM 90.07.23 *)
+(*--------------------------------------------------------------------- *)
+
+val COND_ID =
+   let val b = --`b:bool`--
+       and t = --`t:'a`--
+       val def = INST_TYPE [==`:'b`==  |->  ==`:'a`==] Boolean.COND_DEF
+       val th1 = itlist (fn x => RIGHT_BETA o (C AP_THM x)) 
+                        [t,t,b] def
+       val p = genvar (==`:bool`==)
+       val asm1 = ASSUME (--`((^b=T)==>^p) /\ ((^b=F)==>^p)`--)
+       val th2 = DISJ_CASES (SPEC b Boolean.BOOL_CASES_AX)
+                            (UNDISCH (CONJUNCT1 asm1))
+                            (UNDISCH (CONJUNCT2 asm1))
+       val imp1 = DISCH (concl asm1) th2 
+       val asm2 = ASSUME p
+       val imp2 = DISCH p (CONJ (DISCH (--`^b=T`--)
+                                       (ADD_ASSUM (--`^b=T`--) asm2))
+	                        (DISCH (--`^b=F`--)
+                                       (ADD_ASSUM (--`^b=F`--) asm2)))
+       val lemma = SPEC (--`x = t`--)
+                        (GEN p (IMP_ANTISYM_RULE imp1 imp2))
+       val th3 = TRANS th1 (SELECT_EQ (--`x`--) lemma)
+       val th4 = EQ_MP (SYM(BETA_CONV (--`(\x.x = t) t`--)))
+                       (REFL t)
+       val th5 = MP (SPEC t (SPEC (--`\x.x = t` --) Boolean.SELECT_AX)) th4
+       val lemma2 = EQ_MP (BETA_CONV(concl th5)) th5 
+   in
+   optimize_thm(GEN b (GEN t (TRANS th3 lemma2)))
+   end;
+
+
+(* For rewriting *)
+
+(*  |- !t. (!x.t)  =  t  *)
+val FORALL_SIMP =
+ let val t = --`t`--
+     val x = --`x`--
+ in
+ optimize_thm(GEN t (IMP_ANTISYM_RULE
+		     (DISCH (--`!x.t`--) (SPEC x (ASSUME (--`!x.t`--))))
+		     (DISCH t (GEN x (ASSUME t)))))
+ end;
+
+(*  |- !t. (?x.t)  =  t  *)
+
+val EXISTS_SIMP =
+   let val t = --`t`--
+       and x = --`x`--
+       val ext = --`?x.t`--
+   in
+   optimize_thm(GEN t (IMP_ANTISYM_RULE (DISCH ext 
+                                  (CHOOSE((--`p:'a`--), ASSUME ext)
+                                         (ASSUME t)))
+                           (DISCH t (EXISTS(ext, --`r:'a`--)
+                                    (ASSUME t)))))
+   end;
+
+(*   |- !t1 t2. (\x. t1)t2  =  t1 *)
+val ABS_SIMP = optimize_thm(GEN_ALL(BETA_CONV (--`(\x.t1:'b)t2`--)));
+
+
+val BOOL_SIMPS =
+    [REFL_CLAUSE,  EQ_CLAUSES,
+     NOT_CLAUSES,  AND_CLAUSES,
+     OR_CLAUSES,   IMP_CLAUSES,
+     COND_CLAUSES, FORALL_SIMP,
+     EXISTS_SIMP,  ABS_SIMP];
+
+val _ = clear_typetable();
+    
+val _ = say "done\n";
+
+end; (* struct *)
+
+@

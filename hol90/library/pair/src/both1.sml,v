@@ -1,0 +1,284 @@
+head	1.2;
+access;
+symbols
+	HOL97:1.2.0.4
+	bpHOL97:1.2
+	hol90_9_alpha:1.2
+	hol90_pre8_for_multiple_compilers:1.2.0.2
+	hol90_pre8_after_donalds_separate_compilation_changes:1.2
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.2
+date	95.10.31.15.30.45;	author drs1004;	state Exp;
+branches
+	1.2.4.1;
+next	1.1;
+
+1.1
+date	95.10.16.13.32.22;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.32.22;	author rjb;	state Exp;
+branches;
+next	;
+
+1.2.4.1
+date	97.07.14.17.26.38;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.2
+log
+@Changes by DRS for separate compilation using NJSML 108.5/CM
+@
+text
+@(* ---------------------------------------------------------------------*)
+(* 		Copyright (c) Jim Grundy 1992				*)
+(*									*)
+(* Jim Grundy, hereafter referred to as "the Author', retains the	*)
+(* copyright and all other legal rights to the Software contained in	*)
+(* this file, hereafter referred to as "the Software'.			*)
+(* 									*)
+(* The Software is made available free of charge on an "as is' basis.	*)
+(* No guarantee, either express or implied, of maintenance, reliability	*)
+(* or suitability for any purpose is made by the Author.		*)
+(* 									*)
+(* The user is granted the right to make personal or internal use	*)
+(* of the Software provided that both:					*)
+(* 1. The Software is not used for commercial gain.			*)
+(* 2. The user shall not hold the Author liable for any consequences	*)
+(*    arising from use of the Software.					*)
+(* 									*)
+(* The user is granted the right to further distribute the Software	*)
+(* provided that both:							*)
+(* 1. The Software and this statement of rights is not modified.	*)
+(* 2. The Software does not form part or the whole of a system 		*)
+(*    distributed for commercial gain.					*)
+(* 									*)
+(* The user is granted the right to modify the Software for personal or	*)
+(* internal use provided that all of the following conditions are	*)
+(* observed:								*)
+(* 1. The user does not distribute the modified software. 		*)
+(* 2. The modified software is not used for commercial gain.		*)
+(* 3. The Author retains all rights to the modified software.		*)
+(*									*)
+(* Anyone seeking a licence to use this software for commercial purposes*)
+(* is invited to contact the Author.					*)
+(* ---------------------------------------------------------------------*)
+(* CONTENTS: functions which are common to paired universal and		*)
+(*		existential quantifications.				*)
+(* ---------------------------------------------------------------------*)
+(*$Id: both1.sml,v 1.1.1.1 1995/10/16 13:32:22 rjb Exp $*)
+
+signature Pair_both1_sig =
+sig
+   type term sharing type term = Term.term
+   type thm sharing type thm = Thm.thm
+	val CURRY_FORALL_CONV : term -> thm
+	val CURRY_EXISTS_CONV : term -> thm
+	val UNCURRY_FORALL_CONV : term -> thm
+	val UNCURRY_EXISTS_CONV : term -> thm
+end;
+
+structure Pair_both1:Pair_both1_sig =
+struct
+
+open Core; (* open up all of the HOL 0/1 Core - could be replaced by more *)
+           (* explicit opens to avoid endless recompilation of libraries  *)
+           (* during system development                                   *)
+
+    open Pair_syn
+    open Pair_basic;
+    open Rsyntax;	
+	
+
+fun PAIR_ERR{function=fnm,message=msg} = 
+     raise HOL_ERR{message=msg,origin_function=fnm, 
+                   origin_structure="pair lib"};
+    
+fun failwith msg = PAIR_ERR{function=msg,message=""};
+
+fun mk_fun(y1,y2) = mk_type{Tyop="fun",Args=[y1,y2]};
+fun comma(y1,y2) = mk_const{Name=",",
+			    Ty=mk_fun(y1,mk_fun(y2,mk_prod(y1,y2)))};
+
+val PFORALL_THM = theorem "pair_thms""PFORALL_THM";
+val PEXISTS_THM = theorem "pair_thms""PEXISTS_THM";
+
+(* ------------------------------------------------------------------------- *)
+(* CURRY_FORALL_CONV "!(x,y).t" = (|- (!(x,y).t) = (!x y.t))                 *)
+(* ------------------------------------------------------------------------- *)
+
+    
+fun CURRY_FORALL_CONV tm = 
+    let val {Bvar=xy,Body=bod} = dest_pforall tm
+	val {fst=x,snd=y} = dest_pair xy
+	val result = list_mk_pforall ([x,y],bod) 
+	val f = rand (rand tm)
+	val th1 = RAND_CONV (PABS_CONV (UNPBETA_CONV xy)) tm 
+	val th2 = CONV_RULE (RAND_CONV (RAND_CONV (PABS_CONV CURRY_CONV))) th1 
+	val th3 = (SYM (ISPEC f PFORALL_THM)) 
+	val th4 = CONV_RULE (RATOR_CONV (RAND_CONV (GEN_PALPHA_CONV xy))) th3 
+	val th5 = CONV_RULE (RAND_CONV (GEN_PALPHA_CONV x)) (TRANS th2 th4) 
+	val th6 = CONV_RULE (RAND_CONV (RAND_CONV (PABS_CONV
+						   (GEN_PALPHA_CONV y)))) th5 
+	val th7 = CONV_RULE(RAND_CONV(RAND_CONV(PABS_CONV (RAND_CONV 
+                                (PABS_CONV(RATOR_CONV PBETA_CONV)))))) th6
+	val th8 =
+	    CONV_RULE (RAND_CONV (RAND_CONV (PABS_CONV (RAND_CONV 
+                         (PABS_CONV PBETA_CONV))))) th7
+    in
+        TRANS th8 (REFL result)
+    end    
+handle _ => failwith "CURRY_FORALL_CONV" ;
+
+(* ------------------------------------------------------------------------- *)
+(* CURRY_EXISTS_CONV "?(x,y).t" = (|- (?(x,y).t) = (?x y.t))                 *)
+(* ------------------------------------------------------------------------- *)
+
+fun CURRY_EXISTS_CONV tm = 
+    let val {Bvar=xy,Body=bod} = dest_pexists tm 
+	val {fst=x,snd=y} = dest_pair xy 
+	val result = list_mk_pexists ([x,y],bod) 
+	val f = rand (rand tm) 
+	val th1 = RAND_CONV (PABS_CONV (UNPBETA_CONV xy)) tm 
+	val th2 = CONV_RULE (RAND_CONV (RAND_CONV (PABS_CONV CURRY_CONV))) th1 
+	val th3 = (SYM (ISPEC f PEXISTS_THM)) 
+	val th4 = CONV_RULE (RATOR_CONV (RAND_CONV (GEN_PALPHA_CONV xy))) th3 
+	val th5 = CONV_RULE (RAND_CONV (GEN_PALPHA_CONV x)) (TRANS th2 th4) 
+	val th6 = CONV_RULE (RAND_CONV (RAND_CONV (PABS_CONV
+						   (GEN_PALPHA_CONV y)))) th5 
+	val th7 = CONV_RULE (RAND_CONV (RAND_CONV (PABS_CONV (RAND_CONV 
+                       (PABS_CONV (RATOR_CONV PBETA_CONV)))))) th6 
+	val th8 = CONV_RULE (RAND_CONV (RAND_CONV (PABS_CONV 
+                               (RAND_CONV (PABS_CONV PBETA_CONV))))) th7
+    in 
+	TRANS th8 (REFL result)
+    end
+handle _ => failwith "CURRY_EXISTS_CONV" ;
+
+(* ------------------------------------------------------------------------- *)
+(* UNCURRY_FORALL_CONV "!x y.t" = (|- (!x y.t) = (!(x,y).t))                 *)
+(* ------------------------------------------------------------------------- *)
+
+fun UNCURRY_FORALL_CONV tm =
+    let val {Bvar=x,Body} = dest_pforall tm
+	val {Bvar=y,Body=bod} = dest_pforall Body
+	val xy = mk_pair{fst=x,snd=y}
+	val result = mk_pforall {Bvar=xy,Body=bod}
+	val th1 = (RAND_CONV (PABS_CONV (RAND_CONV (PABS_CONV
+						    (UNPBETA_CONV xy))))) tm 
+	val f = rand (rator (pbody (rand (pbody (rand (rand (concl th1)))))))
+	val th2 = CONV_RULE (RAND_CONV (RAND_CONV (PABS_CONV 
+                              (RAND_CONV (PABS_CONV CURRY_CONV))))) th1 
+	val th3 = ISPEC f PFORALL_THM 
+	val th4 = CONV_RULE (RATOR_CONV (RAND_CONV (GEN_PALPHA_CONV x))) th3 
+	val th5 = CONV_RULE (RATOR_CONV (RAND_CONV (RAND_CONV (PABS_CONV
+		(GEN_PALPHA_CONV y))))) th4 
+	val th6 = CONV_RULE (RAND_CONV (GEN_PALPHA_CONV xy)) (TRANS th2 th5) 
+	val th7 = CONV_RULE (RAND_CONV (RAND_CONV (PABS_CONV (RATOR_CONV
+			    PBETA_CONV)))) th6 
+	val th8 = CONV_RULE (RAND_CONV (RAND_CONV (PABS_CONV PBETA_CONV))) th7
+    in
+	TRANS th8 (REFL result)
+    end
+handle _ => failwith "UNCURRY_FORALL_CONV";
+
+(* ------------------------------------------------------------------------- *)
+(* UNCURRY_EXISTS_CONV "?x y.t" = (|- (?x y.t) = (?(x,y).t))                 *)
+(* ------------------------------------------------------------------------- *)
+
+fun UNCURRY_EXISTS_CONV tm =
+    let val {Bvar=x,Body} = dest_pexists tm
+	val {Bvar=y,Body=bod} = dest_pexists Body
+	val xy = mk_pair{fst=x,snd=y}
+	val result = mk_pexists {Bvar=xy,Body=bod}
+	val th1 = (RAND_CONV (PABS_CONV (RAND_CONV (PABS_CONV
+						    (UNPBETA_CONV xy))))) tm 
+	val f = rand (rator (pbody (rand (pbody (rand (rand (concl th1))))))) 
+	val th2 = CONV_RULE (RAND_CONV (RAND_CONV (PABS_CONV 
+                              (RAND_CONV (PABS_CONV CURRY_CONV))))) th1 
+	val th3 = ISPEC f PEXISTS_THM 
+	val th4 = CONV_RULE (RATOR_CONV (RAND_CONV (GEN_PALPHA_CONV x))) th3 
+	val th5 = CONV_RULE (RATOR_CONV (RAND_CONV (RAND_CONV (PABS_CONV
+			       (GEN_PALPHA_CONV y))))) th4 
+	val th6 = CONV_RULE (RAND_CONV (GEN_PALPHA_CONV xy)) (TRANS th2 th5) 
+	val th7 = CONV_RULE (RAND_CONV (RAND_CONV 
+                        (PABS_CONV (RATOR_CONV PBETA_CONV)))) th6 
+	val th8 = CONV_RULE (RAND_CONV (RAND_CONV (PABS_CONV PBETA_CONV))) th7
+    in
+	TRANS th8 (REFL result)
+    end
+handle _ => failwith "UNCURRY_EXISTS_CONV";
+
+    end;
+@
+
+
+1.2.4.1
+log
+@The pair library now loads under CM.
+@
+text
+@d37 1
+a37 1
+(*$Id: both1.sml,v 1.2 1995/10/31 15:30:45 drs1004 Exp $*)
+d41 2
+a42 2
+   type term
+   type thm
+a50 2
+   type term = CoreHol.Term.term
+   type thm  = CoreHol.Thm.thm
+d52 7
+a58 4
+open Exception Lib CoreHol;
+open Type Term Dsyntax Thm Theory Drule Conv Pair_syn
+open Pair_basic;
+open Rsyntax;	
+a69 2
+
+val _ = Theory.loadLibThry "pair" "pair_thms"
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d37 1
+a37 1
+(*$Id: both1.sml,v 1.1 1994/10/24 12:37:57 jim Exp jim $*)
+d41 2
+d52 4
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

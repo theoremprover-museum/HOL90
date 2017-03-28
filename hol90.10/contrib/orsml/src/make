@@ -1,0 +1,63 @@
+(**************************************************)
+(*                                                *)
+(*           OBJECT CREATION                      *)
+(*                                                *)
+(**************************************************)
+
+signature makesig = 
+  sig
+    structure Type : typesig
+    structure Dupelim : dupelimsig
+    structure Common : commonsig
+    sharing Type.Common = Dupelim.Common = Common 
+    exception Badobject
+    val mkbaseco : Common.base -> Common.co
+    val mkboolco : bool -> Common.co
+    val mkintco : int -> Common.co
+    val mkorsco : Common.co list -> Common.co
+    val mkorsint : int list -> Common.co
+    val mkprodco : Common.co * Common.co -> Common.co
+    val mksetco : Common.co list -> Common.co
+    val mksetint : int list -> Common.co
+    val mkstringco : string -> Common.co
+  end
+
+
+
+functor MAKE (structure Type : typesig 
+              structure Dupelim : dupelimsig 
+              sharing Type.Common = Dupelim.Common)
+        : makesig  =
+
+struct 
+
+structure Type = Type 
+structure Dupelim = Dupelim
+structure Common = Type.Common
+
+local open Dupelim Common in
+
+exception Badobject 
+
+
+fun mksetint x = (Set (remdupl( map (fn i => (Num i)) x))) 
+fun mksetco x = (Set (remdupl(x))) handle _ => raise Badobject  
+
+
+fun mkorsint x = (Orset (remdupl( map (fn i => (Num i)) x))) 
+fun mkorsco x = (Orset (remdupl(x))) handle _ => raise Badobject 
+
+fun mkprodco(x,y) = (Prod(x,y)) 
+
+fun mkintco n = (Num n)
+
+fun mkboolco b = (Bool b)
+
+fun mkstringco s = (Str s) 
+
+fun mkbaseco b = (Base b) 
+
+end 
+
+end (* Functor MAKE *)
+

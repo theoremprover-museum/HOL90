@@ -1,0 +1,501 @@
+head	1.4;
+access;
+symbols
+	HOL97:1.2.2.1.0.2
+	bpHOL97:1.2.2.1
+	hol90_9_alpha:1.2.2.1
+	hol90_pre8_for_multiple_compilers:1.2.0.2
+	hol90_pre8_after_donalds_separate_compilation_changes:1.2
+	hol90_8_after_merging_Konrad_Elsa:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.4
+date	96.02.08.00.35.49;	author drs1004;	state dead;
+branches;
+next	1.3;
+
+1.3
+date	96.01.04.13.48.45;	author drs1004;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	95.10.31.15.05.14;	author drs1004;	state Exp;
+branches
+	1.2.2.1;
+next	1.1;
+
+1.1
+date	95.10.16.13.30.17;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.30.17;	author rjb;	state Exp;
+branches;
+next	;
+
+1.2.2.1
+date	96.06.25.15.47.12;	author rjb;	state Exp;
+branches
+	1.2.2.1.2.1;
+next	;
+
+1.2.2.1.2.1
+date	97.06.11.17.50.24;	author kxs;	state Exp;
+branches;
+next	1.2.2.1.2.2;
+
+1.2.2.1.2.2
+date	97.07.11.15.16.02;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.4
+log
+@New theory mechanism, code reorganisation and other enhancements by Don Syme.
+@
+text
+@(* ===================================================================== *)
+(* FILE          : induct_then.sml                                       *)
+(* DESCRIPTION   : General induction tactic for recursive types.         *)
+(*                 Translated from hol88.                                *)
+(*                                                                       *)
+(* AUTHOR        : (c) Tom Melham, University of Cambridge               *)
+(* DATE          : 87.08.23                                              *)
+(* REVISED       : 90.06.02                                              *)
+(* TRANSLATOR    : Konrad Slind, University of Calgary                   *)
+(* DATE          : September 11, 1991                                    *)
+(* ===================================================================== *)
+
+
+structure Induct_then : Induct_then_sig =
+struct
+open Lib;
+   infix |->
+open Parse;
+open Thm 
+open Term Dsyntax;
+open Rterms;
+open Conv;
+  infix THENC;
+  infix ORELSEC;
+open Drule;
+open Tactical;
+  infix THEN;
+  infix THENL;
+  infix ORELSE;
+open Thm_cont;
+  infix THEN_TCL;
+  infix ORELSE_TCL;
+
+val ERR = Exception.ERR "Induct_then";
+val WRAP_ERR = Exception.WRAP_ERR "Induct_then";
+  
+
+(* ---------------------------------------------------------------------*)
+(* Internal function: 							*)
+(*									*)
+(* BETAS "f" tm : returns a conversion that, when applied to a term with*)
+(*		 the same structure as the input term tm, will do a	*)
+(*		 beta reduction at all top-level subterms of tm which	*)
+(*		 are of the form "f <arg>", for some argument <arg>.	*)
+(*									*)
+(* ---------------------------------------------------------------------*)
+
+fun BETAS fnn body = 
+   if ((is_var body) orelse (is_const body)) 
+   then REFL 
+   else if (is_abs body)
+        then ABS_CONV (BETAS fnn (#Body(dest_abs body))) 
+        else let val {Rator,Rand} = dest_comb body 
+             in 
+             if (Rator = fnn) 
+             then BETA_CONV 
+             else let val cnv1 = BETAS fnn Rator
+                      and cnv2 = BETAS fnn Rand
+                      fun f {Rator,Rand} = (cnv1 Rator, cnv2 Rand)
+                  in
+	          (MK_COMB o (f o dest_comb))
+                  end
+             end;
+
+(* ---------------------------------------------------------------------*)
+(* Internal function: GTAC						*)
+(*									*)
+(*   !x. tm[x]  							*)
+(*  ------------  GTAC "y"   (primes the "y" if necessary).		*)
+(*     tm[y]								*)
+(*									*)
+(* NB: the x is always a genvar, so optimized for this case.		*)
+(* ---------------------------------------------------------------------*)
+
+fun GTAC y (A,g) = 
+   let val {Bvar,Body} = dest_forall g 
+       and y' = variant (free_varsl (g::A)) y
+   in
+   ([(A,subst [Bvar |-> y'] Body)],
+    fn [th] => GEN Bvar (INST [y' |-> Bvar] th))
+   end;
+
+(* ---------------------------------------------------------------------*)
+(* Internal function: TACF						*)
+(*									*)
+(* TACF is used to generate the subgoals for each case in an inductive 	*)
+(* proof.  The argument tm is formula which states one generalized	*)
+(* case in the induction. For example, the induction theorem for num is:*)
+(*									*)
+(*   |- !P. P 0 /\ (!n. P n ==> P(SUC n)) ==> !n. P n			*)
+(*									*)
+(* In this case, the argument tm will be one of:			*)
+(*									*)
+(*   1:  "P 0"   or   2: !n. P n ==> P(SUC n)				*)
+(*   									*)
+(* TACF applied to each these terms to construct a parameterized tactic *)
+(* which will be used to further break these terms into subgoals.  The  *)
+(* resulting tactic takes a variable name x and a user supplied theorem *)
+(* continuation ttac.  For a base case, like case 1 above, the resulting*)
+(* tactic just throws these parameters away and passes the goal on 	*)
+(* unchanged (i.e. \x ttac. ALL_TAC).  For a step case, like case 2, the*)
+(* tactic applies GTAC x as many times as required.  It then strips off *)
+(* the induction hypotheses and applies ttac to each one.  For example, *)
+(* if tac is the tactic generated by:					*)
+(*									*)
+(*    TACF "!n. P n ==> P(SUC n)" "x:num" ASSUME_TAC			*)
+(*									*)
+(* then applying tac to the goal A,"!n. P[n] ==> P[SUC n] has the same 	*)
+(* effect as applying:							*)
+(*									*)
+(*    GTAC "x:num" THEN DISCH_THEN ASSUME_TAC				*)
+(*									*)
+(* TACF is a strictly local function, used only to define TACS, below.	*)
+(* ---------------------------------------------------------------------*)
+local
+fun ctacs tm = 
+   if (is_conj tm) 
+   then let val tac2 = ctacs (#conj2(dest_conj tm)) 
+        in
+        fn ttac => CONJUNCTS_THEN2 ttac (tac2 ttac) 
+        end
+   else fn ttac => ttac
+in
+fun TACF tm =
+   let val (vs,body) = strip_forall tm 
+   in
+   if (is_imp body) 
+   then let val TTAC = ctacs (#ant(dest_imp body)) 
+        in
+        fn x => fn ttac => 
+           MAP_EVERY (GTAC o (Lib.K x)) vs THEN 
+           DISCH_THEN (TTAC ttac) 
+        end
+   else
+   fn x => fn ttac => Tactical.ALL_TAC
+   end
+end;
+
+(* ---------------------------------------------------------------------*)
+(* Internal function: TACS						*)
+(*									*)
+(* TACS uses TACF to generate a parameterized list of tactics, one for  *)
+(* each conjunct in the hypothesis of an induction theorem.		*)
+(*									*)
+(* For example, if tm is the hypothesis of the induction thoerem for the*)
+(* natural numbers---i.e. if:						*)
+(*									*)
+(*   tm = "P 0 /\ (!n. P n ==> P(SUC n))"				*)
+(*									*)
+(* then TACS tm yields the paremterized list of tactics:		*)
+(*									*)
+(*   \x ttac. [TACF "P 0" x ttac; TACF "!n. P n ==> P(SUC n)" x ttac]   *)
+(*									*)
+(* TACS is a strictly local function, used only in INDUCT_THEN.		*)
+(* ---------------------------------------------------------------------*)
+
+fun f {conj1,conj2} = (TACF conj1, TACS conj2)
+and
+    TACS tm = 
+      let val (cf,csf) = f(dest_conj tm) 
+                         handle _ => (TACF tm, Lib.K(Lib.K[]))
+      in
+      fn x => fn ttac => (cf x ttac)::(csf x ttac)
+      end;
+
+(* ---------------------------------------------------------------------*)
+(* Internal function: GOALS						*)
+(*									*)
+(* GOALS generates the subgoals (and proof functions) for all the cases *)
+(* in an induction. The argument A is the common assumption list for all*)
+(* the goals, and tacs is a list of tactics used to generate subgoals 	*)
+(* from these goals.							*)
+(*									*)
+(* GOALS is a strictly local function, used only in INDUCT_THEN.	*)
+(* ---------------------------------------------------------------------*)
+fun GOALS A [] tm = ERR("GOALS","empty lsit")
+  | GOALS A [t] tm = 
+      let val (sg,pf) = t (A,tm)
+      in 
+      ([sg],[pf])
+      end
+  | GOALS A (h::t) tm = 
+      let val {conj1,conj2} = dest_conj tm
+          val (sgs,pfs) = GOALS A t conj2 
+          val (sg,pf) = h (A,conj1)
+      in
+      ((sg::sgs),(pf::pfs))
+      end;
+
+(* --------------------------------------------------------------------- *)
+(* Internal function: GALPH						*)
+(* 									*)
+(* GALPH "!x1 ... xn. A ==> B":   alpha-converts the x's to genvars.	*)
+(* --------------------------------------------------------------------- *)
+local
+fun rule v = 
+   let val gv = genvar(type_of v) 
+   in
+   fn eq => let val th = FORALL_EQ v eq 
+            in 
+            TRANS th (GEN_ALPHA_CONV gv (rhs(concl th)))
+            end
+   end
+in
+fun GALPH tm =
+   let val (vs,hy) = strip_forall tm 
+   in
+   if (is_imp hy)
+   then Lib.itlist rule vs (REFL hy)
+   else REFL tm
+   end
+end;
+
+(* --------------------------------------------------------------------- *)
+(* Internal function: GALPHA						*)
+(* 									*)
+(* Applies the conversion GALPH to each conjunct in a sequence.		*)
+(* --------------------------------------------------------------------- *)
+
+fun f {conj1,conj2} = (GALPH conj1, GALPHA conj2)
+and GALPHA tm = 
+   let val (c,cs) = f(dest_conj tm) 
+   in
+   MK_COMB(AP_TERM conjunction c, cs)
+   end
+   handle _ => GALPH tm
+
+(* --------------------------------------------------------------------- *)
+(* Internal function: mapshape						*)
+(* 									*)
+(* Applies the functions in fl to argument lists obtained by splitting   *)
+(* the list l into sublists of lengths given by nl.			*)
+(* --------------------------------------------------------------------- *)
+
+fun mapshape [] _ _ =  [] |
+    mapshape (n1::nums) (f1::funcs) args = 
+       let val (f1_args,args') = Lib.split_after n1 args
+       in 
+       (f1 f1_args)::(mapshape nums funcs args')
+       end;
+           
+(* --------------------------------------------------------------------- *)
+(* INDUCT_THEN : general induction tactic for concrete recursive types.	*)
+(* --------------------------------------------------------------------- *)
+local
+val bool = genvar bool_ty
+in
+fun INDUCT_THEN th = 
+   let val {Bvar,Body} = dest_forall(concl th)
+       val {ant = hy, ...} = dest_imp Body
+       val bconv = BETAS Bvar hy 
+       and tacsf = TACS hy
+       val v = genvar (type_of Bvar) 
+       val eta_th = CONV_RULE(RAND_CONV ETA_CONV) (UNDISCH(SPEC v th))
+       val ([asm],con) = dest_thm eta_th
+       val dis = DISCH asm eta_th
+       val ind = GEN v (SUBST [{var = bool, thm = GALPHA asm}]
+                              (mk_imp{ant = bool, conseq = con}) dis)
+   in
+   fn ttac => fn (A,t) =>
+      let val lam = #Rand(dest_comb t)
+          val spec =  SPEC lam (INST_TYPE (Lib.snd(Match.match_term v lam)) ind)
+          val {ant,conseq} = dest_imp(concl spec)
+          val beta = SUBST [{var = bool, thm = bconv ant}]
+                           (mk_imp{ant = bool,conseq = conseq})
+                           spec
+          val tacs = tacsf (#Bvar(dest_abs lam)) ttac
+          val (gll,pl) = GOALS A tacs (#ant(dest_imp(concl beta)))
+          val pf = ((MP beta) o LIST_CONJ) o mapshape(map length gll)pl
+      in
+      (Lib.flatten gll, pf)
+      end
+      handle e => WRAP_ERR("INDUCT_THEN",e)
+   end
+   handle e => WRAP_ERR("INDUCT_THEN (ill-formed-theorem)",e)
+end;
+
+end; (* Induct_then *)
+@
+
+
+1.3
+log
+@Added simplifier components, added drule files, added MK_ABS_CONV, better error messages
+@
+text
+@@
+
+
+1.2
+log
+@First phase of hol90.8 development.  hol90 now compiles using NJSML-CM
+108.5, with separate compilation of libraries.  System dependencies
+have been isolated in the makefiles and "portable.sml".
+
+This involved a large number of enhancments to the source files,
+most of which are documented in the 7.changes file (or will be shortly).
+See also the correpsonding email corrspondence between RJB, KLS, TFM,
+JRH and DRS that happened during this development.
+@
+text
+@d16 6
+a21 3
+(* open Base_logic - no longer needed DRS *)
+open Term_io.Parse;
+open Thm Term Dsyntax
+d34 3
+a36 4
+fun INDUCT_THEN_ERR{function,message} =
+    Exception.HOL_ERR{origin_structure = "Induct_then",
+		      origin_function = function,
+		      message = message}
+d79 2
+a80 2
+   ([(A,subst[{redex = Bvar, residue = y'}]Body)],
+    fn [th] => GEN Bvar (INST [{redex = y', residue = Bvar}] th))
+d176 1
+a176 2
+fun GOALS A [] tm = raise INDUCT_THEN_ERR{function = "GOALS",
+					  message = "empty lsit"}
+a219 3
+local 
+val AND = --`$/\`--
+in
+d224 1
+a224 1
+   MK_COMB(AP_TERM AND c, cs)
+a226 1
+end;
+d246 1
+a246 1
+val bool = genvar (==`:bool`==)
+d273 1
+a273 2
+      handle _ => raise INDUCT_THEN_ERR{function = "INDUCT_THEN",
+                                        message = "tactic application error"}
+d275 1
+a275 5
+   handle (e as Exception.HOL_ERR
+	           {origin_structure = "Induct_then",
+		    origin_function = "INDUCT_THEN",...}) => raise e
+        | _ => raise INDUCT_THEN_ERR{function = "INDUCT_THEN",
+                                     message = "ill-formed induction theorem"}
+@
+
+
+1.2.2.1
+log
+@The core of hol90.9.alpha now builds successfully with SML/NJ 109,
+SML/NJ 108.5 (using CM), SML/NJ 0.93, and Poly/ML 3.0.
+I have not yet tried rebuilding the theory files.
+@
+text
+@a16 1
+open Lib;
+@
+
+
+1.2.2.1.2.1
+log
+@Various updates have been made in order to build on top of SML/NJ 109.26.
+@
+text
+@d18 1
+a18 1
+open Parse;
+@
+
+
+1.2.2.1.2.2
+log
+@Minor changes to make HOL CM-friendly.
+@
+text
+@d16 1
+a16 1
+open CoreHol;
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d16 2
+a17 1
+open Base_logic Term_io.Parse;
+d32 3
+a34 3
+      HOL_ERR{origin_structure = "Induct_then",
+	      origin_function = function,
+	      message = message}
+d129 1
+a129 1
+           MAP_EVERY (GTAC o (K x)) vs THEN 
+d159 1
+a159 1
+                         handle _ => (TACF tm, K(K[]))
+d208 1
+a208 1
+   then itlist rule vs (REFL hy)
+d240 1
+a240 1
+       let val (f1_args,args') = split_after n1 args
+d265 1
+a265 1
+          val spec =  SPEC lam (INST_TYPE (snd(Match.match_term v lam)) ind)
+d274 1
+a274 1
+      (flatten gll, pf)
+d279 3
+a281 2
+   handle (e as HOL_ERR{origin_structure = "Induct_then",
+			origin_function = "INDUCT_THEN",...}) => raise e
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

@@ -1,0 +1,673 @@
+<TITLE>The Goal Stack</TITLE>
+
+<H1><A NAME = "The Goal Stack">The Goal Stack</H1>
+
+The <EM>goal stack</EM> provides a simple interface to tactic-based
+proof. When one uses tactics to decompose a proof, many intermediate
+states arise; the goalstack takes care of the necessary bookeeping. The
+implementation of goalstacks reported here is a mild extension of that
+used in hol88. The major difference is that more extensive assistance is
+provided for having more than one proof at a time, which was an
+undocumented and not well supported feature of the hol88 implementation.
+
+<P>
+
+The abstract types of <STRONG>goalstack</STRONG> and
+<STRONG>proofs</STRONG> are the focus of backwards proof operations. The
+type of proofs can be regarded as a list of independent goalstacks, each
+with its own state. (Strictly speaking, it is misleading to call these
+things <EM>proofs</EM>, but we are using the term in the informal sense
+of "working on some proofs".) Most operations act on the head of the
+list of goalstacks, and there are operations so that the focus can
+change to other goalstacks.  A new feature is that the prettyprinting of
+goals can be changed interactively, thus giving users some control over
+the "look-and-feel" of the goalstack interface.
+
+<P>
+
+<UL>
+<LI><A HREF = "#Starting a goalstack proof">Starting a goalstack proof</A>
+<LI><A HREF = "#Applying a tactic to a goal">Applying a tactic to a goal</A>
+<LI><A HREF = "#Undo">Undo</A>
+<LI><A HREF = "#Viewing the state of the proof manager">
+              Viewing the state of the proof manager</A>
+<LI><A HREF = "#Switch focus to a different subgoal or proof attempt">
+               Switch focus to a different subgoal or proof attempt</A>
+<LI><A HREF = "#Prettyprinting">Prettyprinting</A>
+</UL>
+
+<A HREF = "manual.html#Table of Contents">User Manual Table of Contents</A>
+<HR>
+
+<H2><A NAME = "Starting a goalstack proof">Starting a goalstack proof</H2>
+
+<PRE>
+    val set_goal :goal -> proofs
+    val g : term frag list -> proofs
+</PRE>
+
+Recall that the type <EM>goal</EM> is an abbreviation for <EM>term list
+* term</EM>. To start on a new goal, one gives <KBD>set_goal</KBD> a
+goal. This creates a new goalstack and makes it the focus of further
+operations. For example, if we wanted to prove the arithmetic theorem
+<PRE>
+    x&lt;y |- (y - x) + x = x
+</PRE>
+then we would invoke <KBD>set_goal</KBD> as follows:
+<PRE>
+    - set_goal([--`x < y`--],  --`(y - x) + x = x`--);
+    val it =
+      Status: 1 proof.
+      1. Incomplete:
+           Initial goal:
+           `(y - x) + x = x`
+           ____________________________
+               `x < y`
+       
+       : proofs
+</PRE>
+
+To understand the response from hol90, we should look again at the type
+of <KBD>set_goal</KBD>: it returns a value of type
+<KBD>proofs</KBD>. This is an abstract type and, in keeping with the
+principle of abstraction, its values would normally be displayed in an
+uninformative manner. However custom prettyprinters for
+<KBD>goalstack</KBD> and <KBD>proofs</KBD> have been installed in the
+SML/NJ system prettyprinter tables in order to give us better
+information.  <STRONG>Note</STRONG>. In writing these examples, we
+turned off some specialized printing support with the following
+invocations:
+
+<PRE>
+    term_pp_prefix := "";  term_pp_suffix := "";
+</PRE>
+
+
+A shorthand for <KBD>set_goal</KBD> is the function <KBD>g</KBD>: it
+invokes the parser automatically, and it doesn't allow the the goal to
+have any assumptions. 
+
+<PRE>
+    - g`!x y. x < y ==> ((y - x) + x = x)`;
+    val it =
+      Status: 2 proofs.
+      2. Incomplete:
+           Initial goal:
+           `(y - x) + x = x`
+           ____________________________
+               `x < y`
+       
+      1. Incomplete:
+           Initial goal:
+           `!x y. x < y ==> ((y - x) + x = x)`
+   : proofs
+</PRE>
+
+Calling <KBD>set_goal</KBD>, or <KBD>g</KBD>, adds a new proof attempt to
+the existing ones, <EM>i.e.</EM>, rather than overwriting the current
+proof attempt, the new attempt is stacked on top. 
+
+<P>
+<A HREF = "#The Goal Stack">Beginning of the Goal Stack</A>.
+<HR>
+
+
+<H2><A NAME = "Applying a tactic to a goal">Applying a tactic to a goal</H2>
+
+<PRE>
+    val expandf : tactic -> goalstack
+    val expand : tactic -> goalstack
+    val e : tactic -> goalstack
+</PRE>
+
+How does one actually do a goalstack proof then? In most cases, the
+application of tactics to the current goal is done with the function
+<KBD>expand</KBD>. In the rare case that one wants to apply an
+<EM>invalid</EM> tactic, then <KBD>expandf</KBD> is used. (For an
+explanation of invalid tactics, see Chapter 24 of Gordon&Melham.) The
+abbreviation <KBD>e</KBD> may also be used to expand a tactic. We expand
+the current goal by a call to <KBD>INDUCT_TAC</KBD>.
+
+<PRE>
+    - expand INDUCT_TAC;
+    OK..
+    2 subgoals:
+    val it =
+      `!y. SUC x < y ==> ((y - SUC x) + SUC x = SUC x)`
+      ____________________________
+          `!y. x < y ==> ((y - x) + x = x)`
+  
+      `!y. 0 < y ==> ((y - 0) + 0 = 0)`
+   : goalstack
+
+    - e (INDUCT_TAC THEN 
+         REWRITE_TAC (map (theorem "arithmetic")
+                          ["ADD_CLAUSES","SUB_0"]));
+    = OK..
+    1 subgoal:
+    val it =
+      `0 < SUC y ==> (SUC y = 0)`
+      ____________________________
+          `0 < y ==> ((y - 0) + 0 = 0)`
+       : goalstack
+</PRE>
+
+Notice that the second tactic expansion has silently solved the base
+case of the second induction.
+
+<P>
+<A HREF = "#The Goal Stack">Beginning of the Goal Stack</A>.
+<HR>
+
+<H2><A NAME = "Undo">Undo</H2>
+
+<PRE>
+    val backup : unit -> goalstack
+    val b : unit -> goalstack
+    val restart : unit -> goalstack
+    val drop : unit -> proofs
+    val set_backup : int -> unit
+</PRE>
+
+Often (we are tempted to say <EM>usually</EM>!) one takes a wrong path
+in doing a proof, or makes a mistake when setting a goal. To undo a step
+in the goalstack, the function <KBD>backup</KBD> and its abbreviation
+<KBD>b</KBD> are used. This will restore the goalstack to its previous
+state.
+
+<PRE>
+    - b();
+
+    val it =
+      `!y. SUC x < y ==> ((y - SUC x) + SUC x = SUC x)`
+      ____________________________
+          `!y. x < y ==> ((y - x) + x = x)`
+  
+      `!y. 0 < y ==> ((y - 0) + 0 = 0)`
+   : goalstack
+</PRE>
+
+To directly back up all the way to the original goal, the function
+<KBD>restart</KBD> may be used. Obviously, it is also important to get
+rid of proof attempts that are wrong; for that we have <KBD>drop</KBD>:
+
+<PRE>
+    - drop();
+    OK..
+    val it =
+      Status: 1 proof.
+      1. Incomplete:
+           Initial goal:
+           `(y - x) + x = x`
+           ____________________________
+               `x < y`
+       : proofs
+
+    - drop();
+    OK..
+    val it = There are currently no proofs. : proofs
+</PRE>
+
+Each proof attempt has its own <EM>undo-list</EM> of previous
+states. The undo-list for each attempt is of fixed size (initially
+12). If you wish to set this value for the current proof attempt, the
+function <KBD>set_backup</KBD> can be used. If the size of the backup
+list is set to be smaller than it currently is, the undo list will be
+immediately truncated. You can not undo a "proofs-level" operation, such
+as <KBD>set_goal</KBD> or <KBD>drop</KBD>.
+
+<P>
+<A HREF = "#The Goal Stack">Beginning of the Goal Stack</A>.
+<HR>
+
+<H2><A NAME = "Viewing the state of the proof manager">
+              Viewing the state of the proof manager</H2>
+
+<PRE>
+    val p : unit -> goalstack
+    val status : unit -> proofs
+    val initial_goal : unit -> goal
+    val top_goal  : unit -> goal
+    val top_goals : unit -> goal list
+    val top_thm : unit -> thm
+</PRE>
+
+To view the state of the proof manager at any time, the functions
+<KBD>p</KBD> and <KBD>status</KBD> can be used. The former only shows
+the top subgoals in the current goalstack, while the second gives a
+summary of every proof attempt.  In the following, we start a new proof,
+and do a tactic expansion before checking the status.
+
+<PRE>
+    - g `!n. n <= FACT n`;
+    val it =
+      Status: 1 proof.
+      1. Incomplete:
+           Initial goal:
+           `!n. n <= FACT n`
+       : proofs
+
+    - e (INDUCT_TAC THEN 
+         REWRITE_TAC[definition "arithmetic" "FACT"]);
+    = OK..
+    2 subgoals:
+    val it =
+      `SUC n <= SUC n * FACT n`
+      ____________________________
+          `n <= FACT n`
+  
+      `0 <= 1`
+       : goalstack
+
+    - status();
+    val it =
+      Status: 1 proof.
+      1. Incomplete:
+           Initial goal:
+           `!n. n <= FACT n`
+      
+           Current goal:
+           `0 <= 1`
+       : proofs
+</PRE>
+
+Now we suddenly realize that we need a lemma, so we push it on the list
+of proofs. 
+
+<PRE>
+    - g`!x y. 0 < x ==> y <= y*x`;
+    val it =
+      Status: 2 proofs.
+      2. Incomplete:
+           Initial goal:
+           `!n. n <= FACT n`
+           
+           Current goal:
+           `0 <= 1`
+       
+       
+      1. Incomplete:
+           Initial goal:
+           `!x y. 0 < x ==> y <= y * x`
+       : proofs
+</PRE>
+
+To get the top goal or goals of a proof attempt, use <KBD>top_goal</KBD>
+and <KBD>top_goals</KBD>. To get the original goal of a proof attempt,
+use <KBD>initial_goal</KBD>. 
+
+<PRE>
+    - top_goal();
+
+    val it = ([],`!x y. 0 < x ==> y <= y * x`) : goal
+</PRE>
+
+Once a theorem has been proved, the goalstack that was used to derive it
+still exists (and the undo-list is still there): its only job now is to
+hold the theorem. This theorem can be retrieved with
+<KBD>top_thm</KBD>. Let us prove the lemma straightaway:
+
+<PRE>
+    REPEAT INDUCT_TAC THEN 
+    REWRITE_TAC[theorem "prim_rec" "NOT_LESS_0"] THEN
+    REWRITE_TAC[theorem "arithmetic" "ZERO_LESS_EQ"] THEN 
+    DISCH_TAC THEN RES_TAC THEN 
+    PURE_ONCE_REWRITE_TAC[theorem "arithmetic" "MULT_SYM"] THEN
+    MATCH_MP_TAC (REWRITE_RULE[theorem "arithmetic" "MULT_CLAUSES"]
+                 (SPEC(--`1`--) (theorem "arithmetic" "LESS_MONO_MULT"))) THEN
+    REWRITE_TAC[PURE_ONCE_REWRITE_RULE
+                   [GSYM (theorem "arithmetic" "LESS_EQ_MONO")] 
+                   (SPEC(--`x:num`--) (theorem "arithmetic" "ZERO_LESS_EQ")), 
+                num_CONV(--`1`--)];
+
+    = = = = val it = fn : tactic
+
+    - e it;
+    OK..
+    val it =
+      Initial goal proved.
+      |- !x y. 0 < x ==> y <= y * x : goalstack
+
+    - top_thm();
+
+    val it = |- !x y. 0 < x ==> y <= y * x : thm
+</PRE>
+
+When we check the status, we see that the attempt has been completed.
+<PRE>
+    - status();
+    val it =
+      Status: 2 proofs.
+      2. Incomplete:
+           Initial goal:
+           `!n. n <= FACT n`
+           
+           Current goal:
+           `0 <= 1`
+       
+      1. Completed: |- !x y. 0 < x ==> y <= y * x
+      : proofs
+</PRE>
+
+<P>
+<A HREF = "#The Goal Stack">Beginning of the Goal Stack</A>.
+<HR>
+
+<H2><A NAME = "Switch focus to a different subgoal or proof attempt">
+               Switch focus to a different subgoal or proof attempt</H2>
+
+<PRE>
+    val rotate : int -> goalstack
+    val r : int -> goalstack
+
+    val rotate_proofs : int -> proofs
+    val R : int -> proofs
+</PRE>
+
+Often we want to switch our attention to a different goal, or a
+different proof. The functions that do this are <KBD>rotate</KBD> and
+<KBD>rotate_proofs</KBD>, respectively. The abbreviations <KBD>r</KBD>
+and <KBD>R</KBD> are simpler to type in. For example, let's rotate to
+the unfinished proof:
+
+<PRE>
+    - R 1;
+    val it =
+      Status: 2 proofs.
+      2. Completed: |- !x y. 0 < x ==> y <= y * x
+      1. Incomplete:
+           Initial goal:
+           `!n. n <= FACT n`
+           
+           Current goal:
+           `0 <= 1`
+   : proofs
+</PRE>
+
+When we examine the goalstack, we see that the first subgoal is trivial,
+so let's defer it by rotating to the other subgoal:
+<PRE>
+    - p();
+    val it =
+      `SUC n <= SUC n * FACT n`
+      ____________________________
+          `n <= FACT n`
+  
+      `0 <= 1`
+     : goalstack
+
+    - r 1;
+    val it =
+      `0 <= 1`
+      
+      `SUC n <= SUC n * FACT n`
+      ____________________________
+          `n <= FACT n`
+    : goalstack
+</PRE>
+
+Now we find that we can use the theorem we just proved, but we have to go 
+and get it:
+<PRE>
+    - R 1;
+    val it =
+      Status: 2 proofs.
+      2. Incomplete:
+           Initial goal:
+           `!n. n <= FACT n`
+       
+           Current goal:
+           `SUC n <= SUC n * FACT n`
+           ____________________________
+               `n <= FACT n`
+       
+      1. Completed: |- !x y. 0 < x ==> y <= y * x
+       : proofs
+
+    - val th = top_thm();
+
+    val th = |- !x y. 0 < x ==> y <= y * x : thm
+
+</PRE>
+Now rotate back:
+<PRE>
+    - R 1;
+    val it =
+      Status: 2 proofs.
+      2. Completed: |- !x y. 0 < x ==> y <= y * x
+      1. Incomplete:
+           Initial goal:
+           `!n. n <= FACT n`
+       
+       
+           Current goal:
+           `SUC n <= SUC n * FACT n`
+           ____________________________
+               `n <= FACT n`
+   : proofs
+</PRE>
+
+and apply the theorem:
+
+<PRE>
+    - e (MATCH_MP_TAC th);
+    OK..
+    1 subgoal:
+    val it =
+      `0 < FACT n`
+      ____________________________
+          `n <= FACT n`
+       : goalstack
+</PRE>
+
+Now it is simple to apply a pre-proved theorem:
+<PRE>
+    - e (MATCH_ACCEPT_TAC (theorem "arithmetic" "FACT_LESS"));
+    OK..
+
+    Goal proved.
+    |- 0 < FACT n
+
+    Goal proved.
+    |- SUC n <= SUC n * FACT n
+
+    Remaining subgoals:
+    val it =
+      `0 <= 1`
+   : goalstack
+</PRE>
+
+We are left with the trivial goal: it is quickly polished off:
+<PRE>
+    - e (MATCH_ACCEPT_TAC (theorem "arithmetic" "ZERO_LESS_EQ"));
+    OK..
+
+    Goal proved.
+    |- 0 <= 1
+    val it =
+      Initial goal proved.
+      |- !n. n <= FACT n : goalstack
+
+    - status();
+    val it =
+      Status: 2 proofs.
+      2. Completed: |- !x y. 0 < x ==> y <= y * x
+      1. Completed: |- !n. n <= FACT n
+       : proofs
+</PRE>
+
+The sharp-eyed reader will have seen that we have actually made no use
+of the inductive hypothesis in this proof. We can restart and do a proof
+by cases:
+<PRE>
+    - restart();
+    val it =
+      Initial goal:
+      
+      `!n. n <= FACT n`
+       : goalstack
+
+    - GEN_TAC THEN 
+      DISJ_CASES_THEN STRIP_ASSUME_TAC 
+             (SPEC(--`n:num`--) (theorem "arithmetic" "num_CASES")) THEN
+      ASM_REWRITE_TAC[definition "arithmetic" "FACT"]
+      THENL
+      [MATCH_ACCEPT_TAC (theorem "arithmetic" "ZERO_LESS_EQ"),
+       MATCH_MP_TAC th THEN
+       MATCH_ACCEPT_TAC (theorem "arithmetic" "FACT_LESS")];
+    = = = = = = = val it = fn : tactic
+
+    - e it;
+    OK..
+    val it =
+      Initial goal proved.
+      |- !n. n <= FACT n : goalstack
+
+    - status();
+    val it =
+      Status: 2 proofs.
+      2. Completed: |- !x y. 0 < x ==> y <= y * x
+      1. Completed: |- !n. n <= FACT n
+       : proofs
+</PRE>
+
+<P>
+<A HREF = "#The Goal Stack">Beginning of the Goal Stack</A>.
+<HR>
+
+<H2><A NAME = "Prettyprinting">Prettyprinting</H2>
+<PRE>
+    val set_goal_pp : (ppstream -> goal -> unit) -> (ppstream -> goal -> unit)
+    val pp_goalstack : ppstream -> goalstack -> unit
+    val pp_proofs : ppstream -> proofs -> unit
+</PRE>
+
+In order to support customization of the goalstack interface, we provide
+the function <KBD>set_goal_pp</KBD>, which allows us to change the way
+goals are printed. First let us define a new goal prettyprinter:
+
+<PRE>
+    local fun enumerate L = 
+             snd(itlist (fn x => fn (n,A) => (n+1, (n,x)::A)) L (1,[]))
+    in
+    fun pp_goal ppstrm (asl,w) =
+       let val {add_string, add_break, begin_block, 
+                end_block, add_newline, ...} = PP.with_ppstream ppstrm
+           val pr = Term_io.Hol_pp.pp_term ppstrm
+       in
+         begin_block PP.CONSISTENT 0;
+           if null(asl)
+           then add_newline()
+           else (add_string "Hypotheses:";
+                 add_newline();
+                 begin_block PP.CONSISTENT 0;
+                 PP.pr_list (fn (n,tm) => (begin_block PP.INCONSISTENT 0;
+                                           add_string (Lib.int_to_string n);
+                                           add_string ". ";
+                                           pr tm;
+                                           end_block()))
+                            (fn () => ()) add_newline (rev (enumerate asl));
+                 end_block (); add_newline());
+           add_string (!Globals.goal_line);
+           add_newline ();
+           begin_block PP.CONSISTENT 2;
+             add_string "Goal:  "; begin_block PP.CONSISTENT 0;
+                                   pr w; 
+                                   end_block();
+           end_block();
+           add_newline (); add_newline();
+         end_block ()
+       end
+       handle e => (Lib.say "\nError in attempting to print a goal!\n";
+                    raise e)
+    end;
+</PRE>
+
+Note that installing a prettyprinter returns the value of the current
+prettyprinter.
+
+<PRE>
+    - val old_pp = set_goal_pp pp_goal;
+    val old_pp = fn : System.PrettyPrint.ppstream -> goal -> unit
+
+    - g `(A = B) ==> (C = D) ==> (E = F) ==> (A /\ C /\ E = B /\ D /\ F)`;
+    val it =
+      Status: 3 proofs.
+      3. Completed: |- !x y. 0 < x ==> y <= y * x
+      2. Completed: |- !n. n <= FACT n
+      1. Incomplete:
+           Initial goal:
+           `(A = B) ==> (C = D) ==> (E = F) ==> (A /\ C /\ E = B /\ D /\ F)`
+   : proofs
+</PRE>
+
+This new prettyprinter numbers the hypotheses, which can make goals more
+readable.
+
+<PRE>
+    - e (REPEAT STRIP_TAC);
+    OK..
+    1 subgoal:
+    val it =
+      Hypotheses:
+      1. A = B
+      2. C = D
+      3. E = F
+      ____________________________
+      Goal:  A /\ C /\ E = B /\ D /\ F
+     : goalstack
+
+    - e (ASM_REWRITE_TAC[]);
+    OK..
+
+    Goal proved.
+    [A = B, C = D, E = F] |- A /\ C /\ E = B /\ D /\ F
+    val it =
+      Initial goal proved.
+      |- (A = B) ==> (C = D) ==> (E = F) ==> (A /\ C /\ E = B /\ D /\ F)
+      : goalstack
+
+    - status();
+    val it =
+      Status: 3 proofs.
+      3. Completed: |- !x y. 0 < x ==> y <= y * x
+      2. Completed: |- !n. n <= FACT n
+      1. Completed:
+           |- (A = B) ==> (C = D) ==> (E = F) ==> (A /\ C /\ E = B /\ D /\ F)
+       : proofs
+</PRE>
+
+And now, we can reset the prettyprinter and see things the old way:
+
+<PRE>
+    - b();
+    val it =
+      Hypotheses:
+      1. A = B
+      2. C = D
+      3. E = F
+      ____________________________
+      Goal:  A /\ C /\ E = B /\ D /\ F
+       : goalstack
+
+    - set_goal_pp old_pp;
+    val it = fn : System.PrettyPrint.ppstream -> goal -> unit
+
+    - p();
+    val it =
+      `A /\ C /\ E = B /\ D /\ F`
+      ____________________________
+          `A = B`
+          `C = D`
+          `E = F`
+       : goalstack
+</PRE>
+
+
+<HR>
+<A HREF = "#The Goal Stack">Beginning of Goal Stack</A>
+<BR>
+<A HREF = "manual.html#Table of Contents">User Manual Table of Contents</A>.
+<BR>
+<A HREF="http://www.cl.cam.ac.uk/users/kxs/">Konrad Slind</A>, 
+kxs@cl.cam.ac.uk<P>

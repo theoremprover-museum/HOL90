@@ -1,0 +1,101 @@
+head	1.1;
+access;
+symbols
+	HOL97:1.1.0.2;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	97.06.11.17.09.19;	author kxs;	state dead;
+branches
+	1.1.2.1;
+next	;
+
+1.1.2.1
+date	97.06.11.17.09.20;	author kxs;	state Exp;
+branches;
+next	1.1.2.2;
+
+1.1.2.2
+date	97.07.11.16.08.04;	author kxs;	state Exp;
+branches;
+next	1.1.2.3;
+
+1.1.2.3
+date	97.10.05.21.12.32;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@file stream.sml was initially added on branch HOL97.
+@
+text
+@@
+
+
+1.1.2.1
+log
+@Sub-directory for support structures for ML-Yacc.
+@
+text
+@a0 28
+(* ML-Yacc Parser Generator (c) 1989 Andrew W. Appel, David R. Tarditi 
+ *
+ * $Log: stream.sml,v $
+# Revision 1.1.1.1  1997/01/14  01:38:04  george
+#   Version 109.24
+#
+ * Revision 1.1.1.1  1996/01/31  16:01:43  george
+ * Version 109
+ * 
+ *)
+
+(* Stream: a structure implementing a lazy stream.  The signature STREAM
+   is found in base.sig *)
+
+abstraction Stream : STREAM =
+struct
+   datatype 'a str = EVAL of 'a * 'a str ref | UNEVAL of (unit->'a)
+
+   type 'a stream = 'a str ref
+
+   fun get(ref(EVAL t)) = t
+     | get(s as ref(UNEVAL f)) = 
+	    let val t = (f(), ref(UNEVAL f)) in s := EVAL t; t end
+
+   fun streamify f = ref(UNEVAL f)
+   fun cons(a,s) = ref(EVAL(a,s))
+
+end;
+@
+
+
+1.1.2.2
+log
+@I don't know why these are modified: they have never changed.
+@
+text
+@@
+
+
+1.1.2.3
+log
+@Changes to reflect changes in the underlying ML system (abstraction
+now remved from the ML language).
+@
+text
+@a3 3
+ * Revision 1.1.2.2  1997/07/11 16:08:04  kxs
+ * I don't know why these are modified: they have never changed.
+ *
+d15 1
+a15 1
+structure Stream :> STREAM =
+@

@@ -1,0 +1,1136 @@
+<TITLE>Theory: arithmetic</TITLE>
+<H1>Theory: arithmetic</H1>
+<H1>Parents</H1>
+    <UL>
+    <LI><A HREF = "prim_rec.html"><STRONG>prim_rec</STRONG></A>
+    </UL>
+
+
+<HR>
+<H1>Type constants</H1>
+    <UL>
+    
+    </UL>
+
+
+<HR>
+<H1>Term constants</H1>
+    <UL>
+    <LI><STRONG>+</STRONG><EM>:num -> num -> num</EM>
+        <STRONG>{</STRONG>fixity  = Infix 500<STRONG>}</STRONG>
+    <LI><STRONG>-</STRONG><EM>:num -> num -> num</EM>
+        <STRONG>{</STRONG>fixity  = Infix 500<STRONG>}</STRONG>
+    <LI><STRONG>*</STRONG><EM>:num -> num -> num</EM>
+        <STRONG>{</STRONG>fixity  = Infix 600<STRONG>}</STRONG>
+    <LI><STRONG>EXP</STRONG><EM>:num -> num -> num</EM>
+        <STRONG>{</STRONG>fixity  = Infix 700<STRONG>}</STRONG>
+    <LI><STRONG>></STRONG><EM>:num -> num -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Infix 450<STRONG>}</STRONG>
+    <LI><STRONG><=</STRONG><EM>:num -> num -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Infix 450<STRONG>}</STRONG>
+    <LI><STRONG>>=</STRONG><EM>:num -> num -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Infix 450<STRONG>}</STRONG>
+    <LI><STRONG>FACT</STRONG><EM>:num -> num</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>EVEN</STRONG><EM>:num -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>ODD</STRONG><EM>:num -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>MOD</STRONG><EM>:num -> num -> num</EM>
+        <STRONG>{</STRONG>fixity  = Infix 650<STRONG>}</STRONG>
+    <LI><STRONG>DIV</STRONG><EM>:num -> num -> num</EM>
+        <STRONG>{</STRONG>fixity  = Infix 600<STRONG>}</STRONG>
+    </UL>
+
+
+<HR>
+<H1>Axioms</H1>
+<DL>
+
+</DL>
+
+
+<HR>
+<H1>Definitions</H1>
+<DL>
+<DT><STRONG>ADD</STRONG>
+<DD>
+<PRE>
+|- (!n. 0 + n = n) /\ (!m n. SUC m + n = SUC (m + n))
+</PRE>
+
+<DT><STRONG>SUB</STRONG>
+<DD>
+<PRE>
+|- (!m. 0 - m = 0) /\ (!m n. SUC m - n = ((m < n) => 0 | (SUC (m - n))))
+</PRE>
+
+<DT><STRONG>MULT</STRONG>
+<DD>
+<PRE>
+|- (!n. 0 * n = 0) /\ (!m n. SUC m * n = m * n + n)
+</PRE>
+
+<DT><STRONG>EXP</STRONG>
+<DD>
+<PRE>
+|- (!m. m EXP 0 = 1) /\ (!m n. m EXP SUC n = m * m EXP n)
+</PRE>
+
+<DT><STRONG>GREATER</STRONG>
+<DD>
+<PRE>
+|- !m n. m > n = n < m
+</PRE>
+
+<DT><STRONG>LESS_OR_EQ</STRONG>
+<DD>
+<PRE>
+|- !m n. m <= n = m < n \/ (m = n)
+</PRE>
+
+<DT><STRONG>GREATER_OR_EQ</STRONG>
+<DD>
+<PRE>
+|- !m n. m >= n = m > n \/ (m = n)
+</PRE>
+
+<DT><STRONG>FACT</STRONG>
+<DD>
+<PRE>
+|- (FACT 0 = 1) /\ (!n. FACT (SUC n) = SUC n * FACT n)
+</PRE>
+
+<DT><STRONG>EVEN</STRONG>
+<DD>
+<PRE>
+|- (EVEN 0 = T) /\ (!n. EVEN (SUC n) = ~(EVEN n))
+</PRE>
+
+<DT><STRONG>ODD</STRONG>
+<DD>
+<PRE>
+|- (ODD 0 = F) /\ (!n. ODD (SUC n) = ~(ODD n))
+</PRE>
+
+<DT><STRONG>DIVISION</STRONG>
+<DD>
+<PRE>
+|- !n. 0 < n ==> (!k. (k = (k DIV n) * n + k MOD n) /\ k MOD n < n)
+</PRE>
+
+</DL>
+
+
+<HR>
+<H1>Theorems</H1>
+<DL>
+<DT><STRONG>SUC_NOT</STRONG>
+<DD>
+<PRE>
+|- !n. ~(0 = SUC n)
+</PRE>
+
+<DT><STRONG>ADD_0</STRONG>
+<DD>
+<PRE>
+|- !m. m + 0 = m
+</PRE>
+
+<DT><STRONG>ADD_SUC</STRONG>
+<DD>
+<PRE>
+|- !m n. SUC (m + n) = m + SUC n
+</PRE>
+
+<DT><STRONG>ADD_CLAUSES</STRONG>
+<DD>
+<PRE>
+|- (0 + m = m) /\
+   (m + 0 = m) /\
+   (SUC m + n = SUC (m + n)) /\
+   (m + SUC n = SUC (m + n))
+</PRE>
+
+<DT><STRONG>ADD_SYM</STRONG>
+<DD>
+<PRE>
+|- !m n. m + n = n + m
+</PRE>
+
+<DT><STRONG>num_CASES</STRONG>
+<DD>
+<PRE>
+|- !m. (m = 0) \/ (?n. m = SUC n)
+</PRE>
+
+<DT><STRONG>LESS_MONO_REV</STRONG>
+<DD>
+<PRE>
+|- !m n. SUC m < SUC n ==> m < n
+</PRE>
+
+<DT><STRONG>LESS_MONO_EQ</STRONG>
+<DD>
+<PRE>
+|- !m n. SUC m < SUC n = m < n
+</PRE>
+
+<DT><STRONG>SUC_SUB1</STRONG>
+<DD>
+<PRE>
+|- !m. SUC m - 1 = m
+</PRE>
+
+<DT><STRONG>PRE_SUB1</STRONG>
+<DD>
+<PRE>
+|- !m. PRE m = m - 1
+</PRE>
+
+<DT><STRONG>LESS_ADD</STRONG>
+<DD>
+<PRE>
+|- !m n. n < m ==> (?p. p + n = m)
+</PRE>
+
+<DT><STRONG>SUB_0</STRONG>
+<DD>
+<PRE>
+|- !m. (0 - m = 0) /\ (m - 0 = m)
+</PRE>
+
+<DT><STRONG>LESS_TRANS</STRONG>
+<DD>
+<PRE>
+|- !m n p. m < n /\ n < p ==> m < p
+</PRE>
+
+<DT><STRONG>ADD1</STRONG>
+<DD>
+<PRE>
+|- !m. SUC m = m + 1
+</PRE>
+
+<DT><STRONG>LESS_ANTISYM</STRONG>
+<DD>
+<PRE>
+|- !m n. ~(m < n /\ n < m)
+</PRE>
+
+<DT><STRONG>LESS_LESS_SUC</STRONG>
+<DD>
+<PRE>
+|- !m n. ~(m < n /\ n < SUC m)
+</PRE>
+
+<DT><STRONG>FUN_EQ_LEMMA</STRONG>
+<DD>
+<PRE>
+|- !f x1 x2. f x1 /\ ~(f x2) ==> ~(x1 = x2)
+</PRE>
+
+<DT><STRONG>LESS_OR</STRONG>
+<DD>
+<PRE>
+|- !m n. m < n ==> SUC m <= n
+</PRE>
+
+<DT><STRONG>OR_LESS</STRONG>
+<DD>
+<PRE>
+|- !m n. SUC m <= n ==> m < n
+</PRE>
+
+<DT><STRONG>LESS_EQ</STRONG>
+<DD>
+<PRE>
+|- !m n. m < n = SUC m <= n
+</PRE>
+
+<DT><STRONG>LESS_SUC_EQ_COR</STRONG>
+<DD>
+<PRE>
+|- !m n. m < n /\ ~(SUC m = n) ==> SUC m < n
+</PRE>
+
+<DT><STRONG>LESS_NOT_SUC</STRONG>
+<DD>
+<PRE>
+|- !m n. m < n /\ ~(n = SUC m) ==> SUC m < n
+</PRE>
+
+<DT><STRONG>LESS_0_CASES</STRONG>
+<DD>
+<PRE>
+|- !m. (0 = m) \/ 0 < m
+</PRE>
+
+<DT><STRONG>LESS_CASES_IMP</STRONG>
+<DD>
+<PRE>
+|- !m n. ~(m < n) /\ ~(m = n) ==> n < m
+</PRE>
+
+<DT><STRONG>LESS_CASES</STRONG>
+<DD>
+<PRE>
+|- !m n. m < n \/ n <= m
+</PRE>
+
+<DT><STRONG>ADD_INV_0</STRONG>
+<DD>
+<PRE>
+|- !m n. (m + n = m) ==> (n = 0)
+</PRE>
+
+<DT><STRONG>LESS_EQ_ADD</STRONG>
+<DD>
+<PRE>
+|- !m n. m <= m + n
+</PRE>
+
+<DT><STRONG>LESS_EQ_SUC_REFL</STRONG>
+<DD>
+<PRE>
+|- !m. m <= SUC m
+</PRE>
+
+<DT><STRONG>LESS_ADD_NONZERO</STRONG>
+<DD>
+<PRE>
+|- !m n. ~(n = 0) ==> m < m + n
+</PRE>
+
+<DT><STRONG>LESS_EQ_ANTISYM</STRONG>
+<DD>
+<PRE>
+|- !m n. ~(m < n /\ n <= m)
+</PRE>
+
+<DT><STRONG>NOT_LESS</STRONG>
+<DD>
+<PRE>
+|- !m n. ~(m < n) = n <= m
+</PRE>
+
+<DT><STRONG>SUB_EQ_0</STRONG>
+<DD>
+<PRE>
+|- !m n. (m - n = 0) = m <= n
+</PRE>
+
+<DT><STRONG>ADD_ASSOC</STRONG>
+<DD>
+<PRE>
+|- !m n p. m + n + p = (m + n) + p
+</PRE>
+
+<DT><STRONG>MULT_0</STRONG>
+<DD>
+<PRE>
+|- !m. m * 0 = 0
+</PRE>
+
+<DT><STRONG>MULT_SUC</STRONG>
+<DD>
+<PRE>
+|- !m n. m * SUC n = m + m * n
+</PRE>
+
+<DT><STRONG>MULT_LEFT_1</STRONG>
+<DD>
+<PRE>
+|- !m. 1 * m = m
+</PRE>
+
+<DT><STRONG>MULT_RIGHT_1</STRONG>
+<DD>
+<PRE>
+|- !m. m * 1 = m
+</PRE>
+
+<DT><STRONG>MULT_CLAUSES</STRONG>
+<DD>
+<PRE>
+|- !m n.
+     (0 * m = 0) /\
+     (m * 0 = 0) /\
+     (1 * m = m) /\
+     (m * 1 = m) /\
+     (SUC m * n = m * n + n) /\
+     (m * SUC n = m + m * n)
+</PRE>
+
+<DT><STRONG>MULT_SYM</STRONG>
+<DD>
+<PRE>
+|- !m n. m * n = n * m
+</PRE>
+
+<DT><STRONG>RIGHT_ADD_DISTRIB</STRONG>
+<DD>
+<PRE>
+|- !m n p. (m + n) * p = m * p + n * p
+</PRE>
+
+<DT><STRONG>LEFT_ADD_DISTRIB</STRONG>
+<DD>
+<PRE>
+|- !m n p. p * (m + n) = p * m + p * n
+</PRE>
+
+<DT><STRONG>MULT_ASSOC</STRONG>
+<DD>
+<PRE>
+|- !m n p. m * n * p = (m * n) * p
+</PRE>
+
+<DT><STRONG>SUB_ADD</STRONG>
+<DD>
+<PRE>
+|- !m n. n <= m ==> ((m - n) + n = m)
+</PRE>
+
+<DT><STRONG>PRE_SUB</STRONG>
+<DD>
+<PRE>
+|- !m n. PRE (m - n) = PRE m - n
+</PRE>
+
+<DT><STRONG>ADD_EQ_0</STRONG>
+<DD>
+<PRE>
+|- !m n. (m + n = 0) = (m = 0) /\ (n = 0)
+</PRE>
+
+<DT><STRONG>ADD_INV_0_EQ</STRONG>
+<DD>
+<PRE>
+|- !m n. (m + n = m) = n = 0
+</PRE>
+
+<DT><STRONG>PRE_SUC_EQ</STRONG>
+<DD>
+<PRE>
+|- !m n. 0 < n ==> ((m = PRE n) = SUC m = n)
+</PRE>
+
+<DT><STRONG>INV_PRE_EQ</STRONG>
+<DD>
+<PRE>
+|- !m n. 0 < m /\ 0 < n ==> ((PRE m = PRE n) = m = n)
+</PRE>
+
+<DT><STRONG>LESS_SUC_NOT</STRONG>
+<DD>
+<PRE>
+|- !m n. m < n ==> ~(n < SUC m)
+</PRE>
+
+<DT><STRONG>ADD_EQ_SUB</STRONG>
+<DD>
+<PRE>
+|- !m n p. n <= p ==> ((m + n = p) = m = p - n)
+</PRE>
+
+<DT><STRONG>LESS_MONO_ADD</STRONG>
+<DD>
+<PRE>
+|- !m n p. m < n ==> m + p < n + p
+</PRE>
+
+<DT><STRONG>LESS_MONO_ADD_INV</STRONG>
+<DD>
+<PRE>
+|- !m n p. m + p < n + p ==> m < n
+</PRE>
+
+<DT><STRONG>LESS_MONO_ADD_EQ</STRONG>
+<DD>
+<PRE>
+|- !m n p. m + p < n + p = m < n
+</PRE>
+
+<DT><STRONG>EQ_MONO_ADD_EQ</STRONG>
+<DD>
+<PRE>
+|- !m n p. (m + p = n + p) = m = n
+</PRE>
+
+<DT><STRONG>LESS_EQ_MONO_ADD_EQ</STRONG>
+<DD>
+<PRE>
+|- !m n p. m + p <= n + p = m <= n
+</PRE>
+
+<DT><STRONG>LESS_EQ_TRANS</STRONG>
+<DD>
+<PRE>
+|- !m n p. m <= n /\ n <= p ==> m <= p
+</PRE>
+
+<DT><STRONG>LESS_EQ_LESS_EQ_MONO</STRONG>
+<DD>
+<PRE>
+|- !m n p q. m <= p /\ n <= q ==> m + n <= p + q
+</PRE>
+
+<DT><STRONG>LESS_EQ_REFL</STRONG>
+<DD>
+<PRE>
+|- !m. m <= m
+</PRE>
+
+<DT><STRONG>LESS_IMP_LESS_OR_EQ</STRONG>
+<DD>
+<PRE>
+|- !m n. m < n ==> m <= n
+</PRE>
+
+<DT><STRONG>LESS_MONO_MULT</STRONG>
+<DD>
+<PRE>
+|- !m n p. m <= n ==> m * p <= n * p
+</PRE>
+
+<DT><STRONG>RIGHT_SUB_DISTRIB</STRONG>
+<DD>
+<PRE>
+|- !m n p. (m - n) * p = m * p - n * p
+</PRE>
+
+<DT><STRONG>LEFT_SUB_DISTRIB</STRONG>
+<DD>
+<PRE>
+|- !m n p. p * (m - n) = p * m - p * n
+</PRE>
+
+<DT><STRONG>LESS_ADD_1</STRONG>
+<DD>
+<PRE>
+|- !m n. n < m ==> (?p. m = n + p + 1)
+</PRE>
+
+<DT><STRONG>EXP_ADD</STRONG>
+<DD>
+<PRE>
+|- !p q n. n EXP (p + q) = n EXP p * n EXP q
+</PRE>
+
+<DT><STRONG>NOT_ODD_EQ_EVEN</STRONG>
+<DD>
+<PRE>
+|- !n m. ~(SUC (n + n) = m + m)
+</PRE>
+
+<DT><STRONG>MULT_SUC_EQ</STRONG>
+<DD>
+<PRE>
+|- !p m n. (n * SUC p = m * SUC p) = n = m
+</PRE>
+
+<DT><STRONG>MULT_EXP_MONO</STRONG>
+<DD>
+<PRE>
+|- !p q n m. (n * SUC q EXP p = m * SUC q EXP p) = n = m
+</PRE>
+
+<DT><STRONG>LESS_EQUAL_ANTISYM</STRONG>
+<DD>
+<PRE>
+|- !n m. n <= m /\ m <= n ==> (n = m)
+</PRE>
+
+<DT><STRONG>LESS_ADD_SUC</STRONG>
+<DD>
+<PRE>
+|- !m n. m < m + SUC n
+</PRE>
+
+<DT><STRONG>ZERO_LESS_EQ</STRONG>
+<DD>
+<PRE>
+|- !n. 0 <= n
+</PRE>
+
+<DT><STRONG>LESS_EQ_MONO</STRONG>
+<DD>
+<PRE>
+|- !n m. SUC n <= SUC m = n <= m
+</PRE>
+
+<DT><STRONG>LESS_OR_EQ_ADD</STRONG>
+<DD>
+<PRE>
+|- !n m. n < m \/ (?p. n = p + m)
+</PRE>
+
+<DT><STRONG>WOP</STRONG>
+<DD>
+<PRE>
+|- !P. (?n. P n) ==> (?n. P n /\ (!m. m < n ==> ~(P m)))
+</PRE>
+
+<DT><STRONG>GEN_INDUCTION</STRONG>
+<DD>
+<PRE>
+|- !P. P 0 /\ (!n. (!m. m < n ==> P m) ==> P n) ==> (!n. P n)
+</PRE>
+
+<DT><STRONG>DA</STRONG>
+<DD>
+<PRE>
+|- !k n. 0 < n ==> (?r q. (k = q * n + r) /\ r < n)
+</PRE>
+
+<DT><STRONG>MOD_ONE</STRONG>
+<DD>
+<PRE>
+|- !k. k MOD SUC 0 = 0
+</PRE>
+
+<DT><STRONG>DIV_LESS_EQ</STRONG>
+<DD>
+<PRE>
+|- !n. 0 < n ==> (!k. k DIV n <= k)
+</PRE>
+
+<DT><STRONG>DIV_UNIQUE</STRONG>
+<DD>
+<PRE>
+|- !n k q. (?r. (k = q * n + r) /\ r < n) ==> (k DIV n = q)
+</PRE>
+
+<DT><STRONG>MOD_UNIQUE</STRONG>
+<DD>
+<PRE>
+|- !n k r. (?q. (k = q * n + r) /\ r < n) ==> (k MOD n = r)
+</PRE>
+
+<DT><STRONG>DIV_MULT</STRONG>
+<DD>
+<PRE>
+|- !n r. r < n ==> (!q. (q * n + r) DIV n = q)
+</PRE>
+
+<DT><STRONG>LESS_MOD</STRONG>
+<DD>
+<PRE>
+|- !n k. k < n ==> (k MOD n = k)
+</PRE>
+
+<DT><STRONG>MOD_EQ_0</STRONG>
+<DD>
+<PRE>
+|- !n. 0 < n ==> (!k. (k * n) MOD n = 0)
+</PRE>
+
+<DT><STRONG>ZERO_MOD</STRONG>
+<DD>
+<PRE>
+|- !n. 0 < n ==> (0 MOD n = 0)
+</PRE>
+
+<DT><STRONG>ZERO_DIV</STRONG>
+<DD>
+<PRE>
+|- !n. 0 < n ==> (0 DIV n = 0)
+</PRE>
+
+<DT><STRONG>MOD_MULT</STRONG>
+<DD>
+<PRE>
+|- !n r. r < n ==> (!q. (q * n + r) MOD n = r)
+</PRE>
+
+<DT><STRONG>MOD_TIMES</STRONG>
+<DD>
+<PRE>
+|- !n. 0 < n ==> (!q r. (q * n + r) MOD n = r MOD n)
+</PRE>
+
+<DT><STRONG>MOD_PLUS</STRONG>
+<DD>
+<PRE>
+|- !n. 0 < n ==> (!j k. (j MOD n + k MOD n) MOD n = (j + k) MOD n)
+</PRE>
+
+<DT><STRONG>MOD_MOD</STRONG>
+<DD>
+<PRE>
+|- !n. 0 < n ==> (!k. (k MOD n) MOD n = k MOD n)
+</PRE>
+
+<DT><STRONG>SUB_MONO_EQ</STRONG>
+<DD>
+<PRE>
+|- !n m. SUC n - SUC m = n - m
+</PRE>
+
+<DT><STRONG>SUB_PLUS</STRONG>
+<DD>
+<PRE>
+|- !a b c. a - (b + c) = (a - b) - c
+</PRE>
+
+<DT><STRONG>INV_PRE_LESS</STRONG>
+<DD>
+<PRE>
+|- !m. 0 < m ==> (!n. PRE m < PRE n = m < n)
+</PRE>
+
+<DT><STRONG>INV_PRE_LESS_EQ</STRONG>
+<DD>
+<PRE>
+|- !n. 0 < n ==> (!m. PRE m <= PRE n = m <= n)
+</PRE>
+
+<DT><STRONG>SUB_LESS_EQ</STRONG>
+<DD>
+<PRE>
+|- !n m. n - m <= n
+</PRE>
+
+<DT><STRONG>SUB_EQ_EQ_0</STRONG>
+<DD>
+<PRE>
+|- !m n. (m - n = m) = (m = 0) \/ (n = 0)
+</PRE>
+
+<DT><STRONG>SUB_LESS_0</STRONG>
+<DD>
+<PRE>
+|- !n m. m < n = 0 < n - m
+</PRE>
+
+<DT><STRONG>SUB_LESS_OR</STRONG>
+<DD>
+<PRE>
+|- !m n. n < m ==> n <= m - 1
+</PRE>
+
+<DT><STRONG>LESS_SUB_ADD_LESS</STRONG>
+<DD>
+<PRE>
+|- !n m i. i < n - m ==> i + m < n
+</PRE>
+
+<DT><STRONG>TIMES2</STRONG>
+<DD>
+<PRE>
+|- !n. 2 * n = n + n
+</PRE>
+
+<DT><STRONG>LESS_MULT_MONO</STRONG>
+<DD>
+<PRE>
+|- !m i n. SUC n * m < SUC n * i = m < i
+</PRE>
+
+<DT><STRONG>MULT_MONO_EQ</STRONG>
+<DD>
+<PRE>
+|- !m i n. (SUC n * m = SUC n * i) = m = i
+</PRE>
+
+<DT><STRONG>ADD_SUB</STRONG>
+<DD>
+<PRE>
+|- !a c. (a + c) - c = a
+</PRE>
+
+<DT><STRONG>LESS_EQ_ADD_SUB</STRONG>
+<DD>
+<PRE>
+|- !c b. c <= b ==> (!a. (a + b) - c = a + (b - c))
+</PRE>
+
+<DT><STRONG>SUB_EQUAL_0</STRONG>
+<DD>
+<PRE>
+|- !c. c - c = 0
+</PRE>
+
+<DT><STRONG>LESS_EQ_SUB_LESS</STRONG>
+<DD>
+<PRE>
+|- !a b. b <= a ==> (!c. a - b < c = a < b + c)
+</PRE>
+
+<DT><STRONG>NOT_SUC_LESS_EQ</STRONG>
+<DD>
+<PRE>
+|- !n m. ~(SUC n <= m) = m <= n
+</PRE>
+
+<DT><STRONG>SUB_SUB</STRONG>
+<DD>
+<PRE>
+|- !b c. c <= b ==> (!a. a - b - c = (a + c) - b)
+</PRE>
+
+<DT><STRONG>LESS_IMP_LESS_ADD</STRONG>
+<DD>
+<PRE>
+|- !n m. n < m ==> (!p. n < m + p)
+</PRE>
+
+<DT><STRONG>LESS_EQ_IMP_LESS_SUC</STRONG>
+<DD>
+<PRE>
+|- !n m. n <= m ==> n < SUC m
+</PRE>
+
+<DT><STRONG>SUB_LESS_EQ_ADD</STRONG>
+<DD>
+<PRE>
+|- !m p. m <= p ==> (!n. p - m <= n = p <= m + n)
+</PRE>
+
+<DT><STRONG>SUB_CANCEL</STRONG>
+<DD>
+<PRE>
+|- !p n m. n <= p /\ m <= p ==> ((p - n = p - m) = n = m)
+</PRE>
+
+<DT><STRONG>CANCEL_SUB</STRONG>
+<DD>
+<PRE>
+|- !p n m. p <= n /\ p <= m ==> ((n - p = m - p) = n = m)
+</PRE>
+
+<DT><STRONG>NOT_EXP_0</STRONG>
+<DD>
+<PRE>
+|- !m n. ~(SUC n EXP m = 0)
+</PRE>
+
+<DT><STRONG>ZERO_LESS_EXP</STRONG>
+<DD>
+<PRE>
+|- !m n. 0 < SUC n EXP m
+</PRE>
+
+<DT><STRONG>ODD_OR_EVEN</STRONG>
+<DD>
+<PRE>
+|- !n. ?m. (n = SUC (SUC 0) * m) \/ (n = SUC (SUC 0) * m + 1)
+</PRE>
+
+<DT><STRONG>LESS_EXP_SUC_MONO</STRONG>
+<DD>
+<PRE>
+|- !n m. SUC (SUC m) EXP n < SUC (SUC m) EXP SUC n
+</PRE>
+
+<DT><STRONG>LESS_LESS_CASES</STRONG>
+<DD>
+<PRE>
+|- !m n. (m = n) \/ m < n \/ n < m
+</PRE>
+
+<DT><STRONG>GREATER_EQ</STRONG>
+<DD>
+<PRE>
+|- !n m. n >= m = m <= n
+</PRE>
+
+<DT><STRONG>LESS_EQ_CASES</STRONG>
+<DD>
+<PRE>
+|- !m n. m <= n \/ n <= m
+</PRE>
+
+<DT><STRONG>LESS_EQUAL_ADD</STRONG>
+<DD>
+<PRE>
+|- !m n. m <= n ==> (?p. n = m + p)
+</PRE>
+
+<DT><STRONG>LESS_EQ_EXISTS</STRONG>
+<DD>
+<PRE>
+|- !m n. m <= n = (?p. n = m + p)
+</PRE>
+
+<DT><STRONG>NOT_LESS_EQUAL</STRONG>
+<DD>
+<PRE>
+|- !m n. ~(m <= n) = n < m
+</PRE>
+
+<DT><STRONG>LESS_EQ_0</STRONG>
+<DD>
+<PRE>
+|- !n. n <= 0 = n = 0
+</PRE>
+
+<DT><STRONG>MULT_EQ_0</STRONG>
+<DD>
+<PRE>
+|- !m n. (m * n = 0) = (m = 0) \/ (n = 0)
+</PRE>
+
+<DT><STRONG>LESS_MULT2</STRONG>
+<DD>
+<PRE>
+|- !m n. 0 < m /\ 0 < n ==> 0 < m * n
+</PRE>
+
+<DT><STRONG>LESS_EQ_LESS_TRANS</STRONG>
+<DD>
+<PRE>
+|- !m n p. m <= n /\ n < p ==> m < p
+</PRE>
+
+<DT><STRONG>LESS_LESS_EQ_TRANS</STRONG>
+<DD>
+<PRE>
+|- !m n p. m < n /\ n <= p ==> m < p
+</PRE>
+
+<DT><STRONG>FACT_LESS</STRONG>
+<DD>
+<PRE>
+|- !n. 0 < FACT n
+</PRE>
+
+<DT><STRONG>EVEN_ODD</STRONG>
+<DD>
+<PRE>
+|- !n. EVEN n = ~(ODD n)
+</PRE>
+
+<DT><STRONG>ODD_EVEN</STRONG>
+<DD>
+<PRE>
+|- !n. ODD n = ~(EVEN n)
+</PRE>
+
+<DT><STRONG>EVEN_OR_ODD</STRONG>
+<DD>
+<PRE>
+|- !n. EVEN n \/ ODD n
+</PRE>
+
+<DT><STRONG>EVEN_AND_ODD</STRONG>
+<DD>
+<PRE>
+|- !n. ~(EVEN n /\ ODD n)
+</PRE>
+
+<DT><STRONG>EVEN_ADD</STRONG>
+<DD>
+<PRE>
+|- !m n. EVEN (m + n) = EVEN m = EVEN n
+</PRE>
+
+<DT><STRONG>EVEN_MULT</STRONG>
+<DD>
+<PRE>
+|- !m n. EVEN (m * n) = EVEN m \/ EVEN n
+</PRE>
+
+<DT><STRONG>ODD_ADD</STRONG>
+<DD>
+<PRE>
+|- !m n. ODD (m + n) = ~(ODD m = ODD n)
+</PRE>
+
+<DT><STRONG>ODD_MULT</STRONG>
+<DD>
+<PRE>
+|- !m n. ODD (m * n) = ODD m /\ ODD n
+</PRE>
+
+<DT><STRONG>EVEN_DOUBLE</STRONG>
+<DD>
+<PRE>
+|- !n. EVEN (2 * n)
+</PRE>
+
+<DT><STRONG>ODD_DOUBLE</STRONG>
+<DD>
+<PRE>
+|- !n. ODD (SUC (2 * n))
+</PRE>
+
+<DT><STRONG>EVEN_ODD_EXISTS</STRONG>
+<DD>
+<PRE>
+|- !n. (EVEN n ==> (?m. n = 2 * m)) /\ (ODD n ==> (?m. n = SUC (2 * m)))
+</PRE>
+
+<DT><STRONG>EVEN_EXISTS</STRONG>
+<DD>
+<PRE>
+|- !n. EVEN n = (?m. n = 2 * m)
+</PRE>
+
+<DT><STRONG>ODD_EXISTS</STRONG>
+<DD>
+<PRE>
+|- !n. ODD n = (?m. n = SUC (2 * m))
+</PRE>
+
+<DT><STRONG>EQ_LESS_EQ</STRONG>
+<DD>
+<PRE>
+|- !m n. (m = n) = m <= n /\ n <= m
+</PRE>
+
+<DT><STRONG>ADD_MONO_LESS_EQ</STRONG>
+<DD>
+<PRE>
+|- !m n p. m + n <= m + p = n <= p
+</PRE>
+
+<DT><STRONG>NOT_SUC_LESS_EQ_0</STRONG>
+<DD>
+<PRE>
+|- !n. ~(SUC n <= 0)
+</PRE>
+
+<DT><STRONG>NOT_LEQ</STRONG>
+<DD>
+<PRE>
+|- !m n. ~(m <= n) = SUC n <= m
+</PRE>
+
+<DT><STRONG>NOT_NUM_EQ</STRONG>
+<DD>
+<PRE>
+|- !m n. ~(m = n) = SUC m <= n \/ SUC n <= m
+</PRE>
+
+<DT><STRONG>NOT_GREATER</STRONG>
+<DD>
+<PRE>
+|- !m n. ~(m > n) = m <= n
+</PRE>
+
+<DT><STRONG>NOT_GREATER_EQ</STRONG>
+<DD>
+<PRE>
+|- !m n. ~(m >= n) = SUC m <= n
+</PRE>
+
+<DT><STRONG>SUC_ONE_ADD</STRONG>
+<DD>
+<PRE>
+|- !n. SUC n = 1 + n
+</PRE>
+
+<DT><STRONG>SUC_ADD_SYM</STRONG>
+<DD>
+<PRE>
+|- !m n. SUC (m + n) = SUC n + m
+</PRE>
+
+<DT><STRONG>NOT_SUC_ADD_LESS_EQ</STRONG>
+<DD>
+<PRE>
+|- !m n. ~(SUC (m + n) <= m)
+</PRE>
+
+<DT><STRONG>MULT_LESS_EQ_SUC</STRONG>
+<DD>
+<PRE>
+|- !m n p. m <= n = SUC p * m <= SUC p * n
+</PRE>
+
+<DT><STRONG>SUB_LEFT_ADD</STRONG>
+<DD>
+<PRE>
+|- !m n p. m + (n - p) = ((n <= p) => m | ((m + n) - p))
+</PRE>
+
+<DT><STRONG>SUB_RIGHT_ADD</STRONG>
+<DD>
+<PRE>
+|- !m n p. (m - n) + p = ((m <= n) => p | ((m + p) - n))
+</PRE>
+
+<DT><STRONG>SUB_LEFT_SUB</STRONG>
+<DD>
+<PRE>
+|- !m n p. m - n - p = ((n <= p) => m | ((m + p) - n))
+</PRE>
+
+<DT><STRONG>SUB_RIGHT_SUB</STRONG>
+<DD>
+<PRE>
+|- !m n p. (m - n) - p = m - (n + p)
+</PRE>
+
+<DT><STRONG>SUB_LEFT_SUC</STRONG>
+<DD>
+<PRE>
+|- !m n. SUC (m - n) = ((m <= n) => (SUC 0) | (SUC m - n))
+</PRE>
+
+<DT><STRONG>SUB_LEFT_LESS_EQ</STRONG>
+<DD>
+<PRE>
+|- !m n p. m <= n - p = m + p <= n \/ m <= 0
+</PRE>
+
+<DT><STRONG>SUB_RIGHT_LESS_EQ</STRONG>
+<DD>
+<PRE>
+|- !m n p. m - n <= p = m <= n + p
+</PRE>
+
+<DT><STRONG>SUB_LEFT_LESS</STRONG>
+<DD>
+<PRE>
+|- !m n p. m < n - p = m + p < n
+</PRE>
+
+<DT><STRONG>SUB_RIGHT_LESS</STRONG>
+<DD>
+<PRE>
+|- !m n p. m - n < p = m < n + p /\ 0 < p
+</PRE>
+
+<DT><STRONG>SUB_LEFT_GREATER_EQ</STRONG>
+<DD>
+<PRE>
+|- !m n p. m >= n - p = m + p >= n
+</PRE>
+
+<DT><STRONG>SUB_RIGHT_GREATER_EQ</STRONG>
+<DD>
+<PRE>
+|- !m n p. m - n >= p = m >= n + p \/ 0 >= p
+</PRE>
+
+<DT><STRONG>SUB_LEFT_GREATER</STRONG>
+<DD>
+<PRE>
+|- !m n p. m > n - p = m + p > n /\ m > 0
+</PRE>
+
+<DT><STRONG>SUB_RIGHT_GREATER</STRONG>
+<DD>
+<PRE>
+|- !m n p. m - n > p = m > n + p
+</PRE>
+
+<DT><STRONG>SUB_LEFT_EQ</STRONG>
+<DD>
+<PRE>
+|- !m n p. (m = n - p) = (m + p = n) \/ m <= 0 /\ n <= p
+</PRE>
+
+<DT><STRONG>SUB_RIGHT_EQ</STRONG>
+<DD>
+<PRE>
+|- !m n p. (m - n = p) = (m = n + p) \/ m <= n /\ p <= 0
+</PRE>
+
+</DL>
+
+
+<HR>

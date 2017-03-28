@@ -1,0 +1,188 @@
+head	1.1;
+access;
+symbols
+	HOL97:1.1.2.3.0.2
+	bpHOL97:1.1.2.3
+	hol90_9_alpha:1.1.2.2
+	hol90_pre8_for_multiple_compilers:1.1.0.2;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	96.08.06.12.11.40;	author rjb;	state dead;
+branches
+	1.1.2.1;
+next	;
+
+1.1.2.1
+date	96.08.06.12.11.41;	author rjb;	state Exp;
+branches;
+next	1.1.2.2;
+
+1.1.2.2
+date	96.08.23.09.32.38;	author rjb;	state Exp;
+branches;
+next	1.1.2.3;
+
+1.1.2.3
+date	97.06.03.15.01.45;	author mn200;	state Exp;
+branches
+	1.1.2.3.2.1;
+next	;
+
+1.1.2.3.2.1
+date	97.06.11.16.01.57;	author mn200;	state Exp;
+branches;
+next	1.1.2.3.2.2;
+
+1.1.2.3.2.2
+date	97.06.11.17.01.50;	author kxs;	state Exp;
+branches;
+next	1.1.2.3.2.3;
+
+1.1.2.3.2.3
+date	97.07.14.16.49.21;	author kxs;	state dead;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@file Meson.sig was initially added on branch hol90_pre8_for_multiple_compilers.
+@
+text
+@@
+
+
+1.1.2.1
+log
+@New library meson.
+@
+text
+@a0 35
+(* ========================================================================= *)
+(* Version of the MESON procedure a la PTTP. Various search options.         *)
+(* ========================================================================= *)
+
+
+signature Meson_sig = 
+sig
+
+   (* general meson - independent of HOL *)
+   local open FOL in
+   val depth : bool ref
+   val prefine : bool ref
+   val precheck : bool ref
+   val dcutin : int ref
+   val skew : int ref
+   val cache : bool ref
+
+   type mset;
+
+   type 'a fol_goal;
+   
+   (* for debugging meson_to_hol *)
+   val MTH_args : ((fol_term * int) list * thm fol_goal) option ref;
+   val SMR_args : (mset list * thm list) option ref;;
+
+   (* meson lifted to HOL *)
+   val GEN_MESON : int -> int -> int -> mset list -> term -> thm
+   val MESON : mset list -> thm list -> term -> thm
+   val MESON_TAC : mset list -> thm list -> tactic (* = ASM_EQ_MESON_TAC *)
+   val mk_mset : thm list -> mset
+   val prepare_thms : thm list -> thm list
+  end;
+
+end (* sig *)
+
+@
+
+
+1.1.2.2
+log
+@Removed spurious semicolons.
+@
+text
+@d18 1
+a18 1
+   type mset
+d20 1
+a20 1
+   type 'a fol_goal
+d24 1
+a24 1
+   val SMR_args : (mset list * thm list) option ref
+d32 1
+a32 1
+  end
+@
+
+
+1.1.2.3
+log
+@Simple preliminary change to Meson.sig to reflect new port of jrh's code.
+@
+text
+@d17 1
+a17 1
+(*
+d25 1
+a25 1
+*)
+d27 2
+d30 2
+@
+
+
+1.1.2.3.2.1
+log
+@Modifications to the Meson library to bring it into line with the
+latest version of John Harrison's MESON_TAC in gtt (HOL Light).
+
+The additional files do the following things:
+  canon_port.sml: provide functionality similar to that of the Canon
+                  structure, but in a way that is also compatible with
+                  John's code.  (The existing Canon does not do this.)
+  jrhtactics.sml: provide a tactic mechanism that uses theorems on the
+                  assumption list rather than terms to further mimic the
+                  implementation strategy in John's code.  (The code also
+                  uses a fringe-based approach to the goal-state that is
+                  quite elegant, but this is pretty much by-the-by.)
+@
+text
+@d6 1
+a6 1
+signature Meson_sig =
+d10 1
+d17 2
+d20 6
+d27 2
+a28 3
+   val GEN_MESON_TAC : int -> int -> int -> thm list -> tactic
+   val MESON_TAC : thm list -> tactic (* = ASM_EQ_MESON_TAC *)
+   val ASM_MESON_TAC : thm list -> tactic
+@
+
+
+1.1.2.3.2.2
+log
+@Merged changes from Konrad's and Michael's == (Just made Michael's changes
+take precedence.)
+@
+text
+@d23 1
+@
+
+
+1.1.2.3.2.3
+log
+@Changes for CM-friendliness. Also, the library is now accessed through
+the structure mesonLib.
+@
+text
+@@

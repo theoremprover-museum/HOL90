@@ -1,0 +1,76 @@
+The following is the announcement that Morten Welinder made to the
+info-hol mailing list about his "rewriter-generator".
+
+&&&&&&&&&&&&&&&&& Beginning of message &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+
+Hi!
+
+As I promised a couple of you in Valetta I have made a black-box
+tool for generating very efficient conversions.
+
+It is available as ftp.diku.dk:/pub/diku/users/terra/convgen.sml
+and contains both usage and copying instructions within.  If any
+of you can think of a better place for it, feel free to put it
+there.
+
+So what is it?  Well, it is a program that takes a list of
+equality theorems and produces a conversion that will rewrite
+a term with respect to one of the theorems.  This is more or
+less what GEN_REWRITE_CONV does, but when I said `produces a
+conversion' above I should have said `produces SML-code for a
+conversion' because the output is genuine, readable SML-code.
+This difference, among other things, makes the conversions a
+lot faster.  I have appended a sample session below.
+
+I believe that the code works for any list of theorem; there
+are no longer problems with non-linear patterns (like in
+|- !x. (x=x)=T ) or polymorphism.
+
+Without having done formal timings (but see my article in the
+Supplementary HOL-94 proceedings) I can say that you should
+expect conversions generated this way to be at least twice as
+fast as the GEN_REWRITE_CONV-produced ones.
+
+I am open to suggestions on improvements (dare I say bug fixes?)
+if you have any.  Note that I am not on the info-hol mailing
+list as I get way to much mail as it is.
+
+
+Morten Welinder
+terra@diku.dk
+
+------------------------------------------------------------------------
+For information on the free Republic of Macedonia, ftp to ftp.uts.edu.au
+Australia and check out the /pub/MAKEDON directory.
+------------------------------------------Morten Welinder, terra@diku.dk
+
+       < Example deleted >
+
+
+&&&&&&&&&&&&&&&&&& End of message &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+
+
+
++ --------------------------------------------------------------------- +
+|									|
+| TO REBUILD THE LIBRARY:						|
+|									|
++ --------------------------------------------------------------------- +
+                                      
+To build the library, do a 
+
+    make_pev_rewrite <hol90>
+
+in contrib/pev_rewrite.
+
++ --------------------------------------------------------------------- +
+|									|
+| TO USE THE LIBRARY:							|
+|									|
++ --------------------------------------------------------------------- +
+
+In hol90, invoke
+
+    load_library{lib = find_library "pev_rewrite", theory = "-"};
+
+There is an example in the file "example.sml".

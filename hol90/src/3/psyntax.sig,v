@@ -1,0 +1,277 @@
+head	1.4;
+access;
+symbols
+	HOL97:1.2.0.4
+	bpHOL97:1.2
+	hol90_9_alpha:1.2
+	hol90_pre8_for_multiple_compilers:1.2.0.2
+	hol90_pre8_after_donalds_separate_compilation_changes:1.2
+	hol90_8_after_merging_Konrad_Elsa:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.4
+date	96.01.04.15.59.23;	author drs1004;	state Exp;
+branches;
+next	1.3;
+
+1.3
+date	95.12.18.11.36.44;	author drs1004;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	95.10.31.15.07.53;	author drs1004;	state Exp;
+branches
+	1.2.4.1;
+next	1.1;
+
+1.1
+date	95.10.16.13.30.22;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.30.22;	author rjb;	state Exp;
+branches;
+next	;
+
+1.2.4.1
+date	97.07.11.15.33.38;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.4
+log
+@io transformers moved to 0/
+@
+text
+@signature Psyntax_sig =
+  sig
+    include Pterms_sig;
+(*
+    type term sharing type term = Term.term;
+    type typ sharing type typ = Type.typ;
+*)
+    type thm sharing type thm = Thm.thm;
+(*    type fixity sharing type fixity = Term.fixity; *)
+    val INST : (term * term) list -> thm -> thm
+    val INST_TYPE : (typ * typ) list -> thm -> thm
+    val INST_TY_TERM :(term*term) list * (typ*typ) list -> thm -> thm
+    val SUBST : (thm * term) list -> term -> thm -> thm
+    val SUBST_CONV : (thm * term) list -> term -> term -> thm
+    val inst : (typ * typ) list -> term -> term
+    val match_term : term -> term 
+                     -> (term * term) list * (typ * typ) list
+    val match_type : typ -> typ -> (typ * typ) list
+
+(*    val new_binder : (string * typ) -> unit
+    val new_constant : (string * typ) -> unit
+    val new_infix : (string * typ * int) -> unit
+    val new_recursive_definition : fixity -> thm -> string -> term -> thm
+    val new_specification : string -> (string * string * int) list 
+                            -> thm -> thm
+    val new_type : int -> string -> unit
+    val new_type_definition : (string * term * thm) -> thm
+    val define_new_type_bijections : string -> string -> string ->thm -> thm
+
+*)
+
+
+    val subst : (term * term) list -> term -> term
+    val subst_occs : int list list -> (term * term) list -> term -> term
+    val type_subst : (typ * typ) list -> typ -> typ
+
+(*
+    val dest_abs : term -> (term * term)
+    val dest_comb : term -> (term * term)
+    val dest_cond : term -> (term * term * term)
+    val dest_conj : term -> (term * term)
+    val dest_cons : term -> (term * term)
+    val dest_const : term -> (string * typ)
+    val dest_disj : term -> (term * term)
+    val dest_eq : term -> (term * term)
+    val dest_exists : term -> (term * term)
+    val dest_forall : term -> (term * term)
+    val dest_fun_ty : typ -> (typ * typ)
+    val dest_imp : term -> (term * term)
+    val dest_let : term -> (term * term)
+    val dest_list : term -> (term list * typ)
+    val dest_pabs : term -> (term * term)
+    val dest_pair : term -> (term * term)
+    val dest_select : term -> (term * term)
+    val dest_type : typ -> (string * typ list)
+    val dest_var : term -> (string * typ)
+    val mk_abs : (term * term) -> term
+    val mk_comb : (term * term) -> term
+    val mk_cond : (term * term * term) -> term
+    val mk_conj : (term * term) -> term
+    val mk_cons : (term * term) -> term
+    val mk_const : (string * typ) -> term
+    val mk_disj : (term * term) -> term
+    val mk_eq : (term * term) -> term
+    val mk_exists : (term * term) -> term
+    val mk_forall : (term * term) -> term
+    val mk_fun_ty : (typ * typ) -> typ
+    val mk_imp : (term * term) -> term
+    val mk_let : (term * term) -> term
+    val mk_list : (term list * typ) -> term
+    val mk_pabs : (term * term) -> term
+    val mk_pair : (term * term) -> term
+    val mk_primed_var : (string * typ) -> term
+    val mk_select : (term * term) -> term
+    val mk_type : (string * typ list) -> typ
+    val mk_var : (string * typ) -> term
+*)
+
+  end;
+@
+
+
+1.3
+log
+@Preterm and other changes, see 7.changes
+@
+text
+@d3 2
+d6 2
+d9 1
+a9 3
+    type typ sharing type typ = Type.typ;
+    type fixity sharing type fixity = Term.fixity;
+
+d15 13
+d29 9
+a56 4
+    val inst : (typ * typ) list -> term -> term
+    val match_term : term -> term 
+                     -> (term * term) list * (typ * typ) list
+    val match_type : typ -> typ -> (typ * typ) list
+d77 2
+a78 11
+    val new_binder : (string * typ) -> unit
+    val new_constant : (string * typ) -> unit
+    val new_infix : (string * typ * int) -> unit
+    val new_recursive_definition : fixity -> thm -> string -> term -> thm
+    val new_specification : string -> (string * string * int) list 
+                            -> thm -> thm
+    val new_type : int -> string -> unit
+    val new_type_definition : (string * term * thm) -> thm
+    val subst : (term * term) list -> term -> term
+    val subst_occs : int list list -> (term * term) list -> term -> term
+    val type_subst : (typ * typ) list -> typ -> typ
+@
+
+
+1.2
+log
+@First phase of hol90.8 development.  hol90 now compiles using NJSML-CM
+108.5, with separate compilation of libraries.  System dependencies
+have been isolated in the makefiles and "portable.sml".
+
+This involved a large number of enhancments to the source files,
+most of which are documented in the 7.changes file (or will be shortly).
+See also the correpsonding email corrspondence between RJB, KLS, TFM,
+JRH and DRS that happened during this development.
+@
+text
+@d5 1
+a5 1
+    type hol_type sharing type hol_type = Type.hol_type;
+d9 2
+a10 2
+    val INST_TYPE : (hol_type * hol_type) list -> thm -> thm
+    val INST_TY_TERM :(term*term) list * (hol_type*hol_type) list -> thm -> thm
+d19 1
+a19 1
+    val dest_const : term -> (string * hol_type)
+d24 1
+d27 1
+a27 1
+    val dest_list : term -> (term list * hol_type)
+d31 3
+a33 3
+    val dest_type : hol_type -> (string * hol_type list)
+    val dest_var : term -> (string * hol_type)
+    val inst : (hol_type * hol_type) list -> term -> term
+d35 2
+a36 2
+                     -> (term * term) list * (hol_type * hol_type) list
+    val match_type : hol_type -> hol_type -> (hol_type * hol_type) list
+d42 1
+a42 1
+    val mk_const : (string * hol_type) -> term
+d47 1
+d50 1
+a50 1
+    val mk_list : (term list * hol_type) -> term
+d53 1
+a53 1
+    val mk_primed_var : (string * hol_type) -> term
+d55 5
+a59 5
+    val mk_type : (string * hol_type list) -> hol_type
+    val mk_var : (string * hol_type) -> term
+    val new_binder : (string * hol_type) -> unit
+    val new_constant : (string * hol_type) -> unit
+    val new_infix : (string * hol_type * int) -> unit
+d67 1
+a67 1
+    val type_subst : (hol_type * hol_type) list -> hol_type -> hol_type
+@
+
+
+1.2.4.1
+log
+@Updates to make HOP CM-friendly. gstack.sml.0 deleted because it was just a
+security copy.
+@
+text
+@d3 5
+a7 10
+    type term 
+    type thm
+    type hol_type
+    type fixity
+(*
+    type term sharing type term = CoreHol.Term.term;
+    type thm sharing type thm = CoreHol.Thm.thm;
+    type hol_type sharing type hol_type = CoreHol.Type.hol_type;
+    type fixity sharing type fixity = CoreHol.Term.fixity;
+*)
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d3 5
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

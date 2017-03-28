@@ -1,0 +1,183 @@
+head	1.1;
+access;
+symbols
+	HOL97:1.1.2.2.0.2
+	bpHOL97:1.1.2.2
+	hol90_9_alpha:1.1.2.2
+	TFL_1:1.1.2.1
+	hol90_pre8_for_multiple_compilers:1.1.0.2;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	96.06.29.15.11.34;	author rjb;	state dead;
+branches
+	1.1.2.1;
+next	;
+
+1.1.2.1
+date	96.06.29.15.11.35;	author rjb;	state Exp;
+branches;
+next	1.1.2.2;
+
+1.1.2.2
+date	96.08.05.14.01.10;	author rjb;	state Exp;
+branches
+	1.1.2.2.2.1;
+next	;
+
+1.1.2.2.2.1
+date	97.06.11.18.43.31;	author kxs;	state Exp;
+branches;
+next	1.1.2.2.2.2;
+
+1.1.2.2.2.2
+date	97.07.02.16.09.42;	author kxs;	state Exp;
+branches;
+next	1.1.2.2.2.3;
+
+1.1.2.2.2.3
+date	97.07.11.19.16.36;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@file thms.sml was initially added on branch hol90_pre8_for_multiple_compilers.
+@
+text
+@@
+
+
+1.1.2.1
+log
+@TFL version 1 for HOL: A well-founded recursive function definition package.
+@
+text
+@a0 53
+structure Thms : Thms_sig =
+struct
+   type Thm = Thm.thm
+   val _ = cons_path "hol/" theory_path
+   val _ = load_theory "WF"
+   val WF_INDUCTION_THM = theorem "WF" "WF_INDUCTION_THM"
+   val WFREC_COROLLARY = theorem "WF" "WFREC_COROLLARY"
+   val CUT_DEF = definition "WF" "RESTRICT_DEF"
+   val CUT_LEMMA = theorem "WF" "RESTRICT_LEMMA"
+
+   (* SELECT_AX = |- !P x. P x ==> P ($@@ P) *)
+   val SELECT_AX = SELECT_AX;
+
+   val COND_CONG = prove(--`!P P' (x:'a) x' y y'.
+            (P = P') /\ 
+            (P'  ==> (x = x')) /\ 
+            (~P' ==> (y = y'))
+            ==> ((P => x | y) = (P' => x' | y'))`--,
+         REPEAT GEN_TAC THEN STRIP_TAC THEN 
+         Rewrite.ASM_REWRITE_TAC[] THEN COND_CASES_TAC THEN
+         RES_TAC THEN Rewrite.ASM_REWRITE_TAC[])
+
+   val LET_CONG = prove(--`!f (g:'a->'b) M M'. 
+             (M = M') /\ 
+             (!x:'a. (x = M') ==> (f x = g x)) 
+             ==> (LET f M = LET g M')`--,
+          Rewrite.REWRITE_TAC[LET_DEF] THEN BETA_TAC THEN REPEAT GEN_TAC THEN 
+          STRIP_TAC THEN Rewrite.ASM_REWRITE_TAC[] THEN 
+          FIRST_ASSUM MATCH_MP_TAC THEN REFL_TAC);
+
+
+
+   fun W f x = f x x;
+   local fun bval w t = (type_of t = Parse.type_parser`:bool`) andalso 
+                        (can (find_term is_var) t) andalso 
+                        (free_in t w)
+   in val TAUT_CONV =
+       C (curry prove)
+         (REPEAT GEN_TAC THEN (REPEAT o CHANGED_TAC o W)
+           (C (curry op THEN) (REWRITE_TAC[]) o BOOL_CASES_TAC o hd 
+                               o sort free_in
+                               o W(find_terms o bval) o snd))
+         o Parse.term_parser
+   end;
+
+   val P = GEN_ALL o TAUT_CONV;
+
+   val thm_eq    = P`x ==> y ==> (x = y)`
+   val eqT       = P`(x = T) ==> x`
+   val rev_eq_mp = P`(x = y) ==> y ==> x`
+   val simp_thm  = P`(x==>y) ==> (x = x') ==> (x' ==> y)`
+
+end;
+@
+
+
+1.1.2.2
+log
+@*** empty log message ***
+@
+text
+@d4 1
+a4 2
+   val _ = cons_path ((!HOLdir) ^ "library/tfl/theories/" ^
+                      Globals.theory_file_type ^ "/") theory_path
+@
+
+
+1.1.2.2.2.1
+log
+@Changes to accomodate move to SML/NJ 109.26.
+@
+text
+@d5 1
+a5 1
+                      SysParams.theory_file_type ^ "/") theory_path
+@
+
+
+1.1.2.2.2.2
+log
+@Changed so that TFL loads now. It should be loadable in either draft mode
+or not. hol_datatype.sml doesn't create its theory unless it has to --
+if it is already in draft mode the defined constants are dumped into that
+theory. Also, the theory is not exported.
+@
+text
+@d6 1
+a6 1
+   val _ = load_theory "WF" handle _ => new_parent "WF"
+@
+
+
+1.1.2.2.2.3
+log
+@Small changes to make CM-friendly.
+@
+text
+@d3 4
+a6 7
+ type Thm = CoreHol.Thm.thm
+ open WFTheoryLoaded;
+ open Lib CoreHol Parse;
+ open Term Dsyntax Theory Drule Tactical Tactic Conv; infix THEN
+ open Resolve;
+
+   val LET_DEF = boolThry.LET_DEF;
+d13 1
+a13 1
+   val SELECT_AX = boolThry.SELECT_AX;
+d28 3
+a30 4
+          Rewrite.REWRITE_TAC[LET_DEF] THEN BETA_TAC 
+            THEN REPEAT GEN_TAC THEN STRIP_TAC 
+            THEN Rewrite.ASM_REWRITE_TAC[] 
+            THEN FIRST_ASSUM MATCH_MP_TAC THEN REFL_TAC);
+d41 1
+a41 1
+           (C (curry op THEN) (Rewrite.REWRITE_TAC[]) o BOOL_CASES_TAC o hd 
+@

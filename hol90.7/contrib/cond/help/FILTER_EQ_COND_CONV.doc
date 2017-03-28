@@ -1,0 +1,38 @@
+\DOC FILTER_EQ_COND_CONV
+
+\TYPE {FILTER_EQ_COND_CONV : tactic}
+
+\SYNOPSIS
+moves the selected right-hand term of equations outward through a conditional.
+
+\LIBRARY cond
+
+\DESCRIBE
+moves the selected right-hand term of equations outward through a conditional.
+
+{
+ |- (A => x=z|y=z)
+===================
+ |- (A => x|y) = z
+}
+
+\EXAMPLE
+
+{
+- FILTER_EQ_COND_CONV (fn t => t=(--`5`--))
+  (--`A => (5=5)|(6=5)`--);
+val it = |- (A => (5 = 5) | (6 = 5)) = (A => 5 | 6) = 5 : thm
+- (FILTER_EQ_COND_CONV (fn t => t=(--`5`--))
+  (--`A => (5=(2+2))|(6=(2+2))`--);()) handle e => print_HOL_ERR e;
+Exception raised at cond.FILTER_EQ_COND_CONV:
+the supplied filter is not true for
+2 + 2
+}
+
+\SEEALSO
+EQ_COND_CONV EQ_COND_RULE EQ_COND_TAC
+FILTER_EQ_COND_RULE FILTER_EQ_COND_TAC
+COND_EQ_CONV COND_EQ_RULE COND_EQ_TAC 
+FILTER_COND_EQ_CONV FILTER_COND_EQ_RULE FILTER_COND_EQ_TAC
+
+\ENDDOC

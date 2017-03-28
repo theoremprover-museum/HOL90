@@ -1,0 +1,51 @@
+\DOC resituate_hol90
+
+\SYNOPSIS
+A unix utility useful when moving the hol90 root directory after the system 
+has been built.
+
+\DESCRIBE
+If one moves the hol90 directory after the system has been built, many things
+will stop working, since the internal paths used by the system will no
+longer be accurate. {resituate_hol90} reconfigures an hol90 image to a new 
+root directory. In the following, we assume that the new hol90 root directory
+is {/dir0/dir1/.../hol90}. {resituate_hol90} is called from unix directly.
+It has the following call format
+{
+    ..../tools/resituate_hol90 <from-image> <to-image> <path>
+}
+where {<from-image>} is a path to an hol90 image, {<to-image>} is the 
+path where the "resituated" image is to be written, and {<path>} is the
+new root directory for the system. An invocation of {resituate_hol90} 
+resets the HOLdir, help_path, theory_path, and library_path to take
+account of the new root directory for the system, and then writes the 
+image to {<to-image>}.
+
+\EXAMPLE
+On a sun4 one could invoke
+{
+    % tools/resituate_hol90 src/hol90.sparc src/hol90.sparc 
+                            /usr/local/lib/hol90.5
+}
+to readjust the sun4 version of hol90 to think that the hol90 root directory
+is /usr/local/lib/hol90.5
+
+\FAILURE
+Note that the example invocation will overwrite the file of an executing
+process (namely src/hol90.sparc). Some operating systems may not allow this,
+in which case one needs to use a "temporary" <to-image>. A command like
+{
+    (tools/resituate_hol90 src/hol90.sparc src/hol90.tmp 
+                           /usr/local/lib/hol90.5; 
+     mv src/hol90.tmp src/hol90.sparc)
+}
+\noindent ought to work. 
+
+\COMMENTS
+Needs to be invoked on each architecture of interest, i.e., for each 
+hol90.<arch> in the "src" directory of the hol90 distribution. 
+
+\SEEALSO
+install
+
+\ENDDOC

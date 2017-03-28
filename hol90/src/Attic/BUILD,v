@@ -1,0 +1,70 @@
+head	1.1;
+access;
+symbols
+	HOL97:1.1.0.2;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	97.06.11.17.43.38;	author kxs;	state dead;
+branches
+	1.1.2.1;
+next	;
+
+1.1.2.1
+date	97.06.11.17.43.40;	author kxs;	state Exp;
+branches;
+next	1.1.2.2;
+
+1.1.2.2
+date	97.07.17.15.42.40;	author mn200;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@file BUILD was initially added on branch HOL97.
+@
+text
+@@
+
+
+1.1.2.1
+log
+@This is the single script that builds the HOL system. It calls various
+makefiles in the "Makefiles" directory.
+@
+text
+@a0 13
+#!/bin/sh
+#
+# This is a front-end script for building the HOL system. It provides 
+# parameters to `make' that appear not to be computable in
+# the Makefile (at least not in a way that works for all architectures).
+
+# Default parameters
+#
+HOL_DIR=`(cd ..; /bin/pwd)`
+ARCH=`../tools/architecture`
+
+# Run `make'
+make -f Makefiles/Makefile ARCH=$ARCH HOL_DIR=$HOL_DIR "$@@"
+@
+
+
+1.1.2.2
+log
+@SysParams now automatically generated from SysParams.sml.template and
+the BUILD file which knows the values of __arch__ and __HOLdir__.
+@
+text
+@a11 2
+perl -pe "s|__HOLdir__|$HOL_DIR/|; s|__arch__|$ARCH|;" < SysParams.sml.template\
+> SysParams.sml
+@

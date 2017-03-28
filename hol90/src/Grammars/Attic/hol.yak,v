@@ -1,0 +1,222 @@
+head	1.1;
+access;
+symbols
+	HOL97:1.1.0.2;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	97.06.11.17.08.08;	author kxs;	state dead;
+branches
+	1.1.2.1;
+next	;
+
+1.1.2.1
+date	97.06.11.17.08.09;	author kxs;	state Exp;
+branches;
+next	1.1.2.2;
+
+1.1.2.2
+date	97.07.11.15.02.33;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@file hol.yak was initially added on branch HOL97.
+@
+text
+@@
+
+
+1.1.2.1
+log
+@Directory for all HOL grammars.
+@
+text
+@a0 159
+open Parse_support;
+
+fun make_cond tyvars tm0 tm1 tm2 =
+    list_make_comb[make_atom tyvars "COND", prec_parse tm0, tm1, tm2];
+
+val rbinder = bind_restr_term;
+
+fun HOL_PARSE_ERR{function,message} = 
+ Exception.HOL_ERR{origin_structure = "HOL grammar",
+             origin_function = function,
+             message = message};
+
+type arg = (int,Type.hol_type) istream
+%%
+%term ident of string
+    | symbolic_ident of string
+    | qualified_ident of (string*string)
+    | type_ident of string
+    | qualified_type_ident of (string*string)
+    | type_var_ident of string
+    | binder of string
+    | qualified_binder of (string*string)
+    | aq of Term.term
+    | lparen | rparen | type_lparen | type_rparen | lbracket | rbracket
+    | lbrace | rbrace
+    | type_comma | colon | dcolon | dot | semi_colon | eq_gt | eq
+    | arrow | type_hash | type_plus | bar
+    | let_ | and_ | in_ | of_
+    | string_ of string
+    | EOLEX
+    | EOF 
+
+%nonterm START   of parse
+       | PTRM    of preterm_in_env
+       | APP     of preterm_in_env list
+       | AEXP    of preterm_in_env
+       | SUFFIX  of preterm_in_env
+       | BVL     of binder_in_env list
+       | BV      of binder_in_env
+       | VSTRUCT of binder_in_env list
+       | BINDL   of (binder_in_env list * preterm_in_env) list
+       | COMMA   of unit
+       | LIST    of preterm_in_env list
+
+       (* Types *)
+       | TYPE      of Type.hol_type
+       | TYPE_ARG  of Type.hol_type list
+       | TYPE_LIST of Type.hol_type list
+       | BASIC     of Type.hol_type
+
+       (* Datatype specs. *)
+       | TYSPEC  of {ty_name:string,
+                     clauses : {constructor:string,
+                               args:Parse_support.arg list} list}
+       | TYID    of string
+       | CLAUSES of {constructor:string, args:Parse_support.arg list} list
+       | CLAUSE  of {constructor:string, args: Type.hol_type list}
+       | CARGS   of Type.hol_type list
+
+
+%start START
+%eop EOF EOLEX
+%pos int
+%header (functor HolLrValsFun (Token : TOKEN))
+%name Hol
+%noshift EOF
+%pure
+%verbose
+%right arrow 
+%right type_plus 
+%right type_hash 
+%arg (tyvars) : (int,Type.hol_type) istream
+%%
+
+START: PTRM         (PTM (make_preterm PTRM))
+     | colon TYPE   (TY TYPE)
+     | colon TYSPEC (TY_SPEC TYSPEC)
+
+PTRM : SUFFIX                  (SUFFIX)
+     | APP SUFFIX              (prec_parse (rev(APP)@@[SUFFIX]))
+     | APP eq_gt PTRM bar PTRM (make_cond tyvars (rev APP) PTRM1 PTRM2)
+     | APP                     (prec_parse (rev APP))
+
+APP  : APP AEXP colon TYPE ([make_constrained(prec_parse(rev(AEXP::APP)))TYPE])
+     | APP AEXP            (AEXP::APP)
+     | AEXP colon TYPE     ([make_constrained AEXP TYPE])
+     | AEXP                ([AEXP])
+
+AEXP : ident                       (make_atom tyvars ident)
+     | symbolic_ident              (make_atom tyvars symbolic_ident)
+     | aq                          (make_aq aq)
+     | string_                     (make_string string_)
+     | eq                          (make_atom tyvars "=")
+     | dcolon                      (make_atom tyvars "::")
+     | lparen   PTRM rparen        (PTRM)
+     | lbracket LIST rbracket      (make_list tyvars LIST)
+     | lbrace   LIST rbrace        (make_set tyvars LIST)
+     | lbrace PTRM bar PTRM rbrace (make_set_abs tyvars (PTRM1,PTRM2))
+
+SUFFIX: binder BVL dcolon PTRM dot PTRM (rbinder tyvars binder BVL PTRM1 PTRM2)
+      | binder BVL dot PTRM             (bind_term binder BVL PTRM)
+      | let_ BINDL in_ PTRM             (make_let tyvars BINDL PTRM)
+
+BV  : lparen BV rparen               (BV)
+    | ident                          (make_binding_occ tyvars ident)
+    | aq                             (make_aq_binding_occ tyvars aq)
+    | BV colon TYPE                  (make_constrained_vstruct BV TYPE)
+    | lparen BV COMMA VSTRUCT rparen (make_vstruct tyvars (BV::VSTRUCT))
+
+VSTRUCT : BV ([BV])
+        | BV COMMA VSTRUCT (BV::VSTRUCT)
+
+BINDL : BVL eq PTRM ([(BVL,PTRM)])
+      | BVL eq PTRM and_ BINDL ((BVL,PTRM)::BINDL)
+
+BVL  : BV BVL (BV::BVL)     |  BV ([BV])
+LIST : ([]) | PTRM ([PTRM]) | PTRM semi_colon LIST (PTRM::LIST)
+
+
+(*-----------------------TYPES-----------------------------------------------*)
+TYPE : TYPE   arrow   TYPE  (make_type_app("fun",[TYPE1, TYPE2]))
+     | TYPE type_plus TYPE  (make_type_app("sum",[TYPE1, TYPE2]))
+     | TYPE type_hash TYPE  (make_type_app("prod",[TYPE1,TYPE2]))
+     | TYPE_ARG type_ident  (make_type_app(type_ident, TYPE_ARG))
+     | BASIC                (BASIC)
+
+TYPE_ARG : TYPE_ARG type_ident         ([make_type_app (type_ident,TYPE_ARG)])
+         | type_lparen TYPE type_comma TYPE_LIST type_rparen (TYPE::TYPE_LIST)
+         | BASIC                                                     ([BASIC])
+
+BASIC : type_var_ident    (Preterm.Term.Type.mk_vartype type_var_ident)
+      | type_ident        (make_atomic_type(type_ident,!Globals.in_type_spec))
+      | aq                (extract_type_antiq aq)
+      | type_lparen TYPE type_rparen (TYPE)
+
+
+TYPE_LIST : TYPE type_comma TYPE_LIST (TYPE::TYPE_LIST)    |   TYPE ([TYPE])
+
+
+(*----------------------DATATYPE SPECIFICATIONS------------------------------*)
+TYSPEC : TYID eq CLAUSES     ({ty_name=TYID,clauses=CLAUSES})
+TYID   : ident               (Globals.in_type_spec := SOME ident; ident)
+
+CLAUSES: CLAUSE              ([Parse_support.make_type_clause CLAUSE])
+       | CLAUSE bar CLAUSES  (make_type_clause CLAUSE::CLAUSES)
+
+CLAUSE : string_                   ({constructor=string_ , args=[]})
+       | ident                     ({constructor=ident, args=[]})
+       | symbolic_ident            ({constructor=symbolic_ident, args=[]})
+       | ident of_ CARGS           ({constructor=ident,args = CARGS})
+       | symbolic_ident of_ CARGS  ({constructor=symbolic_ident,args=CARGS})
+
+CARGS  : TYPE eq_gt CARGS (TYPE::CARGS)  |   TYPE ([TYPE])
+
+COMMA  : symbolic_ident 
+       (if (symbolic_ident = ",")
+        then () else raise HOL_PARSE_ERR{function = "",
+                                   message = "expecting a \",\" in varstruct"})
+
+@
+
+
+1.1.2.2
+log
+@Minor editions for CM-friendliness.
+@
+text
+@a0 1
+open CoreHol
+d13 1
+a13 1
+type arg = (int,Type.hol_type) Lib.istream
+d23 1
+a23 1
+    | aq of CoreHol.Term.term
+d72 1
+a72 1
+%arg (tyvars) : (int,Type.hol_type) Lib.istream
+@

@@ -1,0 +1,113 @@
+head	1.1;
+branch	1.1.1;
+access;
+symbols
+	HOL97:1.1.1.1.0.6
+	bpHOL97:1.1.1.1
+	hol90_9_alpha:1.1.1.1
+	hol90_pre8_for_multiple_compilers:1.1.1.1.0.4
+	hol90_pre8_after_donalds_separate_compilation_changes:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	95.10.16.13.33.27;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.33.27;	author rjb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@\DOC search_top_down
+
+\BLTYPE
+search_top_down
+ : (term -> term -> ((term # term) list # (type # type) list) list)
+\ELTYPE
+
+\SYNOPSIS
+Search a term in a top-down fashion to find matches to another term.
+
+\KEYWORDS
+search, rewriting, conditional.
+
+\DESCRIBE
+{search_top_down tm1 tm2} returns a list of instantiations which make
+the whole  or part of {tm2} match {tm1}. The first term should not have
+a quantifier at the outer most level. {search_top_down} first
+attempts to match the whole second term to {tm1}. If this fails, it
+recursively descend into the subterms of {tm2} to find all matches.
+
+The length of the returned list indicates the number of matches found.
+An empty list means no match can be found between {tm1} and {tm2} or
+any subterms of {tm2}.
+The instantiations returned in the list are in the same format as for  the
+function {match}. Each instantiation is a pair of lists: the first is
+a list of term pairs and the second is a list of type pairs. Either of
+these lists may be empty. The situation in which both lists are empty
+indicates that there is an exact match between the two terms, i.e., no
+instantiation is required to make the entire {tm2} or a part of {tm2}
+the same as {tm1}.
+
+\FAILURE
+Never fails.
+
+\EXAMPLE
+{
+   #search_top_down "x = y:*" "3 = 5";;
+   [([("5", "y"); ("3", "x")], [(":num", ":*")])]
+   : ((term # term) list # (type # type) list) list
+
+   #search_top_down "x = y:*" "x =y:*";;
+   [([], [])] : ((term # term) list # (type # type) list) list
+
+   #search_top_down "x = y:*" "0 < p ==> (x <= p = y <= p)";;
+   [([("y <= p", "y"); ("x <= p", "x")], [(":bool", ":*")])]
+   : ((term # term) list # (type # type) list) list
+}
+\noindent The first example above shows the entire {tm2} matching {tm1}.
+The second example shows the two terms match exactly. No
+instantiation is required. The last example shows that a subterm of
+{tm2} can be instantiated to match {tm1}.
+
+\SEEALSO
+match, COND_REWR_TAC, CONV_REWRITE_TAC, COND_REWR_CONV, CONV_REWRITE_CONV.
+
+\ENDDOC
+
+
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

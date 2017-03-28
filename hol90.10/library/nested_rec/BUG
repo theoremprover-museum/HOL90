@@ -1,0 +1,32 @@
+Return-Path: <Richard.Boulton-request@cl.cam.ac.uk>
+Delivery-Date: 
+Received: from merganser.cl.cam.ac.uk (user rjb (rfc931)) by swan.cl.cam.ac.uk 
+          with SMTP (PP-6.5) to cl; Tue, 14 Feb 1995 14:24:46 +0000
+To: elsa@research.att.com
+cc: Richard.Boulton@cl.cam.ac.uk
+Subject: Bug in nested_rec
+Date: Tue, 14 Feb 1995 14:24:39 +0000
+From: Richard Boulton <Richard.Boulton@cl.cam.ac.uk>
+Message-ID: <"swan.cl.cam.:251690:950214143057"@cl.cam.ac.uk>
+
+Dear Elsa,
+
+There appears to be a bug in the nested_rec contribution distributed with
+hol90.7. When none of the types being defined appear on the right-hand sides
+of the type equations the exception Substring is raised. Examples e0, e1 and
+e2 in e1.sml fail.
+
+I think the exception is raised at lines 27-29 of make_type_op.sml due to
+RecursorThms.tyop_prefix being an empty string. This in turn can be traced
+back to lines 129-130 of def_type.sml, which produces an empty string when
+StringTable.elts(constrs) is a null list. One solution appears to be to
+change this application to StringTable.elts(defs), i.e., to use the type
+names appearing on the left of the type equations rather than on the right,
+but I don't understand the intention of the code sufficiently to know whether
+this is reasonable. The change allows examples e1 and e2 to succeed, but e0
+still fails due to num_Axiom (an irrelevant recursor theorem) having no type
+variables.
+
+If you have time could you indicate whether my bug fix seems reasonable.
+
+Richard.

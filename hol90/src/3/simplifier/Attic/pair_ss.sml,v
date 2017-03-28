@@ -1,0 +1,90 @@
+head	1.2;
+access;
+symbols;
+locks; strict;
+comment	@# @;
+
+
+1.2
+date	96.02.08.00.48.54;	author drs1004;	state dead;
+branches;
+next	1.1;
+
+1.1
+date	96.01.04.14.14.22;	author drs1004;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.2
+log
+@New theory mechanism, code reorganisation and other enhancements by Don Syme.
+@
+text
+@(* =====================================================================
+ *
+ * =====================================================================*)
+
+signature Pair_ss_sig =
+sig
+	structure Simplifier : Simplifier_sig
+	val pair_ss : Simplifier.simpset
+	val PAIR_ss : Simplifier.simpset
+end;
+
+
+structure Pair_ss : Pair_ss_sig =
+struct 
+  structure Simplifier = Simplifier;
+  open Simplifier;
+  open Core;
+    infix |>
+  open Pure_ss;
+  open Bool_ss;
+  open Let_conv;
+
+(* ---------------------------------------------------------------------
+ * PAIR_ss
+ * pair_ss
+ *
+ * --------------------------------------------------------------------*)
+
+val PAIR_ss =
+   pure_ss
+   |> addconvs [mk_convdata{name="PAIRED_BETA_CONV (beta reduction)",
+                            key=SOME ([],--`(\(x,y):('a # 'b). y:'b) (z,w)`--),
+                            trace=1,
+                            conv=K PAIRED_BETA_CONV}]
+   |> addrewrs (map (theorem "pair") [
+      	"FST", 
+	"SND", 
+	"PAIR", 
+	"PAIR_EQ"]);
+val pair_ss = merge_ss [bool_ss, PAIR_ss];
+
+
+end; 
+
+
+
+
+
+
+
+
+
+
+
+@
+
+
+1.1
+log
+@Added simplifier components, added drule files, added MK_ABS_CONV, better error messages
+@
+text
+@@

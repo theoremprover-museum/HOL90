@@ -1,0 +1,110 @@
+head	1.1;
+branch	1.1.1;
+access;
+symbols
+	HOL97:1.1.1.1.0.6
+	bpHOL97:1.1.1.1
+	hol90_9_alpha:1.1.1.1
+	hol90_pre8_for_multiple_compilers:1.1.1.1.0.4
+	hol90_pre8_after_donalds_separate_compilation_changes:1.1.1.1
+	hol90_8_after_merging_Konrad_Elsa:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	95.10.16.13.35.45;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.35.45;	author rjb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@\DOC inst
+
+\TYPE {inst : hol_type subst -> term -> term}
+
+\SYNOPSIS
+Performs type instantiations in a term. NOT the same as the hol88 inst; the 
+first argument (the "away-from" list) used in hol88 {inst} is unnecessary and
+hence dispensed with, PLUS hol90 insists that all redexes be type variables.
+
+\DESCRIBE
+The function {inst} should be used as follows:
+{
+   inst [{{redex_1, residue_1}},...;{{redex_n, residue_n}}] tm
+}
+\noindent where the redexes are all hol_type variables, and the residues
+all hol_types and {tm} a term to be type-instantiated. This call will
+replace each occurrence of a {redex} in {tm} by its associated
+{residue}. Replacement is done in parallel, i.e., once a {redex} has been
+replaced by its {residue}, at some place in the term, that {residue} at that
+place will not itself be replaced in the current call. Bound term
+variables may be renamed in order to preserve the term structure.
+
+\FAILURE
+Fails if there exists a redex in the substition that is not a type variable.
+
+\EXAMPLE
+{
+- show_types := true;
+() : unit
+
+- let val tm = --`(x:'a) = (x:'a)`--
+  in inst [{{redex = ==`:'a`==, residue = ==`:num`==}}] tm
+  end;
+(--`(x :num) = (x :num)`--) : term
+
+- inst [{{redex = ==`:bool`==, residue = ==`:num`==}}] (--`x:bool`--)
+  handle e => Raise e;
+Exception raised at Term.inst:
+redex in type substitution not a variable
+
+- let val x = --`x:bool`--
+  in inst [{{redex = ==`:'a`==, residue = ==`:bool`==}}]
+          (--`\x:'a. ^x`--)
+  end;
+(--`\(x' :bool). (x :bool)`--) : term
+
+}
+\USES
+Performing internal functions connected with type instantiation.
+
+\SEEALSO
+type_subst, Compat.inst_type, INST_TYPE.
+
+\ENDDOC
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

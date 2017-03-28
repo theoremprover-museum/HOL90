@@ -1,0 +1,379 @@
+<TITLE>Theory: WELLORDER</TITLE>
+<H1>Theory: WELLORDER</H1>
+<H1>Parents</H1>
+    <UL>
+    <LI><A HREF = "HOL.html"><STRONG>HOL</STRONG></A>
+    </UL>
+
+
+<HR>
+<H1>Type constants</H1>
+    <UL>
+    
+    </UL>
+
+
+<HR>
+<H1>Term constants</H1>
+    <UL>
+    <LI><STRONG>wo_subset</STRONG><EM>:('a -> bool) -> ('a -> bool) ->
+                                       bool</EM>
+        <STRONG>{</STRONG>fixity  = Infix 450<STRONG>}</STRONG>
+    <LI><STRONG>wo_Union</STRONG><EM>:(('a -> bool) -> bool) -> 'a ->
+                                      bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>wo_fl</STRONG><EM>:('a # 'a -> bool) -> 'a -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>wo_poset</STRONG><EM>:('a # 'a -> bool) -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>wo_chain</STRONG><EM>:('a # 'a -> bool) -> ('a -> bool) ->
+                                      bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>wo_woset</STRONG><EM>:('a # 'a -> bool) -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>wo_inseg</STRONG><EM>:('a # 'a -> bool) # ('a # 'a -> bool) ->
+                                      bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>wo_less</STRONG><EM>:('a # 'a -> bool) -> 'a # 'a -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    </UL>
+
+
+<HR>
+<H1>Axioms</H1>
+<DL>
+
+</DL>
+
+
+<HR>
+<H1>Definitions</H1>
+<DL>
+<DT><STRONG>wo_subset</STRONG>
+<DD>
+<PRE>
+|- !P Q. P wo_subset Q = (!x. P x ==> Q x)
+</PRE>
+
+<DT><STRONG>wo_Union</STRONG>
+<DD>
+<PRE>
+|- !P. wo_Union P = (\x. ?p. P p /\ p x)
+</PRE>
+
+<DT><STRONG>wo_fl</STRONG>
+<DD>
+<PRE>
+|- !l x. wo_fl l x = (?y. l (x,y) \/ l (y,x))
+</PRE>
+
+<DT><STRONG>wo_poset</STRONG>
+<DD>
+<PRE>
+|- !l.
+     wo_poset l =
+     (!x. wo_fl l x ==> l (x,x)) /\
+     (!x y z. l (x,y) /\ l (y,z) ==> l (x,z)) /\
+     (!x y. l (x,y) /\ l (y,x) ==> (x = y))
+</PRE>
+
+<DT><STRONG>wo_chain</STRONG>
+<DD>
+<PRE>
+|- !l P. wo_chain l P = (!x y. P x /\ P y ==> l (x,y) \/ l (y,x))
+</PRE>
+
+<DT><STRONG>wo_woset</STRONG>
+<DD>
+<PRE>
+|- !l.
+     wo_woset l =
+     (!x. wo_fl l x ==> l (x,x)) /\
+     (!x y z. l (x,y) /\ l (y,z) ==> l (x,z)) /\
+     (!x y. l (x,y) /\ l (y,x) ==> (x = y)) /\
+     (!x y. wo_fl l x /\ wo_fl l y ==> l (x,y) \/ l (y,x)) /\
+     (!P.
+       (!x. P x ==> wo_fl l x) /\ (?x. P x) ==>
+       (?y. P y /\ (!z. P z ==> l (y,z))))
+</PRE>
+
+<DT><STRONG>wo_inseg</STRONG>
+<DD>
+<PRE>
+|- !l m.
+     wo_inseg (l,m) =
+     wo_woset l /\ wo_woset m /\ (!x y. l (x,y) = wo_fl l y /\ m (x,y))
+</PRE>
+
+<DT><STRONG>wo_less</STRONG>
+<DD>
+<PRE>
+|- !l x y. wo_less l (x,y) = l (x,y) /\ ~(x = y)
+</PRE>
+
+</DL>
+
+
+<HR>
+<H1>Theorems</H1>
+<DL>
+<DT><STRONG>SUBSET_REFL</STRONG>
+<DD>
+<PRE>
+|- !P. P wo_subset P
+</PRE>
+
+<DT><STRONG>SUBSET_ANTISYM</STRONG>
+<DD>
+<PRE>
+|- !P Q. P wo_subset Q /\ Q wo_subset P ==> (P = Q)
+</PRE>
+
+<DT><STRONG>SUBSET_TRANS</STRONG>
+<DD>
+<PRE>
+|- !P Q R. P wo_subset Q /\ Q wo_subset R ==> P wo_subset R
+</PRE>
+
+<DT><STRONG>POSET_FLEQ</STRONG>
+<DD>
+<PRE>
+|- !l. wo_poset l ==> (!x. wo_fl l x = l (x,x))
+</PRE>
+
+<DT><STRONG>CHAIN_SUBSET</STRONG>
+<DD>
+<PRE>
+|- !l P Q. wo_chain l P /\ Q wo_subset P ==> wo_chain l Q
+</PRE>
+
+<DT><STRONG>WOSET_POSET</STRONG>
+<DD>
+<PRE>
+|- !l. wo_woset l ==> wo_poset l
+</PRE>
+
+<DT><STRONG>WOSET_FLEQ</STRONG>
+<DD>
+<PRE>
+|- !l. wo_woset l ==> (!x. wo_fl l x = l (x,x))
+</PRE>
+
+<DT><STRONG>WOSET_TRANS_LESS</STRONG>
+<DD>
+<PRE>
+|- !l. wo_woset l ==> (!x y z. wo_less l (x,y) /\ l (y,z) ==> wo_less l (x,z))
+</PRE>
+
+<DT><STRONG>WOSET</STRONG>
+<DD>
+<PRE>
+|- !l.
+     wo_woset l =
+     (!x y. l (x,y) /\ l (y,x) ==> (x = y)) /\
+     (!P.
+       (!x. P x ==> wo_fl l x) /\ (?x. P x) ==>
+       (?y. P y /\ (!z. P z ==> l (y,z))))
+</PRE>
+
+<DT><STRONG>CPO_FIX</STRONG>
+<DD>
+<PRE>
+|- !l.
+     wo_poset l /\
+     (!A.
+       wo_chain l A ==>
+       (?m.
+         wo_fl l m /\
+         (!x. A x ==> l (x,m)) /\
+         (!m'. wo_fl l m' /\ (!x. A x ==> l (x,m')) ==> l (m,m')))) /\
+     (!x. wo_fl l x ==> l (x,f x)) ==>
+     (?y. wo_fl l y /\ (f y = y))
+</PRE>
+
+<DT><STRONG>POSET_ORD</STRONG>
+<DD>
+<PRE>
+|- wo_poset (\(U,V). P wo_subset U /\ U wo_subset V /\ wo_chain l V)
+</PRE>
+
+<DT><STRONG>KL</STRONG>
+<DD>
+<PRE>
+|- !l.
+     wo_poset l ==>
+     (!Q.
+       wo_chain l Q ==>
+       (?P.
+         (wo_chain l P /\ Q wo_subset P) /\
+         (!R. wo_chain l R /\ P wo_subset R ==> (R = P))))
+</PRE>
+
+<DT><STRONG>HP</STRONG>
+<DD>
+<PRE>
+|- !l.
+     wo_poset l ==>
+     (?P. wo_chain l P /\ (!Q. wo_chain l Q /\ P wo_subset Q ==> (Q = P)))
+</PRE>
+
+<DT><STRONG>ZL</STRONG>
+<DD>
+<PRE>
+|- !l.
+     wo_poset l /\
+     (!P. wo_chain l P ==> (?y. wo_fl l y /\ (!x. P x ==> l (x,y)))) ==>
+     (?y. wo_fl l y /\ (!x. l (y,x) ==> (y = x)))
+</PRE>
+
+<DT><STRONG>INSEG_WOSET</STRONG>
+<DD>
+<PRE>
+|- !l m. wo_inseg (l,m) ==> wo_woset l /\ wo_woset m
+</PRE>
+
+<DT><STRONG>INSEG_FL</STRONG>
+<DD>
+<PRE>
+|- !l. wo_fl wo_inseg l = wo_woset l
+</PRE>
+
+<DT><STRONG>INSEG_SUBSET</STRONG>
+<DD>
+<PRE>
+|- !l m. wo_inseg (l,m) ==> (!x y. l (x,y) ==> m (x,y))
+</PRE>
+
+<DT><STRONG>INSEG_POSET</STRONG>
+<DD>
+<PRE>
+|- wo_poset wo_inseg
+</PRE>
+
+<DT><STRONG>FL_UNION</STRONG>
+<DD>
+<PRE>
+|- !P x. wo_fl (wo_Union P) x = (?l. P l /\ wo_fl l x)
+</PRE>
+
+<DT><STRONG>INSEG_WOSET_UNION</STRONG>
+<DD>
+<PRE>
+|- !P. wo_chain wo_inseg P ==> wo_woset (wo_Union P)
+</PRE>
+
+<DT><STRONG>WOSET_MAXIMAL</STRONG>
+<DD>
+<PRE>
+|- ?y. wo_fl wo_inseg y /\ (!x. wo_inseg (y,x) ==> (y = x))
+</PRE>
+
+<DT><STRONG>WO_EXFL</STRONG>
+<DD>
+<PRE>
+|- !x.
+     wo_fl (\(x,y). l (x,y) \/ (wo_fl l x \/ (x = m)) /\ (y = m)) x =
+     wo_fl l x \/ (x = m)
+</PRE>
+
+<DT><STRONG>WO_TYPE</STRONG>
+<DD>
+<PRE>
+|- ?l. wo_woset l /\ (!x. wo_fl l x)
+</PRE>
+
+<DT><STRONG>WO_RESTFL</STRONG>
+<DD>
+<PRE>
+|- !l.
+     wo_woset l ==>
+     (!P. wo_fl (\(x,y). P x /\ P y /\ l (x,y)) x = P x /\ wo_fl l x)
+</PRE>
+
+<DT><STRONG>WO</STRONG>
+<DD>
+<PRE>
+|- !P. ?l. wo_woset l /\ (wo_fl l = P)
+</PRE>
+
+<DT><STRONG>WO_INDUCT</STRONG>
+<DD>
+<PRE>
+|- !P l.
+     wo_woset l /\
+     (!x. wo_fl l x /\ (!y. wo_less l (y,x) ==> P y) ==> P x) ==>
+     (!x. wo_fl l x ==> P x)
+</PRE>
+
+<DT><STRONG>AGREE_LEMMA</STRONG>
+<DD>
+<PRE>
+|- !l h ms m n f g z.
+     wo_woset l /\
+     (!x. wo_fl l (ms x)) /\
+     (!f f' x.
+       (!y. wo_less l (ms y,ms x) ==> (f y = f' y)) ==> (h f x = h f' x)) /\
+     (!x. l (ms x,m) ==> (f x = h f x)) /\
+     (!x. l (ms x,n) ==> (g x = h g x)) /\
+     l (ms z,m) /\
+     l (ms z,n) ==>
+     (f z = g z)
+</PRE>
+
+<DT><STRONG>WO_RECURSE_LOCAL</STRONG>
+<DD>
+<PRE>
+|- !l h ms.
+     wo_woset l /\
+     (!x. wo_fl l (ms x)) /\
+     (!f f' x.
+       (!y. wo_less l (ms y,ms x) ==> (f y = f' y)) ==> (h f x = h f' x)) ==>
+     (!n. ?f. !x'. l (ms x',n) ==> (f x' = h f x'))
+</PRE>
+
+<DT><STRONG>WO_RECURSE_EXISTS</STRONG>
+<DD>
+<PRE>
+|- !l h ms.
+     wo_woset l /\
+     (!x. wo_fl l (ms x)) /\
+     (!f f' x.
+       (!y. wo_less l (ms y,ms x) ==> (f y = f' y)) ==> (h f x = h f' x)) ==>
+     (?f. !x. f x = h f x)
+</PRE>
+
+<DT><STRONG>WO_RECURSE</STRONG>
+<DD>
+<PRE>
+|- !l h ms.
+     wo_woset l /\
+     (!x. wo_fl l (ms x)) /\
+     (!f g x.
+       (!y. wo_less l (ms y,ms x) ==> (f y = g y)) ==> (h f x = h g x)) ==>
+     (?!f. !x. f x = h f x)
+</PRE>
+
+<DT><STRONG>FL_NUM</STRONG>
+<DD>
+<PRE>
+|- !n. wo_fl (\(m,n). m <= n) n
+</PRE>
+
+<DT><STRONG>WOSET_NUM</STRONG>
+<DD>
+<PRE>
+|- wo_woset (\(m,n). m <= n)
+</PRE>
+
+<DT><STRONG>WO_RECURSE_NUM</STRONG>
+<DD>
+<PRE>
+|- !h ms.
+     (!f g x. (!y. ms y < ms x ==> (f y = g y)) ==> (h f x = h g x)) ==>
+     (?!f. !x. f x = h f x)
+</PRE>
+
+</DL>
+
+
+<HR>

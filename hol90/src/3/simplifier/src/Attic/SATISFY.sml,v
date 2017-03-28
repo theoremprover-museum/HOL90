@@ -1,0 +1,302 @@
+head	1.2;
+access;
+symbols;
+locks; strict;
+comment	@# @;
+
+
+1.2
+date	96.01.04.14.14.44;	author drs1004;	state dead;
+branches;
+next	1.1;
+
+1.1
+date	95.12.18.11.39.07;	author drs1004;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.2
+log
+@Added simplifier components, added drule files, added MK_ABS_CONV, better error messages
+@
+text
+@
+(*------------------------------------------------------------------------
+ * Satisfy
+ *
+ * Try to satisfy a set of goals by unifying against a set of facts.
+ * 
+ * NOTE
+ *
+ * In principle will be able to work for quantified type variables
+ * as well.
+ *
+ * EXAMPLES
+ *
+open Satisfy;
+val a = (--`a:'a`--);
+val b = (--`b:'a`--);
+val c = (--`c:'a`--);
+val e = (--`e:'a`--);
+val g = (--`g:'a`--);
+val m = (--`m:num`--);
+val n = (--`n:num`--);
+val x = (--`x:'a`--);
+val y = (--`y:'a`--);
+val z = (--`z:'a`--);
+val P = (--`(P:'a->'a->'a->bool)`--);
+
+list_of_s (satisfyl [(--`^(P) a b c`--,([a,b,c],[]))] [(--`^(P) g e f`--,([],[]))]);
+list_of_s (satisfyl [(--`^(P) a b c`--,([a,b],[]))] [(--`^(P) g e f`--,([],[]))]);
+list_of_s (satisfyl 
+            [(--`^(P) a b c`--,([a,b,c],[]))] 
+            [(--`^(P) g e f`--,([],[])),
+             (--`^(P) x y z`--,([],[]))]);
+list_of_s (satisfyl 
+            [(--`^(P) a b a`--,([a,b],[]))] 
+            [(--`^(P) g e g`--,([],[])),
+             (--`^(P) x y z`--,([],[]))]);
+list_of_s (satisfyl 
+            [(--`^(P) a b a`--,([a,b],[]))] 
+            [(--`^(P) g e g`--,([],[])),
+             (--`^(P) x y z`--,([z],[]))]);
+
+(* this one's a bit odd - the substitutions returned are empty because
+neither a nor b need get bound. 
+*)
+list_of_s (satisfyl 
+            [(--`^(P) a b a`--,([a,b],[]))] 
+            [(--`^(P) g e g`--,([g,e,g],[])),
+             (--`^(P) x y z`--,([x,y,z],[]))]); 
+list_of_s (satisfyl 
+            [(--`^(P) a b a`--,([a,b],[])),
+             (--`^(Pnum) 1 2 n`--,([n],[]))] 
+            [(--`^(P) g e g`--,([g,e,g],[])),
+             (--`^(P) x y z`--,([x,y,z],[]))]); 
+
+list_of_s (satisfyl 
+            [(--`^(P) a b a`--,([a,b],[])),
+             (--`^(Pnum) 1 2 n`--,([n],[]))] 
+            [(--`^(P) g e g`--,([],[])),
+             (--`^(Pnum) 1 2 m`--,([],[]))]); 
+
+ *-------------------------------------------------------------------------*)
+
+signature Satisfy_sig = sig
+    structure Sequence : Sequence_sig
+    structure Unify : Unify_sig;
+
+   type hol_type sharing type hol_type = Type.hol_type
+   type term sharing type term = Term.term
+   type conv sharing type conv = Abbrev.conv
+   type tactic sharing type tactic = Abbrev.tactic
+
+    val satisfy_in_envs : (term * (term list * hol_type list)) Sequence.seq
+                    -> (term * (term list * hol_type list))
+                         * (term Lib.subst * hol_type Lib.subst) Sequence.seq
+                    -> (term Lib.subst * hol_type Lib.subst) Sequence.seq
+
+    val satisfyl_in_envs : (term * (term list * hol_type list)) list
+                   -> (term * (term list * hol_type list)) list
+                     -> (term Lib.subst * hol_type Lib.subst) Sequence.seq
+                     -> (term Lib.subst * hol_type Lib.subst) Sequence.seq
+
+    val satisfyl : (term * (term list * hol_type list)) list
+                  -> (term * (term list * hol_type list)) list
+                     -> (term Lib.subst * hol_type Lib.subst) Sequence.seq
+
+end;
+
+
+structure Satisfy : Satisfy_sig = struct
+
+    open Core;
+    structure Sequence = Sequence
+    open Sequence
+
+    structure Unify = Unify
+    open Unify;
+
+val ERR = Exception.ERR "Satisfy";
+
+fun mapfilters f s =
+    maps the (filters is_some (maps (fn x => SOME (f x) handle _ => NONE) s));
+
+
+(*-----------------------------------------------------------------
+ * satisfy_in_envs
+ *
+ * return all the unifications of a single term against a sequence of terms,
+ * over a sequence of environments.
+ * Do not return instantiations local to the terms from the sequence
+ * (these are thought of as local universally quantified variables from
+ * the each fact.  Nb. - this asymmetry in the unification algorithm worries
+ * me - am I doing the right thing??? I think so.)
+ * 
+ * This corresponds to matching a goal against a series of facts, where
+ * some of the facts are universally quantified. 
+ *----------------------------------------------------------------*)
+ 
+fun satisfy_in_envs tms_n_vars ((tm1,vars1),envs) =
+    let fun f env (tm2,vars2) = 
+          let val new_env = tyfix_env (reduce_env (unify_terms_in_env (append_vars (vars1,vars2)) tm1 tm2 env))
+          in discard_env vars2 new_env
+          end
+    in flats (maps (fn env => mapfilters (f env) tms_n_vars) envs)
+    end;
+
+(*-----------------------------------------------------------------
+ * satisfyl_in_envs
+ *
+ * This correpsonds to unifying a set of subgoals with unknowns 
+ * against a set of facts. 
+ *-----------------------------------------------------------------*)
+
+fun satisfyl_in_envs tms1 tms2 envs =
+    its_right (satisfy_in_envs (s_of_list tms2)) (s_of_list tms1,envs);
+
+(*-----------------------------------------------------------------
+ * satisfyl
+ *
+ * Satisfy a list of goals given a set of facts.
+ * This is unification.
+ *-----------------------------------------------------------------*)
+
+fun satisfyl tms1 tms2 =
+    satisfyl_in_envs tms1 tms2 (single ([],[]));
+
+end;
+
+
+(*==================================================================
+ * Existential Satisfaction
+ *
+ * These are reasoning tools based on satisfaction via unification,
+ * designed to find suitable instantiations of existential variables.
+ *
+ *================================================================*)
+
+
+signature SatisfyExistentials_sig = sig
+   
+   type conv sharing type conv = conv;
+   type term sharing type term = Term.term;
+   type thm sharing type thm = Thm.thm;
+   type tactic sharing type tactic = Abbrev.tactic;
+
+  (*--------------------------------------------------------------------
+   * val tac = VALID (SATISFY_THEN ALL_TAC);
+   * tac ([(--`3 + 1 = 6`--)], --`?a b. a + 1 = b`--) ;
+   * tac ([(--`!x. x + 1 = 6`--)], --`?a b. a + 1 = b`--) ;
+   * tac ([(--`!P:'b. P = b`--)], --`?a b. Q (a:'a) = (b:'b)`--) ;
+   * tac ([(--`!P. P`--)], --`?a b. a + 1 = b`--) ;
+   * new_constant {Name="KKK",Ty=(==`:'a->'a->bool`==)} handle _ => (); 
+   * tac ([(--`!a:'a. KKK a a`--)], --`?(x:'a). KKK x x`--) ;
+   * tac ([(--`!a:'a. KKK a a`--),(--`(Q:'a -> 'a -> bool) n m`--)], 
+   *        --`?x y. KKK x x /\ (Q:'a->'a->bool) x y`--) ;
+   * tac ([(--`(P1:num->num->bool) e f`--),
+           (--`(P2:num->num->bool) f g`--),
+           (--`!g. (P3:num->num->bool) e g`--)], 
+           --`?a b c. (P1:num->num->bool) a b /\
+                      (P2:num->num->bool) b c /\
+                      (P3:num->num->bool) a b`--);
+   * 
+   * SATISFY_PROVE [(--`3 + 1 = 6`--)] (--`?a b. a + 1 = b`--) ;
+   * SATISFY_PROVE [(--`!x. x + 1 = 6`--)] (--`?a b. a + 1 = b`--) ;
+   * SATISFY_PROVE [(--`!P:'b. P = b`--)] (--`?a b. Q (a:'a) = (b:'b)`--) ;
+   * SATISFY_PROVE [(--`!P. P`--)] (--`?a b. a + 1 = b`--) ;
+   * SATISFY_PROVE [(--`!a:num. KKK a a`--)] (--`?(x:num). KKK x x`--) ;
+   * SATISFY_PROVE [(--`!a:'a. KKK a a`--),(--`(Q:'a -> 'a -> bool) n m`--)]
+            (--`?x y. KKK x x /\ (Q:'a->'a->bool) x y`--) ;
+   * SATISFY_PROVE (map ASSUME [--`KKK 3 4`--]) (--`?y. KKK 3 y`--) ;
+   * SATISFY_CONV (map ASSUME [--`KKK 3 4`--]) (--`?y. KKK 3 y`--) ;
+   * ASM_SIMP_RULE SATISFY_ss (mk_thm([--`KKK 3 4`--],--`?y. KKK 3 y`--));
+   *--------------------------------------------------------------------*)
+
+   val SATISFY_PROVE : thm list -> term -> thm
+   val SATISFY_CONV : thm list -> conv
+   val SEQ_FIRST : tactic Satisfy.Sequence.seq -> tactic
+   val SATISFY_THEN : tactic -> tactic
+   val SATISFY_TAC : tactic
+
+   val SATISFY_ss : Simplifier.simpset
+
+end;
+
+structure SatisfyExistentials : SatisfyExistentials_sig = struct
+
+open Core;
+open Satisfy;
+open Sequence;
+
+val ERR = Exception.ERR "SatisfyExistentials";
+open Simplifier;
+open Traverse;
+
+
+fun SEQ_FIRST (tacl: tactic seq) g = 
+   case (pull tacl)
+    of SOME (tac,rest) => (tac g handle _ => SEQ_FIRST rest g)
+     | NONE => ERR("SEQ_FIRST","No tactic succeeded");
+
+fun SATISFY_THEN tac (asms,gl) =
+    let val (E,g) = strip_exists gl
+        val E' = map (genvar o type_of) E  (* rename to avoid variable capture *)
+        val Esubst = map2 (fn e1 => fn e2 => (e1 |-> e2)) E E'
+        val g' = subst Esubst g
+        val conjs = map (fn conj => (conj,(E',[]))) (strip_conj g')
+        val facts = map (fn asm => let val (U,a) = strip_forall asm in (a,(U,[])) end) asms
+        val satisfy_seq = satisfyl conjs facts
+        fun CHOOSE_FROM_SUBST (tmsubst,tysubst) v  =
+            let val choice = 
+                     case (subst_assoc (fn x => x = v) tmsubst) 
+                       of SOME x => x
+                        | NONE => (mk_const {Name="ARB",Ty=type_of v})
+            in EXISTS_TAC choice 
+            end
+    in SEQ_FIRST (maps (fn subst' => 
+                    EVERY (map (CHOOSE_FROM_SUBST subst') E') THEN tac) 
+                  satisfy_seq) (asms,gl)
+    end;
+
+
+fun SATISFY_PROVE context tm =
+    TAC_PROOF((map concl context,tm),
+        SATISFY_THEN 
+            (REPEAT CONJ_TAC THEN FIRST_ASSUM MATCH_ACCEPT_TAC ));
+
+
+fun SATISFY_CONV context tm =
+    if (is_exists tm)
+    then EQT_INTRO (SATISFY_PROVE context tm)
+    else ERR("SATISFY_CONV","SATISFY_CONV only applies to existentially quantifid terms");
+;
+
+open Simplifier;
+open Pure_ss;
+
+val SATISFY_TAC = SATISFY_THEN ALL_TAC;
+
+val SATISFY_ss = pure_ss |> Simplifier.adddproc (mk_reducer{
+           name="SATISFY_CONV (satisfy existentials via unification)",
+           relation = #const (const_decl "="),
+           initial = THMLIST [],
+           apply=fn {context=THMLIST thms,solver} => SATISFY_CONV thms,
+           addcontext=fn (THMLIST thms',thms) => THMLIST (thms@@thms')});
+
+end;
+
+@
+
+
+1.1
+log
+@Preterm and other changes, see 7.changes
+@
+text
+@@

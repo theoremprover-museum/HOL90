@@ -1,0 +1,251 @@
+head	1.1;
+branch	1.1.1;
+access;
+symbols
+	HOL97:1.1.1.1.0.6
+	bpHOL97:1.1.1.1
+	hol90_9_alpha:1.1.1.1
+	hol90_pre8_for_multiple_compilers:1.1.1.1.0.4
+	hol90_pre8_after_donalds_separate_compilation_changes:1.1.1.1
+	hol90_8_after_merging_Konrad_Elsa:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	95.10.16.13.36.10;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.36.10;	author rjb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@Changes to Release 4.
+
+These are fixes to problems in the public release of version 4.
+Basically, version 5 is just version 4 with all these fixes installed.
+Some notes may not mean much to users.
+
+
+1. It may be that load_library will die if it is called with a "lib" 
+   argument obtained from find_library - the order of the lists may be wrong. 
+
+2. load_library "taut" will fail unless the library "hol88_lib" is already 
+   loaded.
+
+3. Change to mk_comb: it is now built in terms of "list_mk_comb". Many 
+   "construction" routines in Dsyntax now use list_mk_comb, because it is
+   more efficient. Note: the doc for mk_comb should be fixed at the next 
+   release, because the error messages are different now.
+
+4. "print_theory" on an ancestor theory always thought that the theory was
+    inconsistent with disk. This has been fixed, and print_theory now
+    uses the prettyprinting primitives properly. "print_theory" only
+    reports on the consistency-with-disk status for the current theory;
+    ancestors are of course consistent with disk.
+
+5. "dtype" didn't do a "perform_atomic_theory_op", so that if it failed,
+    the current theory and symbol table would be messed up. (I'm not sure 
+    that it is true that they would be messed up, but it seems worth making 
+    it atomic just to be sure.)
+
+6. Moved "pwd" and "cd" to Lib from Globals. Also added "ls" to Lib, 
+   since I found I was always using it.
+
+7. Added "type_lt" and "term_lt", ordering functions for hol types and terms.
+   These provide total orders, and are irreflexive.
+    
+8. Wrote "install"; renamed structure System_install to Install; added
+   (lib_eq:lib->lib->bool) to Library. So we have Install.install now: it
+   is used to "re-situate" the system after it is moved. Documentation has 
+   been written for it, and a section has been added to the installation
+   manual (doc/install.doc) that tells how to resituate the system. There is
+   also a shell script called "resituate_hol90" in hol90.4/tools that does
+   an "install;save" as a batch call from Unix.
+
+9. The draft_mode on the initial value of CT is set to false, in order to
+   handle the situation of building the system while re-using existing
+   theories. Documented in src/0/theory/data.sml
+
+10. Upgrade to sys_params.sml to clean up the existing documentation, to 
+    document make_hol, and to switch what the default is for building the
+    system. Now the default is to re-use existing theories, which implies
+    two things: 1) the system must be shipped with theories already built
+    (this includes library theories); 2) make_lib doesn't need to be called
+    (the latter will change in a separate compilation regime). Changes to 
+    doc/install.doc to reflect this change. Also, help files for make_hol 
+    have been written.
+
+11. Cleaned up up some signatures so that the system symtab not accessible
+    through Parse_support. Made preterms abstract. Also got rid of those
+    stupid references in Dsyntax. That is still a problem there, since it 
+    would be cleaner not to have conj, disj, bool, etc there. Should test 
+    to see if there is a big speed difference. And if not, trash them.
+
+12. Added "words2" to Lib. 
+
+13. Changed the implementation of theories so that absolute paths handled 
+    properly.
+
+14. Fully quantified Taut_thms.DISJ_ASSOC. The variable "C" was not being
+    quantified. Noticed by David Shepherd.
+
+15. Added "load_library_in_place"; deleted "load_library_reuse". When the 
+    system is built in the "reusing" mode, system libraries don't have
+    their unique ids regenerated. This fixes a bug reported by Matthew Morley,
+    wherein he recompiled hol90 (using -o) and all of a sudden his libraries
+    wouldn't load. It was because the system library descriptions got remade
+    and the parents of his libraries all of a sudden didn't exist.
+
+16. Fixed "find_library" and "get_library_from_disk" so that they add their 
+    theories to the theory_path. Should "remove_library" remove them? Nah. The 
+    user might want them there. Manual intervention is always possible.
+
+17. A version of xholhelp modified by Matthew Morley of Edinburgh University 
+    has been added to the tools directory. This might be of interest to the 
+    hol88 implementers, since it allows the modification of the paths that 
+    xholhelp uses from within xholhelp, thus easing access to help in 
+    libraries. Also, the procedure to build the tool seems to have been 
+    simplified.
+
+18. Theories containing definitions of symbolic constants, i.e.,
+
+        new_definition("??", --`?? = T`--)
+
+    should load properly now. Thanks to KimDam Peterson for spotting this.
+    In a related fix, autoloading will give a message and skip over theory 
+    bindings that would attempt to bind to a string that SML won't take as 
+    a variable, e.g.,
+
+        ;;_DEF
+
+19. The theorem "LESS_EQ" in the "arithmetic" theory had its quantifiers 
+    swapped. Now it is proved with explicit control of quantified variable 
+    ordering. Spotted by Richard Boulton.
+
+        val LESS_EQ = save_thm("LESS_EQ",
+                      GENL [--`m:num`--, --`n:num`--]
+                           (IMP_ANTISYM_RULE (SPEC_ALL LESS_OR) 
+                                             (SPEC_ALL OR_LESS)));
+
+20. Can no longer parse string literals before theory of strings loaded.
+
+21. Signature of Parse_support cleaned up.
+
+22. Thanks to KimDam Peterson and Richard Boulton, the "reduce" and "arith" 
+    libraries are now available.
+
+24. A bug in the "taut" library affecting conditional terms has been fixed.
+    Bug was due to GEN_ALL having different behaviour in hol90. Spotted
+    by Matthew Morley.
+
+25. strip_pair no longer fails on a non-pair.
+
+26. The "pred_set" library is now available.
+
+27. A "mutrec" library is available in contrib. This is based on work by 
+    Elsa Gunter and Myra VanInwegen. The "example.sml" file in contrib/mutrec 
+    shows the definition of the abstract syntax of a small ML-like language, 
+    plus a the definition of a mutually recursive function over that syntax.
+
+28. The system fails in a slightly more informative fashion when a
+    user attempts to make a set when the theory of sets is not loaded.
+
+29. Some lexer hacking has made it possible to accomodate "~" into the set
+    of symbolic characters. This requires the use of REJECT in the lexer 
+    and slows parsing down. Even worse, there is now the variable 
+    Globals.tilde_symbols which enumerates the new special cases for the
+    lexer to consider. Therefore, when one wants the lexer to recognize an
+    identifier with a "~" in it, one adds the identifier to the tilde_symbols.
+    For instance,
+
+        Globals.tilde_symbols := ["~*"];
+        new_infix{Name = "~*", Ty = ==`:bool -> bool -> bool`==, Prec = 450}
+
+    allows `A ~* B` to parse happily.
+
+30. Fixed a bug that would have made it impossible to build the system 
+    remotely in "-o" mode. When we build the system reusing theory files,
+    we load in library descriptions that were produced by the implementor. 
+    The "path" field in these descriptions is going to be that of the
+    implementor and hence wrong for the local site. Therefore, if the 
+    system is being rebuilt in "-o" mode (the default), the library 
+    descriptions are read in from disk, then a move_library is done on them.
+    The effect is that the internal representation will be OK, but the
+    disk representation will seem wrong. It's not.
+
+31. Cleaned up rewriting a tad, in preparation for generalizing it. In
+    doing so, I noticed that the code was doing, in effect,
+
+        mk_rewritesl(mk_rewritesl thl)
+
+    which is boneheaded. Rewriting should be a tad faster now.
+
+32. The change made in 29 was not far-reaching enough, since I didn't change
+    the lexis used by the functions that read in theory files. This is
+    now fixed. There really needs to be a connection made between the 
+    lexis of the interactive parser and the lexis of the theory file parser.
+
+33. Phil Windley's "abs_theory" library is now available, thanks to David
+    Shepherd. Some improvements have been made over the original, notably in 
+    that the abstract theory is easier to declare, and there is a body of 
+    specialized rewriting tools available for abstract theories.
+
+34. Loading of theories that have theorems with string constants with 
+    embedded double quotes, e.g.,
+
+        --`"adfa\"asfads"`--
+
+    no longer fails, although it is not yet satisfactory.
+
+35. Flemming Anderson's UNITY theory is now available, thanks to KimDam 
+    Peterson and Flemming. Worked examples include dining philosophers, 
+    readers and writers, and an arbiter.
+
+36. Mike Gordon's prog_logic88 theory is now available, thanks to
+    Matthew Morley.
+
+37. Fixed "set_eq" to not think that its arguments are already lists with 
+    no duplicate values. Also fixed "intersect" and "op_intersect" (to 
+    return a set, even if arguments are not sets), which had the same problem.
+
+38. The definitions of CONJUNCTS_CONV, CONJ_SET_CONV, and FRONT_CONJ_CONV
+    have been changed to be like hol88.
+
+39. The contrib/desc directory is now a default on the library path, although 
+    the contrib libraries are not "known_libraries". Changes to 
+    src/0/globals.sml and and src/0/install.sml.
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

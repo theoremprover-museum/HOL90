@@ -1,0 +1,149 @@
+head	1.1;
+access;
+symbols;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	96.02.08.00.45.12;	author drs1004;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@New theory mechanism, code reorganisation and other enhancements by Don Syme.
+@
+text
+@
+
+structure Satisfy : Satisfy_sig = 
+struct
+	
+    structure Sequence = Sequence
+    open Sequence Abbrev;
+
+    structure Unify = Unify
+    open Lib Unify;
+
+val ERR = Exception.ERR "Satisfy";
+
+fun mapfilters f s =
+    maps the (filters is_some (maps (fn x => SOME (f x) handle _ => NONE) s));
+
+
+(*-----------------------------------------------------------------
+ * satisfy_in_envs
+ *
+ * return all the unifications of a single term against a sequence of terms,
+ * over a sequence of environments.
+ * Do not return instantiations local to the terms from the sequence
+ * (these are thought of as local universally quantified variables from
+ * the each fact.  Nb. - this asymmetry in the unification algorithm worries
+ * me - am I doing the right thing??? I think so.)
+ * 
+ * This corresponds to matching a goal against a series of facts, where
+ * some of the facts are universally quantified. 
+ *----------------------------------------------------------------*)
+ 
+fun satisfy_in_envs tms_n_vars ((tm1,vars1),envs) =
+    let fun f env (tm2,vars2) = 
+          let val new_env = tyfix_env (reduce_env (unify_terms_in_env (append_vars (vars1,vars2)) tm1 tm2 env))
+          in discard_env vars2 new_env
+          end
+    in flats (maps (fn env => mapfilters (f env) tms_n_vars) envs)
+    end;
+
+(*-----------------------------------------------------------------
+ * satisfyl_in_envs
+ *
+ * This correpsonds to unifying a set of subgoals with unknowns 
+ * against a set of facts. 
+ *-----------------------------------------------------------------*)
+
+fun satisfyl_in_envs tms1 tms2 envs =
+    its_right (satisfy_in_envs (s_of_list tms2)) (s_of_list tms1,envs);
+
+(*-----------------------------------------------------------------
+ * satisfyl
+ *
+ * Satisfy a list of goals given a set of facts.
+ * This is unification.
+ *-----------------------------------------------------------------*)
+
+fun satisfyl tms1 tms2 =
+    satisfyl_in_envs tms1 tms2 (single ([],[]));
+
+end;
+
+
+(*==================================================================
+ * Existential Satisfaction
+ *
+ * These are reasoning tools based on satisfaction via unification,
+ * designed to find suitable instantiations of existential variables.
+ *
+ *================================================================*)
+
+
+
+
+structure Satisfy_existentials : Satisfy_existentials_sig = struct
+
+    open Lib Pterms Drule Conv Ho_rewrite
+    open Parse Tactical Tactic Abbrev;
+	infix THEN
+    open Satisfy;
+    open Sequence;
+
+val ERR = Exception.ERR "Satisfy_existentials";
+
+
+fun SEQ_FIRST (tacl: tactic seq) g = 
+   case (pull tacl)
+    of SOME (tac,rest) => (tac g handle _ => SEQ_FIRST rest g)
+     | NONE => ERR("SEQ_FIRST","No tactic succeeded");
+
+fun SATISFY_THEN tac (asms,gl) =
+    let val (E,g) = strip_exists gl
+        val E' = map (genvar o type_of) E  (* rename to avoid variable capture *)
+        val Esubst = map2 (fn e1 => fn e2 => (e1 |-> e2)) E E'
+        val g' = subst Esubst g
+        val conjs = map (fn conj => (conj,(E',[]))) (strip_conj g')
+        val facts = map (fn asm => let val (U,a) = strip_forall asm in (a,(U,[])) end) asms
+        val satisfy_seq = satisfyl conjs facts
+        fun CHOOSE_FROM_SUBST (tmsubst,tysubst) v  =
+            let val choice = 
+                     case (subst_assoc (fn x => x = v) tmsubst) 
+                       of SOME x => x
+                        | NONE => (mk_const ("ARB",type_of v))
+            in EXISTS_TAC choice 
+            end
+    in SEQ_FIRST (maps (fn subst' => 
+                    EVERY (map (CHOOSE_FROM_SUBST subst') E') THEN tac) 
+                  satisfy_seq) (asms,gl)
+    end;
+
+
+fun SATISFY_PROVE context tm =
+    TAC_PROOF((map concl context,tm),
+        SATISFY_THEN 
+            (REPEAT CONJ_TAC THEN FIRST_ASSUM MATCH_ACCEPT_TAC ));
+
+
+fun SATISFY_CONV context tm =
+    if (is_exists tm)
+    then EQT_INTRO (SATISFY_PROVE context tm)
+    else ERR("SATISFY_CONV","SATISFY_CONV only applies to existentially quantifid terms");
+;
+
+val SATISFY_TAC = SATISFY_THEN ALL_TAC;
+
+end;
+
+@

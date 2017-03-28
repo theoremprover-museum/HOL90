@@ -1,0 +1,151 @@
+head	1.2;
+access;
+symbols
+	HOL97:1.2.0.4
+	bpHOL97:1.2
+	hol90_9_alpha:1.2
+	hol90_pre8_for_multiple_compilers:1.2.0.2
+	hol90_pre8_after_donalds_separate_compilation_changes:1.2
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.2
+date	95.10.31.15.32.14;	author drs1004;	state Exp;
+branches
+	1.2.4.1;
+next	1.1;
+
+1.1
+date	95.10.16.13.31.19;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.31.19;	author rjb;	state Exp;
+branches;
+next	;
+
+1.2.4.1
+date	97.07.15.13.03.41;	author kxs;	state dead;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.2
+log
+@Changes by DRS for separate compilation using NJSML 108.5/CM
+@
+text
+@(* ===================================================================== *)
+(* FILE          : functions.sig                                         *)
+(* DESCRIPTION   : Signature for a structure of general-purpose theorem  *)
+(*                 proving routines, used in the "group" library.        *)
+(*                 Translated and improved from the hol88 implementation.*)
+(*                                                                       *)
+(* AUTHOR        : Elsa Gunter, Bell Labs                                *)
+(* DATE          : January 5, 1992                                       *)
+(* ===================================================================== *)
+(* Copyright 1992 by AT&T Bell Laboratories *)
+(* Share and Enjoy *)
+
+
+
+signature ExtraGeneralFunctions_sig =
+sig
+   type hol_type sharing type hol_type = Type.hol_type;
+   type term sharing type term = Term.term
+   type thm sharing type thm = Thm.thm
+   type tactic sharing type tactic = Abbrev.tactic
+   type conv sharing type conv = Abbrev.conv
+   type thm_tactic sharing type thm_tactic = Abbrev.thm_tactic
+
+
+  val ADD_ASSUMS_THEN :{new_assumptions:term list, tactic:tactic} -> tactic
+  val ADD_STRIP_ASSUMS_THEN :{new_assumptions:term list, tactic:tactic} ->
+                             tactic
+  val ASM_CONJ1_TAC :tactic
+  val ASM_CONJ2_TAC :tactic
+  val ASSUME_LIST_TAC :thm list -> tactic
+  val AUTO_SPEC :{generalized_theorem:thm, specialization_term:term} -> thm
+  val AUTO_SPECL :{generalized_theorem:thm,
+                   specialization_list:term list} -> thm
+  val MATCH_MP_IMP_TAC :thm_tactic
+  val MATCH_TERM_SUBS_RULE :thm -> term -> thm -> thm
+  val MATCH_THM_TAC :{pattern_function:term -> term, thm_tactic:thm_tactic} ->
+                     thm_tactic
+  val MP_IMP_TAC :thm_tactic
+  val NEW_MATCH_ACCEPT_TAC :thm_tactic
+  val NEW_SUBST1_TAC :thm_tactic
+  val REDUCE_TAC :thm list -> tactic
+  val REV_SUPPOSE_TAC :term -> tactic
+  val STRONG_INST :{term_substitution:term Lib.subst, theorem:thm} -> thm
+  val STRONG_INST_TYPE :{theorem:thm,type_substitution:hol_type Lib.subst} -> thm
+  val STRONG_INST_TY_TERM :{term_substitution:term Lib.subst,
+                            theorem:thm,
+                            type_substitution:hol_type Lib.subst} -> 
+                           thm
+  val SUBST_MATCH_TAC :thm_tactic
+  val SUPPOSE_TAC :term -> tactic
+  val find_match :{pattern:term, term:term} -> term Lib.subst * hol_type Lib.subst
+  val is_contained_in :{subset:term list, superset: term list} -> bool
+  val mapshape :{functions:('a list -> 'b) list,
+                 partition:int list,
+                 unionlist:'a list} -> 'b list
+  val use_thm :{theorem:thm, thm_tactic:thm_tactic} -> tactic
+end
+          
+@
+
+
+1.2.4.1
+log
+@The "utils" library now loads under CM. The entrypoint is the structure
+utilsLib.
+@
+text
+@@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d17 8
+d43 3
+a45 3
+  val STRONG_INST :{term_substitution:term subst, theorem:thm} -> thm
+  val STRONG_INST_TYPE :{theorem:thm,type_substitution:hol_type subst} -> thm
+  val STRONG_INST_TY_TERM :{term_substitution:term subst,
+d47 1
+a47 1
+                            type_substitution:hol_type subst} -> 
+d51 1
+a51 1
+  val find_match :{pattern:term, term:term} -> term subst * hol_type subst
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

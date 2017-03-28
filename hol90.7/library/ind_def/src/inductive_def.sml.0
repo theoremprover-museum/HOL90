@@ -1,0 +1,1660 @@
+(* ===================================================================== *)
+(* FILE          : inductive_def.sml                                     *)
+(* DESCRIPTION   : Tom Melham's inductive definition package. Translated *)
+(*                 from hol88, but some dependencies remain, see note in *)
+(*                 ind_def.sml.                                          *)
+(*                                                                       *)
+(* AUTHOR        : (c) Tom Melham, University of Cambridge               *)
+(*                                                                       *)
+(* TRANSLATOR    : Konrad Slind, University of Calgary                   *)
+(* ===================================================================== *)
+
+
+structure Inductive_def : Inductive_def_sig =
+struct
+
+fun IND_DEF_ERR{function,message} = 
+        HOL_ERR{origin_structure = "Library \"Ind_def\"",
+                origin_function = function,
+                message = message};
+
+(* ===================================================================== *)
+(* INDUCTIVE DEFINITIONS.						 *)
+(* ===================================================================== *)
+
+(* --------------------------------------------------------------------- *)
+(* INTERNAL FUNCTION: mk_predv						 *)
+(*									 *)
+(* The function mk_predv, given a list of terms:			 *)
+(*									 *)
+(*      ["t1:ty1";"t2:ty2";...;"tn:tyn"]				 *)
+(*									 *)
+(* returns a variable P of type:					 *)
+(*									 *)
+(*      P:ty1->ty2->...->tyn->bool					 *)
+(*									 *)
+(* The choice of name `P` is fixed.					 *)
+(*									 *)
+(* HOL88 code:                                                           *)
+(*									 *)
+(* let mk_predv =                                                        *)
+(*    let itfn tm ty = mk_type(`fun`,[type_of tm;ty]) in                 *)
+(*     \ts. mk_var(`P`,itlist itfn ts ":bool");;                         *)
+(* --------------------------------------------------------------------- *)
+
+local
+fun itfn tm ty = mk_type("fun",[(type_of tm),ty])
+val bool = ==`:bool`==
+in
+fun mk_predv ts = mk_var("P",itlist itfn ts bool)
+end;
+
+(* --------------------------------------------------------------------- *)
+(* INTERNAL FUNCTION: checkfilter 					 *)
+(*									 *)
+(* The function checkfilter takes two lists "ps" and "as", where ps is a *)
+(* sublist of as. A function is returned that that behaves as follows.   *)
+(* When applied to a list l, the function checks that the elements of l  *)
+(* exactly match the elements of "as" at those positions of this list at *)
+(* which there occur elements of "ps".  The function furthermore checks  *)
+(* that l has the same length as "as".					 *)
+(*									 *)
+(* HOL88 code:                                                           *)
+(*									 *)
+(* let checkfilter =                                                     *)
+(*     letrec check ps as =                                              *)
+(*        if (null as) then assert null else                             *)
+(*        let cktl = check ps (tl as) in                                 *)
+(*        if (mem (hd as) ps)                                            *)
+(*           then let v = hd as in \(h.t). (h=v) => cktl t | fail        *)
+(* 	  else \(h.t). h . cktl t in                                     *)
+(*     \ps as. let f = check ps as in                                    *)
+(*             \l. f l ? failwith `ill-formed membership assertion`;;    *)
+(*									 *)
+(* let checkside R tm =                                                  *)
+(*     if (free_in R tm) then                                            *)
+(*        failwith `"`^(fst(dest_var R))^`" free in side-condition(s)`   *)
+(*     else                                                              *)
+(*        tm;;                                                           *)
+(* --------------------------------------------------------------------- *)
+
+
+exception checkfilter_ERR of string;
+local 
+exception err
+fun check ps [] = assert null
+  | check ps (H :: T) =
+      let val cktl = check ps T
+      in
+      if (mem H ps) 
+      then fn (h::t) =>  if (H = h) 
+                         then cktl t 
+                         else raise err
+      else fn (h::t) => (h :: (cktl t)) 
+      end
+in
+fun checkfilter ps a =
+   let val f = check ps a
+   in
+   fn l => (f l)
+           handle _ => raise IND_DEF_ERR{function = "checkfilter",
+                                   message = "ill-formed membership assertion"}
+   end
+end;
+
+fun checkside R tm = 
+   if (free_in R tm)
+   then raise IND_DEF_ERR{function = "checkside",
+               message = "\""^(fst(dest_var R))^"\" free in side-condition(s)"}
+   else tm;
+
+(* --------------------------------------------------------------------- *)
+(* INTERNAL FUNCTION : mk_mk_pred					 *)
+(*									 *)
+(* The arguments to this function are the user-supplied pattern pat, and *)
+(* the list of global parameters ps (see below for a specification of 	 *)
+(* required format of these inputs).  The pattern, pat, is expected to	 *)
+(* have the form shown below:						 *)
+(*									 *)
+(*   pat = "R x1 ... xn"						 *)
+(*									 *)
+(* and mk_mk_pred fails (with an appropriate message) if:		 *)
+(*									 *)
+(*   1: pat is not a boolean term					 *)
+(*   2: any one of R, x1, ... xn is not a variable			 *)
+(*   3: the xi's are not all distinct					 *)
+(*									 *)
+(* The second argument, ps, is a list of global parameter variables:	 *)
+(*									 *)
+(*   ["y1",...,"ym"]							 *)
+(*									 *)
+(* where {"y1",...,"ym"} is expected to be a subset of {"x1",...,"xm"}.	 *)
+(* Failure occurs if:							 *)
+(*									 *)
+(*   1: any one of "y1",...,"ym" is not a variable			 *)
+(*   2: any "yi" is not an element of {"x1",...,"xm"}.			 *)
+(*   3: the "yi"'s are not all distinct					 *)
+(*									 *)
+(* A successful call to mk_mk_pred pat ps, where the inputs pat and ps	 *)
+(* are as described above, returns a function that maps applications of  *)
+(* the form:								 *)
+(*									 *)
+(*   "R a1 ... an"							 *)
+(*									 *)
+(* to applications of the form:						 *)
+(*									 *)
+(*   "P ai ... aj"							 *)
+(*									 *)
+(* where ai,...,aj is the subsequence of a1, ..., an consisting of those *)
+(* arguments to R whose positions correspond to the positions of the 	 *)
+(* variables in the pattern "R x1 ... xn" that do NOT occur in the 	 *)
+(* global paramter list ps. Furthermore, at all other positions (ie at 	 *)
+(* those positions that correspond to global parameters) the a's must	 *)
+(* be identical to the parameter variables "y1",...,"ym".		 *)
+(*									 *)
+(* For example, if:							 *)
+(*									 *)
+(*   pat = "R x1 x2 x3 x4"   and   ps = ["x1";"x3"]			 *)
+(*									 *)
+(* then the function returned by mk_mk_pred expects input terms of the 	 *)
+(* form "R x1 a1 x3 a2" and maps these to "P a1 a2". Failure occurs if	 *)
+(* the agument to this function does not have the correct form.		 *)
+(*									 *)
+(* For convenience, the function mk_mk_pred also returns the variables	 *)
+(* R and P.								 *)
+(*									 *)
+(* HOL88 code:                                                           *)
+(*									 *)
+(* let mk_mk_pred =                                                      *)
+(*     let chk p st = \x. (p x => x | failwith st) in                    *)
+(*     let ckb = chk (\t. type_of t = ":bool") `pattern not boolean` in  *)
+(*     let ckv = chk is_var `non-variable in pattern` in                 *)
+(*     let ckp = chk is_var `non-variable parameter` in                  *)
+(*     let itfn ck st v l = (mem (ck v) l => failwith st | v.l) in       *)
+(*     let cka = C (itlist (itfn ckv `duplicate argument in pattern`))   *)
+(*                 [] in                                                 *)
+(*     let ckpa=C (itlist (itfn ckp `duplicate variable in parameters`)) *)
+(*                [] in                                                  *)
+(*     \(pat,ps,vs).                                                     *)
+(*       let R,args = (ckv # cka) (strip_comb(ckb pat)) in               *)
+(*       if (exists ($not o C mem args) (ckpa ps)) then                  *)
+(*          failwith `spurious parameter variable` else                  *)
+(*       let P = variant vs (mk_predv (subtract args ps)) in             *)
+(*       let checkhyp = checkfilter ps args in                           *)
+(*           R,P,\tm.                                                    *)
+(*            let f,as = strip_comb tm in                                *)
+(*            if (f = R) then                                            *)
+(*              list_mk_comb (P, checkhyp as) else checkside R tm;;      *)
+(* --------------------------------------------------------------------- *)
+
+fun MK_MK_PRED_ERR s = IND_DEF_ERR{function = "mk_mk_pred",message = s};
+
+local
+val ERR1 = MK_MK_PRED_ERR "pattern not boolean"
+val ERR2 = MK_MK_PRED_ERR "non-variable in pattern"
+val ERR3 = MK_MK_PRED_ERR "non-variable parameter"
+val ERR4 = MK_MK_PRED_ERR "duplicate argument in pattern"
+val ERR5 = MK_MK_PRED_ERR "duplicate variable in parameters"
+val ERR6 = MK_MK_PRED_ERR "spurious parameter variable"
+val bool = ==`:bool`==
+fun chk p e x = if (p x) then x else raise e
+val ckb = chk (fn t => type_of t = bool) ERR1
+val ckv = chk is_var ERR2
+val ckp = chk is_var ERR3
+fun itfn ck e v l = if (mem (ck v) l) 
+                    then raise e
+                    else (v::l)
+val cka = C (itlist (itfn ckv ERR4)) []
+val ckpa = C (itlist (itfn ckp ERR5)) []
+in
+fun mk_mk_pred (pat,ps,vs) =
+   let val (R,args) = (ckv ## cka) (strip_comb(ckb pat)) 
+   in
+   if (exists ((op not) o (C mem args)) (ckpa ps)) 
+   then raise ERR6
+   else let val P = variant vs (mk_predv (set_diff args ps))
+            val checkhyp = checkfilter ps args 
+        in
+        (R,P, fn tm => let val (f,a) = strip_comb tm 
+                       in
+                       if (f = R) 
+                       then list_mk_comb(P,checkhyp a) 
+                       else checkside R tm
+                       end)
+        end
+   end
+end;
+
+(* --------------------------------------------------------------------- *)
+(* INTERNAL FUNCTION : make_rule 					 *)
+(* 									 *)
+(* The function make_rule takes a user-supplied rule specification:	 *)
+(*									 *)
+(*   (as, ss, c)   							 *)
+(*									 *)
+(* where as are the assumptions, ss are the side conditions and c is the *)
+(* conclusion, and generates the logical representation of the assertion *)
+(* that the predicate P closed under the rule.  The variable ps is the	 *)
+(* global paramter list, and the function mkp is the mapping from	 *)
+(* membership assertions:						 *)
+(*									 *)
+(*   R a1 ... an   							 *)
+(*									 *)
+(* which occur in as and as c, to membership assertions:		 *)
+(*									 *)
+(*   P ai ... aj							 *)
+(*									 *)
+(* where the global parameters ps are eliminated.			 *)
+(*									 *)
+(* For an axiom of the form:						 *)
+(*									 *)
+(*     ([],[],c)   the result is:  !ps. !xs. c"				 *)
+(*									 *)
+(* HOL88 code:                                                           *)
+(*									 *)
+(* let make_rule (P,R,ps,mkp) (as,c) =                                   *)
+(*     if (not(fst(strip_comb c)) = R) then                              *)
+(*        failwith `ill-formed rule conclusion` else                     *)
+(*     let getvs tm = subtract (frees tm) (P.R.ps) in                    *)
+(*     let con = mkp c in                                                *)
+(*     if (null as) then                                                 *)
+(*         list_mk_forall(getvs con,con) else                            *)
+(*         let asm = list_mk_conj (map mkp as) in                        *)
+(*         let pvs = getvs asm and cvs = getvs con in                    *)
+(*         let qcon = list_mk_forall(subtract cvs pvs, con) in           *)
+(*         let qasm = list_mk_exists(subtract pvs cvs, asm) in           *)
+(*         let avs = intersect pvs cvs in                                *)
+(*             list_mk_forall(avs,mk_imp(qasm,qcon));;                   *)
+(* --------------------------------------------------------------------- *)
+
+fun make_rule (P,R,ps,mkp) (ass,c) =
+   if (not (fst(strip_comb c) = R)) 
+   then raise IND_DEF_ERR{function = "make_rule", 
+                          message = "ill-formed rule conclusion"}
+   else let fun getvs tm = set_diff (Compat.frees tm) (P::(R::ps))
+            val con = mkp c 
+        in
+        if (null ass) 
+        then list_mk_forall(getvs con,con)
+        else let val asm = list_mk_conj (map mkp ass)
+                 val pvs = getvs asm
+                 val cvs = getvs con
+                 val qcon = list_mk_forall(set_diff cvs pvs,con)
+                 val qasm = list_mk_exists(set_diff pvs cvs,asm)
+                 val avs = intersect pvs cvs 
+             in
+             list_mk_forall(avs,mk_imp(qasm,qcon))
+             end
+        end;
+
+(* --------------------------------------------------------------------- *)
+(* INTERNAL FUNCTION : make_definition					 *)
+(*									 *)
+(* The function make_definition creates an appropriate non-recursive	 *)
+(* defining equation for the user-specified inducively-defined predicate *)
+(* described by the pattern pat, the parameter list ps and the rule list *)
+(* rules. (See below for a description of the required format of these	 *)
+(* input values).  Error checking of the user input is also done here.	 *)
+(*									 *)
+(* HOL88 code:                                                           *)
+(*									 *)
+(* let make_definition (pat,ps) rules =                                  *)
+(*     let vs = freesl (flat (map (\(x,y). y.x) rules)) in               *)
+(*     let R,P,mkp = mk_mk_pred (pat,ps,vs) in                           *)
+(*     let frules = map ((flat o map conjuncts) # I) rules in            *)
+(*     let crules = list_mk_conj(map (make_rule (P,R,ps,mkp)) frules) in *)
+(*     let right = mk_forall(P,mk_imp (crules,mkp pat)) in               *)
+(*     let eqn = mk_eq(pat,right) in                                     *)
+(*     let args = subtract (snd(strip_comb pat)) ps in                   *)
+(*         list_mk_forall(ps @ args, eqn);;                              *)
+(* --------------------------------------------------------------------- *)
+
+fun make_definition (pat,ps) rules =
+   let val vs = Compat.freesl (flatten (map (fn (x,y) => (y::x)) rules)) 
+       val (R,P,mkp) = mk_mk_pred(pat,ps,vs)
+       val frules = map ((flatten o map conjuncts) ## I) rules
+       val crules = list_mk_conj(map (make_rule (P,R,ps,mkp)) frules)
+       val right = mk_forall(P,mk_imp(crules,mkp pat))
+       val eqn = mk_eq(pat,right)
+       val args = set_diff (snd(strip_comb pat)) ps 
+   in
+   list_mk_forall(ps @ args,eqn)
+   end;
+
+(* --------------------------------------------------------------------- *)
+(* derive_induction : derive rule induction from the definition of an 	 *)
+(* inductively-defined predicate PRED.					 *)
+(*									 *)
+(* The input, def, has the form:					 *)
+(*									 *)
+(*    "!v1...vn. PRED v1 ... vn = !REL. R[REL] ==> REL vi ... vj"	 *)
+(*									 *)
+(* where {vi,...,vj} is a subset of {v1,...,vn} and R[REL] states that	 *)
+(* REL is closed under some set of rules R.				 *)
+(*									 *)
+(* The output is the rule induction theorem:				 *)
+(*									 *)
+(*    def |- !vk...vl. 							 *)
+(*           !REL. R[REL] ==> !vi...vj. PRED v1 ... vn ==> REL vi ... vj *)
+(*									 *)
+(* where {vk,...,vl} = {v1,...,vn} - {vi,...,vj}			 *)
+(*									 *)
+(* HOL88 code:                                                           *)
+(*									 *)
+(* let derive_induction def =                                            *)
+(*     let vs,(left,right) = (I # dest_eq) (strip_forall def) in         *)
+(*     let rel,(As,Con) = (I # dest_imp) (dest_forall right) in          *)
+(*     let rvs = snd(strip_comb Con) in                                  *)
+(*     let th1 = UNDISCH (fst(EQ_IMP_RULE (SPECL vs (ASSUME def)))) in   *)
+(*     let th2 = GENL rvs (DISCH left (UNDISCH (SPEC rel th1))) in       *)
+(*         GENL (subtract vs rvs) (GEN rel (DISCH As th2));;             *)
+(* --------------------------------------------------------------------- *)
+
+fun derive_induction def =
+   let val (vs,(left,right)) = (I ## dest_eq) (strip_forall def)
+       val (rel,(As,Con)) = (I ## dest_imp) (dest_forall right)
+       val rvs = snd(strip_comb Con)
+       val th1 = UNDISCH (fst(EQ_IMP_RULE (SPECL vs (ASSUME def))))
+       val th2 = GENL rvs (DISCH left (UNDISCH (SPEC rel th1))) 
+   in
+   GENL (set_diff vs rvs) (GEN rel (DISCH As th2))
+   end;
+
+(* --------------------------------------------------------------------- *)
+(* abbreviate : use the non-recursive definition of an inductively 	 *)
+(* defined predicate P to abbreviate an application of P.		 *)
+(*									 *)
+(* The input term def has the form:					 *)
+(*									 *)
+(*   "!v1...vn. PRED v1 ... vn = !REL. R[REL] ==> REL vi ... vj"	 *)
+(*									 *)
+(* The input theorem th has the form:					 *)
+(*									 *)
+(*   |- !REL. R[REL] ==> REL x1 ... xn					 *)
+(*									 *)
+(* The result is:							 *)
+(*									 *)
+(*   def |- PRED x1 ... xn						 *)
+(*									 *)
+(* HOL88 code:                                                           *)
+(*									 *)
+(* let usedef (rvs,th) =                                                 *)
+(*     let left,right = EQ_IMP_RULE th in                                *)
+(*     let ante,v = (I # (fst o dest_forall)) (dest_imp (concl left)) in *)
+(*     let lth=GENL rvs (DISCH ante(UNDISCH(SPEC v (UNDISCH left)))) in  *)
+(*     let as tm = SPECL (snd(strip_comb tm)) lth in                     *)
+(*     let rth = GENL rvs right in                                       *)
+(*     let ab th =                                                       *)
+(*         let ts = snd(strip_comb(rand(snd(dest_forall(concl th))))) in *)
+(* 	     MP (SPECL ts rth) th in                                     *)
+(*         (ab,as);;                                                     *)
+(* --------------------------------------------------------------------- *)
+
+fun usedef (rvs,th) =
+   let val (left,right) = EQ_IMP_RULE th 
+       val (ante,v) = (I ## (fst o dest_forall)) (dest_imp (concl left))
+       val lth = GENL rvs (DISCH ante(UNDISCH(SPEC v (UNDISCH left)))) 
+       fun ass tm = SPECL (snd(strip_comb tm)) lth
+       val rth = GENL rvs right
+       fun ab th =
+            let val ts = snd(strip_comb(rand(snd(dest_forall(concl th))))) 
+            in
+            MP (SPECL ts rth) th 
+            end
+   in
+   (ab,ass) 
+   end;
+
+(* --------------------------------------------------------------------- *)
+(* eximp : forward proof rule for existentially quantifying variables in *)
+(* both the antecedent and consequent of an implication.		 *)
+(*									 *)
+(* A call to:  								 *)
+(*   									 *)
+(*    eximp ["v1",...,"vn"]   A |- P ==> Q				 *)
+(*									 *)
+(* returns a pair (tm,th) where:					 *)
+(*									 *)
+(*    tm = "?v1...vn. P"   and   th = A,tm |- ?v1...vn. Q		 *)
+(*									 *)
+(*									 *)
+(* HOL88 code:                                                           *)
+(*									 *)
+(* let eximp =                                                           *)
+(*     let exfn v th = EXISTS(mk_exists(v,concl th),v)th in              *)
+(*     let chfn v (a,th) =                                               *)
+(*         let tm = mk_exists(v,a) in (tm,CHOOSE (v,ASSUME tm) th) in    *)
+(*     \vs th. let A,C = dest_imp(concl th) in                           *)
+(*                 itlist chfn vs (A,itlist exfn vs (UNDISCH th));;      *)
+(* --------------------------------------------------------------------- *)
+
+local
+fun exfn v th = EXISTS(mk_exists(v,concl th),v) th
+fun chfn v (a,th) =
+   let val tm = mk_exists(v,a) 
+   in
+   (tm,CHOOSE (v,ASSUME tm) th) 
+   end
+in
+fun eximp vs th =
+   let val (A,C) = dest_imp(concl th) 
+   in
+   itlist chfn vs (A,itlist exfn vs (UNDISCH th))
+   end
+end;
+
+(* --------------------------------------------------------------------- *)
+(* A rule has the form:							 *)
+(*									 *)
+(* |- !x1...xn. 							 *)
+(*     <side-conditions> ==> 						 *)
+(*     (?v1...vn. <assumptions>) ==> !z1...zn. <conclusion>   		 *)
+(*									 *)
+(* Modified to:								 *)
+(*									 *)
+(* |- !x1...xn. (?v1...vn. <assumptions and side conditions>) 		 *)
+(*		==>							 *)
+(*              !z1...zn. <conclusion>					 *)
+(*									 *)
+(* HOL88 code:                                                           *)
+(*									 *)
+(* let derive_rule =                                                     *)
+(*     let check v = assert ($not o (free_in v)) # assert (free_in v) in *)
+(*     \rel (ab,as) th.                                                  *)
+(*       let ([R],xs,body) = (I # strip_forall) (dest_thm th) in         *)
+(*       let thm1 = SPECL xs th in                                       *)
+(*       (let ante,cvs,con = (I # strip_forall) (dest_imp body) in       *)
+(*        let evs,asms = (I # conjuncts) (strip_exists ante) in          *)
+(*        let mfn tm=(free_in rel tm=>as tm | DISCH_ALL(ASSUME tm)) in   *)
+(*        let ths = map mfn asms in                                      *)
+(*        let A1,th1 = eximp evs (end_itlist IMP_CONJ ths) in            *)
+(*        let th3 = ab (GEN rel (DISCH R (SPECL cvs (MP thm1 th1)))) in  *)
+(*  	   GENL xs (DISCH A1 (GENL cvs th3))) ?                          *)
+(*       GENL xs (ab (GEN rel (DISCH R thm1)));;                         *)
+(* --------------------------------------------------------------------- *)
+
+local
+fun check v = (assert ((op not) o (free_in v)))##(assert (free_in v))
+in
+fun derive_rule rel (ab,ass) th =
+   let val ([R],(xs,body)) = (I ## strip_forall) (dest_thm th)
+       val thm1 = SPECL xs th
+   in
+      let val (ante,(cvs,con)) = (I ## strip_forall) (dest_imp body)
+          val (evs,asms) = (I ## conjuncts) (strip_exists ante)
+          fun mfn tm = if (free_in rel tm) 
+                       then ass tm 
+                       else DISCH_ALL(ASSUME tm)
+          val ths = map mfn asms
+          val (A1,th1) = eximp evs (end_itlist IMP_CONJ ths)
+          val th3 = ab (GEN rel (DISCH R (SPECL cvs (MP thm1 th1)))) 
+      in
+      GENL xs (DISCH A1 (GENL cvs th3))
+      end
+      handle _ => GENL xs (ab (GEN rel (DISCH R thm1)))
+   end
+end;
+
+(* --------------------------------------------------------------------- *)
+(* INTERNAL FUNCTION : derive_rules.					 *)
+(*									 *)
+(* HOL88 code:                                                           *)
+(*									 *)
+(* let derive_rules def =                                                *)
+(*     let vs,(left,right) = (I # dest_eq) (strip_forall def) in         *)
+(*     let rel,(a,c) = (I # dest_imp) (dest_forall right) in             *)
+(*     let rvs = subtract vs (snd(strip_comb c)) in                      *)
+(*     let ab,as = usedef (snd(strip_comb c),SPECL vs (ASSUME def)) in   *)
+(*     let ths = CONJUNCTS (ASSUME a) in                                 *)
+(*     let rules = map (GENL rvs o derive_rule rel (ab,as)) ths in       *)
+(*         LIST_CONJ rules;;                                             *)
+(* --------------------------------------------------------------------- *)
+
+fun derive_rules def = 
+   let val (vs,(left,right)) = (I ## dest_eq) (strip_forall def)
+       val (rel,(a,c)) = (I ## dest_imp) (dest_forall right)
+       val rvs = set_diff vs (snd(strip_comb c))
+       val (ab,ass) = usedef (snd(strip_comb c),SPECL vs (ASSUME def))
+       val ths = CONJUNCTS (ASSUME a)
+       val rules = map (GENL rvs o derive_rule rel (ab,ass)) ths 
+   in
+   LIST_CONJ rules
+   end;
+    
+(* --------------------------------------------------------------------- *)
+(* prove_inductive_set_exists						*)
+(*									 *)
+(* HOL88 code:                                                           *)
+(*									 *)
+(* let prove_inductive_set_exists (pat,ps) rules =                       *)
+(*     let def = make_definition (pat,ps) rules in                       *)
+(*     let vs,(left,right) = (I # dest_eq) (strip_forall def) in         *)
+(*     let R,args = strip_comb left in                                   *)
+(*     let thm1 = CONJ (derive_rules def) (derive_induction def) in      *)
+(*     let eth = EXISTS(mk_exists(R,concl thm1),R) thm1 in               *)
+(*     let lam = list_mk_abs(vs,right) in                                *)
+(*     let bth = GENL vs (LIST_BETA_CONV (list_mk_comb(lam,vs))) in      *)
+(*     let deth = EXISTS (mk_exists(R,def),lam) bth in                   *)
+(*         CHOOSE (R, deth) eth;;                                        *)
+(* --------------------------------------------------------------------- *)
+
+fun prove_inductive_set_exists (pat,ps) rules = 
+   let val def = make_definition (pat,ps) rules
+       val (vs,(left,right)) = (I ## dest_eq) (strip_forall def)
+       val (R,args) = strip_comb left
+       val thm1 = CONJ (derive_rules def) (derive_induction def)
+       val eth = EXISTS(mk_exists(R,concl thm1),R) thm1
+       val lam = list_mk_abs(vs,right)
+       val bth = GENL vs (LIST_BETA_CONV (list_mk_comb(lam,vs)))
+       val deth = EXISTS (mk_exists(R,def),lam) bth 
+   in
+   CHOOSE (R, deth) eth
+   end;
+
+(* --------------------------------------------------------------------- *)
+(* new_inductive_definition : make a new inductive definition.		 *)
+(*									 *)
+(* HOL88 code:                                                           *)
+(*									 *)
+(* let new_inductive_definition infix st (pat,ps) rules =                *)
+(*     let eth = prove_inductive_set_exists (pat,ps) rules in            *)
+(*     let name = fst(dest_var(fst(dest_exists(concl eth)))) in          *)
+(*     let fl = (infix => `infix` | `constant`) in                       *)
+(*     let rules,ind = CONJ_PAIR (new_specification st [fl,name] eth) in *)
+(*         CONJUNCTS rules, ind;;                                        *)
+(* --------------------------------------------------------------------- *)
+
+fun new_inductive_definition infx st (pat,ps) rules = 
+   let val eth = prove_inductive_set_exists (pat,ps) rules 
+       val name = fst(dest_var(fst(dest_exists(concl eth))))
+       val fl = if infx then "infix" else "constant"
+       val (rules,ind) = CONJ_PAIR (new_specification st [(fl,name,0)] eth) 
+   in
+   (CONJUNCTS rules, ind)
+   end;
+
+(* ===================================================================== *)
+(* STRONGER FORM OF INDUCTION.						 *)
+(* ===================================================================== *)
+
+(* --------------------------------------------------------------------- *)
+(* Internal function: 							 *)
+(*                                                                       *)
+(* let simp_axiom (ax,tm) =                                              *)
+(*     let sax = SPECL (fst(strip_forall(concl ax))) ax in               *)
+(*     let vs,red = strip_forall tm in                                   *)
+(*     let bth = itlist FORALL_EQ vs (LIST_BETA_CONV red) in             *)
+(*     let asm = rand(snd(strip_forall(rand(concl bth)))) in             *)
+(*     let gasm = list_mk_forall(vs,asm) in                              *)
+(*     let thm = GENL vs (CONJ sax (SPECL vs (ASSUME gasm))) in          *)
+(*         DISCH gasm (EQ_MP (SYM bth) thm);;                            *)
+(* --------------------------------------------------------------------- *)
+
+fun simp_axiom (ax,tm) =
+   let val sax = SPECL (fst(strip_forall(concl ax))) ax
+       val (vs,red) = strip_forall tm
+       val bth = itlist FORALL_EQ vs (LIST_BETA_CONV red)
+       val asm = rand(snd(strip_forall(rand(concl bth))))
+       val gasm = list_mk_forall(vs,asm)
+       val thm = GENL vs (CONJ sax (SPECL vs (ASSUME gasm))) 
+   in
+   DISCH gasm (EQ_MP (SYM bth) thm)
+   end;
+
+(* --------------------------------------------------------------------- *)
+(* let reduce_asm =                                                      *)
+(*     letrec reduce fn tm =                                             *)
+(*        (let c1,imp = (I # reduce fn) (dest_conj tm) in                *)
+(*         if (fst(strip_comb c1) = fn) then                             *)
+(*            let t1,t2 = CONJ_PAIR(EQ_MP (LIST_BETA_CONV c1)            *)
+(*                                        (ASSUME c1)) in                *)
+(*            let thm1 = CONJ t1 (CONJ t2 (UNDISCH imp)) in              *)
+(*            let asm = mk_conj(c1,rand(rator(concl imp))) in            *)
+(*            let h1,h2 = CONJ_PAIR(ASSUME asm) in                       *)
+(*                DISCH asm (PROVE_HYP h1 (PROVE_HYP h2 thm1)) else      *)
+(*            IMP_CONJ (DISCH c1 (ASSUME c1)) imp) ?                     *)
+(*        if (fst(strip_comb tm) = fn) then                              *)
+(*            fst(EQ_IMP_RULE(LIST_BETA_CONV tm)) else                   *)
+(*            DISCH tm (ASSUME tm) in                                    *)
+(*     \fn asm. let vs,body = strip_exists asm in                        *)
+(*              itlist EXISTS_IMP vs (reduce fn body);;                  *)
+(* --------------------------------------------------------------------- *)
+local 
+fun reduce Fn tm =
+   let val (c1,imp) = (I ## reduce Fn) (dest_conj tm)
+   in
+   if (fst(strip_comb c1) = Fn) 
+   then let val (t1,t2)=CONJ_PAIR(EQ_MP (LIST_BETA_CONV c1) (ASSUME c1))
+            val thm1 = CONJ t1 (CONJ t2 (UNDISCH imp))
+            val asm = mk_conj(c1,rand(rator(concl imp)))
+            val (h1,h2) = CONJ_PAIR (ASSUME asm) 
+        in
+        DISCH asm (PROVE_HYP h1 (PROVE_HYP h2 thm1)) 
+        end
+   else IMP_CONJ (DISCH c1 (ASSUME c1)) imp
+   end
+   handle _ => if (fst(strip_comb tm) = Fn)
+               then fst(EQ_IMP_RULE(LIST_BETA_CONV tm)) 
+               else DISCH tm (ASSUME tm) 
+in
+fun reduce_asm Fn asm =
+   let val (vs,body) = strip_exists asm 
+   in
+   itlist EXISTS_IMP vs (reduce Fn body)
+   end
+end;
+
+(* --------------------------------------------------------------------- *)
+(* let prove_asm P tm =                                                  *)
+(*     let test t = not(fst(strip_comb(concl t)) = P) in                 *)
+(*     let (vs,body) = strip_exists tm in                                *)
+(*     let newc = LIST_CONJ(filter test (CONJUNCTS(ASSUME body))) in     *)
+(*         itlist EXISTS_IMP vs (DISCH body newc);;                      *)
+(* --------------------------------------------------------------------- *)
+
+fun prove_asm P tm =
+   let fun test t = not(fst(strip_comb(concl t)) = P)
+       val (vs,body) = strip_exists tm
+       val newc = LIST_CONJ(filter test (CONJUNCTS(ASSUME body)))
+   in
+   itlist EXISTS_IMP vs (DISCH body newc)
+   end;
+
+(* --------------------------------------------------------------------- *)
+(* let simp_concl rul tm =                                               *)
+(*     let vs,(ante,cncl) = (I # dest_imp) (strip_forall tm) in          *)
+(*     let srul = SPECL vs rul in                                        *)
+(*     let (cvs,a,c) = (I # dest_conj) (strip_forall cncl) in            *)
+(*     let simpl = prove_asm (fst(strip_comb c)) ante in                 *)
+(*     let thm1 = SPECL cvs (UNDISCH (IMP_TRANS simpl srul)) in          *)
+(*     let newasm = list_mk_forall(vs,mk_imp(ante,                       *)
+(*                                           list_mk_forall(cvs,c))) in  *)
+(*     let thm2 = CONJ thm1 (SPECL cvs (UNDISCH (SPECL vs                *)
+(*                                                 (ASSUME newasm)))) in *)
+(*          DISCH newasm (GENL vs (DISCH ante (GENL cvs thm2)));;        *)
+(* --------------------------------------------------------------------- *)
+
+fun simp_concl rul tm =
+   let val (vs,(ante,cncl)) = (I ## dest_imp) (strip_forall tm)
+       val srul = SPECL vs rul
+       val (cvs,(a,c)) = (I ## dest_conj) (strip_forall cncl)
+       val simpl = prove_asm (fst(strip_comb c)) ante
+       val thm1 = SPECL cvs (UNDISCH (IMP_TRANS simpl srul))
+       val newasm=list_mk_forall (vs, mk_imp(ante,list_mk_forall (cvs,c)))
+       val thm2=CONJ thm1 (SPECL cvs (UNDISCH (SPECL vs (ASSUME newasm))))
+   in
+   DISCH newasm (GENL vs (DISCH ante (GENL cvs thm2)))
+   end;
+
+(* --------------------------------------------------------------------- *)
+(* let simp_rule (rul,tm) =                                              *)
+(*     let vs,a,c = (I # dest_imp) (strip_forall tm) in                  *)
+(*     let cvs,red = strip_forall c in                                   *)
+(*     let bth = itlist FORALL_EQ cvs (LIST_BETA_CONV red) in            *)
+(*     let basm = reduce_asm (fst(strip_comb red)) a in                  *)
+(*     let asm = list_mk_forall(vs,mk_imp (rand(concl basm),             *)
+(*                                         rand(concl bth))) in          *)
+(*     let thm1 = UNDISCH (IMP_TRANS basm (SPECL vs (ASSUME asm))) in    *)
+(*     let thm2=DISCH asm (GENL vs (DISCH a (EQ_MP (SYM bth) thm1))) in  *)
+(*     let thm3 = simp_concl rul (rand(rator(concl thm2))) in            *)
+(*         IMP_TRANS thm3 thm2;;                                         *)
+(* --------------------------------------------------------------------- *)
+
+fun simp_rule (rul,tm) = 
+   let val (vs,(a,c)) = (I ## dest_imp) (strip_forall tm)
+       val (cvs,red) = strip_forall c
+       val bth = itlist FORALL_EQ cvs (LIST_BETA_CONV red)
+       val basm = reduce_asm (fst(strip_comb red)) a
+       val asm = list_mk_forall(vs,mk_imp (rand(concl basm),
+                                           rand(concl bth)))
+       val thm1 = UNDISCH (IMP_TRANS basm (SPECL vs (ASSUME asm)))
+       val thm2 = DISCH asm (GENL vs (DISCH a (EQ_MP (SYM bth) thm1)))
+       val thm3 = simp_concl rul (rand(rator(concl thm2))) 
+   in
+   IMP_TRANS thm3 thm2
+   end;
+
+(* --------------------------------------------------------------------- *)
+(* let simp p = simp_rule p ? simp_axiom p;;                             *)
+(* --------------------------------------------------------------------- *)
+
+fun simp p = simp_rule p handle _ => simp_axiom p;
+
+(* --------------------------------------------------------------------- *)
+(* let derive_strong_induction_thm (rules,ind) =                         *)
+(*     (let vs,(hy,c) = (I # dest_imp) (strip_forall (concl ind)) in     *)
+(*      let srules = map (SPECL (butlast vs)) rules in                   *)
+(*      let cvs,rel,pred = (I # dest_imp) (strip_forall c) in            *)
+(*      let newp = list_mk_abs(cvs,mk_conj(rel,pred)) in                 *)
+(*      let pvar,args = strip_comb pred in                               *)
+(*      let ith = INST [newp,pvar] (SPECL vs ind) in                     *)
+(*      let as,co = dest_imp (concl ith) in                              *)
+(*      let bth = LIST_BETA_CONV (list_mk_comb(newp,args)) in            *)
+(*      let sth = CONJUNCT2 (EQ_MP bth (UNDISCH (SPECL args              *)
+(*                                                     (ASSUME co)))) in *)
+(*      let thm1=IMP_TRANS ith (DISCH co (GENL args (DISCH rel sth))) in *)
+(*      let ths = map simp (combine (srules,conjuncts as)) in            *)
+(*          GENL vs (IMP_TRANS (end_itlist IMP_CONJ ths) thm1)) ?        *)
+(*      failwith `derive_strong_induction_thm`;;                         *)
+(* --------------------------------------------------------------------- *)
+
+fun last [a] = a 
+  | last (_::rst) = last rst
+  | last [] = raise IND_DEF_ERR{function = "last",
+                                message = "empty list has no last element!"};
+
+fun butlast [_] = []
+  | butlast (h::t) = h::(butlast t)
+  | butlast [] = raise IND_DEF_ERR{function = "butlast",
+                                   message = "empty list"};
+
+
+fun derive_strong_induction_thm (rules,ind) = 
+   let val (vs,(hy,c)) = (I ## dest_imp) (strip_forall (concl ind))
+       val srules = map (SPECL (butlast vs)) rules
+       val (cvs,(rel,pred)) = (I ## dest_imp) (strip_forall c)
+       val newp = list_mk_abs(cvs,mk_conj(rel,pred))
+       val (pvar,args) = strip_comb pred
+       val ith = INST [(newp,pvar)] (SPECL vs ind)
+       val (ass,co) = dest_imp (concl ith)
+       val bth = LIST_BETA_CONV (list_mk_comb(newp,args))
+       val sth = CONJUNCT2 (EQ_MP bth (UNDISCH (SPECL args (ASSUME co))))
+       val thm1 = IMP_TRANS ith (DISCH co (GENL args (DISCH rel sth)))
+       val ths = map simp (combine (srules,conjuncts ass)) 
+   in
+   GENL vs (IMP_TRANS (end_itlist IMP_CONJ ths) thm1)
+   end
+   handle _ => raise IND_DEF_ERR{function = "derive_strong_induction_thm",
+                                 message = ""};
+
+
+(* ===================================================================== *)
+(* RULE INDUCTION 							 *)
+(* ===================================================================== *)
+
+(* --------------------------------------------------------------------- *)
+(* Internal function: TACF	 					 *)
+(*									 *)
+(* TACF is used to generate the subgoals for each case in an inductive 	 *)
+(* proof.  The argument tm is formula which states one case in the 	 *)
+(* the induction. In general, this will take one of the forms:		 *)
+(*									 *)
+(*   (1) no side condition, no assumptions:				 *)
+(*									 *)
+(*       tm = !x1...xn. P x1 ... xn					 *)
+(*									 *)
+(*   (2) side condition ?y1...ym.C, no assumptions:			 *)
+(*									 *)
+(*       tm = !xs. (?y1...ym.C) ==> !zs. P xz1 ... xz(n+o)		 *)
+(*									 *)
+(*   (3) assumptions ?y1...ym.A, no side condition:			 *)
+(*									 *)
+(*       tm = !xs. (?y1...ym.A) ==> !zs. P xz1 ... xz(n+o)		 *)
+(*									 *)
+(*   (4) assumptions ?y1...ym.A, and side condition (?y1...ym.C):	 *)
+(*									 *)
+(*       tm = !xs. ?zs.(?y1...ym.A) /\ (?w1...wm.C) ==> 		 *)
+(*		  !zs. P xz1 ... xz(n+o)				 *)
+(*									 *)
+(*									 *)
+(* 2--4 now merged into:						 *)
+(*      								 *)
+(*       tm = !xs. ?zs. A /\ ... /\ C /\ ... /\ A ==>			 *)
+(*	          !ys. P ...						 *)
+(*									 *)
+(* TACF applied to each these terms to construct a parameterized tactic  *)
+(* which will be used to further break these terms into subgoals.  The   *)
+(* resulting tactic takes a variable name x and a user supplied theorem  *)
+(* continuation ttac.  For a base case, like case 1 above, the resulting *)
+(* tactic just throws these parameters away and passes the goal on 	 *)
+(* unchanged (i.e. \x ttac. ALL_TAC).  For a step case, like case 2, the *)
+(* tactic applies GTAC x as many times as required.  It then strips off  *)
+(* the induction hypotheses and applies ttac to each one.  For example,  *)
+(* if tac is the tactic generated by:					 *)
+(*									 *)
+(*    TACF "!n. P n ==> P(SUC n)" "x:num" ASSUME_TAC			 *)
+(*									 *)
+(* then applying tac to the goal A,"!n. P[n] ==> P[SUC n] has the same 	 *)
+(* effect as applying:							 *)
+(*									 *)
+(*    GTAC "x:num" THEN DISCH_THEN ASSUME_TAC				 *)
+(*									 *)
+(* TACF is a strictly local function, used only to define TACS, below.	 *)
+(*									 *)
+(* HOL88 code:                                                           *)
+(*									 *)
+(* letrec MK_CONJ_THEN fn tm =                                           *)
+(*    (let c1,c2 = dest_conj tm in                                       *)
+(*     let tcl1=(fst(strip_comb c1) = fn) => \t1 t2. t1 | \t1 t2. t2 in  *)
+(*     let tcl2 = MK_CONJ_THEN fn c2 in                                  *)
+(*     \ttac1 ttac2.                                                     *)
+(*        CONJUNCTS_THEN2 (tcl1 ttac1 ttac2) (tcl2 ttac1 ttac2)) ?       *)
+(*    if (fst(strip_comb tm) = fn) then K else C K;;                     *)
+(*									 *)
+(* letrec MK_CHOOSE_THEN fn vs body =                                    *)
+(*    if (null vs) then MK_CONJ_THEN fn body else                        *)
+(*    let tcl = MK_CHOOSE_THEN fn (tl vs) body in                        *)
+(*        \ttac1 ttac2. CHOOSE_THEN (tcl ttac1 ttac2);;                  *)
+(*									 *)
+(* let MK_THEN fn tm =                                                   *)
+(*     let vs,body = strip_exists tm in                                  *)
+(*     if (free_in fn body) then                                         *)
+(*        MK_CHOOSE_THEN fn vs body else                                 *)
+(*        \ttac1 ttac2. ttac2;;                                          *)
+(*									 *)
+(* let TACF fn tm =                                                      *)
+(*     let vs,body = strip_forall tm in                                  *)
+(*     if (is_imp body) then                                             *)
+(*        let TTAC = MK_THEN fn (fst(dest_imp body)) in                  *)
+(*         \ttac1 ttac2.REPEAT GEN_TAC THEN DISCH_THEN(TTAC ttac1 ttac2) *)
+(*     else                                                              *)
+(*         \ttac1 ttac2. ALL_TAC;;                                       *)
+(* --------------------------------------------------------------------- *)
+
+fun MK_CONJ_THEN Fn tm =
+   let val (c1,c2) = dest_conj tm
+       val tcl1 = if (fst(strip_comb c1) = Fn) 
+                  then fn t1 => fn t2 => t1 
+                  else fn t1 => fn t2 => t2
+       val tcl2 = MK_CONJ_THEN Fn c2 
+   in
+   fn ttac1 => fn ttac2 => 
+     CONJUNCTS_THEN2 (tcl1 ttac1 ttac2) (tcl2 ttac1 ttac2)
+   end
+   handle _ => if (fst(strip_comb tm) = Fn) 
+               then K 
+               else C K;
+
+fun MK_CHOOSE_THEN Fn [] body = MK_CONJ_THEN Fn body 
+  | MK_CHOOSE_THEN Fn (_::t) body =
+      let val tcl = MK_CHOOSE_THEN Fn t body 
+      in
+      fn ttac1 => fn ttac2 => CHOOSE_THEN (tcl ttac1 ttac2) 
+      end;
+
+fun MK_THEN Fn tm =
+   let val (vs,body) = strip_exists tm 
+   in
+   if (free_in Fn body)
+   then MK_CHOOSE_THEN Fn vs body 
+   else fn ttac1 => fn ttac2 => ttac2 
+   end;
+
+fun TACF Fn tm = 
+   let val (vs,body) = strip_forall tm 
+   in
+   if (is_imp body) 
+   then let val TTAC = MK_THEN Fn (fst(dest_imp body)) 
+        in
+        fn ttac1 => fn ttac2 =>
+          REPEAT GEN_TAC THEN DISCH_THEN (TTAC ttac1 ttac2) 
+        end
+   else fn ttac1 => fn ttac2 => ALL_TAC 
+   end;
+
+(* --------------------------------------------------------------------- *)
+(* Internal function: TACS						 *)
+(*									 *)
+(* TACS uses TACF to generate a paramterized list of tactics, one for    *)
+(* each conjunct in the hypothesis of an induction theorem.		 *)
+(*									 *)
+(* For example, if tm is the hypothesis of the induction thoerem for the *)
+(* natural numbers---i.e. if:						 *)
+(*									 *)
+(*   tm = "P 0 /\ (!n. P n ==> P(SUC n))"				 *)
+(*									 *)
+(* then TACS tm yields the paremterized list of tactics:		 *)
+(*									 *)
+(*   \x ttac. [TACF "P 0" x ttac; TACF "!n. P n ==> P(SUC n)" x ttac]    *)
+(*									 *)
+(* TACS is a strictly local function, used only in INDUCT_THEN.		 *)
+(*									 *)
+(* HOL88 code:                                                           *)
+(*									 *)
+(* letrec TACS fn tm =                                                   *)
+(*   let cf,csf = ((TACF fn # TACS fn) (dest_conj tm) ?                  *)
+(*                 TACF fn tm,(\x y.[])) in                              *)
+(*     \ttac1 ttac2. (cf ttac1 ttac2) . (csf ttac1 ttac2);;              *)
+(* --------------------------------------------------------------------- *)
+
+fun TACS Fn tm = 
+   let val (cf,csf) = (TACF Fn ## TACS Fn) (dest_conj tm) 
+                      handle _ =>
+                      (TACF Fn tm, fn x => fn y => [])
+   in
+   fn ttac1 => fn ttac2 => ((cf ttac1 ttac2) :: (csf ttac1 ttac2))
+   end;
+
+(* --------------------------------------------------------------------- *)
+(* Internal function : ARGS_CONVL 					 *)
+(* --------------------------------------------------------------------- *)
+
+(* let ARGS_CONVL = 
+    let itfn (c,t) th = MK_COMB(th,c t) in
+    \cs tm. let f,args = strip_comb tm in
+            rev_itlist itfn (combine(cs,args)) (REFL f);;
+*)
+
+(* --------------------------------------------------------------------- *)
+(* Internal function RED_WHERE.						 *)
+(*									 *)
+(* Given the arguments "f" and "tm[f]", this function produces a 	 *)
+(* conversion that will apply LIST_BETA_CONV to its argument at all	 *)
+(* top-level subterms that correspond to occurrences of f (bottom-up).	 *)
+(*									 *)
+(* Optimized for induction special form.				 *)
+(*									 *)
+(* HOL88 code:                                                           *)
+(*									 *)
+(* let RED_CASE =                                                        *)
+(*     letrec mkred fn (c.cs) =                                          *)
+(*        let cfn = (fst(strip_comb c) = fn) => LIST_BETA_CONV | REFL in *)
+(*        if (null cs) then cfn else                                     *)
+(*           let rest = mkred fn cs in                                   *)
+(*           \tm. let c1,c2 = dest_conj tm in                            *)
+(*                MK_COMB(AP_TERM "/\" (cfn c1),rest c2) in              *)
+(*     \fn pat. let bdy = snd(strip_forall pat) in                       *)
+(*              if (is_imp bdy) then                                     *)
+(*                 let ante = fst(dest_imp bdy) in                       *)
+(*                 let hyps = conjuncts(snd(strip_exists(ante))) in      *)
+(*                 let redf = mkred fn hyps in                           *)
+(*                 \tm. let vs,ant,con=(I # dest_imp)(strip_forall tm) in*)
+(*                      let cvs,red = strip_forall con in                *)
+(*                      let th1=itlist FORALL_EQ cvs(LIST_BETA_CONV red)in*)
+(*                      let evs,hyp = strip_exists ant in                *)
+(*                      let th2 = itlist EXISTS_EQ evs (redf hyp) in     *)
+(*                      itlist FORALL_EQ vs (MK_COMB(AP_TERM "==>" th2,th1))*)
+(*              else                                                     *)
+(*                 \tm. let vs,con = strip_forall tm in                  *)
+(*                      itlist FORALL_EQ vs (LIST_BETA_CONV con);;       *)
+(* --------------------------------------------------------------------- *)
+
+local
+val AND = --`/\`--
+val IMP = --`==>`--
+fun mkred Fn (c::cs) =
+   let val cfn = if (fst(strip_comb c) = Fn) 
+                 then LIST_BETA_CONV 
+                 else REFL 
+   in
+   if (null cs) 
+   then cfn 
+   else let val rest = mkred Fn cs 
+        in
+        fn tm => let val (c1,c2) = dest_conj tm
+                 in
+                 MK_COMB(AP_TERM AND (cfn c1),rest c2)
+                 end
+        end
+   end
+in
+fun RED_CASE Fn pat =
+   let val bdy = snd(strip_forall pat) 
+   in
+   if (is_imp bdy) 
+   then let val ante = fst(dest_imp bdy)
+            val hyps = conjuncts(snd(strip_exists(ante)))
+            val redf = mkred Fn hyps 
+        in
+        fn tm => let val (vs,(ant,con)) = (I ## dest_imp) (strip_forall tm)
+                     val (cvs,red) = strip_forall con
+                     val th1 = itlist FORALL_EQ cvs (LIST_BETA_CONV red)
+                     val (evs,hyp) = strip_exists ant
+                     val th2 = itlist EXISTS_EQ evs (redf hyp) 
+                 in
+                 itlist FORALL_EQ 
+                        vs 
+                        (MK_COMB((AP_TERM IMP th2),th1))
+                 end
+        end
+   else fn tm => let val (vs,con) = strip_forall tm 
+                 in
+                 itlist FORALL_EQ vs (LIST_BETA_CONV con)
+                 end
+   end
+end;
+
+(* --------------------------------------------------------------------- *)
+(* letrec APPLY_CASE (f.fs) tm =                                         *)
+(*    if (null fs) then f tm else                                        *)
+(*    let c1,c2 = dest_conj tm in                                        *)
+(*        MK_COMB (AP_TERM "/\" (f c1),APPLY_CASE fs c2);;               *)
+(*                                                                       *)
+(* let RED_WHERE fn body =                                               *)
+(*     let cs,con = (conjuncts # I) (dest_imp body) in                   *)
+(*     let rfns = map (RED_CASE fn) cs in                                *)
+(*     \stm. let a,c = dest_imp stm in                                   *)
+(*           let hthm = APPLY_CASE rfns a in                             *)
+(*           let cthm = RAND_CONV LIST_BETA_CONV c in                    *)
+(*           MK_COMB(AP_TERM "==>" hthm,cthm);;                          *)
+(*                                                                       *)
+(* letrec RED_WHERE fn body = 
+    if ((is_var body) or (is_const body)) then REFL else
+    ((let _,bd = dest_abs body in ABS_CONV (RED_WHERE fn bd)) ? 
+     let f,args = strip_comb body in
+     if (f=fn) then LIST_BETA_CONV else
+       ARGS_CONVL (map (RED_WHERE fn) args));;                           *)
+(*                                                                       *)
+(* let is_param icvs slis arg =                                          *)
+(*     let val = snd (assoc arg slis) ? arg in mem val icvs;;            *)
+(* --------------------------------------------------------------------- *)
+
+local
+val AND = --`/\`--
+in
+fun APPLY_CASE [f] tm = f tm
+  | APPLY_CASE (f::fs) tm =
+     let val (c1,c2) = dest_conj tm 
+     in
+     MK_COMB (AP_TERM AND (f c1),APPLY_CASE fs c2) 
+     end
+end;
+
+local
+val IMP = --`==>`--
+in
+fun RED_WHERE Fn body =
+   let val (cs,con) = (conjuncts ## I) (dest_imp body)
+       val rfns = map (RED_CASE Fn) cs 
+   in
+   fn stm => let val (a,c) = dest_imp stm
+                 val hthm = APPLY_CASE rfns a
+                 val cthm = RAND_CONV LIST_BETA_CONV c 
+             in
+             MK_COMB(AP_TERM IMP hthm,cthm)
+             end
+   end
+end;
+
+fun is_param icvs slis arg =
+   let val vl = case (assoc1 arg slis)
+                  of (SOME (_,x)) => x
+                   | NONE => arg
+   in
+   mem vl icvs
+   end;
+
+(* --------------------------------------------------------------------- *)
+(* RULE_INDUCT_THEN : general rule induction tactic.			 *)
+(*									 *)
+(* HOL88 code:                                                           *)
+(*									 *)
+(* let RULE_INDUCT_THEN th : (thm->tactic) -> (thm->tactic) -> tactic =  *)
+(*     (let vs,(hy,con) = (I # dest_imp) (strip_forall (concl th)) in    *)
+(*      let cvs,cncl = strip_forall con in                               *)
+(*      let sthm=GEN(last vs)(DISCH hy (SPECL cvs(UNDISCH(SPECL vs th)))) in *)
+(*      let RED = RED_WHERE (last vs) (mk_imp(hy,cncl)) in               *)
+(*      let tacs = TACS (last vs) hy in                                  *)
+(*      (\ttac1 ttac2 (A,g).                                             *)
+(*         (let gvs,body = strip_forall g in                             *)
+(*          let slis,ilis = match (rator cncl) (rator body) in           *)
+(* 	 let sith = INST_TY_TERM (slis,ilis) sthm in                     *)
+(* 	 let largs = snd(strip_comb (rand(rator body))) in               *)
+(* 	 let icvs = map (inst [] ilis) cvs in                            *)
+(* 	 let params = filter (is_param icvs slis) largs in               *)
+(* 	 let lam = list_mk_abs(params,rand body) in                      *)
+(* 	 let spec = GENL gvs (UNDISCH (CONV_RULE RED (SPEC lam sith))) in *)
+(*	 let subgls = map (pair A) (conjuncts (hd(hyp spec))) in         *)
+(*	 let tactic g = subgls,\ths.  PROVE_HYP (LIST_CONJ ths) spec in  *)
+(*              (tactic THENL (tacs ttac1 ttac2)) (A,g)) ?               *)
+(*          failwith `RULE_INDUCT_THEN: inappropriate goal`)) ?          *)
+(*      failwith `RULE_INDUCT_THEN: ill-formed rule induction theorem`;; *)
+(* --------------------------------------------------------------------- *)
+
+fun RULE_INDUCT_THEN_ERR s = IND_DEF_ERR{function = "RULE_INDUCT_THEN",
+                                         message = s};
+
+local
+val ERR1 = RULE_INDUCT_THEN_ERR "inappropriate goal"
+val ERR2 = RULE_INDUCT_THEN_ERR "ill-formed rule induction theorem"
+fun pair x y = (x,y)
+in
+fun RULE_INDUCT_THEN th =
+   let val (vs,(hy,con)) = (I ## dest_imp) (strip_forall (concl th))
+       val (cvs,cncl) = strip_forall con
+       val sthm = GEN (last vs) (DISCH hy (SPECL cvs(UNDISCH(SPECL vs th))))
+       val RED = RED_WHERE (last vs) (mk_imp(hy,cncl))
+       val tacs = TACS (last vs) hy 
+   in
+   fn ttac1 => fn ttac2 => fn (A,g) =>
+     let val (gvs,body) = strip_forall g
+         val (slis,ilis) = match_term (rator cncl) (rator body)
+         val sith = INST_TY_TERM (slis,ilis) sthm
+         val largs = snd(strip_comb (rand(rator body)))
+         val icvs = map (inst [] ilis) cvs
+         val params = filter (is_param icvs slis) largs
+         val lam = list_mk_abs(params,rand body)
+         val spec = GENL gvs (UNDISCH (CONV_RULE RED (SPEC lam sith)))
+         val subgls = map (pair A) (conjuncts (hd(hyp spec)))
+         fun tactc g = (subgls,fn ths => PROVE_HYP (LIST_CONJ ths) spec) 
+     in
+     (tactc THENL (tacs ttac1 ttac2)) (A,g)
+     end
+     handle _ => raise ERR1
+   end
+   handle _ => raise ERR2
+end;
+
+(* ===================================================================== *)
+(* TACTICS FROM THEOREMS THAT STATE RULES.			 	 *)
+(* ===================================================================== *)
+
+(* --------------------------------------------------------------------- *)
+(* Internal function: axiom_tac 					 *)
+(*									 *)
+(* HOL88 code:                                                           *)
+(*									 *)
+(* let axiom_tac th : tactic (A,g) =                                     *)
+(*     (let vs,body = strip_forall g in                                  *)
+(*      let instl = match (concl th) body in                             *)
+(*        [], K (itlist ADD_ASSUM A (GENL vs (INST_TY_TERM instl th)))) ?*)
+(*     failwith `RULE_TAC : axiom does not match goal`;;                 *)
+(* --------------------------------------------------------------------- *)
+
+fun axiom_tac th :tactic = fn (A,g) =>
+   let val (vs,body) = strip_forall g
+       val instl = match_term (concl th) body 
+   in
+   ([], K (itlist ADD_ASSUM A (GENL vs (INST_TY_TERM instl th))))
+   end
+   handle _ => raise IND_DEF_ERR{function = "axiom_tac", 
+                                 message = "axiom does not match goal"};
+
+(* --------------------------------------------------------------------- *)
+(* prove_conj								 *)
+(*									 *)
+(* HOL88 code:                                                           *)
+(*									 *)
+(* letrec prove_conj ths tm =                                            *)
+(*    uncurry CONJ ((prove_conj ths # prove_conj ths) (dest_conj tm)) ?  *)
+(*    find (curry $= tm o concl) ths;;                                   *)
+(* --------------------------------------------------------------------- *)
+
+fun prove_conj ths tm = 
+   uncurry CONJ ((prove_conj ths ## prove_conj ths) (dest_conj tm)) 
+   handle _ => first (curry (op =) tm o concl) ths;
+ 
+(* --------------------------------------------------------------------- *)
+(* RULE_TAC								 *)
+(*									 *)
+(* HOL88 code:                                                           *)
+(*									 *)
+(* let RULE_TAC : thm -> tactic =                                        *)
+(*     let mkg A vs c = A,list_mk_forall(vs,c) in                        *)
+(*     fn th. (let vs,rule = strip_forall(concl th) in                     *)
+(*           (let asm,cvs,cncl = (I # strip_forall) (dest_imp rule) in   *)
+(*           let ith = DISCH asm (SPECL cvs (UNDISCH (SPECL vs th))) in  *)
+(*           fn (A,g).                                                     *)
+(*            (let gvs,body = strip_forall g in                          *)
+(*             let slis,ilis = match cncl body in                        *)
+(*             let th1 = INST_TY_TERM (slis,ilis) ith in                 *)
+(* 	       let svs = freesl (map (subst slis o inst [] ilis) vs) in  *)
+(*             let nvs = intersect gvs svs in                            *)
+(*             let ante = fst(dest_imp(concl th1)) in                    *)
+(*             let newgs = map (mkg A nvs) (conjuncts ante) in           *)
+(*     	           newgs,                                                *)
+(*                 fn thl. let ths=map (SPECL nvs o ASSUME o snd) newgs in *)
+(*   	                 let th2=GENL gvs (MP th1 (prove_conj ths ante)) in *)
+(*                           itlist PROVE_HYP thl th2) ?                 *)
+(*             failwith `RULE_TAC : rule does not match goal`) ?         *)
+(*           axiom_tac (SPECL vs th)) ?                                  *)
+(*          failwith `RULE_TAC: ill-formed input theorem`;;              *)
+(* --------------------------------------------------------------------- *)
+
+fun RULE_TAC_ERR s = IND_DEF_ERR{function = "RULE_TAC",message = s};
+local
+val ERR1 = RULE_TAC_ERR "rule does not match goal"
+val ERR2 = RULE_TAC_ERR "ill-formed input theorem"
+fun mkg A vs c = (A,list_mk_forall(vs,c))
+in
+fun RULE_TAC th =
+   let val (vs,rule) = strip_forall(concl th)
+                       handle _ => raise ERR2
+   in
+   let val (asm,(cvs,cncl)) = (I##strip_forall) (dest_imp rule)
+       val ith = DISCH asm (SPECL cvs (UNDISCH (SPECL vs th))) 
+   in
+   fn (A,g) => let val (gvs,body) = strip_forall g
+                   val (slis,ilis) = match_term cncl body
+                   val th1 = INST_TY_TERM (slis,ilis) ith
+                   val svs = Compat.freesl (map (subst slis o inst [] ilis) vs)
+                   val nvs = intersect gvs svs
+                   val ante = fst(dest_imp(concl th1))
+                   val newgs = map (mkg A nvs) (conjuncts ante) 
+               in
+               (newgs, 
+                fn thl => let val ths = map (SPECL nvs o ASSUME o snd) newgs
+                              val th2 = GENL gvs(MP th1 (prove_conj ths ante)) 
+                          in
+                          itlist PROVE_HYP thl th2
+                          end)
+               end
+               handle _ => raise ERR1
+    end
+    handle _ => axiom_tac (SPECL vs th) 
+   end 
+end;
+
+
+(* ===================================================================== *)
+(* CASES THEOREM							 *)
+(* ===================================================================== *)
+
+(*
+let rules,ind =
+     let N = "N (R:num->num->bool) : num->num->bool" in 
+     new_inductive_definition1 false `N`
+     ("^N n m", ["R:num->num->bool"])
+
+      [ [],[],"^N 0 m" ;
+        ["^N n m"], ["R (m:num) (n:num):bool"], "^N (n+2) k"];;
+*)
+
+(* --------------------------------------------------------------------- *)
+(* let NOT_NOT th =                                                      *)
+(*     CCONTR (dest_neg(dest_neg (concl th))) (UNDISCH th);;             *)
+(*                                                                       *)
+(* let efn v th =                                                        *)
+(*     if free_in v (concl th) then EXISTS(mk_exists(v,concl th),v) th   *)
+(*     else th;;                                                         *)
+(*                                                                       *)
+(* letrec LIST_NOT_FORALL f th =                                         *)
+(*    let vs,body = strip_forall (dest_neg (concl th)) in                *)
+(*    if (null vs) then f th else                                        *)
+(*       let nott = itlist efn vs (f (ASSUME(mk_neg body))) in           *)
+(*       let thm=CCONTR body (MP (ASSUME (mk_neg (concl nott))) nott) in *)
+(*           CCONTR (concl nott) (MP th (GENL vs thm));;                 *)
+(* --------------------------------------------------------------------- *)
+
+fun NOT_NOT th = CCONTR (dest_neg(dest_neg (concl th))) (UNDISCH th);
+
+fun efn v th =
+    if (free_in v (concl th)) 
+    then EXISTS(mk_exists(v,concl th),v) th 
+    else th;
+
+fun LIST_NOT_FORALL f th =
+   let val (vs,body) = strip_forall (dest_neg (concl th))
+   in
+   if (null vs) 
+   then f th 
+   else let val nott = itlist efn vs (f (ASSUME(mk_neg body)))
+            val thm = CCONTR body (MP (ASSUME (mk_neg (concl nott))) nott) 
+        in
+        CCONTR (concl nott) (MP th (GENL vs thm))
+        end
+   end;
+
+(* --------------------------------------------------------------------- *)
+(* let test vs th =                                                      *)
+(*     if (is_eq (concl th)) then mem (rhs(concl th)) vs else false;;    *)
+(*                                                                       *)
+(* letrec reduce vs ths res =                                            *)
+(*    if (null ths) then (rev res) else                                  *)
+(*    if (test vs (hd ths)) then                                         *)
+(*       reduce vs (map (SUBS [SYM (hd ths)]) (tl ths))                  *)
+(*                 (map (SUBS [SYM (hd ths)]) res) else                  *)
+(*        reduce vs (tl ths) (hd ths . res);;                            *)
+(*                                                                       *)
+(* let simp_axiom vs ax th =                                             *)
+(*     let rbody = LIST_BETA_CONV (dest_neg(concl th)) in                *)
+(*     let fth=MP th (EQ_MP (SYM rbody) (ASSUME (rand (concl rbody)))) in*)
+(*     let imp=PROVE_HYP th (CCONTR (dest_neg(rand(concl rbody))) fth) in*)
+(*     let ante = fst(dest_imp(concl imp)) in                            *)
+(*     let avs,res = strip_forall (concl ax) in                          *)
+(*     let inst = INST (fst(match res ante)) (SPECL avs ax) in           *)
+(*     let ths = CONJUNCTS (MP imp inst) in                              *)
+(*     let realths = reduce vs ths [] in                                 *)
+(*          LIST_CONJ realths;;                                          *)
+(*                                                                       *)
+(* let crul rel th =                                                     *)
+(*     if (free_in rel (concl th)) then                                  *)
+(*        let th1 = CONV_RULE LIST_BETA_CONV th in                       *)
+(*        CONJUNCT1 (CONV_RULE (REWRITE_CONV NOT_IMP) th1) else th;;     *)
+(*                                                                       *)
+(* letrec CONJ_RUL rel th =                                              *)
+(*     (uncurry CONJ ((crul rel # CONJ_RUL rel) (CONJ_PAIR th))) ?       *)
+(*     crul rel th;;                                                     *)
+(*                                                                       *)
+(* let LIST_EXISTS_THEN f th =                                           *)
+(*     let vs,body = strip_exists(concl th) in                           *)
+(*     let th1 = DISCH body (f (ASSUME body)) in                         *)
+(*         MP (itlist EXISTS_IMP vs th1) th;;                            *)
+(*                                                                       *)
+(* let IMP_CONJ1 th =                                                    *)
+(*     let a,c = dest_imp(concl th) in                                   *)
+(*      DISCH a (CONJUNCT1 (UNDISCH th));;                               *)
+(*                                                                       *)
+(* |- ?xs. p xs => q xs    |- !xs. p xs   ===> ?xs. q xs                 *)
+(*                                                                       *)
+(* let RULE thm1 thm2 =                                                  *)
+(*     let xs,imp = strip_exists (concl thm1) in                         *)
+(*     let thm =  SPECL xs thm2 in                                       *)
+(*     let impth = MP (ASSUME imp) thm in                                *)
+(*     let iimp = DISCH imp impth in                                     *)
+(*     MATCH_MP (itlist EXISTS_IMP xs iimp) thm1;;                       *)
+(* --------------------------------------------------------------------- *)
+
+(* or:  is_eq(concl th) andalso mem(rhs(concl th)) vs *)
+fun test vs th =
+    if (is_eq (concl th)) 
+    then mem (rhs(concl th)) vs
+    else false;
+
+fun reduce  _ [] res = rev res
+  | reduce vs (h::t) res = 
+      if (test vs h) 
+      then reduce vs (map (SUBS [SYM h]) t) (map (SUBS [SYM h]) res) 
+      else reduce vs t (h::res);
+
+fun simp_axiom vs ax th =
+   let val rbody = LIST_BETA_CONV (dest_neg(concl th))
+       val fth = MP th (EQ_MP (SYM rbody) (ASSUME (rand (concl rbody))))
+       val imp = PROVE_HYP th (CCONTR (dest_neg(rand(concl rbody))) fth)
+       val ante = fst(dest_imp(concl imp))
+       val (avs,res) = strip_forall (concl ax)
+       val inst = INST (fst(match_term res ante)) (SPECL avs ax)
+       val ths = CONJUNCTS (MP imp inst)
+       val realths = reduce vs ths [] 
+   in
+   LIST_CONJ realths
+   end;
+
+fun crul rel th =
+   if (free_in rel (concl th)) 
+   then let val th1 = CONV_RULE LIST_BETA_CONV th 
+        in
+        CONJUNCT1 (CONV_RULE (REWR_CONV NOT_IMP) th1) 
+        end
+   else th;
+
+fun CONJ_RUL rel th =
+   uncurry CONJ ((crul rel ## CONJ_RUL rel) (CONJ_PAIR th))
+   handle _ => crul rel th;
+
+fun LIST_EXISTS_THEN f th =
+   let val (vs,body) = strip_exists(concl th)
+       val th1 = DISCH body (f (ASSUME body)) 
+   in
+   MP (itlist EXISTS_IMP vs th1) th
+   end;
+
+fun IMP_CONJ1 th =
+   let val (a,c) = dest_imp(concl th) 
+   in
+   DISCH a (CONJUNCT1 (UNDISCH th)) 
+   end;
+
+fun RULE thm1 thm2 =
+   let val (xs,imp) = strip_exists (concl thm1)
+       val thm =  SPECL xs thm2
+       val impth = MP (ASSUME imp) thm
+       val iimp = DISCH imp impth 
+   in
+   MATCH_MP (itlist EXISTS_IMP xs iimp) thm1 
+   end
+
+(* --------------------------------------------------------------------- *)
+(* EXISTS_IMP : existentially quantify the antecedent and conclusion 	 *)
+(* of an implication.							 *)
+(*									 *)
+(*        A |- P ==> Q							 *)
+(* -------------------------- EXISTS_IMP "x"				 *)
+(*   A |- (?x.P) ==> (?x.Q)						 *)
+(*									 *)
+(* LIKE built-in, but doesn't quantify in Q if not free there.		 *)
+(* Actually, used only in context where x not free in Q.		 *)
+(*									 *)
+(* HOL88 code:                                                           *)
+(*									 *)
+(* let EXISTS_IMP2 x th =                                                *)
+(*     let ante,cncl = dest_imp(concl th) in                             *)
+(*     if (free_in x cncl) then                                          *)
+(*        let th1 = EXISTS (mk_exists(x,cncl),x) (UNDISCH th) in         *)
+(*        let asm = mk_exists(x,ante) in                                 *)
+(*             DISCH asm (CHOOSE (x,ASSUME asm) th1) else                *)
+(*        let asm = mk_exists(x,ante) in                                 *)
+(*            DISCH asm (CHOOSE (x,ASSUME asm) (UNDISCH th));;           *)
+(* --------------------------------------------------------------------- *)
+
+fun EXISTS_IMP2 x th =
+   let val (ante,cncl) = dest_imp(concl th) 
+   in
+   if (free_in x cncl) 
+   then let val th1 = EXISTS (mk_exists(x,cncl),x) (UNDISCH th)
+            val asm = mk_exists(x,ante) 
+        in
+        DISCH asm (CHOOSE (x,ASSUME asm) th1) 
+        end
+   else let val asm = mk_exists(x,ante) 
+        in
+        DISCH asm (CHOOSE (x,ASSUME asm) (UNDISCH th))
+        end
+   end;
+
+(* --------------------------------------------------------------------- *)
+(* |- ?xs. P  |- ?ys. Q ===> ?xs ys. P /\ Q 		                 *)
+(* let RULE2 vs thm1 thm2 =                                              *)
+(*     let xs,P = strip_exists(concl thm1) in                            *)
+(*     let ys,Q = strip_exists(concl thm2) in                            *)
+(*     let asm = CONJ (ASSUME P) (ASSUME Q) in                           *)
+(*     let ths = CONJUNCTS asm in                                        *)
+(*     let realths = reduce vs ths [] in                                 *)
+(*     let cs = LIST_CONJ realths in                                     *)
+(*     let vs = filter (C free_in (concl cs)) (xs @ ys) in               *)
+(*     let eth=MP(itlist EXISTS_IMP2 xs(DISCH P(itlist efn vs cs))) thm1 in *)
+(*    let eth' = MP (itlist EXISTS_IMP2 ys (DISCH Q eth)) thm2 in eth';; *)
+(* --------------------------------------------------------------------- *)
+
+fun RULE2 vs thm1 thm2 =
+   let val (xs,P) = strip_exists(concl thm1)
+       val (ys,Q) = strip_exists(concl thm2)
+       val asm = CONJ (ASSUME P) (ASSUME Q)
+       val ths = CONJUNCTS asm
+       val realths = reduce vs ths []
+       val cs = LIST_CONJ realths
+       val vs = filter (C free_in (concl cs)) (xs @ ys)
+       val eth = MP (itlist EXISTS_IMP2 xs (DISCH P (itlist efn vs cs))) thm1
+       val ethh = MP (itlist EXISTS_IMP2 ys (DISCH Q eth)) thm2 
+   in 
+   ethh
+   end;
+
+(* --------------------------------------------------------------------- *)
+(* let simp_rule vs set rul th =                                         *)
+(*     let c1,c2 = CONJ_PAIR (CONV_RULE (REWRITE_CONV NOT_IMP) th) in    *)
+(*     let rule = NOT_NOT o CONV_RULE(RAND_CONV LIST_BETA_CONV) in       *)
+(*     let th1 = LIST_NOT_FORALL rule c2 in                              *)
+(*     let th2 = LIST_EXISTS_THEN (CONJ_RUL set) c1 in                   *)
+(*     let evs,imp = strip_exists (concl th1) in                         *)
+(*     let gvs,cnc = (I # rand) (strip_forall(concl rul)) in             *)
+(*     let th3 = UNDISCH (SPECL gvs rul) in                              *)
+(*     let pat = list_mk_forall(evs,fst(dest_imp imp)) in                *)
+(*     let inst = fst(match (concl th3) pat) in                          *)
+(*     let rins = MATCH_MP (INST inst (DISCH_ALL th3)) th2 in            *)
+(*     let simp = RULE2 vs (RULE th1 rins) th2  in                       *)
+(*         PROVE_HYP th simp;;                                           *)
+(* --------------------------------------------------------------------- *)
+
+fun simp_rule vs set rul th =
+   let val (c1,c2) = CONJ_PAIR (CONV_RULE (REWR_CONV NOT_IMP) th)
+       val rule = NOT_NOT o CONV_RULE(RAND_CONV LIST_BETA_CONV)
+       val th1 = LIST_NOT_FORALL rule c2
+       val th2 = LIST_EXISTS_THEN (CONJ_RUL set) c1
+       val (evs,imp) = strip_exists (concl th1)
+       val (gvs,cnc) = (I ## rand) (strip_forall(concl rul))
+       val th3 = UNDISCH (SPECL gvs rul)
+       val pat = list_mk_forall(evs,fst(dest_imp imp))
+       val inst = fst(match_term (concl th3) pat)
+       val rins = MATCH_MP (INST inst (DISCH_ALL th3)) th2
+       val simp = RULE2 vs (RULE th1 rins) th2 
+   in
+   PROVE_HYP th simp
+   end;
+
+(* --------------------------------------------------------------------- *)
+(* let f set rul th =                                                    *)
+(*     let vs = fst(strip_forall (dest_neg (concl th))) in               *)
+(*     LIST_NOT_FORALL (simp_axiom vs rul) th ?                          *)
+(*     LIST_NOT_FORALL (simp_rule vs set rul) th ? th;;                  *)
+(* --------------------------------------------------------------------- *)
+
+fun f set rul th =
+   let val vs = fst(strip_forall (dest_neg (concl th))) 
+   in
+   LIST_NOT_FORALL (simp_axiom vs rul) th 
+   handle _ => LIST_NOT_FORALL (simp_rule vs set rul) th 
+               handle _ => th
+   end;
+
+(* --------------------------------------------------------------------- *)
+(* letrec LIST_DE_MORGAN set ths th =                                    *)
+(*  (let (c1,c2) = dest_conj(dest_neg (concl th)) in                     *)
+(*   let recth = LIST_DE_MORGAN set (tl ths) (ASSUME (mk_neg c2)) in     *)
+(*   let th1 = DISJ1 (f set (hd ths) (ASSUME (mk_neg c1))) (concl recth) in *)
+(*   let th2 = NOT_INTRO (DISCH c2 (MP th (CONJ (ASSUME c1) (ASSUME c2)))) in *)
+(*   let th3 = DISJ2 (rand(rator (concl th1))) (PROVE_HYP th2 recth) in  *)
+(*       DISJ_CASES (SPEC c1 EXCLUDED_MIDDLE) th3 th1) ?                 *)
+(*     f set (hd ths) th;;                                               *)
+(* --------------------------------------------------------------------- *)
+
+fun LIST_DE_MORGAN set ths th =
+   let val (c1,c2) = dest_conj(dest_neg (concl th))
+       val recth = LIST_DE_MORGAN set (tl ths) (ASSUME (mk_neg c2))
+       val th1 = DISJ1 (f set (hd ths) (ASSUME (mk_neg c1))) (concl recth)
+       val th2 = NOT_INTRO (DISCH c2 (MP th (CONJ (ASSUME c1) (ASSUME c2))))
+       val th3 = DISJ2 (rand(rator (concl th1))) (PROVE_HYP th2 recth) 
+   in 
+   DISJ_CASES (SPEC c1 EXCLUDED_MIDDLE) th3 th1
+   end
+   handle _ => f set (hd ths) th;
+
+(* --------------------------------------------------------------------- *)
+(* let derive_cases_thm (rules,ind) =                                    *)
+(*     let vs,(hy,c) = (I # dest_imp) (strip_forall (concl ind)) in      *)
+(*     let ps,P = (butlast vs, last vs) in                               *)
+(*     let sind = SPECL ps ind and srules = map (SPECL ps) rules in      *)
+(*     let cvs,con = strip_forall c in                                   *)
+(*     let thm1 = DISCH hy (SPECL cvs (UNDISCH (SPEC P sind))) in        *)
+(*     let avs = map (genvar o type_of) cvs in                           *)
+(*     let eqns = list_mk_conj(map2 mk_eq (cvs,avs)) in                  *)
+(*     let asmp = subst (combine(avs,cvs)) (rator con) in                *)
+(*     let pred = list_mk_abs (avs,mk_neg(mk_comb(asmp,eqns))) in        *)
+(*     let thm2 = UNDISCH (UNDISCH (INST [pred,P] thm1)) in              *)
+(*     let thm3 = CONV_RULE LIST_BETA_CONV thm2 in                       *)
+(*     let HY = rand(rator con) in                                       *)
+(*     let contr = DISCH HY (ADD_ASSUM HY (LIST_CONJ (map REFL cvs))) in *)
+(*     let fthm = NOT_INTRO (DISCH (subst [pred,P] hy) (MP thm3 contr)) in *)
+(*     let set = fst(strip_comb HY) in                                   *)
+(*     let dth = LIST_DE_MORGAN set srules fthm  in                      *)
+(*         GENL ps (GENL cvs (DISCH HY dth));;                           *)
+(* --------------------------------------------------------------------- *)
+
+exception mymap2_ERR;
+fun mymap2 Fn ([],[]) = []
+  | mymap2 Fn ([],_)  = raise mymap2_ERR
+  | mymap2 Fn (_,[])  = raise mymap2_ERR
+  | mymap2 Fn (l1,l2)   = ((Fn (hd l1,hd l2)) :: (mymap2 Fn (tl l1,tl l2)));
+
+fun derive_cases_thm (rules,ind) =
+   let val (vs,(hy,c)) = (I ## dest_imp) (strip_forall (concl ind))
+       val (ps,P) = (butlast vs, last vs)
+       val sind = SPECL ps ind and srules = map (SPECL ps) rules
+       val (cvs,con) = strip_forall c
+       val thm1 = DISCH hy (SPECL cvs (UNDISCH (SPEC P sind)))
+       val avs = map (genvar o type_of) cvs
+       val eqns = list_mk_conj(mymap2 mk_eq (cvs,avs))
+       val asmp = subst (combine(avs,cvs)) (rator con)
+       val pred = list_mk_abs (avs,mk_neg(mk_comb(asmp,eqns)))
+       val thm2 = UNDISCH (UNDISCH (INST [(pred,P)] thm1))
+       val thm3 = CONV_RULE LIST_BETA_CONV thm2
+       val HY = rand(rator con)
+       val contr = DISCH HY (ADD_ASSUM HY (LIST_CONJ (map REFL cvs)))
+       val fthm = NOT_INTRO (DISCH (subst [(pred,P)] hy) (MP thm3 contr))
+       val set = fst(strip_comb HY)
+       val dth = LIST_DE_MORGAN set srules fthm 
+   in
+   GENL ps (GENL cvs (DISCH HY dth))
+   end;
+
+end; (* Inductive_def *)
+
+
+(* =====================================================================
+TEST CASES (you'll be wanting draft_mode)
+
+val (rules,ind) =
+   let val N = --`N (R:num->num->bool) : num->num->bool`--
+   in 
+   new_inductive_definition false "N"
+     (--`^N n m`--, [--`R:num->num->bool`--])
+     [([],--`^N 0 m`--),
+      ([--`^N n m`--, --`R (m:num) (n:num):bool`--], --`^N (n+2) k`--)]
+   end;
+
+val ((pat,ps),rules) =
+   let val RTC = --`RTC:('a->'a->bool)->'a->'a->bool`--
+   in
+   ((--`^RTC R x y`--, [--`R:'a->'a->bool`--]),
+   [([
+     (* ------------------------------ *)  (--`R (x:'a) (y:'a):bool`--)],
+              (--`^RTC R x y`--)	       ),
+   
+   ([				       ],
+     (*------------------------------- *) 
+              (--`^RTC R x x`--)	       ),
+   
+   ([  (--`^RTC R z y`--) , (--`(R:'a->'a->bool) x z`--)
+      (*--------------------------------------------------- *)],
+                    (--`^RTC R x y`--)	       )])
+   end;
+
+val ((pat1,ps1),rules1) =
+   let val RTC = --`RTC1:('a->'a->bool)->'a->'a->bool`-- 
+   in
+   ((--`^RTC R x y`--,  [--`R:'a->'a->bool`--]),
+   [([				       
+     (* ------------------------------ *)  (--`R (x:'a) (y:'a):bool`--)],
+               (--`^RTC R x y`--)	       ),
+    ([				       ],
+     (*------------------------------- *) 
+               (--`^RTC R x x`--)	       ),
+
+    ([ (--`^RTC R z y`--)         , (--`(R:'a->'a->bool) x z`--)
+     (*------------------------------- *)],
+               (--`^RTC R x y`--)	       )])
+   end;
+
+
+val (pat,rules) =
+   let val RTC = --`RTC:('a->'a->bool)->'a->'a->bool`-- 
+   in
+   ((--`^RTC R x y`--, [--`R:'a->'a->bool`--]),
+    [([(* ------------------------------ *)  (--`R (x:'a) (y:'a):bool`--)],
+                (--`^RTC R x y`--)	       ),
+
+    ([				       
+      (*------------------------------- *) ],
+                (--`^RTC R x x`--)	     ),
+
+    ([  (--`^RTC R x z`--) , (--`^RTC R z y`--)  ],
+      (*-----------------------------------------*)
+                    (--`^RTC R x y`--)	       )])
+   end;
+
+
+val ((pat,ps),rules) =  
+   let val ODD = --`ODD:num->num->bool`--
+   in
+   ((--`^ODD n m`--, []),
+   [([				       
+      (* ------------------------------ *)  (--`T /\ F`--)],
+                (--`^ODD 2 3`--)	       ),
+
+    ([	(--`^ODD n m`--), (--`(1=2) /\ (3=4)`--), (--`^ODD 2 3`--)
+      (*------------------------------- *) ],
+                (--`^ODD (n+m) m`--)                )])
+   end;
+
+
+===================================================================== *)

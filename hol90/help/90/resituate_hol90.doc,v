@@ -1,0 +1,107 @@
+head	1.1;
+branch	1.1.1;
+access;
+symbols
+	HOL97:1.1.1.1.0.6
+	bpHOL97:1.1.1.1
+	hol90_9_alpha:1.1.1.1
+	hol90_pre8_for_multiple_compilers:1.1.1.1.0.4
+	hol90_pre8_after_donalds_separate_compilation_changes:1.1.1.1
+	hol90_8_after_merging_Konrad_Elsa:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	95.10.16.13.35.53;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.35.53;	author rjb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@\DOC resituate_hol90
+
+\SYNOPSIS
+A unix utility useful when moving the hol90 root directory after the system 
+has been built.
+
+\DESCRIBE
+If one moves the hol90 directory after the system has been built, many things
+will stop working, since the internal paths used by the system will no
+longer be accurate. {resituate_hol90} reconfigures an hol90 image to a new 
+root directory. In the following, we assume that the new hol90 root directory
+is {/dir0/dir1/.../hol90}. {resituate_hol90} is called from unix directly.
+It has the following call format
+{
+    ..../tools/resituate_hol90 <from-image> <to-image> <path>
+}
+where {<from-image>} is a path to an hol90 image, {<to-image>} is the 
+path where the "resituated" image is to be written, and {<path>} is the
+new root directory for the system. An invocation of {resituate_hol90} 
+resets the HOLdir, help_path, theory_path, and library_path to take
+account of the new root directory for the system, and then writes the 
+image to {<to-image>}.
+
+\EXAMPLE
+On a sun4 one could invoke
+{
+    % tools/resituate_hol90 src/hol90.sparc src/hol90.sparc 
+                            /usr/local/lib/hol90.5
+}
+to readjust the sun4 version of hol90 to think that the hol90 root directory
+is /usr/local/lib/hol90.5
+
+\FAILURE
+Note that the example invocation will overwrite the file of an executing
+process (namely src/hol90.sparc). Some operating systems may not allow this,
+in which case one needs to use a "temporary" <to-image>. A command like
+{
+    (tools/resituate_hol90 src/hol90.sparc src/hol90.tmp 
+                           /usr/local/lib/hol90.5; 
+     mv src/hol90.tmp src/hol90.sparc)
+}
+\noindent ought to work. 
+
+\COMMENTS
+Needs to be invoked on each architecture of interest, i.e., for each 
+hol90.<arch> in the "src" directory of the hol90 distribution. 
+
+\SEEALSO
+install
+
+\ENDDOC
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

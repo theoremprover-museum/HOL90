@@ -1,0 +1,419 @@
+structure Parse_support = Parse_support;
+type term = Parse_support.Preterm.Term.term
+type hol_type = Parse_support.Preterm.Term.Type.hol_type
+type preterm_in_env = Parse_support.preterm_in_env
+type binder_in_env = Parse_support.binder_in_env
+
+
+fun HOL_PARSE_ERR{func,mesg} = 
+     HOL_ERR{origin_structure = "hol grammar file (hol_yak)",
+             origin_function = func,
+             message = mesg};
+
+fun make_comb ptm1 ptm2 = Parse_support.list_make_comb [ptm1,ptm2];
+
+fun make_pair ptm1 ptm2 = 
+  Parse_support.list_make_comb [Parse_support.make_atom ",", ptm1, ptm2];
+
+val make_tuple = end_itlist make_pair;
+
+
+(* make_abort  --> MK_ABORT *)
+val make_abort = Parse_support.make_atom "MK_ABORT"
+
+
+(* make_abort  --> MK_ABORT *)
+val make_abort = Parse_support.make_atom "MK_ABORT"
+
+
+(* make_skip  --> MK_SKIP *)
+val make_skip = Parse_support.make_atom "MK_SKIP"
+
+
+
+
+(* make_spec ("p","c","q") --> "MK_SPEC(p,c,q)"  *)
+
+fun make_spec (ptm1,ptm2,ptm3) = 
+   make_comb(Parse_support.make_atom "MK_SPEC") (make_tuple [ptm1,ptm2,ptm3]);
+
+
+(* make_assign ("x","e") ---> "MK_ASSIGN(x,e)" *)
+
+fun make_assign (ptm1,ptm2) = 
+   make_comb(Parse_support.make_atom "MK_ASSIGN") (make_pair ptm1 ptm2);
+
+
+(* make_seq ("c1","c2") ---> "MK_SEQ(c1,c2)" *)
+
+fun make_seq (ptm1,ptm2) = 
+   make_comb (Parse_support.make_atom"MK_SEQ") (make_pair ptm1 ptm2);
+
+
+(* make_seql ["c1";... ;"cn"]    --->  "c1;(c2; ... ;cn)"  *)
+
+val make_seql = end_itlist (curry make_seq);
+
+
+(* make_if1 ("b","c")  ---> "MK_IF1(b,c)" *)
+
+fun make_if1 (ptm1,ptm2) =
+   make_comb(Parse_support.make_atom"MK_IF1") (make_pair ptm1 ptm2);
+
+
+(* make_ife ("b","c","c'")  ---> "MK_IF2(b,c,c')"  *)
+
+fun make_ife (ptm1,ptm2,ptm3) =
+   make_comb (Parse_support.make_atom"MK_IF2") (make_tuple[ptm1,ptm2,ptm3]);
+
+
+(* make_assert "p" ---> "MK_ASSERT p"  *)
+
+val make_assert = make_comb (Parse_support.make_atom"MK_ASSERT");
+
+
+(* make_invariant "p" --->  "MK_INVARIANT p"  *)
+
+val make_invariant = make_comb (Parse_support.make_atom"MK_INVARIANT");
+
+
+(* make_variant "p"  ---> "MK_VARIANT p"  *)
+
+val make_variant = make_comb (Parse_support.make_atom"MK_VARIANT");
+
+
+(* make_while ("b","c")  ---> "MK_WHILE(b,c)" *)
+
+fun make_while (ptm1,ptm2) = 
+   make_comb (Parse_support.make_atom"MK_WHILE") (make_pair ptm1 ptm2);
+
+
+(* make_t_spec ("p","c","q")  ---> "T_SPEC(p,c,q)" *)
+
+fun make_t_spec (ptm1,ptm2,ptm3) =
+   make_comb (Parse_support.make_atom"T_SPEC") (make_tuple[ptm1,ptm2,ptm3]);
+
+
+fun is_upper_case s = 
+   let val A = ordof("A",0)
+       val Z = ordof("Z",0)
+       fun f i = let val letter = ordof(s,i)
+                 in (letter>=A) andalso (letter<=Z) andalso f(i+1)
+                 end
+   in f 0 handle _ => true
+   end;
+
+fun make_hoare_var s = 
+   if (is_upper_case s)
+   then Parse_support.make_string (Lib.quote s)
+   else raise HOL_PARSE_ERR{func = "make_hoare_var", 
+                            mesg="program variables should be in upper case"};
+
+%%
+%term ident of string
+    | symbolic_ident of string
+    | qualified_ident of (string*string)
+    | type_ident of string
+    | qualified_type_ident of (string*string)
+    | type_var_ident of string
+    | binder of string
+    | qualified_binder of (string*string)
+    | aq of Parse_support.Preterm.Term.term
+    | lparen
+    | rparen
+    | type_lparen 
+    | type_rparen
+    | lbracket 
+    | rbracket
+    | lbrace
+    | rbrace
+    | type_comma
+    | colon
+    | dot
+    | semi_colon
+    | type_right_arrow
+    | eq_gt
+    | eq
+    | type_hash
+    | type_plus
+    | bar
+    | let_ 
+    | and_
+    | in_ 
+    | of_
+    | string_ of string
+    | EOLEX
+    | EOF 
+
+(* Hoare logic lexemes *)
+    | hoare_lbracket 
+    | hoare_rbracket
+    | hoare_lbrace
+    | hoare_rbrace
+    | hoare_skip
+    | hoare_abort
+    | hoare_if
+    | hoare_then
+    | hoare_else
+    | hoare_fi
+    | hoare_assert
+    | hoare_invariant
+    | hoare_variant
+    | hoare_while
+    | hoare_do
+    | hoare_done
+    | hoare_command_sep
+    | hoare_assign
+    
+
+%nonterm START of Parse_support.parse
+       | PTRM of preterm_in_env
+       | APP_EXP of preterm_in_env list
+       | AEXP of preterm_in_env
+       | SUFFIX of preterm_in_env
+       | BV_LIST of binder_in_env list
+       | BV of binder_in_env
+       | VSTRUCT of binder_in_env list
+       | BINDING_LIST of (binder_in_env list * preterm_in_env) list
+       | COMMA of unit
+       | LIST of preterm_in_env list
+       | TYPE of hol_type
+       | HASH_TYPE of hol_type
+       | PLUS_TYPE of hol_type
+       | APP_TYPE of hol_type
+       | TYPE_ARG of hol_type list
+       | BASIC_TYPE_ARG of hol_type list
+       | TYPE_LIST of hol_type list
+       | BASIC of hol_type
+       | TYPE_SPEC of {ty_name:string,
+                       clauses : {constructor:string,
+                                  args:Parse_support.arg list} list}
+       | TYI of string
+       | TYPE_CLAUSES of {constructor:string, 
+                          args:Parse_support.arg list} list
+       | TYPE_CLAUSE of {constructor:string, args: hol_type list}
+       | C_ARG_LIST of hol_type list
+
+(* Hoare logic productions *)
+       | COMMAND_LIST of preterm_in_env list
+       | COMMAND of preterm_in_env
+
+
+%start START
+%eop EOF EOLEX
+%pos int
+%header (functor holLrValsFun (structure Token : TOKEN
+                           structure Parse_support : Parse_support_sig))
+%name hol
+%noshift EOF
+%pure
+%verbose
+%%
+
+START : PTRM (Parse_support.make_preterm PTRM)
+        |
+        colon TYPE (Parse_support.TY TYPE)
+        |
+        colon TYPE_SPEC (Parse_support.TY_SPEC TYPE_SPEC)
+
+PTRM : SUFFIX (SUFFIX)
+       |
+       APP_EXP SUFFIX (Parse_support.prec_parse (rev(APP_EXP)@[SUFFIX]))
+       | 
+       APP_EXP eq_gt PTRM bar PTRM
+         (Parse_support.list_make_comb
+                [Parse_support.make_atom "COND",
+                 Parse_support.prec_parse (rev APP_EXP), 
+                 PTRM1,PTRM2])
+(* Hoare logic triples *)
+       |
+       hoare_lbrace PTRM hoare_rbrace 
+       COMMAND_LIST 
+       hoare_lbrace PTRM hoare_rbrace 
+             (make_spec(PTRM1,make_seql COMMAND_LIST,PTRM2))
+       |
+       hoare_lbracket PTRM hoare_rbracket 
+       COMMAND_LIST 
+       hoare_lbracket PTRM hoare_rbracket
+             (make_t_spec(PTRM1,make_seql COMMAND_LIST,PTRM2))
+       |
+       APP_EXP (Parse_support.prec_parse (rev APP_EXP))
+
+APP_EXP : APP_EXP AEXP colon TYPE
+          ([Parse_support.make_constrained
+               (Parse_support.prec_parse(rev (AEXP::APP_EXP))) TYPE])
+          |
+          APP_EXP AEXP (AEXP::APP_EXP)
+          |
+          AEXP colon TYPE ([Parse_support.make_constrained AEXP TYPE])
+          |
+          AEXP ([AEXP])
+
+AEXP : ident (if (is_upper_case ident)
+              then Parse_support.make_string (Lib.quote ident)
+              else Parse_support.make_atom ident)
+       |
+       symbolic_ident (Parse_support.make_atom symbolic_ident)
+       (* |
+       qualified_ident(Parse_support.make_qualified qualified_ident)
+       *)
+       |
+       aq (Parse_support.make_aq aq)
+       |
+       string_ (Parse_support.make_string string_)
+       |
+       eq (Parse_support.make_atom "=")
+       |
+       lparen PTRM rparen (PTRM)
+       |
+       lbracket LIST rbracket (Parse_support.make_list LIST)
+       |
+       lbrace LIST rbrace (Parse_support.make_set LIST)
+       |
+       lbrace PTRM bar PTRM rbrace (Parse_support.make_set_abs (PTRM1,PTRM2))
+
+
+COMMAND_LIST : COMMAND ([COMMAND])
+             | COMMAND semi_colon COMMAND_LIST (COMMAND::COMMAND_LIST)
+
+COMMAND : hoare_skip (make_skip)
+        | hoare_abort (make_abort)
+        | hoare_assert hoare_lbrace PTRM hoare_rbrace (make_assert PTRM)
+        | hoare_invariant hoare_lbrace PTRM hoare_rbrace (make_invariant PTRM)
+        | hoare_variant hoare_lbrace PTRM hoare_rbrace (make_variant PTRM)
+        | hoare_if PTRM hoare_then COMMAND hoare_fi (make_if1(PTRM,COMMAND))
+        | hoare_if PTRM hoare_then COMMAND hoare_else COMMAND hoare_fi 
+          (make_ife(PTRM,COMMAND1,COMMAND2))
+        | hoare_while PTRM hoare_do COMMAND_LIST hoare_done 
+          (make_while(PTRM,make_seql COMMAND_LIST))
+        | ident hoare_assign PTRM (make_assign(make_hoare_var ident, PTRM))
+
+
+LIST : ([])
+       |
+       PTRM ([PTRM])
+       |
+       PTRM semi_colon LIST (PTRM::LIST)
+
+SUFFIX : binder BV_LIST dot PTRM (Parse_support.bind_term binder BV_LIST PTRM)
+         (* |
+         qualified_binder BV_LIST dot PTRM 
+          (Parse_support.bind_qualified_term qualified_binder BV_LIST PTRM)
+         *)
+         |
+         let_ BINDING_LIST in_ PTRM (Parse_support.make_let BINDING_LIST PTRM)
+
+BV_LIST : BV BV_LIST (BV::BV_LIST)
+          |
+          BV ([BV])
+
+BV : lparen BV rparen (BV)
+     |
+     ident (Parse_support.make_binding_occ ident)
+     (* Could also bind over symbolic identifiers, but then would have to
+        be able to prime them for renaming. Could do that, but it's too
+        involved for the payoff.
+     *)
+     |
+     aq (Parse_support.make_aq_binding_occ aq)
+     |
+     BV colon TYPE (Parse_support.make_constrained_vstruct BV TYPE)
+     |
+     lparen BV COMMA VSTRUCT rparen (Parse_support.make_vstruct (BV::VSTRUCT))
+
+VSTRUCT : BV ([BV])
+          |
+          BV COMMA VSTRUCT (BV::VSTRUCT)
+
+BINDING_LIST : BV_LIST eq PTRM ([(BV_LIST,PTRM)])
+               | 
+               BV_LIST eq PTRM and_ BINDING_LIST ((BV_LIST,PTRM)::BINDING_LIST)
+
+COMMA : symbolic_ident (if (symbolic_ident = ",")
+                        then ()
+                        else raise HOL_PARSE_ERR{func = "",
+                                   mesg = "expecting a \",\" in varstruct"})
+
+
+
+TYPE : PLUS_TYPE type_right_arrow TYPE (Parse_support.make_type_app
+                                        ("fun",[PLUS_TYPE, TYPE]))
+       |
+       PLUS_TYPE (PLUS_TYPE)
+
+PLUS_TYPE : HASH_TYPE type_plus PLUS_TYPE (Parse_support.make_type_app
+                                           ("sum",[HASH_TYPE,PLUS_TYPE]))
+            |
+            HASH_TYPE (HASH_TYPE)
+
+HASH_TYPE : APP_TYPE type_hash HASH_TYPE (Parse_support.make_type_app
+                                          ("prod",[APP_TYPE,HASH_TYPE]))
+            |
+            APP_TYPE (APP_TYPE)
+
+APP_TYPE : TYPE_ARG type_ident (Parse_support.make_type_app
+                                    (type_ident, TYPE_ARG))
+           | 
+           BASIC (BASIC)
+
+TYPE_ARG : TYPE_ARG type_ident ([Parse_support.make_type_app
+                                         (type_ident,TYPE_ARG)])
+           |
+           BASIC_TYPE_ARG (BASIC_TYPE_ARG)
+
+BASIC_TYPE_ARG : type_lparen TYPE type_comma TYPE_LIST type_rparen 
+                     (TYPE::TYPE_LIST)
+                 |
+                 BASIC ([BASIC])
+
+TYPE_LIST : TYPE type_comma TYPE_LIST (TYPE::TYPE_LIST)
+            |
+            TYPE ([TYPE])
+
+BASIC: type_var_ident 
+          (Parse_support.Preterm.Term.Type.mk_vartype type_var_ident)
+       |
+       type_ident 
+       (case (!Globals.in_type_spec)
+          of NONE => Parse_support.make_atomic_type type_ident
+           | (SOME s)
+              => if (type_ident = s)
+                 then if (can Parse_support.make_atomic_type type_ident)
+                      then raise HOL_PARSE_ERR{func="",
+                           mesg=(Lib.quote type_ident^" is already a type")}
+                      else Parse_support.rec_occ
+                 else Parse_support.make_atomic_type type_ident)
+
+       (* |
+       qualified_type_ident 
+         (Parse_support.make_qualified_atomic_type qualified_type_ident)
+       *)
+       |
+       aq (Parse_support.extract_type_antiq aq)
+       |
+       type_lparen TYPE type_rparen (TYPE)
+
+
+TYPE_SPEC : TYI eq TYPE_CLAUSES ({ty_name=TYI,clauses=TYPE_CLAUSES})
+
+TYI : ident (Globals.in_type_spec := SOME ident; ident)
+
+TYPE_CLAUSES : TYPE_CLAUSE ([Parse_support.make_type_clause TYPE_CLAUSE])
+               |
+               TYPE_CLAUSE bar TYPE_CLAUSES
+               (Parse_support.make_type_clause TYPE_CLAUSE::TYPE_CLAUSES)
+
+TYPE_CLAUSE : string_ ({constructor=string_ , args=[]})
+              |
+              ident ({constructor=ident, args=[]})
+              |
+              symbolic_ident ({constructor=symbolic_ident, args=[]})
+              |
+              ident of_ C_ARG_LIST ({constructor=ident,args = C_ARG_LIST})
+              |
+              symbolic_ident of_ C_ARG_LIST
+              ({constructor=symbolic_ident,args=C_ARG_LIST})
+
+C_ARG_LIST : TYPE eq_gt C_ARG_LIST (TYPE::C_ARG_LIST)
+             |
+             TYPE ([TYPE])

@@ -1,0 +1,457 @@
+head	1.5;
+access;
+symbols
+	HOL97:1.3.0.4
+	bpHOL97:1.3
+	hol90_9_alpha:1.3
+	hol90_pre8_for_multiple_compilers:1.3.0.2
+	last_edition:1.4
+	hol90_pre8_after_donalds_separate_compilation_changes:1.2
+	hol90_8_after_merging_Konrad_Elsa:1.2
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.5
+date	96.02.08.00.24.08;	author drs1004;	state dead;
+branches;
+next	1.4;
+
+1.4
+date	96.01.04.14.07.44;	author drs1004;	state Exp;
+branches;
+next	1.3;
+
+1.3
+date	95.11.15.13.30.58;	author rjb;	state Exp;
+branches
+	1.3.4.1;
+next	1.2;
+
+1.2
+date	95.10.18.16.37.58;	author drs1004;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	95.10.16.13.30.12;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.30.12;	author rjb;	state Exp;
+branches
+	1.1.1.1.2.1;
+next	;
+
+1.1.1.1.2.1
+date	95.10.18.10.09.15;	author drs1004;	state Exp;
+branches;
+next	;
+
+1.3.4.1
+date	97.06.11.17.26.13;	author kxs;	state Exp;
+branches;
+next	1.3.4.2;
+
+1.3.4.2
+date	97.07.10.18.39.03;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.5
+log
+@New theory mechanism, by Donald Syme
+@
+text
+@signature Theory_sig = 
+sig
+  structure Thm : Thm_sig
+
+(*------------------------------------------------------------
+ * Adding to the current theory
+ *
+ * new_type
+ * new_constant
+ * new_open_axiom
+ *
+ * store_definition 
+ *
+ * Used to introduce constants and types with a theorem
+ * recorded as "sufficient justification" for their existence.
+ * It first creates the specified constants and types
+ * and then calls the function passed as the last argument.
+ * This should produce the theorem which justifies 
+ * their creation.  The theorem generally cannot be produced
+ * before the constants have been created.  This mechanism
+ * is used by each of the constant and type introduction schemas.
+ * If the theorem creation function fails then the constants
+ * and types are uninterpreted, just as if introduced by 
+ * new_type/new_constant.
+ *
+ * Note: In principal, any theorem can be given as the justification
+ * theorem, but in practice this function is called via the
+ * mechanisms which actually produce the "useful" theorems about
+ * a constant or type - e.g. new_specification, new_type_definition
+ * and new_definition.  Thus there is no mileage in returning a bogus
+ * theorem for an uninterpreted constant.
+ *------------------------------------------------------------*)
+
+  type thm sharing type thm = Thm.thm;
+  type typ sharing type typ = Thm.Term.Type.typ;
+  type term sharing type term = Thm.Term.term;
+  val new_parent : string -> unit
+  val new_type : {Name : string, Arity : int} -> unit
+  val new_constant :{Name : string, Ty : typ} -> unit
+
+  val new_open_axiom : (string * term) -> thm
+  val store_definition : (string * {Name:string, Arity: int} list
+	                         * {Name:string, Ty:typ} list 
+                                 * (unit -> thm)) -> thm
+  val save_thm : (string * thm) -> thm
+
+(*------------------------------------------------------------
+ * Information on constants - available from Term/Type DRS. 
+ *
+ *   val arity : string -> int
+ *   val is_constant : string -> bool
+ *   val const_decl : string -> {const:term,
+ *                               theory : string}
+ *  val is_type : string -> bool
+ *------------------------------------------------------------*)
+
+
+
+(* Information on the current theory, or an ancestor *)
+  val draft_mode : unit -> bool
+  val current_theory : unit -> string
+  val parents : string -> string list
+  val ancestry : string -> string list
+  val types : string -> {Name : string, Arity : int} list
+  val constants : string -> term list
+  val axioms : string -> (string * thm) list
+  val axiom : string -> string -> thm
+  val definitions : string -> (string * thm) list
+  val definition : string -> string -> thm
+  val theorems : string -> (string * thm) list
+  val theorem : string -> string -> thm
+  val print_theory_to_outstream : {outstream:outstream, theory:string}
+                               -> outstream
+  val print_theory_to_file : {file:string, theory:string} -> unit
+  val print_theory : string -> unit
+  val html_theory : string -> unit
+
+(* Operations that change the current theory *)
+  val new_theory : string -> unit
+  val close_theory : unit -> unit
+  val load_theory : string -> unit
+  val extend_theory : string -> unit
+
+(* Operations that write the theory to disk *)
+  val export_theory : unit -> unit
+  val close : unit -> unit
+
+(* Cache operations *)
+  val delete_cache : unit -> unit
+  val delete_theory_from_cache : string -> unit
+  val theories_in_cache : unit -> string list
+
+(* Atomic operations *)
+  val perform_atomic_theory_op : (unit -> 'a) -> 'a
+
+
+
+end;
+@
+
+
+1.4
+log
+@Added simplifier components, added drule files, added MK_ABS_CONV, better error messages
+@
+text
+@@
+
+
+1.3
+log
+@The HOL90 sources have been changed to allow for the use of different
+Standard ML compilers (possibly simultaneously).
+
+ * Many files in "src/0" changed to make them more portable across different
+   ML compilers. Various additions have been made to the Portable structure
+   and files changed to access identifiers in the Portable structure rather
+   than from the global environment. Worthy of special note are:
+
+   - The pointer equality used in "src/0/term.sml" has been made into a
+     function in the Portable structure.
+
+   - The ML-Lex and ML-Yacc files for the various parsers have been changed
+     to access the Portable structure. Both the source files and the SML
+     produced from them have been changed but I have not verified that the
+     source files would reproduce the new SML versions if ML-Lex and ML-Yacc
+     were to be rerun on them. The changes involve some hacks that exploit the
+     way ML-Lex and ML-Yacc work. See the sources for details.
+
+R.J.Boulton, 15th November 1995.
+@
+text
+@d5 32
+a36 1
+(* Adding to the current theory *)
+d39 1
+a39 19
+  val new_constant :{Name : string, Ty : Thm.Term.Type.hol_type} -> unit
+  val new_infix : {Name: string, Ty: Thm.Term.Type.hol_type, Prec: int} -> unit
+  val new_binder : {Name : string, Ty : Thm.Term.Type.hol_type} -> unit
+  val new_open_axiom : (string * Thm.Term.term) -> Thm.thm
+  val store_definition : (string * Thm.Term.term) -> Thm.thm
+  val save_thm : (string * Thm.thm) -> Thm.thm
+
+(* Information on constants *)
+  val arity : string -> int
+  val fixity : string -> Thm.Term.fixity
+  val precedence : string -> int
+  val const_decl : string -> {const:Thm.Term.term,
+                              theory : string,
+                              place: Thm.Term.fixity}
+
+  val is_constant : string -> bool
+  val is_type : string -> bool
+  val is_binder : string -> bool
+  val is_infix : string -> bool
+d41 18
+d65 7
+a71 9
+  val constants : string -> Thm.Term.term list
+  val infixes : string -> Thm.Term.term list
+  val binders : string -> Thm.Term.term list
+  val axioms : string -> (string * Thm.thm) list
+  val axiom : string -> string -> Thm.thm
+  val definitions : string -> (string * Thm.thm) list
+  val definition : string -> string -> Thm.thm
+  val theorems : string -> (string * Thm.thm) list
+  val theorem : string -> string -> Thm.thm
+d96 2
+@
+
+
+1.3.4.1
+log
+@Removed files are parse files and portability files that have
+effectively been moved elsewhere.
+
+Modified files are up to date for ML 109.26.
+@
+text
+@d43 2
+a44 2
+  val print_theory_to_outstream : {outstream:Portable.outstream, theory:string}
+                                   -> Portable.outstream
+@
+
+
+1.3.4.2
+log
+@Closing up HOL so it is CM-friendly.
+@
+text
+@a66 3
+(* Support operation for loading libraries *)
+  val loadLibThry: string -> string -> unit 
+
+@
+
+
+1.2
+log
+@Check in after merging in Konrad's changes made after
+the release of hol90.7.  This involved creating a side branch
+in which to check in Konrad's changes, then merging in that
+side branch into the main development (which contains changes
+made by Elsa Gunter).
+
+Some other small modification have been made to the source code,
+as I begun to try to make this version into a working version:
+	- hol90 will now be compiled in an environment were no
+structures can be considered opn.  This means many structures
+now need "open Lib" and other such commands at their head.
+This has not yet been completed, but has been begun.
+	- "rotl" and "rotr" have been added to Lib, something
+which I just did impulsively.   Documentation files
+have also been added in help/90.
+@
+text
+@d43 2
+a44 2
+  val print_theory_to_outstream : {outstream:IO.outstream, theory:string}
+                               -> IO.outstream
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d3 1
+a3 1
+structure Thm : Thm_sig
+d6 8
+a13 8
+val new_parent : string -> unit
+val new_type : {Name : string, Arity : int} -> unit
+val new_constant :{Name : string, Ty : Thm.Term.Type.hol_type} -> unit
+val new_infix : {Name : string, Ty : Thm.Term.Type.hol_type, Prec :int} -> unit
+val new_binder : {Name : string, Ty : Thm.Term.Type.hol_type} -> unit
+val new_open_axiom : (string * Thm.Term.term) -> Thm.thm
+val store_definition : (string * Thm.Term.term) -> Thm.thm
+val save_thm : (string * Thm.thm) -> Thm.thm
+d16 11
+a26 11
+val arity : string -> int
+val fixity : string -> Thm.Term.fixity
+val precedence : string -> int
+val const_decl : string -> {const:Thm.Term.term,
+                            theory : string,
+                            place: Thm.Term.fixity}
+
+val is_constant : string -> bool
+val is_type : string -> bool
+val is_binder : string -> bool
+val is_infix : string -> bool
+d29 19
+a47 16
+val draft_mode : unit -> bool
+val current_theory : unit -> string
+val parents : string -> string list
+val ancestry : string -> string list
+val types : string -> {Name : string, Arity : int} list
+val constants : string -> Thm.Term.term list
+val infixes : string -> Thm.Term.term list
+val binders : string -> Thm.Term.term list
+val axioms : string -> (string * Thm.thm) list
+val axiom : string -> string -> Thm.thm
+val definitions : string -> (string * Thm.thm) list
+val definition : string -> string -> Thm.thm
+val theorems : string -> (string * Thm.thm) list
+val theorem : string -> string -> Thm.thm
+val print_theory : string -> unit
+val html_theory : string -> unit
+d50 4
+a53 4
+val new_theory : string -> unit
+val close_theory : unit -> unit
+val load_theory : string -> unit
+val extend_theory : string -> unit
+d56 2
+a57 2
+val export_theory : unit -> unit
+val close : unit -> unit
+d60 3
+a62 3
+val delete_cache : unit -> unit
+val delete_theory_from_cache : string -> unit
+val theories_in_cache : unit -> string list
+d65 2
+a66 1
+val perform_atomic_theory_op : (unit -> 'a) -> 'a
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@
+
+
+1.1.1.1.2.1
+log
+@	Konrad's bug fixes and further development to hol90.7 after it's release.
+	Checked n on a side branch for later merging with the main trunk
+	(Elsa's revisions).  See doc/7.changes for details.
+@
+text
+@d3 1
+a3 1
+  structure Thm : Thm_sig
+d6 8
+a13 8
+  val new_parent : string -> unit
+  val new_type : {Name : string, Arity : int} -> unit
+  val new_constant :{Name : string, Ty : Thm.Term.Type.hol_type} -> unit
+  val new_infix : {Name: string, Ty: Thm.Term.Type.hol_type, Prec: int} -> unit
+  val new_binder : {Name : string, Ty : Thm.Term.Type.hol_type} -> unit
+  val new_open_axiom : (string * Thm.Term.term) -> Thm.thm
+  val store_definition : (string * Thm.Term.term) -> Thm.thm
+  val save_thm : (string * Thm.thm) -> Thm.thm
+d16 11
+a26 11
+  val arity : string -> int
+  val fixity : string -> Thm.Term.fixity
+  val precedence : string -> int
+  val const_decl : string -> {const:Thm.Term.term,
+                              theory : string,
+                              place: Thm.Term.fixity}
+
+  val is_constant : string -> bool
+  val is_type : string -> bool
+  val is_binder : string -> bool
+  val is_infix : string -> bool
+d29 16
+a44 16
+  val draft_mode : unit -> bool
+  val current_theory : unit -> string
+  val parents : string -> string list
+  val ancestry : string -> string list
+  val types : string -> {Name : string, Arity : int} list
+  val constants : string -> Thm.Term.term list
+  val infixes : string -> Thm.Term.term list
+  val binders : string -> Thm.Term.term list
+  val axioms : string -> (string * Thm.thm) list
+  val axiom : string -> string -> Thm.thm
+  val definitions : string -> (string * Thm.thm) list
+  val definition : string -> string -> Thm.thm
+  val theorems : string -> (string * Thm.thm) list
+  val theorem : string -> string -> Thm.thm
+  val print_theory : string -> unit
+  val html_theory : string -> unit
+d47 4
+a50 4
+  val new_theory : string -> unit
+  val close_theory : unit -> unit
+  val load_theory : string -> unit
+  val extend_theory : string -> unit
+d53 2
+a54 2
+  val export_theory : unit -> unit
+  val close : unit -> unit
+d57 3
+a59 3
+  val delete_cache : unit -> unit
+  val delete_theory_from_cache : string -> unit
+  val theories_in_cache : unit -> string list
+d62 1
+a62 2
+  val perform_atomic_theory_op : (unit -> 'a) -> 'a
+
+@

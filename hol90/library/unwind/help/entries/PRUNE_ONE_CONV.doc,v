@@ -1,0 +1,103 @@
+head	1.1;
+branch	1.1.1;
+access;
+symbols
+	HOL97:1.1.1.1.0.6
+	bpHOL97:1.1.1.1
+	hol90_9_alpha:1.1.1.1
+	hol90_pre8_for_multiple_compilers:1.1.1.1.0.4
+	hol90_pre8_after_donalds_separate_compilation_changes:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	95.10.16.13.30.32;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.30.32;	author rjb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@\DOC PRUNE_ONE_CONV
+
+\TYPE {PRUNE_ONE_CONV : (string -> conv)}
+
+\SYNOPSIS
+Prunes a specified hidden variable.
+
+\LIBRARY unwind
+
+\DESCRIBE
+{PRUNE_ONE_CONV `lj`} when applied to the term:
+{
+   "?l1 ... lj ... lr. t1 /\ ... /\ ti /\ eq /\ t(i+1) /\ ... /\ tp"
+}
+\noindent returns a theorem of the form:
+{
+   |- (?l1 ... lj ... lr. t1 /\ ... /\ ti /\ eq /\ t(i+1) /\ ... /\ tp) =
+      (?l1 ... l(j-1) l(j+1) ... lr. t1 /\ ... /\ ti /\ t(i+1) /\ ... /\ tp)
+}
+\noindent where {eq} has the form {"!y1 ... ym. lj x1 ... xn = b"} and {lj}
+does not appear free in the {ti}'s or in {b}. The conversion works if {eq} is
+not present, that is if {lj} is not free in any of the conjuncts, but does not
+work if {lj} appears free in more than one of the conjuncts. Each of {m}, {n}
+and {p} may be zero.
+
+If there is more than one line with the specified name (but with different
+types), the one that appears outermost in the existential quantifications is
+pruned.
+
+\FAILURE
+Fails if the argument term is not of the specified form or if {lj} is free in
+more than one of the conjuncts or if the equation for {lj} is recursive. The
+function also fails if the specified line is not one of the existentially
+quantified lines.
+
+\EXAMPLE
+{
+#PRUNE_ONE_CONV `l2` "?l2 l1. (!(x:num). l1 x = F) /\ (!x. l2 x = ~(l1 x))";;
+|- (?l2 l1. (!x. l1 x = F) /\ (!x. l2 x = ~l1 x)) = (?l1. !x. l1 x = F)
+
+#PRUNE_ONE_CONV `l1` "?l2 l1. (!(x:num). l1 x = F) /\ (!x. l2 x = ~(l1 x))";; 
+evaluation failed     PRUNE_ONE_CONV
+}
+\SEEALSO
+PRUNE_ONCE_CONV, PRUNE_SOME_CONV, PRUNE_CONV, PRUNE_SOME_RIGHT_RULE,
+PRUNE_RIGHT_RULE.
+
+\ENDDOC
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

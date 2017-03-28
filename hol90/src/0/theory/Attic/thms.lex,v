@@ -1,0 +1,242 @@
+head	1.5;
+access;
+symbols
+	HOL97:1.4.0.4
+	bpHOL97:1.4
+	hol90_9_alpha:1.4
+	hol90_pre8_for_multiple_compilers:1.4.0.2
+	last_edition:1.4
+	hol90_pre8_after_donalds_separate_compilation_changes:1.3
+	hol90_8_after_merging_Konrad_Elsa:1.2
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.5
+date	96.02.08.00.24.12;	author drs1004;	state dead;
+branches;
+next	1.4;
+
+1.4
+date	95.11.15.13.31.01;	author rjb;	state Exp;
+branches
+	1.4.4.1;
+next	1.3;
+
+1.3
+date	95.10.31.15.06.34;	author drs1004;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	95.10.18.16.38.01;	author drs1004;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	95.10.16.13.30.12;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.30.12;	author rjb;	state Exp;
+branches;
+next	;
+
+1.4.4.1
+date	97.06.11.17.26.16;	author kxs;	state dead;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.5
+log
+@New theory mechanism, by Donald Syme
+@
+text
+@type pos = int;
+val line:pos = 0;
+type svalue = Tokens.svalue;
+type ('a,'b) token = ('a,'b) Tokens.token;
+type lexresult = (svalue,pos) Tokens.token;
+
+fun error(s,_,_) = output(std_out,"thms lexer error: "^s^"\n");
+
+fun eof () = Tokens.EOF(line,line);
+val quote_list = ref ([]:string list);
+exception LEX_ERR of string;
+
+(* Lexical difficulties here: some derived principles of definition may
+   define symbolic constants, and need to generate a name to store the
+   definition with on a theory file. Usually this name generation is done
+   by prepending the name of the constant being defined with "_DEF". This 
+   can give us strange names, like 
+
+       ;;_DEF
+
+   which I just got bit by. How to handle? I'm going to be subtle and give
+   {symb}?{id} as a possible name. Warning! (I don't know why I'm putting
+   this here, but ...) We will be now able to have theory bindings on
+   disk that are not autoloadable, which is OK, because this is checked
+   for in add_to_sml.
+*)
+
+(* The next "end" closes the UserDeclarations structure in the compiled file
+   so that the declarations below are available in the rest of the compiled
+   code. The Empty structure then matches with the "end" that should have
+   closed the UserDeclarations structure.
+*)
+end
+
+val substring = Portable.String.substring;
+val ordof = Portable.String.ordof;
+val concat = Portable.String.concat;
+structure Vector = Portable.Vector;
+
+structure Empty =
+struct
+%%
+%header (functor THMS_LEX(structure Tokens : thms_TOKENS));
+
+%s QWOTE ;
+ws = [\ \t \010 \012];
+num = ([0-9]+);
+symb = ([#\?\+\*\/\\\=\<\>&%@@!:\,\;_\|\~-]+);
+id = ({symb}?([A-Za-z_']|[0-9])+);
+%%
+<INITIAL>\n => (continue());
+<INITIAL>{ws}+ => (continue());
+<INITIAL>"[" => (Tokens.lbracket(line,line));
+<INITIAL>"]" => (Tokens.rbracket(line,line));
+<INITIAL>"(" => (Tokens.lparen(line,line));
+<INITIAL>")" => (Tokens.rparen(line,line));
+<INITIAL>"=" => (Tokens.eq(line,line));
+<INITIAL>"," => (Tokens.comma(line,line));
+<INITIAL>"thid" => (Tokens.thid(line,line));
+<INITIAL>"axioms" => (Tokens.axioms(line,line));
+<INITIAL>"definitions" => (Tokens.definitions(line,line));
+<INITIAL>"theorems" => (Tokens.theorems(line,line));
+<INITIAL>{num} => (Tokens.num(yytext,line,line));
+<INITIAL>{id} => (Tokens.id(yytext,line,line));
+<INITIAL>{symb} => (Tokens.id(yytext,line,line));
+<INITIAL>"`" => (YYBEGIN QWOTE; quote_list := []; continue());
+<INITIAL>. => (raise LEX_ERR "INITIAL.catchall");
+
+<QWOTE>"`" => (YYBEGIN INITIAL;
+               Tokens.quote(Portable.String.concat (rev (!quote_list)),line,line));
+<QWOTE>\n => (quote_list := yytext::(!quote_list); continue());
+<QWOTE>. => (quote_list := yytext::(!quote_list); continue());
+@
+
+
+1.4
+log
+@The HOL90 sources have been changed to allow for the use of different
+Standard ML compilers (possibly simultaneously).
+
+ * Many files in "src/0" changed to make them more portable across different
+   ML compilers. Various additions have been made to the Portable structure
+   and files changed to access identifiers in the Portable structure rather
+   than from the global environment. Worthy of special note are:
+
+   - The pointer equality used in "src/0/term.sml" has been made into a
+     function in the Portable structure.
+
+   - The ML-Lex and ML-Yacc files for the various parsers have been changed
+     to access the Portable structure. Both the source files and the SML
+     produced from them have been changed but I have not verified that the
+     source files would reproduce the new SML versions if ML-Lex and ML-Yacc
+     were to be rerun on them. The changes involve some hacks that exploit the
+     way ML-Lex and ML-Yacc work. See the sources for details.
+
+R.J.Boulton, 15th November 1995.
+@
+text
+@@
+
+
+1.4.4.1
+log
+@Removed files are parse files and portability files that have
+effectively been moved elsewhere.
+
+Modified files are up to date for ML 109.26.
+@
+text
+@@
+
+
+1.3
+log
+@First phase of hol90.8 development.  hol90 now compiles using NJSML-CM
+108.5, with separate compilation of libraries.  System dependencies
+have been isolated in the makefiles and "portable.sml".
+
+This involved a large number of enhancments to the source files,
+most of which are documented in the 7.changes file (or will be shortly).
+See also the correpsonding email corrspondence between RJB, KLS, TFM,
+JRH and DRS that happened during this development.
+@
+text
+@d28 14
+@
+
+
+1.2
+log
+@Check in after merging in Konrad's changes made after
+the release of hol90.7.  This involved creating a side branch
+in which to check in Konrad's changes, then merging in that
+side branch into the main development (which contains changes
+made by Elsa Gunter).
+
+Some other small modification have been made to the source code,
+as I begun to try to make this version into a working version:
+	- hol90 will now be compiled in an environment were no
+structures can be considered opn.  This means many structures
+now need "open Lib" and other such commands at their head.
+This has not yet been completed, but has been begun.
+	- "rotl" and "rotr" have been added to Lib, something
+which I just did impulsively.   Documentation files
+have also been added in help/90.
+@
+text
+@d56 1
+a56 1
+               Tokens.quote(Sml_system.String.concat (rev (!quote_list)),line,line));
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d56 1
+a56 1
+               Tokens.quote(implode (rev (!quote_list)),line,line));
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

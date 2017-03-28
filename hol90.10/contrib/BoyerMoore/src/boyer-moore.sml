@@ -1,0 +1,15 @@
+load_library_in_place num_lib;
+Lib.compile "support.sml";
+Lib.compile "struct_equal.sml";
+Lib.compile "shells.sml";
+Lib.compile "environment.sml";
+Lib.compile "clausal_form.sml";
+Lib.compile "waterfall.sml";
+Lib.compile "rewrite_rules.sml";
+Lib.compile "definitions.sml";
+Lib.compile "terms_and_clauses.sml";
+Lib.compile "equalities.sml";
+Lib.compile "generalize.sml";
+Lib.compile "irrelevance.sml";
+Lib.compile "induction.sml";
+Lib.compile "main.sml";

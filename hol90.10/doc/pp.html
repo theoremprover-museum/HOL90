@@ -1,0 +1,457 @@
+<TITLE>Prettyprinting HOL Expressions</TITLE>
+
+<H1><A NAME = "Beginning">Prettyprinting HOL Expressions</A></H1>
+
+For many of the types defined in HOL, there are prettyprinters available
+to print values of these types in an intelligible way. Among these types
+are <STRONG>hol_type</STRONG>, <STRONG>term</STRONG>,
+<STRONG>thm</STRONG>, <STRONG>lib</STRONG>, and
+<STRONG>rewrites</STRONG>. These have been installed in a system
+prettyprinter table, so that when the system prints values of these
+types, the special prettyprinter is automatically invoked on the
+value. This saves on explicit invocation of prettyprinters, making
+interaction more pleasant.
+
+<H2><A NAME = "Extending PP">Extending the prettyprinters</A></H1>
+
+Most of the HOL prettyprinters depend on the prettyprinters for types
+and terms. Thanks to Richard Boulton, these have been made extensible.
+The structure <KBD>Extend_hol_pp</KBD> contains functions for
+incrementally extending the system pretty-printers for HOL types and
+terms, and for resetting them to their original state. The signature of
+this structure is:
+
+<PRE>
+    sig
+       datatype gravity = TOP | APPL | INFIX of int | WEAK | BOTTOM
+       val gravity_geq : gravity -> gravity -> bool
+
+       val extend_pp_type :
+          (({depth:int, gravity:gravity} ->
+            Term.Type.hol_type -> PP.ppstream -> unit) ->
+           ({depth:int, gravity:gravity} ->
+            Term.Type.hol_type -> PP.ppstream -> unit)) -> unit
+
+       val extend_pp_term :
+          (({boundvars:Term.term list, depth:int, gravity:gravity} ->
+            Term.term -> PP.ppstream -> unit) ->
+           ({boundvars:Term.term list, depth:int, gravity:gravity} ->
+            Term.term -> PP.ppstream -> unit)) -> unit
+
+       val reset_pp_type : unit -> unit
+       val reset_pp_term : unit -> unit
+    end
+</PRE>
+
+Considering terms (and by analogy, types), there are two functions: one
+to extend the printer; the other to reset it to the start-up
+state. Users can provide a special-purpose pretty-printing function for
+whatever special printing behaviour they require.  This function will be
+tried first on each call (top-level and recursive) to the
+pretty-printer. If it fails for any reason, the original printer (or the
+previously extended version) is called.
+
+<P>
+
+The argument types to the extension functions are complex. Let's dissect
+the type of <KBD>extend_pp_term</KBD>; to start, it takes a function and
+returns <KBD>`()'</KBD> (the only value of type <KBD>unit</KBD>). This
+function has the following type:
+
+<PRE>
+    ({boundvars:Term.term list, depth:int, gravity:gravity} ->
+        Term.term -> PP.ppstream -> unit) ->
+    ({boundvars:Term.term list, depth:int, gravity:gravity} ->
+        Term.term -> PP.ppstream -> unit)
+</PRE>
+
+Its first argument is a pretty-printing function. Let us forget about
+this argument for the moment, leaving us with a function of type:
+<PRE>
+    {boundvars:Term.term list, depth:int, gravity:gravity}
+      -> Term.term -> PP.ppstream -> unit
+</PRE>
+
+If we also ignore the first argument of this function (it represents the
+changing context that the function will operate in), we are left with a
+function of type:
+<PRE>
+    Term.term -> PP.ppstream -> unit
+</PRE>
+
+which (ought to) make some sense as a pretty-printing function which
+takes a term and pretty-prints it on the specified <KBD>ppstream</KBD>
+before returning <KBD>`()'</KBD>. The <A HREF = "manual.html#Using
+SML">documentation for SML of New Jersey</A> should be consulted for
+more information on the <KBD>ppstream</KBD> type.
+
+<P>
+
+Now we return to the context parameter. The special-purpose
+prettyprinter must handle the context that it is called in. The context
+is a record with fields <EM>boundvars</EM>, <EM>depth</EM>, and
+<EM>gravity</EM>. These fields are used to decide how to print the
+current subterm, and are modified for recursive calls to the
+prettyprinter.
+
+<DL>
+<DT><STRONG>boundvars</STRONG>
+<DD> The <KBD>boundvars</KBD> argument is a list of the
+bound variables of the abstractions passed through in descending the
+term, the <EM>scope</EM> in other words. The list is indexed by the de
+Bruijn number when a bound variable needs to be printed. Unless your
+prettyprinter is processing terms involving lambda-abstractions this
+value can be passed on unchanged. However, if you are doing processing
+of such binders, the binding occurrences of variables should be put on
+the <KBD>boundvars</KBD> list in order of textual occurrence,
+<EM>i.e.</EM>, <KBD>boundvars</KBD> is treated like a stack.
+
+<DT> <STRONG>depth</STRONG>
+<DD>The <KBD>depth</KBD> argument to
+the print functions is the print depth; it should be decremented on each
+recursive call. When it reaches zero, the subterm is elided. Starting
+with a negative value prevents elision from occurring regardless of how
+deep the term is. 
+
+<DT><STRONG>gravity</STRONG>
+<DD>The datatype for precedence (called <KBD>gravity</KBD>) is available to
+the user. There are five constructors. <KBD>TOP</KBD> is the highest
+(most-tightly binding) precedence; <KBD>APPL</KBD> is for applications,
+<KBD>INFIX</KBD> is for the infix operators and takes an integer
+argument; <KBD>WEAK</KBD> is used for bindings and for mixfixes such as
+conditional expressions; and <KBD>BOTTOM</KBD> is the lowest precedence
+value. Generally, if the gravity of the context is greater or equal to
+that of the current subterm, then the current subterm should be bracketed.
+</DL>
+
+<P>
+<H2>Example</H2>
+
+<P>
+
+The use of the extensibility functions is illustrated in the session
+below in which a function to print conditional expressions as 
+
+<PRE>
+    <STRONG>if</STRONG> <VAR>term</VAR> <STRONG>then</STRONG> <VAR>term</VAR> <STRONG>else</STRONG> <VAR>term</VAR>
+</PRE>
+
+instead of as 
+
+<PRE>
+    <VAR>term</VAR> <STRONG>=></STRONG> <VAR>term</VAR> <STRONG>|</STRONG> <VAR>term</VAR></KBD>
+</PRE>
+
+is installed. Note that the call to <KBD>dest_cond</KBD> fails if the term
+is not a conditional expression and so forces the original printer to be
+used. The following is the definition of the custom prettyprinting function:
+
+<PRE>
+    local open PP Extend_hol_pp
+    in
+    fun pp_ite pp_tm {boundvars:term list,depth,gravity} tm ppstrm =
+       if (depth = 0)
+       then raise Fail "pp_ite"
+       else let val {cond,larm,rarm} = dest_cond tm
+                val parenth = gravity_geq gravity WEAK
+                val params = {boundvars=boundvars,depth=depth-1,gravity=TOP}
+            in  
+                if parenth then add_string ppstrm "(" else ();
+                begin_block ppstrm CONSISTENT 0;
+                add_string ppstrm "if ";
+                (pp_tm params cond ppstrm : unit);
+                add_break ppstrm (1,0);
+                add_string ppstrm "then ";
+                pp_tm params larm ppstrm;
+                add_break ppstrm (1,0);
+                add_string ppstrm "else ";
+                pp_tm params rarm ppstrm;
+                end_block ppstrm;
+                if parenth then add_string ppstrm ")" else ()
+            end
+      end;
+</PRE>
+
+Let us bind a test case:
+<PRE>
+    - val tm = (--`APPEND ((n = 0) => [] | [n]) [1;2;3]`--);
+
+    val tm = (--`APPEND ((n = 0) => [] | [n]) [1; 2; 3]`--) : term
+
+</PRE>
+
+Now, we extend the system prettyprinter and test it:
+<PRE>
+    - Extend_hol_pp.extend_pp_term pp_ite;
+
+    val it = () : unit
+
+    - tm;
+
+    val it = (--`APPEND (<STRONG>if</STRONG> (n = 0) <STRONG>then</STRONG> [] <STRONG>else</STRONG> [n]) [1; 2; 3]`--) : term
+
+    - Extend_hol_pp.reset_pp_term ();
+
+    val it = () : unit
+
+    - tm;
+
+    val it = (--`APPEND ((n = 0) => [] | [n]) [1; 2; 3]`--) : term
+</PRE>
+
+
+<H2>How to develop a special-purpose prettyprinter</H2>
+
+It's not so simple to see how to go about writing a custom
+prettyprinter, so we will step through an example of such a
+development. (The example and a lot of the accompanying commentary has
+been taken from a message Richard Boulton sent to the <EM>info-hol</EM>
+mailing list on June 24, 1994.)
+
+<P>
+
+Suppose we want to pretty-print the list <KBD>APPEND</KBD> function as
+an infix (<STRONG>@</STRONG>). First let's bind an example term:
+<PRE>
+    val tm = (--`APPEND [1;2] [3;4;5]`--);
+
+</PRE>
+
+and set-up a ppstream to write to <KBD>std_out</KBD>:
+<PRE>
+    - val std_pps =
+       System.PrettyPrint.mk_ppstream
+          {consumer = (fn s => output (std_out,s)),
+           flush = (fn () => ()),
+           linewidth = 78};
+
+    val std_pps = - : System.PrettyPrint.ppstream
+</PRE>
+
+Now, a first attempt at defining a pretty-printing function would be the
+following:
+
+<PRE>
+    fun pp_append tm ppstrm =
+       let val {Rator,Rand = list2} = dest_comb tm
+           val {Rator,Rand = list1} = dest_comb Rator
+       in  if #Name(dest_const Rator) = "APPEND"
+           then (System.PrettyPrint.begin_block ppstrm
+                    System.PrettyPrint.INCONSISTENT 3;
+                 pp_term ppstrm list1;
+                 System.PrettyPrint.add_break ppstrm (1,0);
+                 System.PrettyPrint.add_string ppstrm "@";
+                 System.PrettyPrint.add_break ppstrm (1,0);
+                 pp_term ppstrm list2;
+                 System.PrettyPrint.end_block ppstrm)
+           else raise Fail ""
+       end;
+</PRE>
+
+The applications of the destructor functions (<KBD>dest_comb</KBD> and
+<KBD>dest_const</KBD>) cause an exception to be raised if the term is
+anything other than a constant applied to two arguments. An explicit
+test is included to make sure the constant is <KBD>APPEND</KBD>. To
+process the arguments of <KBD>APPEND</KBD>, <KBD>pp_term</KBD> (the
+top-level pretty-printing function for terms) is applied to them.
+<P>
+Let's try this function on our example term:
+<PRE>
+    - pp_append tm std_pps;
+
+    val it = () : unit
+</PRE>
+
+Nothing is displayed because the ppstream has not been flushed! Let's do
+that:
+<PRE>
+    - System.PrettyPrint.flush_ppstream std_pps;
+
+    [1; 2] <STRONG>@</STRONG> [3; 4; 5]val it = () : unit
+</PRE>
+
+To avoid tedium later, we define a function to apply a pretty-printing
+function and flush the <KBD>ppstream</KBD> (and add a newline):
+<PRE>
+    - fun display f x =
+       (System.PrettyPrint.begin_block std_pps 
+                          System.PrettyPrint.INCONSISTENT 0;
+        f x std_pps;
+        System.PrettyPrint.add_newline std_pps;
+        System.PrettyPrint.end_block std_pps;
+        System.PrettyPrint.flush_ppstream std_pps);
+</PRE>
+
+Trying the example again we get:
+<PRE>
+    - display pp_append tm;
+
+    [1; 2] <STRONG>@</STRONG> [3; 4; 5]
+    val it = () : unit
+</PRE>
+
+The custom prettyprinter must fail on non-conforming terms:
+<PRE>
+    - display pp_append (--`1 + 3`--);
+
+    uncaught exception Fail ""
+
+    - display pp_append (--`T`--);
+
+    uncaught exception HOL_ERR
+</PRE>
+
+In principle, this is all that needs to be done for this example. We can
+now define a function suitable for the extension facility by just
+throwing away the first two arguments:
+
+<PRE>
+    - fun pp_append_extension _ _ tm = pp_append tm;
+
+    val pp_append_extension = fn
+      : 'a -> 'b -> term -> System.PrettyPrint.ppstream -> unit
+</PRE>
+Let's install this extension and see whether it works:
+<PRE>
+    - Extend_hol_pp.extend_pp_term pp_append_extension;
+
+    val it = () : unit
+
+    - tm;
+
+    val it = (--`[1; 2] <STRONG>@</STRONG> [3; 4; 5]`--) : term
+
+    - Extend_hol_pp.reset_pp_term ();
+</PRE>
+
+
+<H3>Handling context</H3>
+
+So what are the first two arguments for? They are for making recursive
+calls and making use of the context. Let us go back to the definition 
+of <KBD>pp_append</KBD>.
+<PRE>
+    fun pp_append tm ppstrm =
+     let val {Rator,Rand = list2} = dest_comb tm
+         val {Rator,Rand = list1} = dest_comb Rator
+     in  if #Name(dest_const Rator) = "APPEND"
+         then (System.PrettyPrint.begin_block ppstrm
+                  System.PrettyPrint.INCONSISTENT 3;
+               <STRONG>pp_term ppstrm list1;</STRONG>
+               System.PrettyPrint.add_break ppstrm (1,0);
+               System.PrettyPrint.add_string ppstrm "@";
+               System.PrettyPrint.add_break ppstrm (1,0);
+               <STRONG>pp_term ppstrm list2;</STRONG>
+               System.PrettyPrint.end_block ppstrm)
+         else raise Fail ""
+     end;
+</PRE>
+
+To pretty-print the arguments of <KBD>APPEND</KBD> we are calling the
+<EM>top-level</EM> term printing function <KBD>pp_term</KBD> (bound to
+<KBD>Hol_pp.pp_term</KBD>, in a vanilla hol90 system).  This appears to
+work for the example, but it is not apt to be satisfactory in general
+because <KBD>pp_term</KBD> resets the parameters of the pretty-printer
+to initial values suitable for a top-level prettyprint. These parameters
+appear in the second argument to <KBD>pp_append_extension</KBD>, which
+we ignored, the <EM>context</EM>:
+
+<PRE>
+    {boundvars:Term.term list, depth:int, gravity:gravity}
+</PRE>
+
+<P>
+
+So, how do we pass the current context to recursive calls of the term
+printer when <KBD>pp_term</KBD> doesn't take its context as an argument?
+Well, that's what the first argument we ignored is for; it's a
+<EM>recursor</EM>, a "context-sensitive" version of the current
+<KBD>pp_term</KBD> with type:
+
+<PRE>
+    {boundvars:Term.term list, depth:int, gravity:gravity}
+     -> Term.term -> PP.ppstream -> unit
+</PRE>
+
+At run time the system will pass a recursor and a context
+<VAR>{boundvars, depth,gravity}</VAR> as arguments to the following
+improved version of <KBD>pp_append_extension</KBD>. To perform a
+recursive prettyprint, the recursor should be invoked on an
+appropriately adjusted context. For example, we might have the following
+recursive calls and context-sensitive actions in a realistic HOL
+prettyprinter extension:
+
+<PRE>
+    local open PP Extend_hol_pp
+    in
+    fun pp_append_extension' recursor {boundvars,depth,gravity} tm ppstrm =
+       <STRONG>if (depth = 0) then add_string ppstrm "&lt;term&gt;"</STRONG>
+       else
+       let val {Rator,Rand = list2} = dest_comb tm
+           val {Rator,Rand = list1} = dest_comb Rator
+       in
+       if #Name(dest_const Rator) = "APPEND"
+       then let <STRONG>val my_gravity = INFIX 600</STRONG>
+                <STRONG>fun parenth s = </STRONG>
+                     <STRONG>if (gravity_geq gravity my_gravity)</STRONG>
+                     <STRONG>then add_string ppstrm s else ()</STRONG>
+                 <STRONG>val context' = {depth=depth-1,gravity=my_gravity,</STRONG>
+                               <STRONG>boundvars=boundvars}</STRONG>
+            in 
+               begin_block ppstrm System.PrettyPrint.INCONSISTENT 3;
+               <STRONG>parenth "(";</STRONG>
+               <STRONG>recursor context' list1 ppstrm;</STRONG>
+               System.PrettyPrint.add_break ppstrm (1,0);
+               System.PrettyPrint.add_string ppstrm "@";
+               System.PrettyPrint.add_break ppstrm (1,0);
+               <STRONG>recursor context' list2 ppstrm;</STRONG>
+               <STRONG>parenth ")";</STRONG>
+               end_block ppstrm
+            end
+       else raise Fail ""
+       end
+    end;
+</PRE>
+
+The following examples show how context is being tracked. The first
+shows that brackets are appropriately added when the <KBD>APPEND</KBD>
+occurs in a higher binding context; the second shows the opposite
+situation. 
+<PRE>
+    - Extend_hol_pp.extend_pp_term pp_append_extension';
+
+    - --`P (APPEND [1;2;3] [4;5;6]):bool`--;
+
+    val it = (--`P <STRONG>(</STRONG>[1; 2; 3] <STRONG>@</STRONG> [4; 5; 6]<STRONG>)</STRONG>`--) : term
+
+    - --`APPEND [1;2;3] [4;5;6] = APPEND [1] [7;8;9]`--;
+
+    val it = (--`[1; 2; 3] <STRONG>@</STRONG> [4; 5; 6] <STRONG>=</STRONG> [1] <STRONG>@</STRONG> [7; 8; 9]`--) : term
+</PRE>
+
+The last examples show that depth is being monitored appropriately.
+Notice that the standard prettyprinter has a different notion of
+ellipsis!
+<PRE>
+    - Globals.max_print_depth := 2;
+    val it = () : unit
+
+    - --`P (APPEND [1;2;3] [4;5;6]):bool`--;
+
+    val it = (--`P (&lt;term&gt; <STRONG>@</STRONG> &lt;term&gt;)`--) : term
+
+    - --`[APPEND [1;2;3] [4;5;6];[1];[7;8;9]]`--;
+
+    val it = (--`[&lt;term&gt; <STRONG>@</STRONG> &lt;term&gt;; [ ... ]; [ ... ;  ... ;  ... ]]`--) : term
+</PRE>
+
+<HR>
+<A HREF = "manual.html#Table of Contents">User Manual Table of Contents</A>
+<BR>
+<A HREF = "syntax.html#Beginning">Beginning of HOL syntax</A>
+<BR>
+<A HREF = "#Beginning">Beginning of Prettyprinting HOL Expressions</A>
+<BR>
+
+<A HREF="http://www.cl.cam.ac.uk/users/kxs/">Konrad Slind</A>,
+kxs@cl.cam.ac.uk<P>

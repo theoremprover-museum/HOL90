@@ -1,0 +1,425 @@
+<TITLE>Theory: TOPOLOGY</TITLE>
+<H1>Theory: TOPOLOGY</H1>
+<H1>Parents</H1>
+    <UL>
+    <LI><A HREF = "REAL.html"><STRONG>REAL</STRONG></A>
+    </UL>
+
+
+<HR>
+<H1>Type constants</H1>
+    <UL>
+    <LI><STRONG>topology</STRONG>(Arity = 1)
+    <LI><STRONG>metric</STRONG>(Arity = 1)
+    </UL>
+
+
+<HR>
+<H1>Term constants</H1>
+    <UL>
+    <LI><STRONG>re_Union</STRONG><EM>:(('a -> bool) -> bool) -> 'a ->
+                                      bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>re_union</STRONG><EM>:('a -> bool) -> ('a -> bool) -> 'a ->
+                                      bool</EM>
+        <STRONG>{</STRONG>fixity  = Infix 500<STRONG>}</STRONG>
+    <LI><STRONG>re_intersect</STRONG><EM>:('a -> bool) -> ('a -> bool) ->
+                                          'a -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Infix 600<STRONG>}</STRONG>
+    <LI><STRONG>re_null</STRONG><EM>:'a -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>re_universe</STRONG><EM>:'a -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>re_subset</STRONG><EM>:('a -> bool) -> ('a -> bool) ->
+                                       bool</EM>
+        <STRONG>{</STRONG>fixity  = Infix 450<STRONG>}</STRONG>
+    <LI><STRONG>re_compl</STRONG><EM>:('a -> bool) -> 'a -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>istopology</STRONG><EM>:(('a -> bool) -> bool) -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>open</STRONG><EM>:'a topology -> ('a -> bool) -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>topology</STRONG><EM>:(('a -> bool) -> bool) ->
+                                      'a topology</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>neigh</STRONG><EM>:'a topology -> ('a -> bool) # 'a ->
+                                   bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>closed</STRONG><EM>:'a topology -> ('a -> bool) -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>limpt</STRONG><EM>:'a topology -> 'a -> ('a -> bool) ->
+                                   bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>ismet</STRONG><EM>:('a # 'a -> real) -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>dist</STRONG><EM>:'a metric -> 'a # 'a -> real</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>metric</STRONG><EM>:('a # 'a -> real) -> 'a metric</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>mtop</STRONG><EM>:'a metric -> 'a topology</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>B</STRONG><EM>:'a metric -> 'a # real -> 'a -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>mr1</STRONG><EM>:real metric</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    </UL>
+
+
+<HR>
+<H1>Axioms</H1>
+<DL>
+
+</DL>
+
+
+<HR>
+<H1>Definitions</H1>
+<DL>
+<DT><STRONG>re_Union</STRONG>
+<DD>
+<PRE>
+|- !S'. re_Union S' = (\x. ?s. S' s /\ s x)
+</PRE>
+
+<DT><STRONG>re_union</STRONG>
+<DD>
+<PRE>
+|- !P Q. P re_union Q = (\x. P x \/ Q x)
+</PRE>
+
+<DT><STRONG>re_intersect</STRONG>
+<DD>
+<PRE>
+|- !P Q. P re_intersect Q = (\x. P x /\ Q x)
+</PRE>
+
+<DT><STRONG>re_null</STRONG>
+<DD>
+<PRE>
+|- re_null = (\x. F)
+</PRE>
+
+<DT><STRONG>re_universe</STRONG>
+<DD>
+<PRE>
+|- re_universe = (\x. T)
+</PRE>
+
+<DT><STRONG>re_subset</STRONG>
+<DD>
+<PRE>
+|- !P Q. P re_subset Q = (!x. P x ==> Q x)
+</PRE>
+
+<DT><STRONG>re_compl</STRONG>
+<DD>
+<PRE>
+|- !S'. re_compl S' = (\x. ~(S' x))
+</PRE>
+
+<DT><STRONG>istopology</STRONG>
+<DD>
+<PRE>
+|- !L.
+     istopology L =
+     L re_null /\
+     L re_universe /\
+     (!a b. L a /\ L b ==> L (a re_intersect b)) /\
+     (!P. P re_subset L ==> L (re_Union P))
+</PRE>
+
+<DT><STRONG>topology_TY_DEF</STRONG>
+<DD>
+<PRE>
+|- ?rep. TYPE_DEFINITION istopology rep
+</PRE>
+
+<DT><STRONG>topology_tybij</STRONG>
+<DD>
+<PRE>
+|- (!a. topology (open a) = a) /\ (!r. istopology r = open (topology r) = r)
+</PRE>
+
+<DT><STRONG>neigh</STRONG>
+<DD>
+<PRE>
+|- !top N x. neigh top (N,x) = (?P. open top P /\ P re_subset N /\ P x)
+</PRE>
+
+<DT><STRONG>closed</STRONG>
+<DD>
+<PRE>
+|- !L S'. closed L S' = open L (re_compl S')
+</PRE>
+
+<DT><STRONG>limpt</STRONG>
+<DD>
+<PRE>
+|- !top x S'.
+     limpt top x S' = (!N. neigh top (N,x) ==> (?y. ~(x = y) /\ S' y /\ N y))
+</PRE>
+
+<DT><STRONG>ismet</STRONG>
+<DD>
+<PRE>
+|- !m.
+     ismet m =
+     (!x y. (m (x,y) = & 0) = x = y) /\
+     (!x y z. m (y,z) |<=| m (x,y) |+| m (x,z))
+</PRE>
+
+<DT><STRONG>metric_TY_DEF</STRONG>
+<DD>
+<PRE>
+|- ?rep. TYPE_DEFINITION ismet rep
+</PRE>
+
+<DT><STRONG>metric_tybij</STRONG>
+<DD>
+<PRE>
+|- (!a. metric (dist a) = a) /\ (!r. ismet r = dist (metric r) = r)
+</PRE>
+
+<DT><STRONG>mtop</STRONG>
+<DD>
+<PRE>
+|- !m.
+     mtop m =
+     topology
+       (\S'.
+         !x. S' x ==> (?e. & 0 |<| e /\ (!y. dist m (x,y) |<| e ==> S' y)))
+</PRE>
+
+<DT><STRONG>ball</STRONG>
+<DD>
+<PRE>
+|- !m x e. B m (x,e) = (\y. dist m (x,y) |<| e)
+</PRE>
+
+<DT><STRONG>mr1</STRONG>
+<DD>
+<PRE>
+|- mr1 = metric (\(x,y). abs (y |-| x))
+</PRE>
+
+</DL>
+
+
+<HR>
+<H1>Theorems</H1>
+<DL>
+<DT><STRONG>SUBSET_REFL</STRONG>
+<DD>
+<PRE>
+|- !S'. S' re_subset S'
+</PRE>
+
+<DT><STRONG>COMPL_MEM</STRONG>
+<DD>
+<PRE>
+|- !S' x. S' x = ~(re_compl S' x)
+</PRE>
+
+<DT><STRONG>SUBSET_ANTISYM</STRONG>
+<DD>
+<PRE>
+|- !P Q. P re_subset Q /\ Q re_subset P = P = Q
+</PRE>
+
+<DT><STRONG>SUBSET_TRANS</STRONG>
+<DD>
+<PRE>
+|- !P Q R. P re_subset Q /\ Q re_subset R ==> P re_subset R
+</PRE>
+
+<DT><STRONG>TOPOLOGY</STRONG>
+<DD>
+<PRE>
+|- !L.
+     open L re_null /\
+     open L re_universe /\
+     (!x y. open L x /\ open L y ==> open L (x re_intersect y)) /\
+     (!P. P re_subset open L ==> open L (re_Union P))
+</PRE>
+
+<DT><STRONG>TOPOLOGY_UNION</STRONG>
+<DD>
+<PRE>
+|- !L P. P re_subset open L ==> open L (re_Union P)
+</PRE>
+
+<DT><STRONG>OPEN_OWN_NEIGH</STRONG>
+<DD>
+<PRE>
+|- !S' top x. open top S' /\ S' x ==> neigh top (S',x)
+</PRE>
+
+<DT><STRONG>OPEN_UNOPEN</STRONG>
+<DD>
+<PRE>
+|- !S' top. open top S' = re_Union (\P. open top P /\ P re_subset S') = S'
+</PRE>
+
+<DT><STRONG>OPEN_SUBOPEN</STRONG>
+<DD>
+<PRE>
+|- !S' top.
+     open top S' = (!x. S' x ==> (?P. P x /\ open top P /\ P re_subset S'))
+</PRE>
+
+<DT><STRONG>OPEN_NEIGH</STRONG>
+<DD>
+<PRE>
+|- !S' top.
+     open top S' = (!x. S' x ==> (?N. neigh top (N,x) /\ N re_subset S'))
+</PRE>
+
+<DT><STRONG>CLOSED_LIMPT</STRONG>
+<DD>
+<PRE>
+|- !top S'. closed top S' = (!x. limpt top x S' ==> S' x)
+</PRE>
+
+<DT><STRONG>METRIC_ISMET</STRONG>
+<DD>
+<PRE>
+|- !m. ismet (dist m)
+</PRE>
+
+<DT><STRONG>METRIC_ZERO</STRONG>
+<DD>
+<PRE>
+|- !m x y. (dist m (x,y) = & 0) = x = y
+</PRE>
+
+<DT><STRONG>METRIC_SAME</STRONG>
+<DD>
+<PRE>
+|- !m x. dist m (x,x) = & 0
+</PRE>
+
+<DT><STRONG>METRIC_POS</STRONG>
+<DD>
+<PRE>
+|- !m x y. & 0 |<=| dist m (x,y)
+</PRE>
+
+<DT><STRONG>METRIC_SYM</STRONG>
+<DD>
+<PRE>
+|- !m x y. dist m (x,y) = dist m (y,x)
+</PRE>
+
+<DT><STRONG>METRIC_TRIANGLE</STRONG>
+<DD>
+<PRE>
+|- !m x y z. dist m (x,z) |<=| dist m (x,y) |+| dist m (y,z)
+</PRE>
+
+<DT><STRONG>METRIC_NZ</STRONG>
+<DD>
+<PRE>
+|- !m x y. ~(x = y) ==> & 0 |<| dist m (x,y)
+</PRE>
+
+<DT><STRONG>mtop_istopology</STRONG>
+<DD>
+<PRE>
+|- !m.
+     istopology
+       (\S'.
+         !x. S' x ==> (?e. & 0 |<| e /\ (!y. dist m (x,y) |<| e ==> S' y)))
+</PRE>
+
+<DT><STRONG>MTOP_OPEN</STRONG>
+<DD>
+<PRE>
+|- !S' m.
+     open (mtop m) S' =
+     (!x. S' x ==> (?e. & 0 |<| e /\ (!y. dist m (x,y) |<| e ==> S' y)))
+</PRE>
+
+<DT><STRONG>BALL_OPEN</STRONG>
+<DD>
+<PRE>
+|- !m x e. & 0 |<| e ==> open (mtop m) (B m (x,e))
+</PRE>
+
+<DT><STRONG>BALL_NEIGH</STRONG>
+<DD>
+<PRE>
+|- !m x e. & 0 |<| e ==> neigh (mtop m) (B m (x,e),x)
+</PRE>
+
+<DT><STRONG>MTOP_LIMPT</STRONG>
+<DD>
+<PRE>
+|- !m x S'.
+     limpt (mtop m) x S' =
+     (!e. & 0 |<| e ==> (?y. ~(x = y) /\ S' y /\ dist m (x,y) |<| e))
+</PRE>
+
+<DT><STRONG>ISMET_R1</STRONG>
+<DD>
+<PRE>
+|- ismet (\(x,y). abs (y |-| x))
+</PRE>
+
+<DT><STRONG>MR1_DEF</STRONG>
+<DD>
+<PRE>
+|- !x y. dist mr1 (x,y) = abs (y |-| x)
+</PRE>
+
+<DT><STRONG>MR1_ADD</STRONG>
+<DD>
+<PRE>
+|- !x d. dist mr1 (x,x |+| d) = abs d
+</PRE>
+
+<DT><STRONG>MR1_SUB</STRONG>
+<DD>
+<PRE>
+|- !x d. dist mr1 (x,x |-| d) = abs d
+</PRE>
+
+<DT><STRONG>MR1_ADD_POS</STRONG>
+<DD>
+<PRE>
+|- !x d. & 0 |<=| d ==> (dist mr1 (x,x |+| d) = d)
+</PRE>
+
+<DT><STRONG>MR1_SUB_LE</STRONG>
+<DD>
+<PRE>
+|- !x d. & 0 |<=| d ==> (dist mr1 (x,x |-| d) = d)
+</PRE>
+
+<DT><STRONG>MR1_ADD_LT</STRONG>
+<DD>
+<PRE>
+|- !x d. & 0 |<| d ==> (dist mr1 (x,x |+| d) = d)
+</PRE>
+
+<DT><STRONG>MR1_SUB_LT</STRONG>
+<DD>
+<PRE>
+|- !x d. & 0 |<| d ==> (dist mr1 (x,x |-| d) = d)
+</PRE>
+
+<DT><STRONG>MR1_BETWEEN1</STRONG>
+<DD>
+<PRE>
+|- !x y z. x |<| z /\ dist mr1 (x,y) |<| z |-| x ==> y |<| z
+</PRE>
+
+<DT><STRONG>MR1_LIMPT</STRONG>
+<DD>
+<PRE>
+|- !x. limpt (mtop mr1) x re_universe
+</PRE>
+
+</DL>
+
+
+<HR>

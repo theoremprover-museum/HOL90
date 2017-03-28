@@ -1,0 +1,101 @@
+head	1.2;
+access;
+symbols;
+locks; strict;
+comment	@# @;
+
+
+1.2
+date	96.01.04.14.14.57;	author drs1004;	state dead;
+branches;
+next	1.1;
+
+1.1
+date	95.12.18.11.39.25;	author drs1004;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.2
+log
+@Added simplifier components, added drule files, added MK_ABS_CONV, better error messages
+@
+text
+@
+(* =====================================================================
+ * $Id: list_ss.sml,v 1.1 1995/12/18 11:39:25 drs1004 Exp drs1004 $
+ * =====================================================================*)
+
+signature List_ss_sig =
+sig
+	structure Simplifier : Simplifier_sig
+	val list_ss : Simplifier.simpset
+	val LIST_ss : Simplifier.simpset
+end;
+
+
+structure List_ss : List_ss_sig =
+struct 
+  structure Simplifier = Simplifier;
+  open Simplifier;
+  open Core;
+    infix |>
+  open Pure_ss;
+  open Bool_ss;
+
+val LIST_ss =
+   pure_ss
+   |> addrewrs (map (definition "list") [
+      	"APPEND", 
+	"EL", 
+	"EVERY_DEF",
+ 	"FLAT",
+	"HD",
+	"LENGTH",
+	"MAP",
+	"MAP2",
+	"NULL_DEF",
+	"SUM",
+	"TL"])
+   |> addrewrs (map (theorem "list") [
+      	"APPEND_ASSOC", 
+	"CONS", 
+	"CONS_11",
+	"LENGTH_APPEND",
+	"LENGTH_MAP",
+(*	"LENGTH_NIL",   Not always what you want. PC  *)
+	"MAP_APPEND",
+	"NOT_CONS_NIL",
+	"NOT_NIL_CONS"])
+val list_ss = bool_ss |> merge_ss LIST_ss;
+
+end; 
+
+
+
+
+
+
+
+
+
+
+
+
+
+@
+
+
+1.1
+log
+@Preterm and other changes, see 7.changes
+@
+text
+@d3 1
+a3 1
+ * $Id$
+@

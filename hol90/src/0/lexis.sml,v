@@ -1,0 +1,871 @@
+head	1.6;
+access;
+symbols
+	HOL97:1.5.2.1.0.2
+	bpHOL97:1.5.2.1
+	hol90_9_alpha:1.5.2.1
+	hol90_pre8_for_multiple_compilers:1.5.0.2
+	hol90_pre8_after_donalds_separate_compilation_changes:1.4
+	hol90_8_after_merging_Konrad_Elsa:1.3
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.6
+date	96.02.08.00.31.22;	author drs1004;	state Exp;
+branches;
+next	1.5;
+
+1.5
+date	95.11.15.13.24.32;	author rjb;	state Exp;
+branches
+	1.5.2.1;
+next	1.4;
+
+1.4
+date	95.10.31.13.56.17;	author drs1004;	state Exp;
+branches;
+next	1.3;
+
+1.3
+date	95.10.18.16.36.58;	author drs1004;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	95.10.17.17.07.07;	author drs1004;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	95.10.16.13.29.54;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.29.54;	author rjb;	state Exp;
+branches
+	1.1.1.1.2.1;
+next	;
+
+1.1.1.1.2.1
+date	95.10.17.18.42.51;	author drs1004;	state Exp;
+branches;
+next	;
+
+1.5.2.1
+date	96.08.23.14.26.30;	author rjb;	state Exp;
+branches
+	1.5.2.1.2.1;
+next	;
+
+1.5.2.1.2.1
+date	97.06.11.17.24.11;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.6
+log
+@New theory mechanism, by Donald Syme, and many other enhancements.
+@
+text
+@(* ===================================================================== *)
+(* FILE          : lexis.sml                                             *)
+(* DESCRIPTION   : predicates defining various lexical classes for       *)
+(*                 hol90:                                                *)
+(*                                                                       *)
+(*                     1. type variables                                 *)
+(*                     2. type constants                                 *)
+(*                     3. term constants                                 *)
+(*                                                                       *)
+(*                 The lexer (generated from the file "hol_lex")         *)
+(*                 should duplicate this.                                *)
+(*                                                                       *)
+(* AUTHOR        : Konrad Slind, University of Calgary                   *)
+(* DATE          : August 26, 1991                                       *)
+(* REVISED       : October,   1994, to improve efficiency.               *)
+(* ===================================================================== *)
+
+structure Lexis : Lexis_sig =
+struct
+
+(***************************************************************************
+ * Here we use extra space to get better runtimes. Strings are not exploded;
+ * finding out whether a string belongs in a particular syntax class is done
+ * by checking that the ordinal of each character in the string is the
+ * index (in a particular bytearray) of a box containing a 1.
+ ***************************************************************************)
+
+(***************************************************************************
+ * We work only with ascii characters, so we allocate bytearrays of size 128. 
+ * A bytearray is compact - each element of the array occupies only 1 byte. 
+ * Since we are using only 0 and 1, we could probably use "bit"arrays, but
+ * laziness argues against it.
+ ***************************************************************************)
+ 
+val hol_symbols = Portable.ByteArray.array(128,0);
+val sml_symbols = Portable.ByteArray.array(128,0);
+val alphabet    = Portable.ByteArray.array(128,0);
+val numbers     = Portable.ByteArray.array(128,0);
+val tyvar_ids   = Portable.ByteArray.array(128,0);
+val alphanumerics = Portable.ByteArray.array(128,0);
+
+fun setup table pred =
+   Lib.for_se 0 127 
+     (fn i => if pred(Portable.Char.chr(i))
+		  then Portable.ByteArray.update(table,i,1)
+	      else ());
+
+(*************************************************************************
+ * Utility for examining the contents of character tables
+ *
+ * fun accum table =
+ *    implode
+ *      (Lib.for 0 127 
+ *      (fn i => if (Portable.ByteArray.sub(table,i) = 1) then chr i else ""));
+ ***************************************************************************)
+
+(***************************************************************************
+ * Various familiar predicates, used only to build the tables, so we can 
+ * afford to write them naively.
+ ************************************************************************** *)
+fun is_alphabetic ch = 
+   ch >= Portable.String.sub("a",0) andalso
+   ch <= Portable.String.sub("z",0) orelse
+   ch >= Portable.String.sub("A",0) andalso
+   ch <= Portable.String.sub("Z",0);
+
+fun is_numeric ch =
+    ch >= Portable.String.sub("0",0) andalso
+    ch <= Portable.String.sub("9",0);
+
+fun is_alphanumeric ch = 
+   is_alphabetic ch orelse is_numeric ch orelse
+   ch = Portable.String.sub("_",0) orelse
+   ch = Portable.String.sub("'",0);
+
+(*************************************************************************
+ * Used for type variables, in which a prime is required in the first
+ * position in the string, but allowed nowhere else.
+ ************************************************************************)
+fun is_alphanumeric_no_prime ch = 
+   is_alphabetic ch orelse is_numeric ch orelse
+   ch = Portable.String.sub("_",0)
+
+fun in_string str =
+   let val strlist = explode str
+       val memb = Lib.C Lib.mem strlist
+   in memb
+   end;
+
+val hol_symbolics = "#?+*/\\=<>&%@@!,:;_|~-";
+val sml_symbolics = "!%&$+/:<=>?@@~|#*\\-~^";
+val is_hol_symbol = in_string hol_symbolics
+val is_sml_symbol = in_string sml_symbolics;
+
+(* Build the character tables *)
+val _ = setup hol_symbols is_hol_symbol;
+val _ = setup sml_symbols is_sml_symbol;
+val _ = setup alphabet is_alphabetic;
+val _ = setup numbers is_numeric;
+val _ = setup alphanumerics is_alphanumeric;
+val _ = setup tyvar_ids is_alphanumeric_no_prime;
+
+(*************************************************************************
+ * Now for the efficient string predicates. Generally, the empty string
+ * is not allowed.
+ ************************************************************************ *)
+
+fun ok_identifier str =
+   let fun loop i = (Portable.ByteArray.sub
+		        (alphanumerics,Portable.String.ordof(str,i)) = 1) 
+                     andalso loop(i+1)
+   in 
+   ((Portable.ByteArray.sub(alphabet,Portable.String.ordof(str,0)) = 1)
+    handle _ => false)
+   andalso 
+   (loop 1 handle _ => true)
+   end;
+
+
+val allowed_type_constant = ok_identifier;
+
+local val prime = Portable.String.ordof("'",0)
+in
+fun allowed_user_type_var str =
+   let fun loop i = (Portable.ByteArray.sub
+		        (tyvar_ids,Portable.String.ordof(str,i)) = 1) 
+                     andalso loop(i+1)
+   in 
+   ((Portable.String.ordof(str,0) = prime) handle _ => false)
+   andalso 
+   ((Portable.ByteArray.sub(alphabet,Portable.String.ordof(str,1)) = 1)
+    handle _ => false)
+   andalso 
+   (loop 2 handle _ => true)
+   end
+end;
+
+
+fun ok_symbolic str =
+   let fun loop i = (Portable.ByteArray.sub
+		        (hol_symbols,Portable.String.ordof(str,i)) = 1) 
+                     andalso loop(i+1)
+   in 
+   ((Portable.ByteArray.sub(hol_symbols,Portable.String.ordof(str,0)) = 1)
+    handle _ => false)
+   andalso 
+   (loop 1 handle _ => true)
+   end;
+
+fun ok_sml_identifier str =
+   let fun alphaloop i = (Portable.ByteArray.sub
+			     (alphanumerics,Portable.String.ordof(str,i)) = 1) 
+                         andalso alphaloop(i+1)
+       fun symloop i = (Portable.ByteArray.sub
+			   (sml_symbols,Portable.String.ordof(str,i)) = 1) 
+                       andalso symloop(i+1)
+   in  if ((Portable.ByteArray.sub(alphabet,Portable.String.ordof(str,0)) = 1)
+	   handle _ => false)
+       then (alphaloop 1 handle _ => true)
+       else if (Portable.ByteArray.sub
+		   (sml_symbols,Portable.String.ordof(str,0)) = 1)
+            then (symloop 1 handle _ => true)
+            else false
+   end;
+
+
+(* Predicate to tell if a prospective constant to-be-defined has an 
+ * acceptable name. Note that this function does not recognize members of
+ * constant families (just those that serve to define such families). 
+ ****************************************************************************)
+fun allowed_term_constant "let" = false
+  | allowed_term_constant "in"  = false
+  | allowed_term_constant "and" = false
+  | allowed_term_constant "of"  = false
+  | allowed_term_constant "\\"  = false
+  | allowed_term_constant ";"   = false
+  | allowed_term_constant "=>"  = false
+  | allowed_term_constant "|"   = false
+  | allowed_term_constant ":"   = false
+  | allowed_term_constant "0"   = true
+  | allowed_term_constant "\"\""   = true
+  | allowed_term_constant str = 
+     if (Portable.ByteArray.sub(alphabet,Portable.String.ordof(str,0)) = 1)
+     then ok_identifier str
+     else
+     if (Portable.ByteArray.sub(hol_symbols,Portable.String.ordof(str,0)) = 1)
+     then ok_symbolic str
+     else false;
+
+
+(* Strings representing non positive integers return false, since we are only
+ * (currently) interested in :num.
+ ************************************************************************* *)
+fun is_num_literal "0" = false  
+   | is_num_literal str =
+   let fun loop i = (Portable.ByteArray.sub
+		        (numbers,Portable.String.ordof(str,i)) = 1) 
+                     andalso loop(i+1)
+   in 
+   ((Portable.ByteArray.sub(numbers,Portable.String.ordof(str,0)) = 1)
+    handle _ => false)
+   andalso 
+   (loop 1 handle _ => true)
+   end;
+
+local val dquote = "\""
+in
+fun is_string_literal "\"\"" = false
+  | is_string_literal s =
+    (Portable.String.size s > 1)
+    andalso (Portable.String.substring(s,0,1) = dquote)
+    andalso
+    (Portable.String.substring(s,Portable.String.size s - 1,1) = dquote)
+end;
+
+end; (* LEXIS *)
+@
+
+
+1.5
+log
+@The HOL90 sources have been changed to allow for the use of different
+Standard ML compilers (possibly simultaneously).
+
+ * Many files in "src/0" changed to make them more portable across different
+   ML compilers. Various additions have been made to the Portable structure
+   and files changed to access identifiers in the Portable structure rather
+   than from the global environment. Worthy of special note are:
+
+   - The pointer equality used in "src/0/term.sml" has been made into a
+     function in the Portable structure.
+
+   - The ML-Lex and ML-Yacc files for the various parsers have been changed
+     to access the Portable structure. Both the source files and the SML
+     produced from them have been changed but I have not verified that the
+     source files would reproduce the new SML versions if ML-Lex and ML-Yacc
+     were to be rerun on them. The changes involve some hacks that exploit the
+     way ML-Lex and ML-Yacc work. See the sources for details.
+
+R.J.Boulton, 15th November 1995.
+@
+text
+@d18 1
+a18 1
+functor LEXIS () : Lexis_sig =
+a19 3
+fun LEXIS_ERR {func,mesg} =
+   Exception.HOL_ERR{origin_structure="Lexis",
+                    origin_function=func, message=mesg};
+d180 2
+a181 2
+  | allowed_term_constant "0"   = not (Globals.nums_defined())
+  | allowed_term_constant "\"\""= not (Globals.strings_defined())
+d191 1
+a191 1
+(* Strings representing negative integers return false, since we are only
+d194 2
+a195 1
+fun is_num_literal str =
+d208 2
+a209 1
+fun is_string_literal s =
+@
+
+
+1.5.2.1
+log
+@New function for bugfix.
+@
+text
+@a168 1
+local
+a169 21
+val parens = Portable.ByteArray.array(128,0);
+
+fun is_paren ch =
+   ch = Portable.String.sub("(",0) orelse
+   ch = Portable.String.sub(")",0);
+
+val _ = setup parens is_paren;
+
+in
+
+fun ok_thy_index "" = false
+  | ok_thy_index str =
+     let fun loop i =
+            (Portable.ByteArray.sub(parens,Portable.String.ordof(str,i)) = 0) 
+            andalso loop(i+1)
+     in (loop 0 handle _ => true)
+     end;
+
+end;
+
+
+@
+
+
+1.5.2.1.2.1
+log
+@Removed files are parse files and portability files that have
+effectively been moved elsewhere.
+
+Modified files are up to date for ML 109.26.
+@
+text
+@d18 1
+a18 1
+structure Lexis : Lexis_sig =
+a19 1
+open Portable;
+d24 1
+a24 1
+(*---------------------------------------------------------------------------
+d29 1
+a29 1
+ *---------------------------------------------------------------------------*)
+d31 1
+a31 1
+(*---------------------------------------------------------------------------
+d35 2
+a36 4
+ * sheer laziness prevents us.
+ *---------------------------------------------------------------------------*)
+
+val ordof = Portable.String.ordof;
+d38 6
+a43 7
+val hol_symbols   = ByteArray.array(128,0);
+val sml_symbols   = ByteArray.array(128,0);
+val alphabet      = ByteArray.array(128,0);
+val numbers       = ByteArray.array(128,0);
+val tyvar_ids     = ByteArray.array(128,0);
+val alphanumerics = ByteArray.array(128,0);
+val parens        = ByteArray.array(128,0);
+d47 3
+a49 2
+     (fn i => if pred(Portable.String.charof i)
+               then ByteArray.update(table,i,1) else ());
+d51 1
+a51 1
+(*---------------------------------------------------------------------------
+d57 2
+a58 2
+ *      (fn i => if (ByteArray.sub(table,i) = 1) then chr i else ""));
+ *---------------------------------------------------------------------------*)
+d60 1
+a60 1
+(*---------------------------------------------------------------------------
+d63 1
+a63 1
+ *---------------------------------------------------------------------------*)
+d65 8
+a72 3
+   (ch >= "a" andalso ch <= "z" orelse ch >= "A" andalso ch <= "Z");
+
+fun is_numeric ch = (ch >= "0" andalso ch <= "9");
+d75 3
+a77 5
+   is_alphabetic ch orelse is_numeric ch orelse ch = "_" orelse ch = "'";
+
+fun is_paren "(" = true
+  | is_paren ")" = true
+  | is_paren _ = false;
+d79 1
+a79 2
+
+(*---------------------------------------------------------------------------
+d82 1
+a82 1
+ *---------------------------------------------------------------------------*)
+d84 2
+a85 1
+   is_alphabetic ch orelse is_numeric ch orelse ch = "_";
+d88 1
+a88 1
+   let val strlist = Portable.explode str
+a104 1
+val _ = setup parens is_paren;
+d106 1
+a106 1
+(*---------------------------------------------------------------------------
+d109 1
+a109 8
+ *---------------------------------------------------------------------------*)
+
+fun ok_thy_index "" = false
+  | ok_thy_index str =
+     let fun loop i = (ByteArray.sub(parens,ordof(str,i)) = 0) 
+                       andalso loop(i+1)
+     in (loop 0 handle _ => true)
+     end;
+d112 2
+a113 1
+   let fun loop i = (ByteArray.sub(alphanumerics,ordof(str,i)) = 1) 
+d116 2
+a117 1
+   ((ByteArray.sub(alphabet,ordof(str,0)) = 1) handle _ => false)
+d125 1
+a125 1
+local val prime = ordof("'",0)
+d128 2
+a129 1
+   let fun loop i = (ByteArray.sub(tyvar_ids,ordof(str,i)) = 1) 
+d132 1
+a132 1
+   ((ordof(str,0) = prime) handle _ => false)
+d134 2
+a135 1
+   ((ByteArray.sub(alphabet,ordof(str,1)) = 1) handle _ => false)
+d143 2
+a144 1
+   let fun loop i = (ByteArray.sub(hol_symbols,ordof(str,i)) = 1) 
+d147 2
+a148 1
+   ((ByteArray.sub(hol_symbols,ordof(str,0)) = 1) handle _ => false)
+d154 8
+a161 5
+   let fun alphaloop i = (ByteArray.sub(alphanumerics,ordof(str,i)) = 1) 
+                     andalso alphaloop(i+1)
+       fun symloop i = (ByteArray.sub(sml_symbols,ordof(str,i)) = 1) 
+                     andalso symloop(i+1)
+   in  if ((ByteArray.sub(alphabet,ordof(str,0)) = 1) handle _ => false)
+d163 2
+a164 1
+       else if (ByteArray.sub(sml_symbols,ordof(str,0)) = 1)
+d169 22
+d192 1
+a192 2
+(*---------------------------------------------------------------------------
+ * Predicate to tell if a prospective constant to-be-defined has an 
+d195 1
+a195 1
+ *---------------------------------------------------------------------------*)
+d208 1
+a208 1
+     if (ByteArray.sub(alphabet,ordof(str,0)) = 1)
+d211 1
+a211 1
+     if (ByteArray.sub(hol_symbols,ordof(str,0)) = 1)
+d216 1
+a216 2
+(*---------------------------------------------------------------------------
+ * Strings representing negative integers return false, since we are only
+d218 1
+a218 1
+ *---------------------------------------------------------------------------*)
+d220 2
+a221 1
+   let fun loop i = (ByteArray.sub(numbers,ordof(str,i)) = 1) 
+d224 2
+a225 1
+   ((ByteArray.sub(numbers,ordof(str,0)) = 1) handle _ => false)
+d234 3
+a236 2
+    andalso (substring(s,0,1) = dquote)
+    andalso (substring(s,String.size s - 1,1) = dquote)
+@
+
+
+1.4
+log
+@First phase of hol90.8 development.  hol90 now compiles using NJSML-CM
+108.5, with separate compilation of libraries.  System dependencies
+have been isolated in the makefiles and "portable.sml".
+
+This involved a large number of enhancments to the source files,
+most of which are documented in the 7.changes file (or will be shortly).
+See also the correpsonding email corrspondence between RJB, KLS, TFM,
+JRH and DRS that happened during this development.
+@
+text
+@d38 6
+a43 6
+val hol_symbols = ByteArray.array(128,0);
+val sml_symbols = ByteArray.array(128,0);
+val alphabet    = ByteArray.array(128,0);
+val numbers     = ByteArray.array(128,0);
+val tyvar_ids   = ByteArray.array(128,0);
+val alphanumerics = ByteArray.array(128,0);
+d48 1
+a48 1
+		  then ByteArray.update(table,i,1)
+d57 1
+a57 1
+ *      (fn i => if (ByteArray.sub(table,i) = 1) then chr i else ""));
+d112 2
+a113 1
+   let fun loop i = (ByteArray.sub(alphanumerics,Portable.String.ordof(str,i)) = 1) 
+d116 2
+a117 1
+   ((ByteArray.sub(alphabet,Portable.String.ordof(str,0)) = 1) handle _ => false)
+d128 2
+a129 1
+   let fun loop i = (ByteArray.sub(tyvar_ids,Portable.String.ordof(str,i)) = 1) 
+d134 2
+a135 1
+   ((ByteArray.sub(alphabet,Portable.String.ordof(str,1)) = 1) handle _ => false)
+d143 2
+a144 1
+   let fun loop i = (ByteArray.sub(hol_symbols,Portable.String.ordof(str,i)) = 1) 
+d147 2
+a148 1
+   ((ByteArray.sub(hol_symbols,Portable.String.ordof(str,0)) = 1) handle _ => false)
+d154 8
+a161 5
+   let fun alphaloop i = (ByteArray.sub(alphanumerics,Portable.String.ordof(str,i)) = 1) 
+                     andalso alphaloop(i+1)
+       fun symloop i = (ByteArray.sub(sml_symbols,Portable.String.ordof(str,i)) = 1) 
+                     andalso symloop(i+1)
+   in  if ((ByteArray.sub(alphabet,Portable.String.ordof(str,0)) = 1) handle _ => false)
+d163 2
+a164 1
+       else if (ByteArray.sub(sml_symbols,Portable.String.ordof(str,0)) = 1)
+d186 1
+a186 1
+     if (ByteArray.sub(alphabet,Portable.String.ordof(str,0)) = 1)
+d189 1
+a189 1
+     if (ByteArray.sub(hol_symbols,Portable.String.ordof(str,0)) = 1)
+d198 2
+a199 1
+   let fun loop i = (ByteArray.sub(numbers,Portable.String.ordof(str,i)) = 1) 
+d202 2
+a203 1
+   ((ByteArray.sub(numbers,Portable.String.ordof(str,0)) = 1) handle _ => false)
+d212 3
+a214 2
+    andalso (substring(s,0,1) = dquote)
+    andalso (substring(s,Portable.String.size s - 1,1) = dquote)
+@
+
+
+1.3
+log
+@Check in after merging in Konrad's changes made after
+the release of hol90.7.  This involved creating a side branch
+in which to check in Konrad's changes, then merging in that
+side branch into the main development (which contains changes
+made by Elsa Gunter).
+
+Some other small modification have been made to the source code,
+as I begun to try to make this version into a working version:
+	- hol90 will now be compiled in an environment were no
+structures can be considered opn.  This means many structures
+now need "open Lib" and other such commands at their head.
+This has not yet been completed, but has been begun.
+	- "rotl" and "rotr" have been added to Lib, something
+which I just did impulsively.   Documentation files
+have also been added in help/90.
+@
+text
+@d18 1
+a18 2
+functor LEXIS ((* structure Lib : Lib_sig *)
+	       structure Globals : Globals_sig) : Lexis_sig =
+d47 1
+a47 1
+     (fn i => if pred(Sml_system.Char.chr(i))
+d65 4
+a68 4
+   ch >= Sml_system.String.sub("a",0) andalso
+   ch <= Sml_system.String.sub("z",0) orelse
+   ch >= Sml_system.String.sub("A",0) andalso
+   ch <= Sml_system.String.sub("Z",0);
+d71 2
+a72 2
+    ch >= Sml_system.String.sub("0",0) andalso
+    ch <= Sml_system.String.sub("9",0);
+d76 2
+a77 2
+   ch = Sml_system.String.sub("_",0) orelse
+   ch = Sml_system.String.sub("'",0);
+d85 1
+a85 1
+   ch = Sml_system.String.sub("_",0)
+d112 1
+a112 1
+   let fun loop i = (ByteArray.sub(alphanumerics,Sml_system.String.ordof(str,i)) = 1) 
+d115 1
+a115 1
+   ((ByteArray.sub(alphabet,Sml_system.String.ordof(str,0)) = 1) handle _ => false)
+d123 1
+a123 1
+local val prime = Sml_system.String.ordof("'",0)
+d126 1
+a126 1
+   let fun loop i = (ByteArray.sub(tyvar_ids,Sml_system.String.ordof(str,i)) = 1) 
+d129 1
+a129 1
+   ((Sml_system.String.ordof(str,0) = prime) handle _ => false)
+d131 1
+a131 1
+   ((ByteArray.sub(alphabet,Sml_system.String.ordof(str,1)) = 1) handle _ => false)
+d139 1
+a139 1
+   let fun loop i = (ByteArray.sub(hol_symbols,Sml_system.String.ordof(str,i)) = 1) 
+d142 1
+a142 1
+   ((ByteArray.sub(hol_symbols,Sml_system.String.ordof(str,0)) = 1) handle _ => false)
+d148 1
+a148 1
+   let fun alphaloop i = (ByteArray.sub(alphanumerics,Sml_system.String.ordof(str,i)) = 1) 
+d150 1
+a150 1
+       fun symloop i = (ByteArray.sub(sml_symbols,Sml_system.String.ordof(str,i)) = 1) 
+d152 1
+a152 1
+   in  if ((ByteArray.sub(alphabet,Sml_system.String.ordof(str,0)) = 1) handle _ => false)
+d154 1
+a154 1
+       else if (ByteArray.sub(sml_symbols,Sml_system.String.ordof(str,0)) = 1)
+d176 1
+a176 1
+     if (ByteArray.sub(alphabet,Sml_system.String.ordof(str,0)) = 1)
+d179 1
+a179 1
+     if (ByteArray.sub(hol_symbols,Sml_system.String.ordof(str,0)) = 1)
+d188 1
+a188 1
+   let fun loop i = (ByteArray.sub(numbers,Sml_system.String.ordof(str,i)) = 1) 
+d191 1
+a191 1
+   ((ByteArray.sub(numbers,Sml_system.String.ordof(str,0)) = 1) handle _ => false)
+d199 1
+a199 1
+    (Sml_system.String.size s > 1)
+d201 1
+a201 1
+    andalso (substring(s,Sml_system.String.size s - 1,1) = dquote)
+@
+
+
+1.2
+log
+@Keeping you up to date:
+
+I'm about to do a checkin of elsa's modifications to the hol90.7
+sources to create her hol90.pre8.  To recap what I've done:
+	- I checked out hol90 (in /usr/groups/hol/drs1004/hol90)
+		cvs co hol90
+	  (Well, to be honest, I only checked out those
+	  parts of hol90 I knew I'd be changing, e.g. not the
+	  Manual, and only parts of the library.  Checking out the
+	  entire source takes a while, mainly due to the enormous number
+	  of help files.  The limiting factor is files/second, which
+         runs at around 5 when CVS is working on nfs over a network, not
+         KB/second, which you might at first think it would be).
+
+	- By doing a recursive diff between Elsa's source and the
+	hol90.7 source I found all the changes Elsa had made to
+	source files.  I copied relevant files from Elsa's source
+	into my checked out version.  The only new files were
+		- the sml_system files in src/0
+		- some make scripts in src/.
+	Changed files were in:
+		src/{0,1,2,3}
+		library/arith/src/thm_convs.sml
+		library/list/src/list_conv1.sml
+		library/num/src/num_lib.sml
+		library/prog_logic/src/halts_logic.sml
+		library/prog_logic/src/translation.sml
+		library/prog_logic/theories/src/mk_halts.sml
+		library/real/theories/src/Make
+		library/real/theories/src/equiv.sml
+		library/real/theories/src/seq.sml
+		library/reduce/src/arithconv.sml
+		library/string/src/string_conv.sml
+		library/unity/theories/src/aux_definitions.sml
+		library/word/theories/src/*
+
+	- I will now commit these changes, with this email as the log message.
+		cvs commit
+
+	- Tomorrow I will get this version compiling
+	with NJSML 108 (I will probably add
+	the files to enable the NJSML compilation manager to make
+	this easier), then check those changes in.  I think it's
+	good to get things in a working state.
+@
+text
+@d15 1
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d17 2
+a18 1
+functor LEXIS (Globals : Globals_sig) : Lexis_sig =
+d47 3
+a49 1
+     (fn i => if pred(chr(i)) then ByteArray.update(table,i,1) else ());
+d65 8
+a72 1
+   (ch >= "a" andalso ch <= "z" orelse ch >= "A" andalso ch <= "Z");
+a73 2
+fun is_numeric ch = (ch >= "0" andalso ch <= "9");
+
+d75 3
+a77 1
+   is_alphabetic ch orelse is_numeric ch orelse ch = "_" orelse ch = "'";
+d84 2
+a85 1
+   is_alphabetic ch orelse is_numeric ch orelse ch = "_";
+d112 1
+a112 1
+   let fun loop i = (ByteArray.sub(alphanumerics,ordof(str,i)) = 1) 
+d115 1
+a115 1
+   ((ByteArray.sub(alphabet,ordof(str,0)) = 1) handle _ => false)
+d123 1
+a123 1
+local val prime = ord"'"
+d126 1
+a126 1
+   let fun loop i = (ByteArray.sub(tyvar_ids,ordof(str,i)) = 1) 
+d129 1
+a129 1
+   ((ordof(str,0) = prime) handle _ => false)
+d131 1
+a131 1
+   ((ByteArray.sub(alphabet,ordof(str,1)) = 1) handle _ => false)
+d139 1
+a139 1
+   let fun loop i = (ByteArray.sub(hol_symbols,ordof(str,i)) = 1) 
+d142 1
+a142 1
+   ((ByteArray.sub(hol_symbols,ordof(str,0)) = 1) handle _ => false)
+d148 1
+a148 1
+   let fun alphaloop i = (ByteArray.sub(alphanumerics,ordof(str,i)) = 1) 
+d150 1
+a150 1
+       fun symloop i = (ByteArray.sub(sml_symbols,ordof(str,i)) = 1) 
+d152 1
+a152 1
+   in  if ((ByteArray.sub(alphabet,ordof(str,0)) = 1) handle _ => false)
+d154 1
+a154 1
+       else if (ByteArray.sub(sml_symbols,ordof(str,0)) = 1)
+d176 1
+a176 1
+     if (ByteArray.sub(alphabet,ordof(str,0)) = 1)
+d179 1
+a179 1
+     if (ByteArray.sub(hol_symbols,ordof(str,0)) = 1)
+d188 1
+a188 1
+   let fun loop i = (ByteArray.sub(numbers,ordof(str,i)) = 1) 
+d191 1
+a191 1
+   ((ByteArray.sub(numbers,ordof(str,0)) = 1) handle _ => false)
+d199 1
+a199 1
+    (String.length s > 1)
+d201 1
+a201 1
+    andalso (substring(s,String.size s - 1,1) = dquote)
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@
+
+
+1.1.1.1.2.1
+log
+@Konrad's bug fixes up to start of serious
+hol90.8 devel;opment.  Checked into branch revision for
+later merging with trunk (elsa's work).  See
+doc/7.chages for a full description of what's been done.
+@
+text
+@a14 1
+(* REVISED       : October,   1994, to improve efficiency.               *)
+@

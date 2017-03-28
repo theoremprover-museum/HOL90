@@ -1,0 +1,119 @@
+head	1.1;
+branch	1.1.1;
+access;
+symbols
+	HOL97:1.1.1.1.0.6
+	bpHOL97:1.1.1.1
+	hol90_9_alpha:1.1.1.1
+	hol90_pre8_for_multiple_compilers:1.1.1.1.0.4
+	hol90_pre8_after_donalds_separate_compilation_changes:1.1.1.1
+	hol90_8_after_merging_Konrad_Elsa:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	95.10.16.13.35.13;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.35.13;	author rjb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@\DOC new_specification
+
+\TYPE {new_specification : (string -> (string # string) list -> thm -> thm)}
+
+\SYNOPSIS
+Introduces a constant or constants satisfying a given property.
+
+\DESCRIBE
+The ML function {new_specification} implements the primitive rule of
+constant specification for the HOL logic.
+Evaluating:
+{
+   new_specification `name` [f1,`c1`;...;fn,`cn`] |- ?x1...xn. t
+}
+\noindent simultaneously introduces new constants named {c1}, ..., {cn}
+satisfying the property:
+{
+   |- t[c1,...,cn/x1,...,xn]
+}
+\noindent This theorem is stored, with name {name}, as a definition in the
+current theory segment. It is also returned by the call to {new_specification}
+The strings {f1}, ..., {fn} are flags which determine whether the new constants
+are infixes or binders or neither.  If {fi} is {`constant`} then {ci} is
+declared an ordinary constant, if it is {`infix`} then {ci} is declared an
+infix, and if it is {`binder`} then {ci} is declared a binder.  A flag of any
+other value causes failure.
+
+\FAILURE
+{new_specification} fails if called when HOL is not in draft mode. It also
+fails if there is already an axiom, definition or specification of the given
+name in the current theory segment; if the theorem argument has assumptions or
+free variables; if the supplied constant names {`c1`}, ..., {`cn`} are not
+distinct; if any one of {`c1`}, ..., {`cn`} is already a constant in the
+current theory or is not an allowed name for a constant.  Failure also occurs
+if any of {f1}, ..., {fn} is not either {`constant`}, {`infix`} or {`binder`}
+or if the type of {ci} is not suitable for a constant with the syntactic status
+specified by the flag {fi}.  Finally, failure occurs if some {ci} does not
+contain all the type variables that occur in the term {?x1...xn. t}.
+
+\USES
+{new_specification} can be used to introduce constants that satisfy a given
+property without having to make explicit equational constant definitions for
+them.  For example, the built-in constants {MOD} and {DIV} are defined in the
+system by first proving the theorem:
+{
+   th |- ?MOD DIV.
+         !n. (0 < n) ==>
+             !k. ((k = (((DIV k n) * n) + (MOD k n))) /\ ((MOD k n) < n))
+}
+\noindent and then making the constant specification:
+{
+   #new_specification `DIVISION` [`infix`,`MOD`;`infix`,`DIV`] th;;
+   |- !n. (0 < n) ==>
+          !k. ((k = (((DIV k n) * n) + (MOD k n))) /\ ((MOD k n) < n))
+}
+\noindent This introduces the constants {MOD} and {DIV} with the defining
+property shown above.
+
+\SEEALSO
+new_definition, new_binder_definition, new_gen_definition,
+new_infix_definition.
+
+\ENDDOC
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

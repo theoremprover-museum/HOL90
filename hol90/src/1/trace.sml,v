@@ -1,0 +1,91 @@
+head	1.1;
+access;
+symbols;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	96.02.08.00.36.34;	author drs1004;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@New theory mechanism, code reorganisation and other enhancements by Don Syme.
+@
+text
+@
+
+signature Trace_sig =
+sig
+
+   (* ---------------------------------------------------------------------
+    * Utilities to trace the progress of simplification.
+    * ---------------------------------------------------------------------*)
+    
+    val trace_pp_depth : int -> unit
+    val trace_level : int -> unit
+
+    val trace : (int * string) -> string
+    val trace_tm : (int * string * Term.term) -> Term.term
+    val trace_tm_2string : (int * string * Term.term * string * string) -> Term.term
+    val trace_thm : (int * string * Thm.thm) -> Thm.thm 
+    val trace_tm_thm : (int * string * Term.term * string * Thm.thm) -> Term.term
+    val trace_name : (int * string * string) -> string
+    val trace_production : (int * Term.term * string * Thm.thm) -> Thm.thm
+end;
+
+
+structure Trace : Trace_sig =
+struct
+
+open Lib;
+open Thm;
+open Term;
+   (* ---------------------------------------------------------------------
+    * Tracing utilities
+    * ---------------------------------------------------------------------*)
+
+val trace_pp_depth_ref = ref 30;
+fun trace_pp_depth n = (trace_pp_depth_ref := n);
+    
+fun print_term t = 
+    let val n = (!Globals.max_print_depth)
+	val _ = Globals.max_print_depth := (!trace_pp_depth_ref);
+	val res = Hol_pp.print_term t
+	    handle e => (Globals.max_print_depth := n ; raise e)
+	val _ = Globals.max_print_depth := n
+    in res
+    end;
+    
+fun print_thm t = 
+    let val n = (!Globals.max_print_depth)
+	val _ = Globals.max_print_depth := (!trace_pp_depth_ref);
+	val res = Thm.print_thm t 
+	    handle e => (Globals.max_print_depth := n ; raise e)
+	val _ = Globals.max_print_depth := n
+    in res
+    end;
+    
+		    
+   val trace_ref = ref 0;
+   fun trace_level n  = trace_ref := n;
+   fun trace (n,s) = if (n <= !trace_ref) then (say "  "; say s; say "\n"; s) else s;
+   fun trace_tm (n,s,tm) = if (n <= !trace_ref) then (say "  "; say s; say " "; print_term tm; say "\n"; tm) else tm;
+   fun trace_tm_2string (n,s,tm,s1,s2) = if (n <= !trace_ref) then (say "  "; say s; say " "; print_term tm; say (s1^s2^"\n"); tm) else tm;
+   fun trace_thm (n,s,thm) = if (n <= !trace_ref) then (say "  "; say s; say " "; print_thm thm; say "\n"; thm) else thm;
+   fun trace_tm_thm (n,s,tm,s2,thm) = if (n <= !trace_ref) then (say "  "; say s; say " "; print_term tm; say " "; say s2; say " "; print_thm thm; say "\n"; tm) else tm;
+   fun trace_thm (n,s,thm) = if (n <= !trace_ref) then (say "  "; say s; say " "; print_thm thm; say "\n"; thm) else thm;
+   fun trace_production (n,tm,s,thm) = if (n <= !trace_ref) then (say "  "; say "("; print_term tm; say ") via "; say s; say " produces "; (print_term (rand (concl thm)) handle _ => print_thm thm); say "\n"; thm) else thm;
+   fun trace_name (n,s,name) = if (n <= !trace_ref) then (say "  "; say s; say " "; say name; say "\n"; name) else name;
+   
+
+
+end;
+@

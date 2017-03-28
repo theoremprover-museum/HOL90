@@ -1,0 +1,103 @@
+head	1.1;
+access;
+symbols
+	HOL97:1.1.2.1.0.2
+	bpHOL97:1.1.2.1
+	hol90_9_alpha:1.1.2.1
+	hol90_pre8_for_multiple_compilers:1.1.0.2;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	96.08.23.09.14.04;	author rjb;	state dead;
+branches
+	1.1.2.1;
+next	;
+
+1.1.2.1
+date	96.08.23.09.14.05;	author rjb;	state Exp;
+branches
+	1.1.2.1.2.1;
+next	;
+
+1.1.2.1.2.1
+date	97.07.11.19.38.13;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@file pair.sml was initially added on branch hol90_pre8_for_multiple_compilers.
+@
+text
+@@
+
+
+1.1.2.1
+log
+@Initial version.
+@
+text
+@a0 44
+(****************************************************************************)
+(* FILE          : pair.sml                                                 *)
+(* DESCRIPTION   : Decision procedure for pairs.                            *)
+(*                                                                          *)
+(* AUTHOR        : R.J.Boulton, University of Cambridge                     *)
+(* DATE          : 2nd June 1995                                            *)
+(*                                                                          *)
+(* LAST MODIFIED : R.J.Boulton                                              *)
+(* DATE          : 1st June 1996                                            *)
+(****************************************************************************)
+
+structure DecidePair =
+struct
+
+local
+
+open Psyntax DecisionSupport;
+
+fun pair_discrim tm =
+   if (is_var tm)
+   then (fn _ => tm,[])
+   else let val (f,args) = strip_comb tm
+            fun reconstruct args' = list_mk_comb (f,args')
+        in  if (is_const f) andalso
+               (member (#Name (Rsyntax.dest_const f),length args)
+                   [(",",2),("FST",1),("SND",1)])
+            then (reconstruct,args)
+            else raise Decide.failwith "pair_discrim"
+        end;
+
+in
+
+val pair_proc =
+   {Name = "pairs",
+    Description = "Theory of equality on pairs",
+    Author = "Richard J. Boulton",
+    Discriminator = pair_discrim,
+    Normalizer = DecisionConv.ALL_CONV,
+    Procedure = Decide.make_incremental_procedure LazyRules.CONJ
+                   CongruenceClosurePairs.PAIR_CONV};
+
+end;
+
+end; (* DecidePair *)
+@
+
+
+1.1.2.1.2.1
+log
+@Making the library CM friendly.
+@
+text
+@d17 1
+a17 1
+open CoreHol.Term CoreHol.Dsyntax Psyntax DecisionSupport;
+@

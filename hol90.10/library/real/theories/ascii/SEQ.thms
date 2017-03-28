@@ -1,0 +1,511 @@
+thid = (SEQ, 942752496, 830684)
+axioms = []
+definitions =
+[((suminf),
+  [],
+  `((! :((num -> real) -> bool) -> bool) (\(f :num -> real).
+   (((= :real -> real -> bool) (suminf $0))
+   ((@ :(real -> bool) -> real) (\(s :real). ((sums $1) $0))))))`),
+ ((summable),
+  [],
+  `((! :((num -> real) -> bool) -> bool) (\(f :num -> real).
+   (((= :bool -> bool -> bool) (summable $0))
+   ((? :(real -> bool) -> bool) (\(s :real). ((sums $1) $0))))))`),
+ ((sums),
+  [],
+  `((! :((num -> real) -> bool) -> bool) (\(f :num -> real).
+   ((! :(real -> bool) -> bool) (\(s :real).
+   (((= :bool -> bool -> bool) ((sums $1) $0)) ((--> (\(n :num). ((sum
+   (((, :num -> num -> num # num) 0) $0)) $2))) $0))))))`),
+ ((mono),
+  [],
+  `((! :((num -> real) -> bool) -> bool) (\(f :num -> real).
+   (((= :bool -> bool -> bool) (mono $0)) ((\/
+   ((! :(num -> bool) -> bool) (\(m :num). ((! :(num -> bool) -> bool)
+   (\(n :num). ((==> ((<= $1) $0)) ((|<=| ($2 $1)) ($2 $0))))))))
+   ((! :(num -> bool) -> bool) (\(m :num). ((! :(num -> bool) -> bool)
+   (\(n :num). ((==> ((<= $1) $0)) ((|>=| ($2 $1)) ($2
+   $0)))))))))))`),
+ ((subseq),
+  [],
+  `((! :((num -> num) -> bool) -> bool) (\(f :num -> num).
+   (((= :bool -> bool -> bool) (subseq $0))
+   ((! :(num -> bool) -> bool) (\(m :num). ((! :(num -> bool) -> bool)
+   (\(n :num). ((==> ((< $1) $0)) ((< ($2 $1)) ($2 $0))))))))))`),
+ ((lim),
+  [],
+  `((! :((num -> real) -> bool) -> bool) (\(f :num -> real).
+   (((= :real -> real -> bool) (lim $0)) ((@ :(real -> bool) -> real)
+   (\(l :real). ((--> $1) $0))))))`),
+ ((cauchy),
+  [],
+  `((! :((num -> real) -> bool) -> bool) (\(f :num -> real).
+   (((= :bool -> bool -> bool) (cauchy $0))
+   ((! :(real -> bool) -> bool) (\(e :real). ((==> ((|<| (& 0)) $0))
+   ((? :(num -> bool) -> bool) (\(N :num). ((! :(num -> bool) -> bool)
+   (\(m :num). ((! :(num -> bool) -> bool) (\(n :num). ((==> ((/\ ((>=
+   $1) $2)) ((>= $0) $2))) ((|<| (abs ((|-| ($4 $1)) ($4 $0))))
+   $3))))))))))))))`),
+ ((convergent),
+  [],
+  `((! :((num -> real) -> bool) -> bool) (\(f :num -> real).
+   (((= :bool -> bool -> bool) (convergent $0))
+   ((? :(real -> bool) -> bool) (\(l :real). ((--> $1) $0))))))`),
+ ((tends_num_real),
+  [],
+  `((! :((num -> real) -> bool) -> bool) (\(x :num -> real).
+   ((! :(real -> bool) -> bool) (\(x0 :real).
+   (((= :bool -> bool -> bool) ((--> $1) $0))
+   ((((tends :(num -> real) -> real ->
+              real topology # (num -> num -> bool) -> bool) $1) $0)
+   (((, :real topology -> (num -> num -> bool) ->
+         real topology # (num -> num -> bool))
+   ((mtop :real metric -> real topology) mr1)) >=)))))))`)]
+theorems =
+[((SER_RATIO),
+  [],
+  `((! :((num -> real) -> bool) -> bool) (\(f :num -> real).
+   ((! :(real -> bool) -> bool) (\(c :real).
+   ((! :(num -> bool) -> bool) (\(N :num). ((==> ((/\ ((|<| $1) (&
+   1))) ((! :(num -> bool) -> bool) (\(n :num). ((==> ((>= $0) $1))
+   ((|<=| (abs ($3 (SUC $0)))) ((|*| $2) (abs ($3 $0)))))))))
+   (summable $2))))))))`),
+ ((ABS_NEG_LEMMA),
+  [],
+  `((! :(real -> bool) -> bool) (\(c :real). ((==> ((|<=| $0) (& 0)))
+   ((! :(real -> bool) -> bool) (\(x :real).
+   ((! :(real -> bool) -> bool) (\(y :real). ((==> ((|<=| (abs $1))
+   ((|*| $2) (abs $0)))) (((= :real -> real -> bool) $1) (&
+   0))))))))))`),
+ ((GP),
+  [],
+  `((! :(real -> bool) -> bool) (\(x :real). ((==> ((|<| (abs $0)) (&
+   1))) ((sums (\(n :num). ((pow $1) $0))) (inv ((|-| (& 1))
+   $0))))))`),
+ ((GP_FINITE),
+  [],
+  `((! :(real -> bool) -> bool) (\(x :real). ((==> (~
+   (((= :real -> real -> bool) $0) (& 1))))
+   ((! :(num -> bool) -> bool) (\(n :num). (((= :real -> real -> bool)
+   ((sum (((, :num -> num -> num # num) 0) $0)) (\(n :num). ((pow $2)
+   $0)))) ((/ ((|-| ((pow $1) $0)) (& 1))) ((|-| $1) (& 1)))))))))`),
+ ((SER_ABS),
+  [],
+  `((! :((num -> real) -> bool) -> bool) (\(f :num -> real). ((==>
+   (summable (\(n :num). (abs ($1 $0))))) ((|<=| (abs (suminf $0)))
+   (suminf (\(n :num). (abs ($1 $0))))))))`),
+ ((SER_ACONV),
+  [],
+  `((! :((num -> real) -> bool) -> bool) (\(f :num -> real). ((==>
+   (summable (\(n :num). (abs ($1 $0))))) (summable $0))))`),
+ ((SER_LE2),
+  [],
+  `((! :((num -> real) -> bool) -> bool) (\(f :num -> real).
+   ((! :((num -> real) -> bool) -> bool) (\(g :num -> real). ((==>
+   ((/\ ((! :(num -> bool) -> bool) (\(n :num). ((|<=| (abs ($2 $0)))
+   ($1 $0))))) (summable $0))) ((/\ (summable $1)) ((|<=| (suminf $1))
+   (suminf $0))))))))`),
+ ((SER_LE),
+  [],
+  `((! :((num -> real) -> bool) -> bool) (\(f :num -> real).
+   ((! :((num -> real) -> bool) -> bool) (\(g :num -> real). ((==>
+   ((/\ ((! :(num -> bool) -> bool) (\(n :num). ((|<=| ($2 $0)) ($1
+   $0))))) ((/\ (summable $1)) (summable $0)))) ((|<=| (suminf $1))
+   (suminf $0)))))))`),
+ ((SER_COMPARA),
+  [],
+  `((! :((num -> real) -> bool) -> bool) (\(f :num -> real).
+   ((! :((num -> real) -> bool) -> bool) (\(g :num -> real). ((==>
+   ((/\ ((? :(num -> bool) -> bool) (\(N :num).
+   ((! :(num -> bool) -> bool) (\(n :num). ((==> ((>= $0) $1)) ((|<=|
+   (abs ($3 $0))) ($2 $0)))))))) (summable $0))) (summable (\(k :num).
+   (abs ($2 $0)))))))))`),
+ ((SER_COMPAR),
+  [],
+  `((! :((num -> real) -> bool) -> bool) (\(f :num -> real).
+   ((! :((num -> real) -> bool) -> bool) (\(g :num -> real). ((==>
+   ((/\ ((? :(num -> bool) -> bool) (\(N :num).
+   ((! :(num -> bool) -> bool) (\(n :num). ((==> ((>= $0) $1)) ((|<=|
+   (abs ($3 $0))) ($2 $0)))))))) (summable $0))) (summable $1))))))`),
+ ((SER_ZERO),
+  [],
+  `((! :((num -> real) -> bool) -> bool) (\(f :num -> real). ((==>
+   (summable $0)) ((--> $0) (& 0)))))`),
+ ((SER_CAUCHY),
+  [],
+  `((! :((num -> real) -> bool) -> bool) (\(f :num -> real).
+   (((= :bool -> bool -> bool) (summable $0))
+   ((! :(real -> bool) -> bool) (\(e :real). ((==> ((|<| (& 0)) $0))
+   ((? :(num -> bool) -> bool) (\(N :num). ((! :(num -> bool) -> bool)
+   (\(m :num). ((! :(num -> bool) -> bool) (\(n :num). ((==> ((>= $1)
+   $2)) ((|<| (abs ((sum (((, :num -> num -> num # num) $1) $0)) $4)))
+   $3))))))))))))))`),
+ ((SER_CDIV),
+  [],
+  `((! :((num -> real) -> bool) -> bool) (\(x :num -> real).
+   ((! :(real -> bool) -> bool) (\(x0 :real).
+   ((! :(real -> bool) -> bool) (\(c :real). ((==> ((sums $2) $1))
+   ((sums (\(n :num). ((/ ($3 $0)) $1))) ((/ $1) $0)))))))))`),
+ ((SER_SUB),
+  [],
+  `((! :((num -> real) -> bool) -> bool) (\(x :num -> real).
+   ((! :(real -> bool) -> bool) (\(x0 :real).
+   ((! :((num -> real) -> bool) -> bool) (\(y :num -> real).
+   ((! :(real -> bool) -> bool) (\(y0 :real). ((==> ((/\ ((sums $3)
+   $2)) ((sums $1) $0))) ((sums (\(n :num). ((|-| ($4 $0)) ($2 $0))))
+   ((|-| $2) $0)))))))))))`),
+ ((SER_NEG),
+  [],
+  `((! :((num -> real) -> bool) -> bool) (\(x :num -> real).
+   ((! :(real -> bool) -> bool) (\(x0 :real). ((==> ((sums $1) $0))
+   ((sums (\(n :num). (-- ($2 $0)))) (-- $0)))))))`),
+ ((SER_CMUL),
+  [],
+  `((! :((num -> real) -> bool) -> bool) (\(x :num -> real).
+   ((! :(real -> bool) -> bool) (\(x0 :real).
+   ((! :(real -> bool) -> bool) (\(c :real). ((==> ((sums $2) $1))
+   ((sums (\(n :num). ((|*| $1) ($3 $0)))) ((|*| $0) $1)))))))))`),
+ ((SER_ADD),
+  [],
+  `((! :((num -> real) -> bool) -> bool) (\(x :num -> real).
+   ((! :(real -> bool) -> bool) (\(x0 :real).
+   ((! :((num -> real) -> bool) -> bool) (\(y :num -> real).
+   ((! :(real -> bool) -> bool) (\(y0 :real). ((==> ((/\ ((sums $3)
+   $2)) ((sums $1) $0))) ((sums (\(n :num). ((|+| ($4 $0)) ($2 $0))))
+   ((|+| $2) $0)))))))))))`),
+ ((SER_POS_LT_PAIR),
+  [],
+  `((! :((num -> real) -> bool) -> bool) (\(f :num -> real).
+   ((! :(num -> bool) -> bool) (\(n :num). ((==> ((/\ (summable $1))
+   ((! :(num -> bool) -> bool) (\(d :num). ((|<| (& 0)) ((|+| ($2 ((+
+   $1) ((* 2) $0)))) ($2 ((+ $1) ((+ ((* 2) $0)) 1))))))))) ((|<|
+   ((sum (((, :num -> num -> num # num) 0) $0)) $1)) (suminf
+   $1)))))))`),
+ ((SER_OFFSET),
+  [],
+  `((! :((num -> real) -> bool) -> bool) (\(f :num -> real). ((==>
+   (summable $0)) ((! :(num -> bool) -> bool) (\(k :num). ((sums
+   (\(n :num). ($2 ((+ $0) $1)))) ((|-| (suminf $1)) ((sum
+   (((, :num -> num -> num # num) 0) $0)) $1))))))))`),
+ ((SER_PAIR),
+  [],
+  `((! :((num -> real) -> bool) -> bool) (\(f :num -> real). ((==>
+   (summable $0)) ((sums (\(n :num). ((sum
+   (((, :num -> num -> num # num) ((* 2) $0)) 2)) $1))) (suminf
+   $0)))))`),
+ ((SER_GROUP),
+  [],
+  `((! :((num -> real) -> bool) -> bool) (\(f :num -> real).
+   ((! :(num -> bool) -> bool) (\(k :num). ((==> ((/\ (summable $1))
+   ((< 0) $0))) ((sums (\(n :num). ((sum
+   (((, :num -> num -> num # num) ((* $0) $1)) $1)) $2))) (suminf
+   $1)))))))`),
+ ((SER_POS_LT),
+  [],
+  `((! :((num -> real) -> bool) -> bool) (\(f :num -> real).
+   ((! :(num -> bool) -> bool) (\(n :num). ((==> ((/\ (summable $1))
+   ((! :(num -> bool) -> bool) (\(m :num). ((==> ((<= $1) $0)) ((|<|
+   (& 0)) ($2 $0))))))) ((|<| ((sum (((, :num -> num -> num # num) 0)
+   $0)) $1)) (suminf $1)))))))`),
+ ((SER_POS_LE),
+  [],
+  `((! :((num -> real) -> bool) -> bool) (\(f :num -> real).
+   ((! :(num -> bool) -> bool) (\(n :num). ((==> ((/\ (summable $1))
+   ((! :(num -> bool) -> bool) (\(m :num). ((==> ((<= $1) $0)) ((|<=|
+   (& 0)) ($2 $0))))))) ((|<=| ((sum (((, :num -> num -> num # num) 0)
+   $0)) $1)) (suminf $1)))))))`),
+ ((SER_0),
+  [],
+  `((! :((num -> real) -> bool) -> bool) (\(f :num -> real).
+   ((! :(num -> bool) -> bool) (\(n :num). ((==>
+   ((! :(num -> bool) -> bool) (\(m :num). ((==> ((<= $1) $0))
+   (((= :real -> real -> bool) ($2 $0)) (& 0)))))) ((sums $1) ((sum
+   (((, :num -> num -> num # num) 0) $0)) $1)))))))`),
+ ((SUM_UNIQ),
+  [],
+  `((! :((num -> real) -> bool) -> bool) (\(f :num -> real).
+   ((! :(real -> bool) -> bool) (\(x :real). ((==> ((sums $1) $0))
+   (((= :real -> real -> bool) $0) (suminf $1)))))))`),
+ ((SUMMABLE_SUM),
+  [],
+  `((! :((num -> real) -> bool) -> bool) (\(f :num -> real). ((==>
+   (summable $0)) ((sums $0) (suminf $0)))))`),
+ ((SUM_SUMMABLE),
+  [],
+  `((! :((num -> real) -> bool) -> bool) (\(f :num -> real).
+   ((! :(real -> bool) -> bool) (\(l :real). ((==> ((sums $1) $0))
+   (summable $1))))))`),
+ ((BOLZANO_LEMMA),
+  [],
+  `((! :((real # real -> bool) -> bool) -> bool)
+   (\(P :real # real -> bool). ((==> ((/\ ((! :(real -> bool) -> bool)
+   (\(a :real). ((! :(real -> bool) -> bool) (\(b :real).
+   ((! :(real -> bool) -> bool) (\(c :real). ((==> ((/\ ((|<=| $2)
+   $1)) ((/\ ((|<=| $1) $0)) ((/\ ($3
+   (((, :real -> real -> real # real) $2) $1))) ($3
+   (((, :real -> real -> real # real) $1) $0)))))) ($3
+   (((, :real -> real -> real # real) $2) $0))))))))))
+   ((! :(real -> bool) -> bool) (\(x :real).
+   ((? :(real -> bool) -> bool) (\(d :real). ((/\ ((|<| (& 0)) $0))
+   ((! :(real -> bool) -> bool) (\(a :real).
+   ((! :(real -> bool) -> bool) (\(b :real). ((==> ((/\ ((|<=| $1)
+   $3)) ((/\ ((|<=| $3) $0)) ((|<| ((|-| $0) $1)) $2)))) ($4
+   (((, :real -> real -> real # real) $1) $0))))))))))))))
+   ((! :(real -> bool) -> bool) (\(a :real).
+   ((! :(real -> bool) -> bool) (\(b :real). ((==> ((|<=| $1) $0)) ($2
+   (((, :real -> real -> real # real) $1) $0))))))))))`),
+ ((NEST_LEMMA_UNIQ),
+  [],
+  `((! :((num -> real) -> bool) -> bool) (\(f :num -> real).
+   ((! :((num -> real) -> bool) -> bool) (\(g :num -> real). ((==>
+   ((/\ ((! :(num -> bool) -> bool) (\(n :num). ((|>=| ($2 (SUC $0)))
+   ($2 $0))))) ((/\ ((! :(num -> bool) -> bool) (\(n :num). ((|<=| ($1
+   (SUC $0))) ($1 $0))))) ((/\ ((! :(num -> bool) -> bool) (\(n :num).
+   ((|<=| ($2 $0)) ($1 $0))))) ((--> (\(n :num). ((|-| ($2 $0)) ($1
+   $0)))) (& 0)))))) ((? :(real -> bool) -> bool) (\(l :real). ((/\
+   ((/\ ((! :(num -> bool) -> bool) (\(n :num). ((|<=| ($3 $0)) $1))))
+   ((--> $2) $0))) ((/\ ((! :(num -> bool) -> bool) (\(n :num). ((|<=|
+   $1) ($2 $0))))) ((--> $1) $0))))))))))`),
+ ((NEST_LEMMA),
+  [],
+  `((! :((num -> real) -> bool) -> bool) (\(f :num -> real).
+   ((! :((num -> real) -> bool) -> bool) (\(g :num -> real). ((==>
+   ((/\ ((! :(num -> bool) -> bool) (\(n :num). ((|>=| ($2 (SUC $0)))
+   ($2 $0))))) ((/\ ((! :(num -> bool) -> bool) (\(n :num). ((|<=| ($1
+   (SUC $0))) ($1 $0))))) ((! :(num -> bool) -> bool) (\(n :num).
+   ((|<=| ($2 $0)) ($1 $0))))))) ((? :(real -> bool) -> bool)
+   (\(l :real). ((? :(real -> bool) -> bool) (\(m :real). ((/\ ((|<=|
+   $1) $0)) ((/\ ((/\ ((! :(num -> bool) -> bool) (\(n :num). ((|<=|
+   ($4 $0)) $2)))) ((--> $3) $1))) ((/\ ((! :(num -> bool) -> bool)
+   (\(n :num). ((|<=| $1) ($3 $0))))) ((--> $2) $0)))))))))))))`),
+ ((SEQ_POWER),
+  [],
+  `((! :(real -> bool) -> bool) (\(c :real). ((==> ((|<| (abs $0)) (&
+   1))) ((--> (\(n :num). ((pow $1) $0))) (& 0)))))`),
+ ((SEQ_POWER_ABS),
+  [],
+  `((! :(real -> bool) -> bool) (\(c :real). ((==> ((|<| (abs $0)) (&
+   1))) ((--> (\(n :num). ((pow (abs $1)) $0))) (& 0)))))`),
+ ((SEQ_INV0),
+  [],
+  `((! :((num -> real) -> bool) -> bool) (\(f :num -> real). ((==>
+   ((! :(real -> bool) -> bool) (\(y :real).
+   ((? :(num -> bool) -> bool) (\(N :num). ((! :(num -> bool) -> bool)
+   (\(n :num). ((==> ((>= $0) $1)) ((|>| ($3 $0)) $2))))))))) ((-->
+   (\(n :num). (inv ($1 $0)))) (& 0)))))`),
+ ((SEQ_ABS_IMP),
+  [],
+  `((! :((num -> real) -> bool) -> bool) (\(f :num -> real).
+   ((! :(real -> bool) -> bool) (\(l :real). ((==> ((--> $1) $0))
+   ((--> (\(n :num). (abs ($2 $0)))) (abs $0)))))))`),
+ ((SEQ_ABS),
+  [],
+  `((! :((num -> real) -> bool) -> bool) (\(f :num -> real).
+   (((= :bool -> bool -> bool) ((--> (\(n :num). (abs ($1 $0)))) (&
+   0))) ((--> $0) (& 0)))))`),
+ ((SEQ_SUC),
+  [],
+  `((! :((num -> real) -> bool) -> bool) (\(f :num -> real).
+   ((! :(real -> bool) -> bool) (\(l :real).
+   (((= :bool -> bool -> bool) ((--> $1) $0)) ((--> (\(n :num). ($2
+   (SUC $0)))) $0))))))`),
+ ((SEQ_LE),
+  [],
+  `((! :((num -> real) -> bool) -> bool) (\(f :num -> real).
+   ((! :((num -> real) -> bool) -> bool) (\(g :num -> real).
+   ((! :(real -> bool) -> bool) (\(l :real).
+   ((! :(real -> bool) -> bool) (\(m :real). ((==> ((/\ ((--> $3) $1))
+   ((/\ ((--> $2) $0)) ((? :(num -> bool) -> bool) (\(N :num).
+   ((! :(num -> bool) -> bool) (\(n :num). ((==> ((>= $0) $1)) ((|<=|
+   ($5 $0)) ($4 $0)))))))))) ((|<=| $1) $0))))))))))`),
+ ((SEQ_CAUCHY),
+  [],
+  `((! :((num -> real) -> bool) -> bool) (\(f :num -> real).
+   (((= :bool -> bool -> bool) (cauchy $0)) (convergent $0))))`),
+ ((SEQ_DIRECT),
+  [],
+  `((! :((num -> num) -> bool) -> bool) (\(f :num -> num). ((==>
+   (subseq $0)) ((! :(num -> bool) -> bool) (\(N1 :num).
+   ((! :(num -> bool) -> bool) (\(N2 :num).
+   ((? :(num -> bool) -> bool) (\(n :num). ((/\ ((>= $0) $2)) ((>= ($3
+   $0)) $1)))))))))))`),
+ ((SEQ_SUBLE),
+  [],
+  `((! :((num -> num) -> bool) -> bool) (\(f :num -> num). ((==>
+   (subseq $0)) ((! :(num -> bool) -> bool) (\(n :num). ((<= $0) ($1
+   $0)))))))`),
+ ((SEQ_SBOUNDED),
+  [],
+  `((! :((num -> real) -> bool) -> bool) (\(s :num -> real).
+   ((! :((num -> num) -> bool) -> bool) (\(f :num -> num). ((==>
+   (((bounded :real metric # (num -> num -> bool) -> (num -> real) ->
+               bool)
+   (((, :real metric -> (num -> num -> bool) ->
+         real metric # (num -> num -> bool)) mr1) >=)) $1))
+   (((bounded :real metric # (num -> num -> bool) -> (num -> real) ->
+               bool)
+   (((, :real metric -> (num -> num -> bool) ->
+         real metric # (num -> num -> bool)) mr1) >=)) (\(n :num). ($2
+   ($1 $0)))))))))`),
+ ((SEQ_MONOSUB),
+  [],
+  `((! :((num -> real) -> bool) -> bool) (\(s :num -> real).
+   ((? :((num -> num) -> bool) -> bool) (\(f :num -> num). ((/\
+   (subseq $0)) (mono (\(n :num). ($2 ($1 $0)))))))))`),
+ ((SEQ_BCONV),
+  [],
+  `((! :((num -> real) -> bool) -> bool) (\(f :num -> real). ((==>
+   ((/\
+   (((bounded :real metric # (num -> num -> bool) -> (num -> real) ->
+               bool)
+   (((, :real metric -> (num -> num -> bool) ->
+         real metric # (num -> num -> bool)) mr1) >=)) $0)) (mono
+   $0))) (convergent $0))))`),
+ ((SEQ_NEG_BOUNDED),
+  [],
+  `((! :((num -> real) -> bool) -> bool) (\(f :num -> real).
+   (((= :bool -> bool -> bool)
+   (((bounded :real metric # (num -> num -> bool) -> (num -> real) ->
+               bool)
+   (((, :real metric -> (num -> num -> bool) ->
+         real metric # (num -> num -> bool)) mr1) >=)) (\(n :num). (--
+   ($1 $0)))))
+   (((bounded :real metric # (num -> num -> bool) -> (num -> real) ->
+               bool)
+   (((, :real metric -> (num -> num -> bool) ->
+         real metric # (num -> num -> bool)) mr1) >=)) $0))))`),
+ ((SEQ_NEG_CONV),
+  [],
+  `((! :((num -> real) -> bool) -> bool) (\(f :num -> real).
+   (((= :bool -> bool -> bool) (convergent $0)) (convergent
+   (\(n :num). (-- ($1 $0)))))))`),
+ ((SEQ_ICONV),
+  [],
+  `((! :((num -> real) -> bool) -> bool) (\(f :num -> real). ((==>
+   ((/\
+   (((bounded :real metric # (num -> num -> bool) -> (num -> real) ->
+               bool)
+   (((, :real metric -> (num -> num -> bool) ->
+         real metric # (num -> num -> bool)) mr1) >=)) $0))
+   ((! :(num -> bool) -> bool) (\(m :num). ((! :(num -> bool) -> bool)
+   (\(n :num). ((==> ((>= $1) $0)) ((|>=| ($2 $1)) ($2 $0)))))))))
+   (convergent $0))))`),
+ ((SEQ_CBOUNDED),
+  [],
+  `((! :((num -> real) -> bool) -> bool) (\(f :num -> real). ((==>
+   (cauchy $0))
+   (((bounded :real metric # (num -> num -> bool) -> (num -> real) ->
+               bool)
+   (((, :real metric -> (num -> num -> bool) ->
+         real metric # (num -> num -> bool)) mr1) >=)) $0))))`),
+ ((SEQ_BOUNDED_2),
+  [],
+  `((! :((num -> real) -> bool) -> bool) (\(f :num -> real).
+   ((! :(real -> bool) -> bool) (\(k :real).
+   ((! :(real -> bool) -> bool) (\(k' :real). ((==>
+   ((! :(num -> bool) -> bool) (\(n :num). ((/\ ((|<=| $2) ($3 $0)))
+   ((|<=| ($3 $0)) $1)))))
+   (((bounded :real metric # (num -> num -> bool) -> (num -> real) ->
+               bool)
+   (((, :real metric -> (num -> num -> bool) ->
+         real metric # (num -> num -> bool)) mr1) >=)) $2))))))))`),
+ ((SEQ_BOUNDED),
+  [],
+  `((! :((num -> real) -> bool) -> bool) (\(s :num -> real).
+   (((= :bool -> bool -> bool)
+   (((bounded :real metric # (num -> num -> bool) -> (num -> real) ->
+               bool)
+   (((, :real metric -> (num -> num -> bool) ->
+         real metric # (num -> num -> bool)) mr1) >=)) $0))
+   ((? :(real -> bool) -> bool) (\(k :real).
+   ((! :(num -> bool) -> bool) (\(n :num). ((|<| (abs ($2 $0)))
+   $1))))))))`),
+ ((MAX_LEMMA),
+  [],
+  `((! :((num -> real) -> bool) -> bool) (\(s :num -> real).
+   ((! :(num -> bool) -> bool) (\(N :num).
+   ((? :(real -> bool) -> bool) (\(k :real).
+   ((! :(num -> bool) -> bool) (\(n :num). ((==> ((< $0) $2)) ((|<|
+   (abs ($3 $0))) $1))))))))))`),
+ ((MONO_SUC),
+  [],
+  `((! :((num -> real) -> bool) -> bool) (\(f :num -> real).
+   (((= :bool -> bool -> bool) (mono $0)) ((\/
+   ((! :(num -> bool) -> bool) (\(n :num). ((|>=| ($1 (SUC $0))) ($1
+   $0))))) ((! :(num -> bool) -> bool) (\(n :num). ((|<=| ($1 (SUC
+   $0))) ($1 $0))))))))`),
+ ((SUBSEQ_SUC),
+  [],
+  `((! :((num -> num) -> bool) -> bool) (\(f :num -> num).
+   (((= :bool -> bool -> bool) (subseq $0))
+   ((! :(num -> bool) -> bool) (\(n :num). ((< ($1 $0)) ($1 (SUC
+   $0))))))))`),
+ ((SEQ_LIM),
+  [],
+  `((! :((num -> real) -> bool) -> bool) (\(f :num -> real).
+   (((= :bool -> bool -> bool) (convergent $0)) ((--> $0) (lim
+   $0)))))`),
+ ((SEQ_UNIQ),
+  [],
+  `((! :((num -> real) -> bool) -> bool) (\(x :num -> real).
+   ((! :(real -> bool) -> bool) (\(x1 :real).
+   ((! :(real -> bool) -> bool) (\(x2 :real). ((==> ((/\ ((--> $2)
+   $1)) ((--> $2) $0))) (((= :real -> real -> bool) $1) $0))))))))`),
+ ((SEQ_DIV),
+  [],
+  `((! :((num -> real) -> bool) -> bool) (\(x :num -> real).
+   ((! :(real -> bool) -> bool) (\(x0 :real).
+   ((! :((num -> real) -> bool) -> bool) (\(y :num -> real).
+   ((! :(real -> bool) -> bool) (\(y0 :real). ((==> ((/\ ((--> $3)
+   $2)) ((/\ ((--> $1) $0)) (~ (((= :real -> real -> bool) $0) (&
+   0)))))) ((--> (\(n :num). ((/ ($4 $0)) ($2 $0)))) ((/ $2)
+   $0)))))))))))`),
+ ((SEQ_SUB),
+  [],
+  `((! :((num -> real) -> bool) -> bool) (\(x :num -> real).
+   ((! :(real -> bool) -> bool) (\(x0 :real).
+   ((! :((num -> real) -> bool) -> bool) (\(y :num -> real).
+   ((! :(real -> bool) -> bool) (\(y0 :real). ((==> ((/\ ((--> $3)
+   $2)) ((--> $1) $0))) ((--> (\(n :num). ((|-| ($4 $0)) ($2 $0))))
+   ((|-| $2) $0)))))))))))`),
+ ((SEQ_INV),
+  [],
+  `((! :((num -> real) -> bool) -> bool) (\(x :num -> real).
+   ((! :(real -> bool) -> bool) (\(x0 :real). ((==> ((/\ ((--> $1)
+   $0)) (~ (((= :real -> real -> bool) $0) (& 0))))) ((--> (\(n :num).
+   (inv ($2 $0)))) (inv $0)))))))`),
+ ((SEQ_NEG),
+  [],
+  `((! :((num -> real) -> bool) -> bool) (\(x :num -> real).
+   ((! :(real -> bool) -> bool) (\(x0 :real).
+   (((= :bool -> bool -> bool) ((--> $1) $0)) ((--> (\(n :num). (--
+   ($2 $0)))) (-- $0)))))))`),
+ ((SEQ_MUL),
+  [],
+  `((! :((num -> real) -> bool) -> bool) (\(x :num -> real).
+   ((! :(real -> bool) -> bool) (\(x0 :real).
+   ((! :((num -> real) -> bool) -> bool) (\(y :num -> real).
+   ((! :(real -> bool) -> bool) (\(y0 :real). ((==> ((/\ ((--> $3)
+   $2)) ((--> $1) $0))) ((--> (\(n :num). ((|*| ($4 $0)) ($2 $0))))
+   ((|*| $2) $0)))))))))))`),
+ ((SEQ_ADD),
+  [],
+  `((! :((num -> real) -> bool) -> bool) (\(x :num -> real).
+   ((! :(real -> bool) -> bool) (\(x0 :real).
+   ((! :((num -> real) -> bool) -> bool) (\(y :num -> real).
+   ((! :(real -> bool) -> bool) (\(y0 :real). ((==> ((/\ ((--> $3)
+   $2)) ((--> $1) $0))) ((--> (\(n :num). ((|+| ($4 $0)) ($2 $0))))
+   ((|+| $2) $0)))))))))))`),
+ ((SEQ_CONST),
+  [],
+  `((! :(real -> bool) -> bool) (\(k :real). ((--> (\(x :num). $1))
+   $0)))`),
+ ((SEQ),
+  [],
+  `((! :((num -> real) -> bool) -> bool) (\(x :num -> real).
+   ((! :(real -> bool) -> bool) (\(x0 :real).
+   (((= :bool -> bool -> bool) ((--> $1) $0))
+   ((! :(real -> bool) -> bool) (\(e :real). ((==> ((|<| (& 0)) $0))
+   ((? :(num -> bool) -> bool) (\(N :num). ((! :(num -> bool) -> bool)
+   (\(n :num). ((==> ((>= $0) $1)) ((|<| (abs ((|-| ($4 $0)) $3)))
+   $2))))))))))))))`)]

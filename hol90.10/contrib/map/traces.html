@@ -1,0 +1,87 @@
+<TITLE>Theory: traces</TITLE>
+<H1>Theory: traces</H1>
+<H1>Parents</H1>
+    <UL>
+    <LI><A HREF = "list_lib1.html"><STRONG>list_lib1</STRONG></A>
+    <LI><A HREF = "CSP_base.html"><STRONG>CSP_base</STRONG></A>
+    </UL>
+
+
+<HR>
+<H1>Type constants</H1>
+    <UL>
+    
+    </UL>
+
+
+<HR>
+<H1>Term constants</H1>
+    <UL>
+    <LI><STRONG>TR_STRICT</STRONG><EM>:('a list -> 'a list) -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>TR_DIST</STRONG><EM>:('a list -> 'a list) -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>ITERATE</STRONG><EM>:num -> 'a list -> 'a list</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    </UL>
+
+
+<HR>
+<H1>Axioms</H1>
+<DL>
+
+</DL>
+
+
+<HR>
+<H1>Definitions</H1>
+<DL>
+<DT><STRONG>TR_STRICT</STRONG>
+<DD>
+<PRE>
+|- !f. TR_STRICT f = f [] = []
+</PRE>
+
+<DT><STRONG>TR_DIST</STRONG>
+<DD>
+<PRE>
+|- !f. TR_DIST f = (!s t. f (APPEND s t) = APPEND (f s) (f t))
+</PRE>
+
+<DT><STRONG>ITERATE</STRONG>
+<DD>
+<PRE>
+|- (!t. ITERATE 0 t = []) /\
+   (!n t. ITERATE (SUC n) t = APPEND t (ITERATE n t))
+</PRE>
+
+</DL>
+
+
+<HR>
+<H1>Theorems</H1>
+<DL>
+<DT><STRONG>TR_DIST_STRICT</STRONG>
+<DD>
+<PRE>
+|- !f. TR_DIST f ==> TR_STRICT f
+</PRE>
+
+<DT><STRONG>ITER_COMM</STRONG>
+<DD>
+<PRE>
+|- !n t. ITERATE (SUC n) t = APPEND (ITERATE n t) t
+</PRE>
+
+<DT><STRONG>ITER_APP</STRONG>
+<DD>
+<PRE>
+|- !n s t.
+     ITERATE (SUC n) (APPEND s t) =
+     APPEND s (APPEND (ITERATE n (APPEND t s)) t)
+</PRE>
+
+</DL>
+
+
+<HR>

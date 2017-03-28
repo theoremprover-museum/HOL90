@@ -1,0 +1,85 @@
+thid = (finite_functions, 784895212, 522532)
+axioms = []
+definitions =
+[((finfun_REP_ABS_DEF),
+  [],
+  `((/\ ((! :(('a,'b)finfun -> bool) -> bool) (\(a :('a,'b)finfun).
+   (((= :('a,'b)finfun -> ('a,'b)finfun -> bool)
+   ((finfun :('a -> 'b lift) -> ('a,'b)finfun)
+   ((finfun_apply :('a,'b)finfun -> 'a -> 'b lift) $0))) $0))))
+   ((! :(('a -> 'b lift) -> bool) -> bool) (\(r :'a -> 'b lift).
+   (((= :bool -> bool -> bool) ((\(f :'a -> 'b lift).
+   ((FINITE :'a set -> bool) ((GSPEC :('a -> 'a # bool) -> 'a set)
+   (\(x :'a). (((, :'a -> bool -> 'a # bool) $0)
+   (((part_fun_domain :('a -> 'b lift) -> 'a -> bool) $1) $0))))))
+   $0)) (((= :('a -> 'b lift) -> ('a -> 'b lift) -> bool)
+   ((finfun_apply :('a,'b)finfun -> 'a -> 'b lift)
+   ((finfun :('a -> 'b lift) -> ('a,'b)finfun) $0))) $0)))))`),
+ ((finfun_TY_DEF),
+  [],
+  `((? :((('a,'b)finfun -> 'a -> 'b lift) -> bool) -> bool)
+   (\(rep :('a,'b)finfun -> 'a -> 'b lift).
+   (((TYPE_DEFINITION :(('a -> 'b lift) -> bool) ->
+                       (('a,'b)finfun -> 'a -> 'b lift) -> bool)
+   (\(f :'a -> 'b lift). ((FINITE :'a set -> bool)
+   ((GSPEC :('a -> 'a # bool) -> 'a set) (\(x :'a).
+   (((, :'a -> bool -> 'a # bool) $0)
+   (((part_fun_domain :('a -> 'b lift) -> 'a -> bool) $1) $0)))))))
+   $0)))`)]
+theorems =
+[((gen_finfun_induction),
+  [],
+  `((! :((('a,'b)finfun -> bool) -> bool) -> bool)
+   (\(P :('a,'b)finfun -> bool). ((==>
+   ((! :(('a,'b)finfun -> bool) -> bool) (\(f :('a,'b)finfun). ((==>
+   ((! :(('a,'b)finfun -> bool) -> bool) (\(g :('a,'b)finfun). ((==>
+   ((< ((CARD :'a set -> num) ((GSPEC :('a -> 'a # bool) -> 'a set)
+   (\(x :'a). (((, :'a -> bool -> 'a # bool) $0)
+   (((part_fun_domain :('a -> 'b lift) -> 'a -> bool)
+   ((finfun_apply :('a,'b)finfun -> 'a -> 'b lift) $1)) $0))))))
+   ((CARD :'a set -> num) ((GSPEC :('a -> 'a # bool) -> 'a set)
+   (\(x :'a). (((, :'a -> bool -> 'a # bool) $0)
+   (((part_fun_domain :('a -> 'b lift) -> 'a -> bool)
+   ((finfun_apply :('a,'b)finfun -> 'a -> 'b lift) $2)) $0))))))) ($2
+   $0))))) ($1 $0))))) ((! :(('a,'b)finfun -> bool) -> bool)
+   (\(f :('a,'b)finfun). ($1 $0))))))`),
+ ((EMPTY_part_fun_domain_imp_empty_part_fun),
+  [],
+  `((! :(('a -> 'b lift) -> bool) -> bool) (\(f :'a -> 'b lift). ((==>
+   (((= :'a set -> 'a set -> bool)
+   ((GSPEC :('a -> 'a # bool) -> 'a set) (\(x :'a).
+   (((, :'a -> bool -> 'a # bool) $0)
+   (((part_fun_domain :('a -> 'b lift) -> 'a -> bool) $1) $0)))))
+   (EMPTY :'a set))) (((= :('a -> 'b lift) -> ('a -> 'b lift) -> bool)
+   $0) (empty_part_fun :'a -> 'b lift)))))`),
+ ((empty_part_fun_domain_EMPTY),
+  [],
+  `(((= :'a set -> 'a set -> bool)
+   ((GSPEC :('a -> 'a # bool) -> 'a set) (\(x :'a).
+   (((, :'a -> bool -> 'a # bool) $0)
+   (((part_fun_domain :('a -> 'b lift) -> 'a -> bool)
+   (empty_part_fun :'a -> 'b lift)) $0))))) (EMPTY :'a set))`),
+ ((delete_smaller),
+  [],
+  `((! :(('a -> 'b lift) -> bool) -> bool) (\(f :'a -> 'b lift).
+   ((! :('a -> bool) -> bool) (\(y :'a). ((==> ((/\
+   ((FINITE :'a set -> bool) ((GSPEC :('a -> 'a # bool) -> 'a set)
+   (\(x :'a). (((, :'a -> bool -> 'a # bool) $0)
+   (((part_fun_domain :('a -> 'b lift) -> 'a -> bool) $2) $0))))))
+   (((part_fun_domain :('a -> 'b lift) -> 'a -> bool) $1) $0)))
+   (((= :num -> num -> bool) ((CARD :'a set -> num)
+   ((GSPEC :('a -> 'a # bool) -> 'a set) (\(x :'a).
+   (((, :'a -> bool -> 'a # bool) $0)
+   (((part_fun_domain :('a -> 'b lift) -> 'a -> bool) $2) $0))))))
+   (SUC ((CARD :'a set -> num) ((GSPEC :('a -> 'a # bool) -> 'a set)
+   (\(x :'a). (((, :'a -> bool -> 'a # bool) $0)
+   (((part_fun_domain :('a -> 'b lift) -> 'a -> bool)
+   ((((update_fun :('a -> 'b lift) -> 'a -> 'b lift -> 'a -> 'b lift)
+   $2) $1) (undefined :'b lift))) $0))))))))))))`),
+ ((delete_lemma),
+  [],
+  `((! :(('a -> 'b lift) -> bool) -> bool) (\(f :'a -> 'b lift).
+   ((! :('a -> bool) -> bool) (\(x :'a). (~
+   (((part_fun_domain :('a -> 'b lift) -> 'a -> bool)
+   ((((update_fun :('a -> 'b lift) -> 'a -> 'b lift -> 'a -> 'b lift)
+   $1) $0) (undefined :'b lift))) $0))))))`)]

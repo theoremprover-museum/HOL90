@@ -1,0 +1,108 @@
+<TITLE>Theory: halts_thms</TITLE>
+<H1>Theory: halts_thms</H1>
+<H1>Parents</H1>
+    <UL>
+    <LI><A HREF = "hoare_thms.html"><STRONG>hoare_thms</STRONG></A>
+    <LI><A HREF = "halts.html"><STRONG>halts</STRONG></A>
+    </UL>
+
+
+<HR>
+<H1>Type constants</H1>
+    <UL>
+    
+    </UL>
+
+
+<HR>
+<H1>Term constants</H1>
+    <UL>
+    <LI><STRONG>T_SPEC</STRONG><EM>:((string -> num) -> bool) #
+                                    ((string -> num) # (string -> num) ->
+                                    bool) # ((string -> num) -> bool) ->
+                                    bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    </UL>
+
+
+<HR>
+<H1>Axioms</H1>
+<DL>
+
+</DL>
+
+
+<HR>
+<H1>Definitions</H1>
+<DL>
+<DT><STRONG>T_SPEC</STRONG>
+<DD>
+<PRE>
+|- !p c q. T_SPEC (p,c,q) = MK_SPEC (p,c,q) /\ HALTS p c
+</PRE>
+
+</DL>
+
+
+<HR>
+<H1>Theorems</H1>
+<DL>
+<DT><STRONG>SKIP_T_THM</STRONG>
+<DD>
+<PRE>
+|- !p. T_SPEC (p,MK_SKIP,p)
+</PRE>
+
+<DT><STRONG>ASSIGN_T_THM</STRONG>
+<DD>
+<PRE>
+|- !p x f. T_SPEC ((\s. p (BND x (f s) s)),MK_ASSIGN (x,f),p)
+</PRE>
+
+<DT><STRONG>SEQ_T_THM</STRONG>
+<DD>
+<PRE>
+|- !p q r c c'.
+     T_SPEC (p,c,q) /\ T_SPEC (q,c',r) ==> T_SPEC (p,MK_SEQ (c,c'),r)
+</PRE>
+
+<DT><STRONG>IF1_T_THM</STRONG>
+<DD>
+<PRE>
+|- !p q c b.
+     T_SPEC ((\s. p s /\ b s),c,q) /\ (!s. p s /\ ~(b s) ==> q s) ==>
+     T_SPEC (p,MK_IF1 (b,c),q)
+</PRE>
+
+<DT><STRONG>IF2_T_THM</STRONG>
+<DD>
+<PRE>
+|- !p q c c' b.
+     T_SPEC ((\s. p s /\ b s),c,q) /\ T_SPEC ((\s. p s /\ ~(b s)),c',q) ==>
+     T_SPEC (p,MK_IF2 (b,c,c'),q)
+</PRE>
+
+<DT><STRONG>PRE_STRENGTH_T_THM</STRONG>
+<DD>
+<PRE>
+|- !p p' q c. (!s. p' s ==> p s) /\ T_SPEC (p,c,q) ==> T_SPEC (p',c,q)
+</PRE>
+
+<DT><STRONG>POST_WEAK_T_THM</STRONG>
+<DD>
+<PRE>
+|- !p q q' c. T_SPEC (p,c,q) /\ (!s. q s ==> q' s) ==> T_SPEC (p,c,q')
+</PRE>
+
+<DT><STRONG>WHILE_T_THM</STRONG>
+<DD>
+<PRE>
+|- !p c b.
+     (!n. T_SPEC ((\s. p s /\ b s /\ (s x = n)),c,(\s. p s /\ s x < n))) ==>
+     T_SPEC (p,MK_WHILE (b,c),(\s. p s /\ ~(b s)))
+</PRE>
+
+</DL>
+
+
+<HR>

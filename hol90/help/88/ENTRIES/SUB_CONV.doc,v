@@ -1,0 +1,99 @@
+head	1.1;
+branch	1.1.1;
+access;
+symbols
+	HOL97:1.1.1.1.0.6
+	bpHOL97:1.1.1.1
+	hol90_9_alpha:1.1.1.1
+	hol90_pre8_for_multiple_compilers:1.1.1.1.0.4
+	hol90_pre8_after_donalds_separate_compilation_changes:1.1.1.1
+	hol90_8_after_merging_Konrad_Elsa:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	95.10.16.13.34.23;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.34.23;	author rjb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@\DOC SUB_CONV
+
+\TYPE {SUB_CONV : (conv -> conv)}
+
+\SYNOPSIS
+Applies a conversion to the top-level subterms of a term.
+
+\KEYWORDS
+conversional.
+
+\DESCRIBE
+For any conversion {c}, the function returned by {SUB_CONV c} is a conversion
+that applies {c} to all the top-level subterms of a term.  If the conversion
+{c} maps {t} to {|- t = t'}, then {SUB_CONV c} maps an abstraction {"\x.t"} to
+the theorem:
+{
+   |- (\x.t) = (\x.t')
+}
+\noindent That is, {SUB_CONV c "\x.t"} applies {c} to the body of the
+abstraction {"\x.t"}.  If {c} is a conversion that maps {"t1"} to the theorem
+{|- t1 = t1'} and {"t2"} to the theorem {|- t2 = t2'}, then the conversion
+{SUB_CONV c} maps an application {"t1 t2"} to the theorem:
+{
+   |- (t1 t2) = (t1' t2')
+}
+\noindent That is, {SUB_CONV c "t1 t2"} applies {c} to the both the operator
+{t1} and the operand {t2} of the application {"t1 t2"}.  Finally, for any
+conversion {c}, the function returned by {SUB_CONV c} acts as the identity
+conversion on variables and constants.  That is, if {"t"} is a variable or
+constant, then {SUB_CONV c "t"} returns {|- t = t}.
+
+\FAILURE
+{SUB_CONV c tm} fails if {tm} is an abstraction {"\x.t"} and the conversion {c}
+fails when applied to {t}, or if {tm} is an application {"t1 t2"} and the
+conversion {c} fails when applied to either {t1} or {t2}.  The function
+returned by {SUB_CONV c} may also fail if the ML function {c:term->thm} is not,
+in fact, a conversion (i.e. a function that maps a term {t} to a theorem
+{|- t = t'}).
+
+\SEEALSO
+ABS_CONV, RAND_CONV, RATOR_CONV.
+
+\ENDDOC
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

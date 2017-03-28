@@ -1,0 +1,681 @@
+%\documentstyle[fancybox,sem-a4,itmath]{seminar}
+\documentstyle[fancybox,sem-a4]{seminar}
+\input{amssym.def}
+\input{amssym.tex}
+\newcommand{\imp}{\supset}
+\newcommand{\itelse}[3]{\mbox{$\mbox{if}\ {#1}\ \mbox{then}\ {#2}\
+    \mbox{else}\ {#3}$}}
+\newcommand{\constr}[1]{\mbox{\sf {#1}}}
+\newcommand{\transl}[1]{\mbox{$\{ \!\! | {#1} | \!\! \}$}}
+
+\landscapeonly 
+%\portraitonly
+
+% Personal hints concerning printing:
+% 1. enable \landscapeonly and print by 
+%    dvips -t landscape slides
+% 2. enable \portraitonly and use portrait-option to print the rest by
+%    dvips slides 
+
+%\slidesmag{2}
+
+\newcommand{\heading}[1]{%
+  \begin{center}
+    \large\bf
+    \shadowbox{\makebox{#1}}%
+  \end{center}
+  \vspace{1ex minus 1ex}}
+
+\newcommand{\Infer}[2]%
+{\frac{\vbox{\hbox{$\displaystyle #1$}\hbox{\vspace{.1ex}}}}%
+      {\vbox{\hbox{\vspace{.3ex}}\hbox{$\displaystyle #2$}}}}
+
+
+\begin{document}
+
+
+%\begin{slide}
+%\heading{More Functions in Higher Order Logic}
+%\bigskip
+%\bigskip
+%\begin{center}
+%  Konrad Slind  \\
+%TU M{\"u}nchen, Cambridge U.
+%\end{center}
+%\end{slide} 
+%
+%\begin{slide}
+%\heading{Plan}
+%
+%\begin{enumerate}
+%\item Introduction
+%\item Logical Basis
+%\item Design
+%\item Custom Induction Theorems
+%\item Examples
+%\end{enumerate}
+%\end{slide} 
+%
+%
+%\begin{slide}
+%\heading{Variant}
+%\[\begin{array}{l}
+% (\forall x\ L. \ mem\ x\ L \imp \\
+%{~~~~~~~~}length(filter(\lambda y. x+1 \leq y) L) < length(filter(\lambda
+%y. x \leq y) L)) \\ 
+%\supset \\
+%variant (x,L) =  \mbox{if}\ (mem\ x\ L)\ \mbox{then}\ variant(x+1,L)\ \mbox{else}\ x \mbox{: thm} 
+%\end{array}
+%\]
+%
+%\noindent Lemma needed for termination proof:
+%\begin{eqnarray*}
+% (\forall x.\ P\ x \supset Q\ x) \supset length(filter\ P\ L) \leq
+% length(filter\ Q\ L) 
+%\end{eqnarray*}
+%
+%\end{slide}
+%
+%\begin{slide}
+%\heading{Variant}
+%\begin{itemize}
+%\item Induction theorem
+%\begin{eqnarray*}
+% \vdash \forall P.\;(\forall x\; L. (mem\;x\;L \imp P(Suc\;x,L)) \imp
+%P (x,L)) \imp \forall v\ v_1.\ P (v,v_1)
+%\end{eqnarray*}
+%\item Main property of variant:
+%\begin{eqnarray*}
+% \neg mem\ (variant (x,L))\ L.
+%\end{eqnarray*}
+%\end{itemize}
+%\end{slide}
+%
+%\begin{slide}
+%\heading{Naive program tactic}
+%\begin{itemize}
+%\item Apply induction theorem
+%\item Break into cases (from clauses in def'n.)
+%\item Unroll recursive function once
+%\item Do all case splits (from control structures in program)
+%\end{itemize}
+%\end{slide}
+%
+%\begin{slide}
+%\heading{Variant correctness}
+%\begin{itemize}
+%\item
+%\[\begin{array}{rl}
+% Goal: & \neg(mem\ x\ L) \\ \hline
+% Assums: & mem\ x\ L \imp \neg(mem\ (variant\ (\constr{Suc}\ x,L))\ L) \\
+%         &    \neg(mem\ x\ L)
+%\end{array}
+%\]
+% 
+%\item
+%\[\begin{array}{rl}
+% Goal: & \neg(mem\ (variant(\constr{Suc}\ x,L))\ L) \\ \hline
+% Assums: & mem\ x\ L \imp \neg(mem\ (variant (\constr{Suc}\ x,L))\ L) \\
+%         & mem\ x\ L
+%\end{array}
+%\]
+%\end{itemize}
+%\end{slide}
+%
+%
+%\begin{slide}
+%\heading{Custom induction theorems}
+%From a function definition
+%\begin{eqnarray*}
+%  f (pat_1) & = & rhs_1[f(a_{11}),\ldots,f(a_{1{k_1}})] \\
+%  & \vdots & \\
+%  f (pat_n) & = & rhs_n[f(a_{n1}),\ldots,f(a_{n{k_n}})] 
+%\end{eqnarray*}
+%\noindent the extraction process gives us the termination conditions
+%\[\begin{array}{lcl}
+%  WF(R), & & \\
+%  \forall(\Gamma(a_{11}) \imp R\;a_{11}\;pat_1), & \ldots, &
+%  \forall(\Gamma(a_{1{k_1}}) \imp R\;a_{1{k_1}}\;pat_1), \\
+%  & \vdots & \\
+%  \forall(\Gamma(a_{n1}) \imp R\;a_{n1}\;pat_n),& \ldots, &
+%  \forall(\Gamma(a_{n{k_n}}) \imp R\;a_{n{k_n}}\;pat_n)
+%\end{array}\]
+%\end{slide}
+%
+%\begin{slide}
+%\heading{Target theorem}
+%\[\begin{array}{ll}
+%    \left( \forall 
+%                 \left(\begin{array}{l}
+%                        \begin{array}[b]{ll}
+%                          (\forall(\Gamma(a_{11}) \imp P\;a_{11})) & \land  \\
+%                          \vdots & \land \\
+%                          (\forall(\Gamma(a_{1{k_1}}) \imp P\;a_{1{k_1}})) &
+%                         \end{array}
+%                        \end{array}
+%                 \right) \imp P(pat_1)\right ) & \land \\
+%   & \hspace{0.1cm}\vdots \\
+%   & \land \\
+%   \left ( \forall
+%       \left( \begin{array}{l}
+%                 \begin{array}[t]{ll}
+%                 (\forall(\Gamma(a_{n1}) \imp P\;a_{n1})) & \land \\
+%                 \vdots & \land \\
+%                 (\forall(\Gamma(a_{n{k_n}}) \imp P\;a_{n{k_n}})) &
+%                 \end{array}
+%               \end{array}
+%       \right) \imp P(pat_n)\right ) & \imp \forall v.\ P\;v. 
+% \end{array}\]
+%\end{slide}
+%
+%\begin{slide}
+%\heading{Pattern completeness}
+%
+%\[
+% \forall x.\ (\exists \overline{y}.\ x = pat_1(\overline{y})) \lor
+%\ldots \lor (\overline{y}.\ x = pat_n(\overline{y})) \]
+%
+%\noindent Example.
+%
+%\[\begin{array}{l}
+% \forall x.\ (x = (0,0)) \lor (\exists y.\ x = (0,\constr{Suc}\;y)) \lor \\
+%{~~~~~} (\exists y.\ x = (\constr{Suc}\;y,0)) \lor (\exists y\;z.\ x = (\constr{Suc}\;y, \constr{Suc}\;z))
+%\end{array} \]
+%
+%\noindent Implemented by adaptation of Augustsson's pattern matching
+%algorithm to perform explicit proof.
+%\end{slide}
+%
+%\begin{slide}
+%\heading{Permutations}
+%\[ perm\; l_1\; l_2 \equiv \forall x.\ filter\ (op = x)\ l_1 = filter\
+%(op = x)\ l_2\] 
+%
+%\noindent $perm$ is an equivalence relation and
+%
+%\[perm\; l_1\; l_3 \land perm\;l_2\;l_4 \imp perm (l_1 @
+%l_2) (l_3 @ l_4)\]
+% 
+%\end{slide}
+%
+%% \begin{slide}
+%% \heading{Sorting}
+%% \[\begin{array}{lr}
+%%   tt\_relation\ R \equiv & \\
+%% {~~~~~~}  (\forall x\;y\;z.\ R\;x\;y \land R\;y\;z \imp R\;x\;z)\ \land
+%% & (* Transitive *) \\
+%% {~~~~~~}  (\forall x\;y.\ R\;x\;y \lor R\;y\;x) &  (* Total *)
+%% \end{array}
+%% \]
+%
+%
+% \begin{slide}
+% \heading{Sorting}
+% \[\begin{array}{ll}
+%   tt\_relation\ R \equiv & (\forall x\;y\;z.\ R\;x\;y \land R\;y\;z
+% \imp R\;x\;z)\ \land {~~~~~~~~~~~~~~} \\
+% &  (\forall x\;y.\ R\;x\;y \lor R\;y\;x) \end{array}
+% \]
+%\[\begin{array}{l}
+%(finiteRchain (R, []) = True)\ \land \\
+%(finiteRchain (R, [x]) = True)\ \land \\
+%(finiteRchain (R, x::y::rst) = R\;x\;y \land finiteRchain(R, y::rst))
+%\end{array}
+%\]
+%
+%\[\begin{array}{l}
+%performs\_sorting\ f \equiv \\
+%{~~~~~}\forall R.\ tt\_relation\ R \imp \forall L.\ perm\;L\ (f(R,L))\
+%\land {~~~~~~~~~~~~~~~~~~~} \\
+%{~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~}finiteRchain(R,\ f(R,L))
+%\end{array}
+%\]
+%
+%\end{slide}
+%
+%\begin{slide}
+%\heading{Naive Quicksort}
+%\[\begin{array}{l}
+%(qsort(R,[\;]) = [\;])\ \land \\
+%(qsort(R,h::t) = \\
+%{~~~~~}qsort(R, filter\ (\neg \circ R\; h)\ t)@[h]@qsort(R,filter\ (R\; h)\ t)).
+%\end{array}
+%\]
+%\noindent Induction.
+%
+%\[\begin{array}{rl}
+% \forall P. & (\forall R.\ P (R,[])) \ \land \\
+%    & (\forall R\;x\;rst.\ P (R,filter (R\; x)\ rst) \ \land \\
+%    & {~~~~~~~~~~~~~~} P (R,filter (\neg \circ R\; x)\ rst)\  \imp P
+%    (R,x::rst))  \\
+% &  \imp \forall v\;v_1.\ P (v,v_1).
+%\end{array}\]
+%\end{slide}
+%
+%\begin{slide}
+%\heading{$\forall R\ L.\ perm\ L\ (qsort(R,L))$}
+%
+%$\begin{array}{rl} 
+%Goal: & perm\ [\;] \ [\;] \\
+%      &               \\
+%Goal: & perm{~} (x :: rst) \\
+%      & {~~~~~~~~~} (qsort (R,filter\ (\neg \circ R\ x)\ rst)\\
+%      & {~~~~~~~~~}  @ [x] @ \\
+%      & {~~~~~~~~~}  qsort(R,filter\;(R x)\; rst)) \\ \hline 
+%Assums: & perm (filter\ (R\ x)\ rst)\ (qsort (R,filter\ (R\ x)\ rst)) \\
+%        & perm (filter\ (\neg \circ  R\ x)\ rst)\  (qsort (R,filter\ (\neg \circ
+%           R\ x) rst)) 
+%\end{array}
+%$
+%\end{slide}
+%
+%
+%\begin{slide}
+%\heading{Faster Quicksort}
+%
+%\[\begin{array}{l}
+%{~~}(part(P,[\;],l_1,l_2) = (l_1,l_2))\ \land \\
+%{~~}(part(P,h::t,l_1,l_2) = \\
+%{~~~~~~~~~}\mbox{if}\ P\ h\ \mbox{then}\ part(P,t,h::l_1,l_2) {~~~~~~~~~~~~~~~~~~~~~~~~~}\\
+%{~~~~~~~~~~~~~~~~~~} \mbox{else}\ \; part(P,t,l_1,h::l_2))
+%\end{array}
+%\]
+%
+%\[
+%\begin{array}{l}
+%{~~}(qsort(R,[\;]) = [\;])\ \land \\
+%{~~}(qsort(R,h::t) = \\
+%{~~~~~~~~}\mbox{let}\ (l_1,l_2) = part(\lambda y.\ R\ y\ h,
+%t, [\;],[\;]){~~~~~~~~~~~~~~~~~~~~~~~~}\\ 
+%{~~~~~~~~}\mbox{in} \\
+%{~~~~~~~~}qsort(R,l_1)@[h]@qsort(R,l_2)).
+%\end{array}
+%\]
+%\end{slide}
+%
+%\begin{slide}
+%\heading{Faster Quicksort induction}
+%\[
+%\begin{array}{l}
+%\forall P. \\
+%{~~~~} (\forall R.\ P(R,[\;]))\ \land \\
+%{~~~~}(\forall R\;h\;t. \\
+%{~~~~~~~~~~}(\forall l_1 l_2.\ ((l_1,l_2) = part((\lambda y.\
+%R\;y\;h),t,[\;],[\;])) \imp P (R,l_2))\ \land \\ 
+%{~~~~~~~~~~}(\forall l_1 l_2.\ ((l_1,l_2) = part ((\lambda y.\
+%R\;y\;h),t,[\;],[\;])) \imp P(R,l_1)) \\
+%{~~~~~~~~}  \imp P (R,h::t)) \\
+%{~~}\imp \forall v\;v_1.\ P (v,v_1)
+%\end{array}
+%\]
+%\end{slide}
+%
+%\begin{slide}
+%\heading{$\forall R\ L.\ perm\ L\ (fqsort(R,L))$}
+%
+%$\begin{array}{rl} 
+%Goal: & perm\ [\;] \ [\;] \\
+%      &               \\
+%Goal: & perm{~} (x :: rst) \\
+%      & {~~~~~~~~~} (\mbox{let}\ (l_1,l_2) = part((\lambda
+%y. R\;y\;x),rst,[\;],[\;]) \\ 
+%      & {~~~~~~~~~~} \mbox{in} \\
+%      & {~~~~~~~~~~} fqsort (R,l_1) @ [x] @ fqsort (R,l_2)) \\ \hline 
+%Assums: & \forall l_1 l_2.\ ((l_1,l_2) = part((\lambda y. R\;y\;x),rst,[\;],[\;])) \\
+%      & {~~~~~~~~~~} \imp  perm\ l_1\ (fqsort (R,l_1)) \\
+%      & \forall l_1 l_2.\ ((l_1,l_2) = part((\lambda y. R\;y\;x),rst,[\;],[\;])) \\ 
+%      & {~~~~~~~~~~} \imp perm\; l_2\ (fqsort (R,l_2))
+%
+%\end{array}
+%$
+%\end{slide}
+%
+%\begin{slide}
+%\heading{Let expressions}
+%\[\begin{array}{rcl}
+% LET\;f\;x & \equiv & f\;x \\
+%pair\_case\;f\;(x,y) & \equiv & f\;x\;y
+%\end{array}\]
+%\noindent Parse and print translations.
+%\[\begin{array}{l}
+%\transl{\mbox{let}\; x = M\ \mbox{in}\ N} = LET\; (\lambda
+%x. \transl{N})\; \transl{M} \\
+%\transl{\mbox{let}\;(x,y) = M\ \mbox{in}\ N} = LET\; (pair\_case
+%(\lambda x\;y. \transl{N}))\; \transl{M} 
+%\end{array}
+%\]
+%
+%\noindent Introduction rule(s).
+%\[\begin{array}{rcl}
+% (\forall x.\ (x=M) \imp P(N\;x)) & \imp & P(\mbox{let}\ x = M\ \mbox{in}\ N\;x) \\
+% (\forall x\;y.\ ((x,y)=M) \imp P(N\;x\;y)) & \imp & P(\mbox{let}\ (x,y) = M\ \mbox{in}\ N\;x\;y)
+%\end{array}\]
+%
+%\end{slide}
+%
+% \begin{slide}
+% \heading{Next step}
+% 
+% $\begin{array}{rl} 
+% Goal: & perm{~} (x :: rst) \\
+%       & {~~~~~~~~~} (fqsort (R,l_1) @ [x] @ fqsort (R,l_2)) \\ \hline 
+% Assums: & \forall l_1 l_2.\ ((l_1,l_2) = part((\lambda y. R\;y\;x),rst,[\;],[\;])) \\
+%       & {~~~~~~~~~~} \imp  perm\ l_1\ (fqsort (R,l_1)) \\
+%       & \forall l_1 l_2.\ ((l_1,l_2) = part((\lambda y. R\;y\;x),rst,[\;],[\;])) \\ 
+%       & {~~~~~~~~~~} \imp perm\; l_2\ (fqsort (R,l_2)) \\
+%       & (l_1,l_2) = part((\lambda y.\ R\;y\;x),rst,[\;],[\;])
+% \end{array}
+% $
+% 
+% \noindent Lemma: 
+% \[ ((a_1,a_2) = part(P,L,l_1,l_2)) \imp perm (L@l_1@l_2)\ (a_1@a_2)\]
+% \end{slide}
+% 
+% \begin{slide}
+% \heading{Dutch National Flag}
+% 
+% \verb+datatype colour = R | W | B+
+% 
+% \[\begin{array}{lclr}
+%   (Dnf []          & = &  ([], False)) & \land \\
+%   (Dnf (W::R::rst) & = &  (R::W::rst, True)) & \land \\ 
+%   (Dnf (B::R::rst) & = &  (R::B::rst, True)) & \land \\ 
+%   (Dnf (B::W::rst) & = &  (W::B::rst, True)) & \land \\ 
+%   (Dnf (x::rst)    & = &  (cons\;x\sharp I) (Dnf\; rst)) &
+% \end{array}
+% \]
+% 
+% \[ (f\sharp g) (x,y) \equiv (f\;x, \ g\; y) \]
+% 
+% \end{slide}
+% 
+% \begin{slide}
+% \heading{Expanded definition}
+% \[\begin{array}{lclr}
+%     (Dnf []  & = &  ([],  False)) & \land \\
+%     (Dnf [B] & = &  ([B], False)) & \land \\
+%     (Dnf [W] & = &  ([W], False)) & \land \\
+%     (Dnf (W::R::rst) & = &  (R::W::rst, True)) & \land \\
+%     (Dnf (B::R::rst) & = &  (R::B::rst, True)) & \land \\
+%     (Dnf (B::W::rst) & = &  (W::B::rst, True)) & \land \\
+%     (Dnf (B::B::rst)  & = &  (cons\;B \sharp I) (Dnf (B::rst))) & \land \\
+%     (Dnf (W::B::rst)  & = &  (cons\;W \sharp I) (Dnf (B::rst))) & \land \\
+%     (Dnf (W::W::rst)  & = &  (cons\;W \sharp I) (Dnf (W::rst))) & \land \\
+%     (Dnf (R::rst)    & = &  (cons\;R \sharp I) (Dnf\; rst)) &
+% \end{array}
+% \]
+% \end{slide}
+% 
+% \begin{slide}
+% \heading{Induction}
+% \[\begin{array}{rl}
+% \forall P.\ & P [] \ \land P [B] \ \land  P [W] \ \land \\
+%  &        (\forall rst.\  P (W::R::rst)) \ \land \\
+%  &        (\forall rst.\  P (B::R::rst)) \ \land \\
+%  &        (\forall rst.\  P (B::W::rst)) \ \land \\
+%  &        (\forall rst.\  P (B::rst) \imp P (B::B::rst)) \ \land \\
+%  &        (\forall rst.\  P (B::rst) \imp P (W::B::rst)) \ \land \\
+%  &        (\forall rst.\  P (W::rst) \imp P (W::W::rst)) \ \land \\
+%  &        (\forall rst.\  P\; rst \imp P (R::rst)) \\
+% \imp  & \forall v.\ P\; v.
+% \end{array}
+% \]
+% \end{slide}
+% 
+% \begin{slide}
+% \heading{Control}
+% \[\begin{array}{l}
+% flag\ L = \begin{array}[t]{l}\mbox{let}\ (l_1, delta) = Dnf\ L \\
+%                  \mbox{in if}\ delta\ \mbox{then}\ flag\; l_1 \ 
+%                  \mbox{else}\ l_1
+%           \end{array}
+% \end{array}
+% \]
+% \noindent Induction.
+% 
+% \[\begin{array}{l}
+%  \forall P.\ (\forall L.\ (\forall l_1\ delta.\ ((l_1,delta) = Dnf\;L) \land delta \imp P\;l_1) \imp P\;L) \\
+% {~~~~} \imp \forall v.\ P\;v 
+% \end{array}\]
+% \end{slide}
+% 
+% \begin{slide}
+% \heading{Correctness}
+% \[\begin{array}{l}
+% \forall L.\ \exists l_1 l_2 l_3.\ (flag\;L = l_1@l_2@l_3)  \land \\
+% {~~~~~~~~~~}(\forall x.\ mem\;x\;l_1 \imp (x=R))\ \land \\
+% {~~~~~~~~~~}(\forall x.\ mem\;x\;l_2 \imp (x=W))\ \land \\
+% {~~~~~~~~~~}(\forall x.\ mem\;x\;l_3 \imp (x=B)) \\
+% = \\
+% \forall L.\ flag\;L = filter (op = R)\ L\ @\ \\
+% {~~~~~~~~~~~~~~~~~~}filter (op = W)\ L\ @\ \\
+% {~~~~~~~~~~~~~~~~~~} filter(op= B)\ L
+% \end{array} \]
+% 
+% \end{slide}
+% 
+% \begin{slide}
+% \[\begin{array}{rl}
+% Goal: & (\mbox{let}\ (l_1,delta) = Dnf\ L\ \mbox{in\ if}\ delta\
+% \mbox{then}\ flag\;l_1\ \mbox{else}\ l_1) \\ 
+%       & = filter (op = R)\ L @ filter (op = W)\ L @ filter (op = B)\ L
+% \\ \hline
+% Assums: & \forall l_1\; delta.\ ((l_1,delta) = Dnf\;L) \land delta \\
+%         & {~~~~~~~~~~~~} \imp (flag\;l_1 = filter (op = R)\ l_1 @ \\
+%         & {~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~}filter (op = W)\ l_1 @ \\
+%         & {~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~}filter (op = B)\ l_1) \\
+% \end{array}
+% \]
+% 
+% \noindent Now lift let, case split, and use IH (in positive case).
+% \end{slide}
+% 
+% \begin{slide}
+% \[\begin{array}{rl}
+% Goal\ 1: & filter(op = R)\ l_1 @ filter (op = W)\ l_1 @ filter (op = B)\ l_1 \\
+%          & = filter (op = R)\ L @ filter (op = W)\ L @ filter (op = B)\ L \\
+% \hline
+% Assums: & (l_1,True) = Dnf\; L \\
+%  & \{ lemma:\   \forall L.\ perm\ L\ (fst (Dnf\;L)) \} \\
+%  & \\
+%  & \\
+% Goal\ 2: & l_1 = filter (op = R) L @ filter (op = W) L @ filter (op = B) L \\
+% \hline
+% Assums: & (l_1,False) = Dnf\; L \\
+%  & \{ lemmas: \forall L\ l_1.\ ((l_1,False) = Dnf\;L) \imp (l_1=L) \\
+%  & {~~~~~~}\forall L.\ ((L,False) = Dnf\ L) \imp (L = filter (op = R) L @ \\
+%  &  {~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~}filter (op = W) L @  \\
+%  &  {~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~}filter (op = B) L) \}
+% \end{array}
+% \]
+% \end{slide}  
+% 
+% \begin{slide}
+% \heading{Ackermann}
+% \[
+% \begin{array}{l}
+% {~~~~~} (ack (0,n)  =  n+1)\ \land \\
+% {~~~~~} (ack (\mbox{\sf Suc}\ m,0)  =  ack (m, 1))\ \land \\
+% {~~~~~} (ack (\mbox{\sf Suc}\ m, \mbox{\sf Suc}\ n) =  ack (m, ack
+% (\mbox{\sf Suc}\ m, n))) 
+% \end{array}
+% \]
+% 
+% \noindent Induction theorem
+% 
+% \[
+% \begin{array}{l}
+% \forall P.\ (\forall n.\ P (0,n)) \land \\
+% {~~~~~} (\forall m.\ P (m,1) \imp P (\constr{Suc}\ m,0)) \land \\
+% {~~~~~} (\forall m\;n.\ P (m,ack (\constr{Suc}\;m,n)) \land P(\constr{Suc}\; m,n) \imp P
+% (\constr{Suc}\; m,\constr{Suc}\; n)) \\
+% {~~~~} \imp \forall v\;v_1.\ P (v,v_1)
+% \end{array}
+% \]
+% \end{slide}
+% 
+% \begin{slide}
+% \heading{91}
+% 
+% \[
+% \begin{array}{l}
+% ninety1\ x = \mbox{if}\ (x>100)\ \mbox{then}\ x-10 \ 
+%         \mbox{else}\ ninety1(ninety1(x+11)).
+% \end{array}
+% \]
+% \noindent Termination measure =  $\lambda x.\ 101 - x$
+% 
+% \noindent Induction theorem
+% \[\begin{array}{l}
+% \forall P. \\
+% {~~~} (\forall x.\ (\neg(x > 100) \imp P (x + 11) \land P (ninety1 (x +
+% 11))) \imp P\ x) \\
+% \imp \forall v.\ P\ v
+% \end{array}\]
+% 
+% \noindent But first need to prove
+% \[\forall x. \neg(x>100) \imp x < ninety1(x+11) \]
+% ... by induction on the termination measure!
+% \end{slide}
+% 
+% \begin{slide}
+% \heading{Correctness}
+% \[\forall n.\ ninety1\ n = \itelse{n>100}{n-10}{91} \]
+% 
+% \[\begin{array}{rl}
+% Goal: & ninety1 (ninety1 (x + 11)) = 91 \\ \hline
+% Assums: \! & \! \neg(x>100) \imp \\
+%         & {~~~~}(ninety1(x+11) = \itelse{x + 11 > 100}{x+1}{91})  \land \\
+%         & {~~~~}(ninety1 (ninety1 (x + 11)) = \\
+%         & {~~~~~~~~~~}\mbox{if}\ {ninety1 (x + 11) > 100} \\
+%         & {~~~~~~~~~~~~}\mbox{then}\ {ninety1 (x + 11) - 10}\
+%         \mbox{else}\ {91}) \\ 
+%         & \neg(x > 100)
+% \end{array}
+% \]
+%\end{slide} 
+
+ \begin{slide}
+ \heading{Unification}
+ 
+ \[
+ \begin{array}{rl}
+\mbox{\tt datatype}\ \alpha\ uterm = & Var\; (\alpha)  \\
+                  | & Const\ (\alpha)    \\
+                  | & Comb\ (\alpha\ uterm)\ (\alpha\ uterm) \\
+ & \\
+\mbox{\tt datatype}\ \alpha\ result = & Fail  \\
+                  | & Subst\ (\alpha\ list)
+ \end{array}
+ \]
+ 
+\[
+\begin{array}{l}
+Unify(Const\;m, Const\;n)  =  if\;(m = n)\;then\;Subst[]\;else\;Fail \\
+Unify(Const\;m, Comb\;M\;N)  =   Fail \\
+Unify(Const\;m, Var\;v)      =   Subst[(v,Const\;m)] \\
+Unify(Var\;v, M)  =  \itelse{(Var\;v <:M)}{Fail}{Subst[(v,M)]} \\
+Unify(Comb\;M\;N, Const\;x)  =   Fail \\
+Unify(Comb\;M\;N, Var\;v)  = \itelse{(Var\;v <:Comb\;M\;N)}{Fail}{Subst[(v,Comb\;M\;N)]}  \\
+Unify(Comb\;M_1\;N_1, Comb\;M_2\;N_2)  =   \\
+{~~~~~~~} case\;Unify(M_1,M_2) \\
+{~~~~~~~~~} of\ Fail => Fail  \\
+{~~~~~~~~~~~} | \ Subst\ \theta  => case\;Unify(N_1 \lhd \theta, N_2 \lhd
+\theta) \\ 
+{~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~} of\ Fail => Fail \\
+{~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~}  | \ Subst\ \sigma  => Subst(\theta \bullet \sigma)
+\end{array}
+\]
+ 
+\end{slide}
+
+\begin{slide}
+
+\[
+\begin{array}{rl}
+\forall \phi.\ & (\forall m\;n.\ \phi  (Const\;m, Const\;n))  \ \land \\
+& (\forall m\;M\;N.\ \phi  (Const\;m, Comb\;M\;N))  \ \land \\
+& (\forall m\;v.\ \phi  (Const\;m, Var\;v)) \ \land \\
+& (\forall v\;M.\ \phi  (Var\;v, M)) \ \land \\
+& (\forall M\;N\;x.\ \phi  (Comb\;M\;N, Const\;x)) \ \land \\
+& (\forall M\;N\;v.\ \phi  (Comb\;M\;N, Var\;v)) \ \land \\
+& (\forall M_1\;N_1\;M_2\;N_2. \\
+& {~~~}(\forall  \theta.\ Unify (M_1, M_2) = Subst\ \theta  \imp \phi
+(N_1 \lhd  \theta, N_2 \lhd \theta)) \\ 
+& {~~~}\land\phi  (M_1, M_2)  \\
+& {~~~}\imp\phi  (Comb\;M_1\;N_1, Comb\;M_2\;N_2)) \\
+&  \imp \forall v\;v_1.\ \phi (v, v_1)
+\end{array}
+\]
+\end{slide}
+
+\begin{slide}
+\heading{Unify -- Correctness}
+\[\forall \theta.\ Unify(P,Q) = Subst\  \theta  \imp MGUnifier\ \theta\;P\;Q \]
+\[ \forall \theta. Unify (P,Q) = Subst\  \theta  \imp Idem\ \theta \]
+\end{slide}
+
+\begin{slide}
+\heading{Underspecification}
+\[\begin{array}{l}
+nth(0, h::t) = h \\
+nth(\constr{Suc}\ n, h::t) = nth(n,t)
+\end{array}\]
+
+\noindent Induction.
+\[
+\begin{array}{rl}
+\forall \phi.\ & \phi (0,[\;])\ \land \\
+& (\forall n.\ \phi  (\constr{Suc}\ n,[\;]))  \ \land \\
+& (\forall h\;t.\ \phi  (0,h :: t)) \ \land \\
+& (\forall h\;n\;t.\ \phi(n,t) \imp \phi (\constr{Suc}\ n,\ h::t)) \\
+&  \imp \forall v\;v_1.\ \phi (v, v_1)
+\end{array}
+\]
+\end{slide}
+\begin{slide}
+\heading{Nth -- a property}
+\[\begin{array}{l}
+funpow(0, f, x) = x \\
+funpow(\constr{Suc}\ n, f, x) = f(funpow(n,f,x))
+\end{array}\]
+
+\noindent Property.
+\[\forall n\ L.\ n < length\ L \imp (nth(n,L) = hd(funpow(n,tl,L))). \]
+
+\noindent Lemma. $funpow (n, f, f\ L) = f (funpow (n, f, L))$ 
+
+\end{slide}
+
+\begin{slide}
+\heading{Higher-order recursion}
+\[\begin{array}{l}
+    Occ (v_1, Var\ v_2) = (v_1 = v_2) \\
+    Occ (v, Const\ x) = False \\
+    Occ (v, App\ M\ N) = exists\ (\lambda x.\ Occ(v,x))\ [M, N]
+\end{array}\]
+
+\noindent Need the context rule
+\[\begin{array}{l}
+   (L = L_1) \land (\forall y.\ mem\ y\ L_1 \imp (P\ y = P_1\ y)) \\ 
+{~~~}   \imp exists\ P\ L = exists\ P_1\ L_1
+\end{array}\]
+
+\[\begin{array}{l}
+ [WF\ R, \forall x\ M\ N\ v.\ mem\ x\ [M,N] \imp R (v,x)\ (v, App\ M\ N)] \\
+\vdash \\
+ ((Occs (v_1,Var\ v_2) = v_1 = v_2)\ \land \\
+  (Occs (v,Const\ x) = False)\ \land \\
+  (Occs (v,App\ M\ N) = exists\ (\lambda x.\ Occs (v,x))\ [M, N])) \\
+{~~~}  \land \\
+ \forall \phi.\ (\forall v_1\; v_2.\ \phi (v_1,Var\ v_2))\ \land  \\
+{~~~~~~}       (\forall v\ x.\ \phi (v,Const\ x))\ \land \\
+{~~~~~~}       (\forall v\ M\ N.\ (\forall x.\ mem\ x\ [M, N] \imp \phi (v,x))
+ \imp \phi (v,\ App\ M\ N)) \\
+{~~~~~~}       \imp \\
+{~~~~~~}\forall v\ v_1.\ \phi (v,v_1)
+\end{array}\]
+
+\end{slide}
+
+\end{document}

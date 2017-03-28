@@ -1,0 +1,2732 @@
+head	1.9;
+access;
+symbols
+	HOL97:1.5.0.4
+	bpHOL97:1.5
+	hol90_9_alpha:1.5
+	hol90_pre8_for_multiple_compilers:1.5.0.2
+	hol90_pre8_after_donalds_separate_compilation_changes:1.4
+	hol90_8_after_merging_Konrad_Elsa:1.3
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.9
+date	96.02.08.00.32.07;	author drs1004;	state Exp;
+branches;
+next	1.8;
+
+1.8
+date	96.01.04.14.07.21;	author drs1004;	state Exp;
+branches;
+next	1.7;
+
+1.7
+date	96.01.04.13.45.52;	author drs1004;	state Exp;
+branches;
+next	1.6;
+
+1.6
+date	95.12.18.11.35.26;	author drs1004;	state Exp;
+branches;
+next	1.5;
+
+1.5
+date	95.11.15.13.24.42;	author rjb;	state Exp;
+branches
+	1.5.4.1;
+next	1.4;
+
+1.4
+date	95.10.31.13.56.39;	author drs1004;	state Exp;
+branches;
+next	1.3;
+
+1.3
+date	95.10.18.16.37.16;	author drs1004;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	95.10.17.17.07.30;	author drs1004;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	95.10.16.13.29.57;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.29.57;	author rjb;	state Exp;
+branches
+	1.1.1.1.2.1;
+next	;
+
+1.1.1.1.2.1
+date	95.10.17.18.43.08;	author drs1004;	state Exp;
+branches;
+next	;
+
+1.5.4.1
+date	97.06.11.17.24.43;	author kxs;	state Exp;
+branches;
+next	1.5.4.2;
+
+1.5.4.2
+date	97.07.10.19.44.35;	author kxs;	state Exp;
+branches;
+next	1.5.4.3;
+
+1.5.4.3
+date	97.07.18.11.51.07;	author kxs;	state Exp;
+branches;
+next	1.5.4.4;
+
+1.5.4.4
+date	97.07.21.17.17.56;	author kxs;	state Exp;
+branches;
+next	1.5.4.5;
+
+1.5.4.5
+date	97.10.05.21.07.33;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.9
+log
+@New theory mechanism, by Donald Syme, and many other enhancements.
+@
+text
+@(* ===================================================================== *)
+(* FILE          : term.sml                                              *)
+(* DESCRIPTION   : Simply typed lambda terms.                            *)
+(*                                                                       *)
+(* AUTHOR        : (c) Konrad Slind, University of Calgary               *)
+(* DATE          : August 26, 1991                                       *)
+(* UPDATE        : October 94. Term signature implementation moved from  *)
+(*                 symtab.sml, which is now gone.                        *)
+(*               : December 95.  Term hashing implemented by DRS	 *)
+(* ===================================================================== *)
+
+functor TERM (structure Type : Private_type_sig) : Private_term_sig =
+struct
+structure Type = Type;
+open Lib;
+open Exception;
+
+type typ = Type.typ;
+
+val ERR = Exception.ERR "Term";
+val WRAP_ERR = Exception.WRAP_ERR "Term";
+
+fun TY_ANTIQ_ERR s = ERR (s,"ty_antiq in term");
+
+
+(*-------------------------------------------------------------------------
+ * deBruijn terms. 
+ *
+ * ty_antiq is an annoyance, caused by having quotations
+ * be frag lists. This requires all antiquotes in a quotation to have the
+ * same type. Thus we use ty_antiq to cast types to terms, in order that all 
+ * antiquotes be terms.
+ *-----------------------------------------------------------------------*)
+
+
+datatype term = Fv of {Name : string, Ty : Type.typ}
+              | Bv of int
+              | Const of {Name : string, Ty : Type.typ}
+              | Comb of {Rator : term, Rand : term}
+              | Abs of {Bvar : term, Body : term}
+              | ty_antiq of Type.typ;
+
+datatype lambda = VAR of {Name : string, Ty : Type.typ}
+                | CONST of {Name : string, Ty : Type.typ}
+                | COMB of {Rator : term, Rand : term}
+                | LAMB of {Bvar : term, Body : term};
+
+(*-------------------------------------------------------------------------
+ * 
+ *-----------------------------------------------------------------------*)
+
+val type_of =
+   let fun chase (Type.Tyapp{Tyop = "fun", Args = [_,ty]}) = ty
+	 | chase _ = ERR ("chase", "")
+       fun lookup 0 (ty::_) = ty
+	 | lookup n (_::rst) = lookup (n-1) rst
+	 | lookup _ [] = ERR("type_of", "lookup")
+       fun ty_of (Fv{Ty, ...}) _ = Ty
+	 | ty_of (Const{Ty, ...}) _ = Ty
+	 | ty_of (Comb{Rator, ...}) E = chase (ty_of Rator E)
+	 | ty_of (Abs{Bvar = Fv{Ty,...},Body}) E = 
+	   Type.Tyapp{Tyop = "fun", Args = [Ty, ty_of Body (Ty::E)]}
+	 | ty_of (Bv i) E = lookup i E
+	 | ty_of _ _ = ERR("ty_of","term construction")
+
+   in 
+       fn tm => ty_of tm []
+   end;
+
+(*-------------------------------------------------------------------------
+ * hash_term
+ *    Compute a hash value for a term.  Needs optimizing.
+ *-----------------------------------------------------------------------*)
+
+val prime = 8388593; (* largest prime less than 2^23 *)
+fun hFv {Name,Ty} =
+    hash_string Name + 
+          foldr (fn (tyvar,tot) => Type.hash_type tyvar + tot) 0
+                (Type.type_vars Ty)
+and hBv n = (n * 1000) mod prime
+and hConst {Name,Ty} =
+    hash_string Name + 
+          foldr (fn (tyvar,tot) => Type.hash_type tyvar + tot) 1001
+                (Type.type_vars Ty)
+and hComb (hashRator,hashRand) =
+         (hashRator * 67 + hashRand) mod prime
+and hAbs (hbvar,hbody) = (hbvar * 67 + hbody) mod prime
+
+and hash_term  (Fv args) = hFv args
+  | hash_term (Bv n) = hBv n
+  | hash_term (Const args) = hConst args
+  | hash_term (Comb {Rator,Rand}) = 
+        hComb (hash_term Rator,hash_term Rand) 
+  | hash_term (Abs {Bvar,Body}) = 
+        hAbs (hash_term Bvar,hash_term Body) 
+  | hash_term (ty_antiq ty) = TY_ANTIQ_ERR "hash_term";
+  
+
+(*-------------------------------------------------------------------------
+ * Term Sharing Table
+ *
+ * This is a global table of terms to implement cell sharing of 
+ * identical terms.  It is almost a hash table, except the hash keys
+ * don't map to anything, and we must implement it ourselves to
+ * ensure sharing.
+ *
+ * Not all terms need be optimized against this table - indeed only
+ * those which are known to be persistent should be optimized.  For
+ * instance, terms which are imported from the outside world when reading
+ * a theory file, or perhaps parsing, should be optimized.
+ *
+ * The table does not currently grow in size!!  
+ *
+ * depth_hash
+ *    Descend a term, comuting the hash value as we go.  At each
+ * node in the term syntax call a function 
+ * which transforms the sub nodes, and use the
+ * replacement values returned to rebuild the node.  
+ * The intuition is that the replacement
+ * values are shared versions of the same ML value.
+ *
+ * NOTE: It is possible that the implementation of hash_term will
+ * be changed in the future to use some completely different
+ * algorithm.  In this case depth_hash will have to be isolated
+ * from hash_term.  Strictly speaking, the functions do not have 
+ * to compute the same hash values, since depth_hash is only used
+ * in the code below (which doesn't use hash_term).
+ *-----------------------------------------------------------------------*)
+
+local
+  fun depth_hash {fTy,fFv,fBv,fConst,fComb,fAbs} tm =
+    let fun partial_hash (Fv (args as {Ty,Name})) = 
+             let val ty = fTy Ty 
+                 val h = hFv args
+             in (fFv ({Name=Name,Ty=ty},h),h) end
+        | partial_hash (Bv n) = 
+             let val h = hBv n
+             in (fBv (n,h),h) end
+        | partial_hash (Const (args as {Name,Ty})) = 
+             let val ty = fTy Ty 
+                 val h = hConst args
+             in (fConst ({Name=Name,Ty=ty},h),h) end
+        | partial_hash (Comb {Rator,Rand}) = 
+             let val (rRator,hashRator) = partial_hash Rator
+                 val (rRand,hashRand) = partial_hash Rand
+                 val h = hComb (hashRator,hashRand) in
+               (fComb ({Rator=rRator,Rand=rRand},h), h)
+             end
+        | partial_hash (Abs {Bvar,Body}) = 
+             let val (rBvar,hbvar) = partial_hash Bvar
+                 val (rBody,hbody) = partial_hash Body
+                 val h = hAbs (hbvar,hbody) in
+               (fAbs ({Bvar=rBvar,Body=rBody},h), h)
+             end
+        | partial_hash (tm as (ty_antiq ty)) = Raise (TY_ANTIQ_ERR "depth_hash")
+  in #1(partial_hash tm) end
+  handle _ => Raise (Fail "depth_hash failed when it shouldn't have");
+
+
+   val store_table_size = ref 6031;
+
+   val store_tab = ref (Array.array((!store_table_size), ([]:term list)));
+
+   fun lookupL tm [] = (raise Fail "")
+     | lookupL tm (tm'::rst) = if (tm = tm') then tm' else lookupL tm rst
+   fun lookup (hval,tm) = lookupL tm (Array.sub(!store_tab, hval));
+   fun safe_lookup (hval,tm) = lookup (hval,tm) handle _ => tm;
+
+   fun remember (hval,tm) = 
+        (Array.update(!store_tab,hval,tm::Array.sub(!store_tab, hval)); tm)
+   fun safe_remember (hval,tm) = 
+        let val L = Array.sub(!store_tab, hval) in
+           lookupL tm L
+           handle _ => 
+           (Array.update(!store_tab,hval,tm::L); tm)
+        end
+   fun remember_and_remake con (opt_subs,hval) =
+      lookup (hval mod (!store_table_size),con opt_subs) 
+      handle _ => remember (hval mod (!store_table_size),con opt_subs)
+in
+
+fun optimize_term tm =
+   (depth_hash {
+      fTy=Type.optimize_type,
+      fBv=remember_and_remake Bv,
+      fFv=remember_and_remake Fv,
+      fConst=remember_and_remake Const,
+      fComb=remember_and_remake Comb,
+      fAbs=remember_and_remake Abs
+   } tm) handle e => Raise e;
+
+end;
+
+
+
+
+(*-------------------------------------------------------------------------
+ * The Constant symbol table
+ *
+ *-----------------------------------------------------------------------*)
+
+type term_record = term;  (* always a Const node *)
+
+type symtab = term_record Symtab.symtab;
+
+val symtab = ref (Symtab.mkTable (10,NOT_FOUND): symtab);
+
+fun reset_symtab() = 
+   symtab := Symtab.mkTable (10,NOT_FOUND);
+
+fun symtab_copy () = Symtab.copy (!symtab);
+
+fun replace_symtab st = (symtab := st);
+
+fun lookup_const s = Symtab.find (!symtab) s;  (* do not eta convert this!!  *)
+
+
+(*-------------------------------------------------------------------------
+ * Return constant just as it was declared 
+ *
+ *-----------------------------------------------------------------------*)
+
+fun const_decl x = 
+   let val recd = lookup_const x 
+   in {const = recd}
+   end
+handle NOT_FOUND => ERR("const_decl", quote x^" is not declared as a constant");
+
+
+(*-------------------------------------------------------------------------
+ *
+ * is_constant
+ *    Is a string the name of a defined constant.  
+ *
+ * is_polymorphic
+ *    Is a string the name of a polymorphic constant.   
+ *-----------------------------------------------------------------------*)
+
+exception TERM_SYMTAB_CLASH of string;
+
+fun is_constant x = 
+   (lookup_const x; true) 
+   handle NOT_FOUND
+   => (Lexis.is_num_literal x) orelse (Lexis.is_string_literal x);
+
+fun add_const {Name,Ty} =
+ if is_constant Name
+     then raise TERM_SYMTAB_CLASH Name
+ else  Symtab.insert (!symtab) (Name,Const {Name=Name,Ty=Ty});
+     
+fun is_polymorphic x =
+   Type.polymorphic(type_of(lookup_const x)) handle _ => false;
+
+fun all_constants () = map #1 (Symtab.listItems (!symtab));
+    
+(*-------------------------------------------------------------------------
+ * free_vars
+ * free_varsl
+ *    The free variables of a lambda term.
+ *-----------------------------------------------------------------------*)
+
+
+val free_vars =
+  let fun frees(v as Fv _) free_list = 
+             if (mem v free_list) then free_list else v::free_list
+        | frees(Comb{Rator, Rand}) free_list = 
+             frees Rand (frees Rator free_list)
+        | frees(Abs{Body,...}) free_list = frees Body free_list
+        | frees _ free_list = free_list
+  in fn tm => frees tm []
+  end;
+
+fun free_varsl tm_list = itlist (union o free_vars) tm_list []
+
+(*-------------------------------------------------------------------------
+ * all_vars
+ * all_varsl
+ *    The *set* of all variables in a term.
+ *-----------------------------------------------------------------------*)
+
+val all_vars =
+  let fun vars (v as Fv _) vlist = insert v vlist
+        | vars(Comb{Rator, Rand}) vlist = vars Rand (vars Rator vlist)
+        | vars(Abs{Bvar, Body}) vlist = vars Body (vars Bvar vlist)
+        | vars _ vlist = vlist
+  in fn tm => vars tm []
+  end;
+
+fun all_varsl tm_list = itlist (union o all_vars) tm_list [];
+
+(*-------------------------------------------------------------------------
+ * free_in
+ *
+ * Does tm occur free in M. This is not defined modulo aconvability.
+ * Maybe it should be? 
+ *-----------------------------------------------------------------------*)
+
+fun free_in tm M =
+   let fun f1 (Comb{Rator,Rand}) = (f2 Rator) orelse (f2 Rand)
+         | f1 (Abs{Body,...}) = f2 Body
+         | f1 _ = false
+       and f2 t = (t=tm) orelse (f1 t)
+   in f2 M
+   end;
+
+(*-------------------------------------------------------------------------
+ * term_lt
+ *
+ *-----------------------------------------------------------------------*)
+
+fun atom_ord ({Name=s1,Ty=ty1},{Name=s2,Ty=ty2}) = 
+   case string_ord (s1,s2) 
+       of EQUAL => Type.type_ord (ty1,ty2)
+     | x => x;
+	   
+
+fun term_ord (ty_antiq _,_) = TY_ANTIQ_ERR "term_ord"
+  | term_ord (_,ty_antiq _) = TY_ANTIQ_ERR "term_ord"
+  | term_ord (Fv v1,Fv v2) = atom_ord (v1,v2)
+  | term_ord (Fv _,_) = GREATER
+  
+  | term_ord (Bv _,Fv _) = LESS
+  | term_ord (Bv i1,Bv i2) = int_ord(i1,i2)
+  | term_ord (Bv _, _) = GREATER
+
+  | term_ord (Const _,Fv _) = LESS
+  | term_ord (Const _,Bv _) = LESS
+  | term_ord (Const c1,Const c2) = atom_ord (c1,c2)
+  | term_ord (Const _,_) = GREATER
+
+  | term_ord (Comb{Rator=rator1,Rand=rand1},Comb{Rator=rator2,Rand=rand2}) =
+    (case term_ord (rator1,rator2) of
+	 EQUAL => term_ord (rand1,rand2)
+       | x => x)
+  | term_ord (Comb _,Abs _) = GREATER
+  | term_ord (Comb _,_) = LESS
+
+  | term_ord (Abs{Bvar=bv1, Body=body1},Abs{Bvar=bv2, Body=body2}) =
+    (case term_ord (bv1,bv2) of
+	 EQUAL => term_ord (body1,body2)
+       | x => x)
+  | term_ord (Abs _,_) = LESS;
+
+val term_lt = curry (lt_of_ord term_ord);
+
+(*-------------------------------------------------------------------------
+ * Making variables
+ *
+ *-----------------------------------------------------------------------*)
+
+val mk_var = Fv
+
+fun mk_primed_var(v as {Name,Ty}) =
+   if (is_constant Name)
+   then mk_primed_var{Name = Name^"'", Ty = Ty}
+   else mk_var v;
+
+
+val gname = fresh_name "%%genvar%%"
+fun genvar ty = Fv{Name = gname(), Ty = ty};
+
+fun genvars _ 0 = []
+  | genvars ty n = genvar ty::genvars ty (n-1);
+
+
+(*-------------------------------------------------------------------------
+ * variant
+ *
+ * Given a variable and a list of variables, if the variable does not exist on
+ * the list, then return the variable. Otherwise, prime the variable and try
+ * again.
+ *------------------------------------------------------------------------*)
+
+local 
+fun var_name(Fv{Name,...}) = Name
+  | var_name _ = ERR("variant.var_name","not a variable")
+in
+
+fun variant [] v = v
+  | variant vlist (Fv{Name,Ty}) =
+    let val V = map var_name vlist
+        fun loop name = 
+           let val s = Lib.string_variant V name
+           in if (is_constant s) then loop (s^"'") else s
+           end
+    in mk_var{Name = loop Name, Ty = Ty}
+    end
+  | variant _ _ = ERR("variant","2nd arg. should be a variable")
+end;
+
+fun type_vars_in_term (Fv{Ty, ...}) = Type.type_vars Ty
+  | type_vars_in_term (Const{Ty,...}) = Type.type_vars Ty
+  | type_vars_in_term (Comb{Rator,Rand}) = union (type_vars_in_term Rator) 
+                                                 (type_vars_in_term Rand)
+  | type_vars_in_term (Abs{Bvar,Body}) = union (type_vars_in_term Bvar)
+                                               (type_vars_in_term Body)
+  | type_vars_in_term (Bv _) = []
+  | type_vars_in_term (ty_antiq _) = TY_ANTIQ_ERR "type_vars_in_term";
+
+
+(*-------------------------------------------------------------------------
+ * prim_mk_const
+ * 
+ *-------------------------------------------------------------------------*)
+
+fun prim_mk_const (name,subs) =
+    let val (Const {Name,Ty}) = lookup_const name 
+	handle _ => ERR("prim_mk_const",quote name^" has not been defined")
+    in Const{Name = Name, Ty = Type.type_subst subs Ty}
+    end;
+	      
+
+
+(*-------------------------------------------------------------------------
+ * list_mk_comb
+ *
+ * Special case when Rator is an abstraction - examine the type of
+ * the bound variable.
+ * 
+ *-------------------------------------------------------------------------*)
+
+fun list_mk_comb (f,L) =
+   let fun loop (A,_) [] = A
+         | loop (A,Type.Tyapp{Tyop = "fun",Args=[ty1,ty2]}) (tm::rst2) =
+               if (type_of tm = ty1)
+               then loop(Comb{Rator=A,Rand=tm},ty2) rst2
+               else ERR("list_mk_comb","incompatible types")
+         | loop _ _ = ERR("list_mk_comb","incompatible types")
+   in
+   loop(f,type_of f) L
+   end
+
+fun mk_comb(r as {Rator = Abs{Bvar = Fv{Ty,...},...}, Rand}) = 
+      if (type_of Rand = Ty) then Comb r 
+      else ERR("mk_comb","incompatible types")
+  | mk_comb{Rator,Rand} = list_mk_comb (Rator,[Rand]) 
+                          handle _ => ERR("mk_comb","incompatible types")
+
+
+
+(*--------------------------------------------------------------------------
+ * mk_abs
+ *
+ *--------------------------------------------------------------------------*)
+
+local
+val bv0  = Bv 0  val bv1  = Bv 1  val bv2=Bv 2 val bv3 = Bv 3 val bv4 = Bv 4
+val bv5  = Bv 5  val bv6  = Bv 6  val bv7=Bv 7 val bv8=Bv 8 val bv9 = Bv 9 
+val bv10 = Bv 10 val bv11 = Bv 11 val bv12=Bv 12 val bv13=Bv 13 val bv14=Bv 14
+val bv15 = Bv 15 val bv16 = Bv 16 val bv17 = Bv 17 val bv18 = Bv 18 
+val bv19 = Bv 19 val bv20 = Bv 20 val bv21 = Bv 21 val bv22 = Bv 22  
+val bv23 = Bv 23 val bv24 = Bv 24 val bv25 = Bv 25 val bv26 = Bv 26 
+val bv27 = Bv 27 val bv28 = Bv 28 val bv29 = Bv 29 val bv30 = Bv 30
+val bv31 = Bv 31 val bv32 = Bv 32 val bv33 = Bv 33 val bv34 = Bv 34
+in
+fun mk_bv(1) = bv1 | mk_bv(2) = bv2 | mk_bv(3) = bv3 | mk_bv(4) = bv4
+  | mk_bv(5) = bv5 | mk_bv(6) = bv6 | mk_bv(7) = bv7 | mk_bv(8) = bv8
+  | mk_bv(9) = bv9 | mk_bv(10) = bv10 | mk_bv(11) = bv11 | mk_bv(12) = bv12
+  | mk_bv(13) = bv13 | mk_bv(14) = bv14 | mk_bv(15) = bv15 | mk_bv(16) = bv16
+  | mk_bv(17) = bv17 | mk_bv(18) = bv18 | mk_bv(19) = bv19 | mk_bv(20) = bv20
+  | mk_bv(21) = bv21 | mk_bv(22) = bv22 | mk_bv(23) = bv23 | mk_bv(24) = bv24
+  | mk_bv(25) = bv25 | mk_bv(26) = bv26 | mk_bv(27) = bv27 | mk_bv(28) = bv28
+  | mk_bv(29) = bv29 | mk_bv(30) = bv30 | mk_bv(31) = bv31 | mk_bv(32) = bv32
+  | mk_bv(33) = bv33 | mk_bv(34) = bv34 | mk_bv(n) = Bv(n)
+end
+(* Make a lambda abstraction. Try for some sharing.   *)
+fun mk_abs{Bvar as Fv _, Body} =
+      let fun bind (v as Fv _) i = if (v=Bvar) then mk_bv(i) else v
+            | bind (Comb{Rator,Rand}) i = Comb{Rator = bind Rator i, 
+                                               Rand = bind Rand i}
+            | bind (Abs{Bvar = bv, Body = tm}) i = Abs{Bvar = bv, 
+                                                       Body = bind tm (i+1)}
+            | bind (ty_antiq _) _ = TY_ANTIQ_ERR "mk_abs"
+            | bind tm _ = tm
+      in
+      Abs{Bvar = Bvar, Body = bind Body 0}
+      end
+  | mk_abs _ = ERR("mk_abs","Bvar not a variable");
+
+(*--------------------------------------------------------------------------
+ * dest_var
+ * dest_const
+ * dest_comb
+ *
+ *--------------------------------------------------------------------------*)
+
+
+fun dest_var (Fv v) = v
+  | dest_var _ = ERR("dest_var", "not a var")
+fun dest_const (Const c) = c
+  | dest_const _ = ERR("dest_const","not a const")
+fun dest_comb (Comb cmb) = cmb
+  | dest_comb _ = ERR("dest_comb","not a comb")
+
+(*--------------------------------------------------------------------------
+ * The pure way to do abstraction destruction. Problem is that you may 
+ * get a form of variable capture: consider
+ *
+ *     Abs{Bvar = v, Body = Comb{Rator = Bv 0, Rand = v}}.
+ *
+ * If you do a dest_abs on this, you will identify Rator and Rand unless 
+ * you rename. So what? Well, if you don't rename in this situation, 
+ *
+ *   mk_abs o dest_abs <> I
+ *
+ *
+ * fun dest_abs(Abs{Bvar,Body}) =
+ *      let fun unbind i (v as (Bv j)) = if (i=j) then Bvar else v
+ *            | unbind i (Comb{Rator,Rand}) = 
+ *                Comb{Rator = unbind i Rator, Rand = unbind i Rand}
+ *            | unbind i (Abs{Bvar,Body}) = 
+ *                Abs{Bvar=Bvar,Body=unbind (i+1) Body}
+ *            | unbind _ tm = tm
+ *      in
+ *      {Bvar = Bvar, Body = unbind 0 Body}
+ *      end
+ *  | dest_abs _ = ERR("dest_abs",
+ *                                "not a lambda abstraction");
+ *-------------------------------------------------------------------------*)
+local exception CLASH
+in
+fun dest_abs(Abs{Bvar as Fv{Name,Ty},Body}) =
+   let fun dest (v as (Bv j), i) = if (i=j) then Bvar else v
+         | dest (v as Fv{Name = s,...}, _) = 
+               if (Name = s) then raise CLASH else v
+         | dest (Comb{Rator,Rand},i) = Comb{Rator = dest(Rator,i), 
+                                            Rand = dest(Rand,i)}
+         | dest (Abs{Bvar,Body},i) = Abs{Bvar=Bvar,Body = dest(Body,i+1)}
+         | dest (tm,_) = tm
+   in {Bvar = Bvar, Body = dest(Body,0)}
+      handle CLASH => 
+      dest_abs(Abs{Bvar = variant (free_vars Body) Bvar, Body = Body})
+   end
+  | dest_abs _ = ERR("dest_abs","not a lambda abstraction")
+end;
+
+(* Only for use in peculiar situations *)
+fun break_abs(Abs a) = a
+  | break_abs _ = ERR("break_abs","not a lambda abstraction");
+
+(* Strips leading lambdas off a term, not bothering to adjust indices *)
+fun de_abs (Abs{Bvar,Body}) =
+        let val (bvs, core) = de_abs Body
+        in (Bvar::bvs, core)
+        end
+  | de_abs tm = ([],tm);
+
+(*--------------------------------------------------------------------------
+ * Discriminators
+ *
+ *--------------------------------------------------------------------------*)
+
+fun is_bvar (Bv _)    = true  | is_bvar _  = false;
+fun is_var  (Fv _)    = true  | is_var _   = false;
+fun is_const(Const _) = true  | is_const _ = false;
+fun is_comb (Comb _)  = true  | is_comb _  = false;
+fun is_abs  (Abs _)   = true  | is_abs _   = false;
+
+(*--------------------------------------------------------------------------
+ * Derived operations
+ *
+ *--------------------------------------------------------------------------*)
+
+fun rator (Comb{Rator, ...}) = Rator
+  | rator _ = ERR("rator","not a comb")
+
+fun rand (Comb{Rand, ...}) = Rand
+  | rand _ = ERR("rand","not a comb")
+
+val bvar = #Bvar o dest_abs;
+val body = #Body o dest_abs;
+
+
+fun dest_term (Fv a) = VAR a
+  | dest_term (Const a) = CONST a
+  | dest_term (Comb r) = COMB r
+  | dest_term (a as Abs _) = LAMB(dest_abs a)
+  | dest_term _ = ERR("dest_term","badly formed term");
+
+(*--------------------------------------------------------------------------
+ * Prelogic
+ *
+ * fun aconv (Comb{Rator = M1, Rand = M2}) (Comb{Rator=N1,Rand=N2}) =
+ *          aconv M1 N1 andalso aconv M2 N2
+ *  | aconv (Abs{Bvar=Fv{Ty=ty1,...}, Body = body1})
+ *          (Abs{Bvar=Fv{Ty=ty2,...}, Body = body2}) = 
+ *                         (ty1=ty2) andalso (aconv body1 body2)
+ *  | aconv tm1 tm2 = (tm1=tm2);
+ *--------------------------------------------------------------------------*)
+
+fun aconv t1 t2 = Portable.pointer_eq(t1,t2) orelse 
+(case(t1,t2) of
+   (Comb{Rator=M,Rand=N},Comb{Rator=P,Rand=Q}) => aconv M P andalso aconv N Q
+ | (Abs{Bvar=Fv{Ty=ty1,...}, Body = M},
+    Abs{Bvar=Fv{Ty=ty2,...}, Body = N}) => (ty1=ty2) andalso (aconv M N)
+ | (M,N) => (M=N));
+
+
+(*--------------------------------------------------------------------------
+ * General term substitution. It's only this complicated because we rename. 
+ * Why, if we have dB terms? Because we want to be able to re-parse 
+ * prettyprinted terms, i.e., parse o pp = I
+ *
+ * When we are trying to replace in term M using a substitution theta,
+ * we
+ * 1. Go through the substitution checking that the types of the redex and
+ *    residue are the same. (This could be lazified, but isn't.) 
+ * 
+ * 2. start with M; try to find a {redex,incoming} record in theta s.t. redex
+ *    is aconv with M. Since we are using dB terms, this automatically checks
+ *    if M is free (modulo alpha convertibility).
+ * 
+ * 3a. Suppose this isn't possible; recurse into the structure of M
+ * 
+ * 3b. Suppose this is possible. Now we have some work to do.
+ * 
+ *     1. Check that the free_variables of the residue are not bound by the 
+ *        current scope. If the scope is empty, there is no need to compute 
+ *        FV(residue). Otherwise, we compute the names of all free variables
+ *        in residue (if that hasn't been done already), and store them in 
+ *        the cell "fn_residue" of the binding. Now we call function "itr" 
+ *        which iterates back in the scope, checking for each element "s" of
+ *        the scope, whether it is a name of a free variable in residue. If 
+ *        it is, we have found a clash. However, our heuristic is to go to 
+ *        the "most outlying clash" (this allows a subtle optimization), so we
+ *        iterate through the entire scope, keeping track of the index of the 
+ *        last clash. If we come out of the scope and there were no clashes, 
+ *        then we do the replacement. Otherwise, there was a clash; 
+ *        compute all the free variable names that could come in from theta 
+ *        (if it hasn't already been done). Then raise the CLASH exception,
+ *        with the index of the lambda to propagate to. (This index allows 
+ *        us to ignore problems having to do with propagating back to the 
+ *        most outlying clash when there are duplicated variables in the 
+ *        scope, e.g., \x x.M.)
+ * 
+ * 3a1. Suppose we were at an "\v.M" and we recursed into M, adding the name 
+ *      of v to the scope. We have to handle the CLASH exception.
+ * 
+ *      - If it is 0, then we are the most outlying clash. We rename the bound
+ *        variable to be different than "anything in sight", i.e., the scope 
+ *        (of the Abs), all the names of variables (free or bound) in M, and 
+ *        the names of all free variables that could possibly come in from 
+ *        theta. Now recurse. If there is a CLASH arising from this recursive
+ *        call, it cannot possibly be a result of the newly chosen name, 
+ *        so simply decrement the index and propagate the CLASH. (This is 
+ *        our subtle optimization, since otherwise, the CLASH could have 
+ *        been from our newly chosen name, and we would have to again search 
+ *        for a new variable name at this node.)
+ * 
+ *      - if it is not 0, then decrement the index and propagate.
+ * 
+ *--------------------------------------------------------------------------*)
+
+type binding = {redex : term, 
+                incoming : {residue:term,
+                            fn_residue : string list option ref}};
+
+local
+fun frees(v as Fv{Name,...}) free_list = 
+       if (mem Name free_list) then free_list else Name::free_list
+  | frees(Comb{Rator, Rand}) free_list = frees Rand (frees Rator free_list)
+  | frees(Abs{Body,...}) free_list = frees Body free_list
+  | frees _ free_list = free_list
+in
+fun free_var_names tm = frees tm []
+end;
+
+(* The numbers of lambdas to go back through. *)
+exception CLASH of int;
+
+fun check ([],S) = S
+  | check ({redex,residue}::rst, S) = 
+         if (type_of redex = type_of residue)
+         then check(rst,{redex=redex,
+                         incoming={residue=residue,fn_residue=ref NONE}}::S)
+         else ERR("subst","redex and residue have different types");
+
+fun subst [] tm = tm
+  | subst theta tm =
+    let val bindings = check (theta,[])
+        val incoming_names = ref (NONE:string list option)
+        fun opr {residue, fn_residue as ref NONE} =
+               let val L = free_var_names residue
+               in fn_residue := SOME L;  L
+               end                           
+          | opr {residue, fn_residue = ref (SOME L)} = L
+        fun mk_incoming() =
+             (case (!incoming_names) 
+              of (SOME L) => L   (* already computed *)
+               | NONE => let val L =
+		                rev_itlist (union o opr o #incoming) 
+                                                bindings []
+                         in incoming_names := SOME L;  L
+                         end)
+        fun lookup (tm, scope) =
+           let fun check_for_clash({residue,...},[]) = SOME residue
+                 | check_for_clash({residue,fn_residue},scope) =
+                    let val names = 
+                           (case (!fn_residue) 
+                            of NONE => let val L = free_var_names residue
+                                           val _ = fn_residue := SOME L
+                                       in L
+                                       end
+                             | (SOME L) => L)
+                        fun itr([],_,NONE) = SOME residue
+                          | itr ([],_, SOME i) = 
+                              (mk_incoming();  raise CLASH i)
+                          | itr (s::S,n,top) = 
+                               itr(S, n+1, if (mem s names)
+                                           then (SOME n) else top)
+                    in  itr(scope,0,NONE)
+                    end
+               fun assc [] = NONE
+                 | assc ({redex,incoming}::rst) = 
+                    if (aconv tm redex) 
+                    then check_for_clash(incoming,scope)
+                    else (assc rst)
+           in
+           assc bindings
+           end
+
+    fun subs(tm,scope) = 
+     case lookup(tm,scope)
+       of (SOME residue) => residue
+        | NONE => (case tm
+                   of (Comb{Rator,Rand}) => Comb{Rator=subs(Rator,scope),
+                                                 Rand=subs(Rand,scope)}
+                   | (Abs{Bvar as Fv{Name,Ty},Body})
+                      => (Abs{Bvar=Bvar,Body=subs(Body,Name::scope)}
+                          handle CLASH 0
+                          => let
+                             val body_names = map (#Name o dest_var) 
+                                                  (all_vars Body)
+                             val taken = body_names@@scope@@mk_incoming()
+                             val Name' = string_variant taken Name
+                             in
+                             Abs{Bvar = Fv{Name=Name',Ty=Ty},
+                                 Body = subs(Body,Name'::scope)}
+                             handle CLASH i => raise CLASH (i-1)
+                             (*not due to this abstraction (we just renamed) *)
+                             end
+                          | CLASH i => raise CLASH(i-1))
+                   | _ => tm)
+    in 
+    subs (tm,[])
+    end;
+
+
+(***************************************************************************
+ * Tests
+ * Example from LCF code:
+ *
+ *   theta = { x'/z; x/y }  (* i.e., the parallel replacement of z by x' 
+ *                                   and y by x *)
+ *   tm = "\x'. ((f y z) (\x. g x' x y z))"
+     Term.subst [--`z:bool`-- |-> --`x':bool`--,
+                 --`y:bool`-- |-> --`x:bool`--]
+      (--`(\x'. f (y:bool) (z:bool) (\x:bool. g x' x y z:bool)):bool->bool`--);
+ *    = "\x''. ((f x x') (\x'''. g x'' x''' x x'))"
+ *
+ *
+ *Another tricky one:
+ *   theta = { x'/y; x/z }
+ *   tm = "\x. (f y z)"
+     Term.subst [--`y:bool`-- |-> --`x':bool`--,
+                 --`z:bool`-- |-> --`x:bool`--]
+           (--`\x:bool. f (y:bool) (z:bool) : bool`--);
+ *   = (--`\x''. f x' x`--) : term
+ *
+ *
+    Term.subst [--`y:bool`-- |-> --`x:bool`--]
+               (--`\x:bool.\x:bool.(y:bool)`--);
+ *  = (--`\x' x''. x`--) : Term.term
+ *
+ *
+ *
+    Term.subst [--`x:bool`-- |-> --`z':bool`--,
+                --`y:bool`-- |-> --`z:bool`--]
+               (--`\z:bool. f (x:bool) (y:bool) (z:bool) : bool`--);
+ *  = (--`\z''. f z' z z''`--) : Term.term
+
+ * This example shows that names alone are important, not types.
+
+        subst [--`x:bool`-- |-> --`f (y:bool):bool`--]
+              (--`\y :'a. (x:bool)`--) handle e => Raise e;
+ * val it = (--`\y'. f y`--) : term
+
+ * cut-down version of Klaus Schneider bug 
+
+      val tm = --`\(p:'a) (q:'a). f (x:'a) (y:'a) : 'a`--;
+      val theta = [--`x:'a`-- |-> --`q:'a`--, --`y:'a`-- |-> --`p:'a`--];
+      subst theta tm;
+
+ *   val it = (--`\p' q'. f q p`--) : term
+
+
+ * And reverse, for thoroughness
+
+     val tm = --`\(p:'a) (q:'a). f (y:'a) (x:'a) : 'a`--;
+     val theta = [--`x:'a`-- |-> --`q:'a`--,
+                  --`y:'a`-- |-> --`p:'a`--];
+     subst theta tm;
+ *   val it = (--`\p' q'. f p q`--) : term
+ *
+ * Now a recent one by Elsa Gunter:
+ *
+     val y  = --`y:bool`--;
+     val y' = --`y':bool`--;
+     val x  = --`x:bool`--;
+
+     val tm = --`\^y.(^x, \^y'.^y)`--;
+     subst [x |-> y] tm;
+ *
+ * `\y''. y,(\y'. y'')`
+ ***************************************************************************)
+
+(****************************************************************************
+ * General term substitution without renaming
+ *local
+ *fun check [] = ()
+ *  | check ({redex,residue}::rst) = 
+ *      if (type_of redex = type_of residue)
+ *      then check rst
+ *      else ERR("subst",
+ *                          "redex has different type than residue")
+ *fun aconv_assoc item =
+ *   let fun assc ({redex,residue}::rst) = 
+ *            if (aconv item redex)
+ *            then SOME residue
+ *            else assc rst
+ *         | assc _ = NONE
+ *   in assc
+ *   end
+ *in
+ *fun subst [] = I
+ *  | subst s =
+ *      let val _ = check s
+ *          fun subs tm = 
+ *             case (aconv_assoc tm s)
+ *               of (SOME residue) => residue
+ *                | NONE => 
+ *                  (case tm
+ *                   of (Comb{Rator,Rand}) => Comb{Rator = subs Rator, 
+ *                                                 Rand = subs Rand}
+ *                    | (Abs{Bvar,Body}) => Abs{Bvar = Bvar, 
+ *                                              Body = subs Body}
+ *                    | _ => tm)
+ *      in subs
+ *      end
+ *end;
+ ****************************************************************************)
+
+
+fun beta_conv (Comb{Rator = Abs{Body,...}, Rand}) =
+   let val fn_rand = ref NONE
+       fun free_rand_names() = 
+           (case (!fn_rand)
+              of (SOME L) => L
+               | NONE => let val L = free_var_names Rand
+                             val _ = fn_rand := SOME L
+                         in  L
+                         end)
+       fun check([]) = Rand
+         | check(scope) =
+              let val names = free_rand_names()
+                  fun itr([],_,NONE) = Rand
+                    | itr ([],_, SOME i) = raise CLASH i
+                    | itr (s::S,n,top) = itr(S, n+1, if (mem s names)
+                                                     then (SOME n) else top)
+              in  itr(scope,0,NONE)
+              end
+       fun subs ((tm as Bv j),i,scope) = if (i=j) then check scope else tm
+         | subs (Comb{Rator,Rand},i,scope) = Comb{Rator=subs(Rator,i,scope),
+                                                  Rand=subs(Rand,i,scope)}
+         | subs (Abs{Bvar as Fv{Name,Ty},Body},i,scope) = 
+                  (Abs{Bvar=Bvar,Body=subs(Body,i+1,Name::scope)}
+                   handle CLASH 0
+                   => let val body_names = map(#Name o dest_var)(all_vars Body)
+                          val taken = body_names@@scope@@free_rand_names()
+                          val Name' = string_variant taken Name
+                      in
+                      Abs{Bvar=Fv{Name=Name', Ty = Ty}, 
+                                  Body = subs(Body,i+1,Name'::scope)}
+                      handle CLASH i => raise CLASH(i-1)
+                      end
+                   | CLASH i => raise CLASH(i-1))
+         | subs (tm,_,_) = tm
+   in
+   subs (Body,0,[])
+   end
+| beta_conv _ = ERR("beta_conv",  "not a beta-redex");
+
+
+(* *************************************************************************
+ * Non-renaming betaconv.
+ * fun beta_conv (Comb{Rator = Abs{Body,...}, Rand}) =
+ *   let fun bconv (tm as (Bv j)) i = if (i=j) then Rand else tm
+ *         | bconv (Comb{Rator,Rand}) i = Comb{Rator = bconv Rator i,
+ *                                             Rand = bconv Rand i}
+ *         | bconv (Abs{Bvar,Body}) i = Abs{Bvar=Bvar,Body=bconv Body (i+1)}
+ *         | bconv tm _ = tm
+ *   in
+ *   bconv Body 0
+ *   end;
+ ****************************************************************************)
+
+(*--------------------------------------------------------------------------
+ * inst
+ *
+ * Note: different from hol88 inst, in that no "away-from" list required 
+ *
+ * capture_depth: Compute lambda to get thrown out to. 
+ *--------------------------------------------------------------------------*)
+
+fun capture_depth (v,scope) =
+   let fun it ([],_) = ~1  (* aka infinity *)
+         | it (s::S,n) = if (s=v) then n else it(S, n+1)
+   in it(scope,0)
+   end;
+
+exception INST_CLASH of {var : term, scope : term list};
+
+fun inst [] tm = tm
+  | inst theta tm =
+     if (all (fn {redex,...} => Type.is_vartype redex) theta)
+     then let 
+          fun inst1 ((bv as Bv _),_,_) = bv
+            | inst1 (Const{Name,Ty},scope1,scope2) = 
+                     Const{Name=Name, Ty = Type.type_subst theta Ty}
+            | inst1 (Fv{Name,Ty},scope1,scope2) = 
+                let val v' = Fv{Name=Name,Ty = Type.type_subst theta Ty}
+                in if (capture_depth(v',scope2) = ~1)
+                   then v'
+                   else raise INST_CLASH{var = v', scope = scope2}
+                end
+            | inst1 (Comb{Rator,Rand},scope1,scope2) = 
+                     Comb{Rator = inst1(Rator,scope1,scope2),
+                          Rand = inst1(Rand,scope1,scope2)}
+            | inst1 (Abs{Bvar as Fv{Name,Ty},Body},scope1,scope2) = 
+                let val v = Fv{Name=Name,Ty=Type.type_subst theta Ty}
+                    val Bvar' = 
+                       if (capture_depth(Bvar,scope1)=capture_depth(v,scope2))
+                       then v
+                       else variant scope2 v
+                in Abs{Bvar=Bvar',Body=inst1(Body,Bvar::scope1,Bvar'::scope2)}
+                   handle (e as INST_CLASH{var,scope})
+                   => if (var = Bvar')
+                      then let val Bvar'' = variant (v::scope) Bvar'
+                           in
+                           Abs{Bvar = Bvar'',
+                               Body = inst1(Body,Bvar::scope1,Bvar''::scope2)}
+                           end
+                      else raise e
+                end
+            | inst1 (ty_antiq _, _,_) = TY_ANTIQ_ERR "inst"
+            | inst1 (_, _,_) = ERR("inst.inst1", "badly formed term")
+          in
+          inst1 (tm,[],[])
+          end
+     else ERR("inst","redex in type substitution not a variable");
+
+
+(*--------------------------------------------------------------------------
+ *
+ *--------------------------------------------------------------------------*)
+
+fun extract_ty_antiq(ty_antiq ty) = ty
+  | extract_ty_antiq _ = 
+    ERR("extract_ty_antiq","Bad syntax in type antiquote");
+
+(*--------------------------------------------------------------------------
+ *
+ *--------------------------------------------------------------------------*)
+
+
+(* Non renaming version of inst: different from hol88 inst, in that no 
+ * "away-from" list required
+ *local
+ *val check : Type.typ subst -> bool = 
+ *    all (fn {redex,...} => Type.is_vartype redex)
+ *in
+ *fun inst [] tm = tm
+ *  | inst theta tm =
+ *     if (check theta)
+ *     then let fun inst1 (Fv{Name,Ty}) = Fv{Name=Name, 
+ *                                           Ty = Type.type_subst theta Ty}
+ *                | inst1 (Const{Name,Ty}) = Const{Name=Name, 
+ *                                                 Ty=Type.type_subst theta Ty}
+ *                | inst1 (Comb{Rator,Rand}) = Comb{Rator = inst1 Rator,
+ *                                                  Rand = inst1 Rand}
+ *                | inst1 (Abs{Bvar,Body}) = Abs{Bvar = inst1 Bvar,
+ *                                               Body = inst1 Body}
+ *                | inst1 (bv as Bv _) = bv
+ *                | inst1 (ty_antiq _) = TY_ANTIQ_ERR "inst"
+ *          in
+ *          inst1 tm
+ *          end
+ *     else ERR("inst","redex in type substitution not a variable")
+ *end;
+ *****************************************************************************)
+
+(*****************************************************************************
+ * A term is OK to export if all variables in it have "ok" identifiers,
+ * i.e., not genvar'ed. We also go through and accumulate all the free 
+ * variables. This doesn't solve the problem completely, though, since another
+ * criterion is that a free variable name shouldn't also be the name of a
+ * constant. (Why? Because it will get parsed back in as a constant - see
+ * thy_yak.)
+ *****************************************************************************)
+(*****************************************************************************
+ * fun ok_to_export tm =
+ *   let fun chk (Comb{Rator,Rand},r) = chk(Rand,chk(Rator,r))
+ *         | chk (Abs{Bvar = Fv{Name,...},Body},{ok,frees}) = 
+ *                chk(Body,{ok = ok andalso (ok_identifier Name),
+ *                          frees = frees})
+ *         | chk ((v as Fv{Name,...}),{ok,frees}) =
+ *             {ok = ok andalso (ok_identifier Name),
+ *              frees = union aconv frees [v]}
+ *         | chk (_,r) = r
+ *   in chk (tm,{ok = true, frees = []})
+ *   end
+ * 
+ * fun rename tm =
+ *   let fun rn (Comb{Rator,Rand},E) = 
+ *             let val (R1,E') = rn(Rator,E)
+ *                 val (R2,E'') = rn(Rand,E')
+ *             in (Comb{Rator=R1,Rand=R2},E'')
+ *             end
+ *         | rn (Abs{Bvar,Body},E) =
+ *             let val (bocc,E') = rn(Bvar,E)
+ *                 val (body,E'') = rn(Body,E')
+ *             in (Abs{Bvar=bocc,Body=body},E'')
+ *             end
+ *         | rn ((v as Fv{Name,...}),E) =
+ *             if (ok_identifier Name)
+ *             then (v,E)
+ *             else (assoc v E, E)
+ *                  handle NOT_FOUND 
+ *                  => let val v' = variant E v
+ *         | rn x = x
+ *   in #1(rn (tm,[]))
+ *   end
+ *****************************************************************************)
+end; (* TERM *)
+@
+
+
+1.8
+log
+@Added simplifier components, added drule files, added MK_ABS_CONV, better error messages
+@
+text
+@d12 1
+a12 2
+functor TERM (structure Lexis: Lexis_sig
+              structure Type : Private_type_sig) : Private_term_sig =
+d202 1
+a202 1
+type term_record = {const : term,  theory : string};
+a207 3
+fun add_entry (entry as {const = Const{Name,...},...}: term_record) =  
+   Symtab.insert (!symtab) (Name,entry);
+
+d215 1
+a215 3
+fun lookup s = Symtab.find (!symtab) s;  (* do not eta convert this!!  *)
+
+fun lookup_const s = #const(lookup s);
+d224 4
+a227 2
+   lookup x handle NOT_FOUND 
+   => ERR("const_decl", quote x^" not found in signature");
+d239 2
+a240 11
+exception TERM_SYMTAB_CLASH of {common_name:string, 
+                                theory1:string, 
+                                theory2:string};
+
+fun add_term_const (entry as {theory=thry1, 
+			      const=Const{Name,Ty}}) =
+ let val {theory = thry2, ... } = lookup Name
+ in raise TERM_SYMTAB_CLASH {common_name=Name, theory1=thry1, theory2=thry2}
+ end handle NOT_FOUND
+ => add_entry entry;
+     
+d242 1
+a242 1
+   (lookup x; true) 
+d244 1
+a244 3
+   => ((Lexis.is_num_literal x andalso Globals.nums_defined())
+       orelse
+       (Lexis.is_string_literal x andalso Globals.strings_defined()));
+d246 5
+d254 2
+d406 6
+a411 7
+fun prim_mk_const name =
+  let val (c as Const{Ty,...}) = 
+         lookup_const name handle _ => 
+          ERR("mk_const",quote name^" has not been defined")
+  in fn [] => c
+      | theta => Const{Name = name, Ty = Type.type_subst theta Ty}
+  end;
+@
+
+
+1.7
+log
+@Fixed types, pretypes, fixities, parsing.
+@
+text
+@a27 6
+ * Parsing status of constants - an attribute that is held in symtab.
+ *-----------------------------------------------------------------------*)
+
+(* datatype fixity = Infix of int | Prefix | Binder; *)
+
+(*-------------------------------------------------------------------------
+d374 3
+a376 1
+(* ***************************************************************************
+d380 1
+a380 1
+ *****************************************************************************)
+d504 1
+a504 1
+(* **********************************************************************
+d528 1
+a528 1
+ *****************************************************************************)
+@
+
+
+1.6
+log
+@Preterm and other changes, see 7.changes
+@
+text
+@d21 1
+a21 1
+val TERM_ERR = Exception.ERR "Term";
+d24 1
+a24 1
+fun TY_ANTIQ_ERR s = TERM_ERR (s,"ty_antiq in term");
+d31 1
+a31 1
+datatype fixity = Infix of int | Prefix | Binder;
+d43 1
+a43 1
+datatype term = Fv of {Name : string, Ty : Type.hol_type}
+d45 1
+a45 1
+              | Const of {Name : string, Ty : Type.hol_type}
+d48 1
+a48 1
+              | ty_antiq of Type.hol_type;
+d50 2
+a51 2
+datatype lambda = VAR of {Name : string, Ty : Type.hol_type}
+                | CONST of {Name : string, Ty : Type.hol_type}
+d59 17
+a75 16
+local
+fun chase (Type.Tyapp{Tyop = "fun", Args = [_,ty]}) = ty
+  | chase _ = TERM_ERR ("chase", "")
+fun lookup 0 (ty::_) = ty
+  | lookup n (_::rst) = lookup (n-1) rst
+  | lookup _ [] = TERM_ERR("type_of", "lookup")
+fun ty_of (Fv{Ty, ...}) _ = Ty
+  | ty_of (Const{Ty, ...}) _ = Ty
+  | ty_of (Comb{Rator, ...}) E = chase (ty_of Rator E)
+  | ty_of (Abs{Bvar = Fv{Ty,...},Body}) E = 
+         Type.Tyapp{Tyop = "fun", Args = [Ty, ty_of Body (Ty::E)]}
+  | ty_of (Bv i) E = lookup i E
+  | ty_of _ _ = TERM_ERR("ty_of","term construction")
+in 
+fun type_of tm = ty_of tm []
+end;
+a206 9
+ * Here's a minor mess; binary format stores both constant and "dollared"
+ * constant in .holsig file, while ascii format stores only one
+ * (non-dollared) constant. Hence in binary format, when loading a theory 
+ * file, we only add 1 entry (since the dollared entry, because in the theory, 
+ * will also automatically be added), but in ascii format, we have to make 
+ * another, dollared, entry.
+ *
+ * Defining is used in Theory.new_constant, while Loading used in 
+ * Theory_ops.install_hol_sig.
+d209 1
+a209 5
+type term_record = {
+       const : term, 
+       place : fixity, 
+       theory : string
+};
+d237 1
+a237 1
+   => TERM_ERR("const_decl", quote x^" not found in signature");
+d239 1
+d242 2
+a243 20
+ *-----------------------------------------------------------------------*)
+
+(* Is a constant infix, prefix, or a binder *)
+fun fixity_of_term x =
+   #place(lookup x)
+   handle NOT_FOUND
+   => if (Lexis.is_num_literal x orelse Lexis.is_string_literal x)
+      then Prefix
+      else TERM_ERR("fixity_of_term", 
+                          quote x^" not found in signature");
+
+fun is_binder "\\" = true
+  | is_binder s = (fixity_of_term s = Binder)
+                  handle _ => false;
+
+fun is_infix s = (case (fixity_of_term s)
+                   of (Infix _) => true
+                    | _ => false) handle _ => false;
+
+(*-------------------------------------------------------------------------
+d245 2
+d253 2
+a254 4
+datatype add_style = Defining | Loading;
+
+fun add_term_const add_style (entry as {theory=thry1, 
+					const=Const{Name,Ty},place}) =
+d258 3
+a260 23
+ => (add_entry entry;
+     case add_style  
+     of Defining => add_entry{theory = thry1, place = Prefix,
+                              const = Const{Name="$"^Name,Ty = Ty}}
+      | Loading  => if (!Globals.theory_file_option=Globals.binary)
+                    then ()
+                    else add_entry{theory = thry1, place = Prefix,
+                                   const = Const{Name="$"^Name,Ty = Ty}});
+
+
+
+(* The precedence of a term.   *)
+fun prec_of_term x = 
+   (case (#place (lookup x))
+      of (Infix i) => i
+       | _ => 0)
+   handle NOT_FOUND
+   => if (Lexis.is_num_literal x orelse Lexis.is_string_literal x)
+      then 0
+      else TERM_ERR("prec_of_term", quote x^" not found in signature");
+
+(* Is a string the name of a defined constant.   *)
+fun is_st_term_const x = 
+a266 1
+(* Is a string the name of a polymorphic constant.   *)
+d368 1
+a368 1
+   if (is_st_term_const Name)
+d388 1
+a388 1
+  | var_name _ = TERM_ERR("variant.var_name","not a variable")
+d396 1
+a396 1
+           in if (is_st_term_const s) then loop (s^"'") else s
+d400 1
+a400 1
+  | variant _ _ = TERM_ERR("variant","2nd arg. should be a variable")
+d413 16
+a428 11
+(*--------------------------------------------------------------------------
+ * Making constants without matching. Does anybody need this?
+ * fun prim_mk_const name =
+ *   let val (c as Const{Ty,...}) = 
+ *          lookup_const name handle _ => 
+ *           TERM_ERR{func = "mk_const",
+ *                          mesg = quote name^" has not been defined")
+ *   in fn [] => c
+ *       | theta => Const{Name = name, Ty = Type.type_subst theta Ty}
+ *   end;
+ *
+d432 2
+a433 2
+ *
+ *--------------------------------------------------------------------------*)
+d440 2
+a441 2
+               else TERM_ERR("list_mk_comb","incompatible types")
+         | loop _ _ = TERM_ERR("list_mk_comb","incompatible types")
+d448 1
+a448 1
+      else TERM_ERR("mk_comb","incompatible types")
+d450 1
+a450 1
+                          handle _ => TERM_ERR("mk_comb","incompatible types")
+d491 1
+a491 1
+  | mk_abs _ = TERM_ERR("mk_abs","Bvar not a variable");
+d502 1
+a502 1
+  | dest_var _ = TERM_ERR("dest_var", "not a var")
+d504 1
+a504 1
+  | dest_const _ = TERM_ERR("dest_const","not a const")
+d506 1
+a506 1
+  | dest_comb _ = TERM_ERR("dest_comb","not a comb")
+d530 1
+a530 1
+ *  | dest_abs _ = TERM_ERR("dest_abs",
+d547 1
+a547 1
+  | dest_abs _ = TERM_ERR("dest_abs","not a lambda abstraction")
+d552 1
+a552 1
+  | break_abs _ = TERM_ERR("break_abs","not a lambda abstraction");
+d578 1
+a578 1
+  | rator _ = TERM_ERR("rator","not a comb")
+d581 1
+a581 1
+  | rand _ = TERM_ERR("rand","not a comb")
+d591 1
+a591 1
+  | dest_term _ = TERM_ERR("dest_term","badly formed term");
+d689 1
+a689 1
+         else TERM_ERR("subst","redex and residue have different types");
+d837 1
+a837 1
+ *      else TERM_ERR("subst",
+d904 1
+a904 1
+| beta_conv _ = TERM_ERR("beta_conv",  "not a beta-redex");
+d969 1
+a969 2
+            | inst1 (_, _,_) = TERM_ERR("inst.inst1",
+                                              "badly formed term")
+d973 14
+a986 1
+     else TERM_ERR("inst","redex in type substitution not a variable");
+d992 1
+a992 1
+ *val check : Type.hol_type subst -> bool = 
+d1011 1
+a1011 2
+ *     else TERM_ERR("inst",
+ *			 "redex in type substitution not a variable")
+@
+
+
+1.5
+log
+@The HOL90 sources have been changed to allow for the use of different
+Standard ML compilers (possibly simultaneously).
+
+ * Many files in "src/0" changed to make them more portable across different
+   ML compilers. Various additions have been made to the Portable structure
+   and files changed to access identifiers in the Portable structure rather
+   than from the global environment. Worthy of special note are:
+
+   - The pointer equality used in "src/0/term.sml" has been made into a
+     function in the Portable structure.
+
+   - The ML-Lex and ML-Yacc files for the various parsers have been changed
+     to access the Portable structure. Both the source files and the SML
+     produced from them have been changed but I have not verified that the
+     source files would reproduce the new SML versions if ML-Lex and ML-Yacc
+     were to be rerun on them. The changes involve some hacks that exploit the
+     way ML-Lex and ML-Yacc work. See the sources for details.
+
+R.J.Boulton, 15th November 1995.
+@
+text
+@d9 1
+d12 2
+a13 3
+functor TERM ((* structure Lib : Lib_sig *)
+	      structure Lexis: Lexis_sig
+              structure Type : Type_sig) : Term_sig =
+d19 1
+a19 4
+fun TERM_ERR{function,message} =
+    HOL_ERR{origin_structure = "Term",
+		      origin_function = function,
+		      message = message}
+d21 2
+a22 1
+fun TY_ANTIQ_ERR s = TERM_ERR{function = s, message = "ty_antiq in term"};
+d24 1
+d26 5
+a30 1
+(* Parsing status of constants - an attribute that is held in symtab. *)
+d33 4
+a36 2
+(***************************************************************************
+ * deBruijn terms. ty_antiq is an annoyance, caused by having quotations
+d40 3
+a42 1
+ ***************************************************************************)
+a49 1
+(* For efficiency tests by Morten *)
+d55 4
+a58 1
+(* Computing the type of a term *)
+d61 1
+a61 1
+  | chase _ = raise TERM_ERR {function = "chase", message = ""}
+d64 1
+a64 1
+  | lookup _ [] = raise TERM_ERR{function = "type_of", message = "lookup"}
+d71 1
+a71 2
+  | ty_of _ _ = raise TERM_ERR{function = "ty_of",
+			       message = "term construction"}
+d76 28
+d105 30
+a134 3
+(* HOL TERM SIGNATURES *)
+type term_record = {const :term, place :fixity, theory :string};
+type symtab = term_record list Array.array;
+d136 51
+a186 1
+datatype add_style = Defining | Loading;
+d188 9
+a196 11
+(***********************************************************************
+ * The hash function for putting records into the symtab. "ordof" is
+ *  SML/NJ-specific.
+ ***********************************************************************)
+val table_size = 1021
+fun hash s =
+   let fun hsh(n,m) =
+       hsh (((n*4) + Portable.String.ordof(s,m)) mod table_size, m+1)
+                     handle Portable.String.Ord => n
+   in hsh (0,0)
+   end;
+d198 1
+a198 8
+val symtab = ref (Array.array (table_size,([]:term_record list)));
+
+fun add_entry (entry as {const = Const{Name,...},...}) =  
+   let val i = hash Name
+       val L = Array.sub(!symtab, i)
+   in
+   Array.update(!symtab,i,(L@@[entry]))
+   end;
+a199 2
+fun reset_symtab() = 
+     symtab := Array.array (table_size,([]: term_record list));
+a200 6
+fun symtab_copy () = 
+   let val st_clone = Array.array (table_size,([]:term_record list))
+       val _ = for_se 0 (table_size-1)
+                        (fn i => Array.update(st_clone,i,Array.sub(!symtab,i)))
+   in st_clone
+   end;
+a201 1
+fun replace_symtab st = symtab := st;
+d203 3
+a205 32
+(*****************************************************************************
+ * local val colon = ":"
+ *       and space = " "
+ *       fun print_st_entry({const = Const{Name,...},...}:term_record) = 
+ *            output(std_out, Name^space)
+ * in
+ * fun dump_symtab() =
+ *    for_se 0 (table_size-1)
+ *       (fn i => case Array.sub(!symtab,i)
+ *                of [] => output(std_out, (int_to_string i)^colon^space)
+ *                 | L =>(output(std_out,("\n"^(int_to_string i)^colon^space));
+ *                            map print_st_entry L; ()))
+ * end;
+ ****************************************************************************)
+fun lookup s = 
+   let fun lft [tr as {const = Const{Name, ...}, ...}:term_record] = 
+              if (s = Name) then tr else raise NOT_FOUND
+         | lft ((tr as {const = Const{Name,...},...})::rst) = 
+              if (s = Name) then tr else lft rst
+         | lft [] = raise NOT_FOUND
+   in
+   lft (Array.sub(!symtab, hash s))
+   end;
+
+fun lookup_const s = #const(lookup s);
+
+
+exception TERM_SYMTAB_CLASH of {common_name:string, 
+                                theory1:string, 
+                                theory2:string};
+
+(* **************************************************************************
+d215 26
+a240 13
+ *****************************************************************************)
+fun add_term_const DorL (entry as {theory=thry1, const=Const{Name,Ty},place}) =
+ let val {theory = thry2, ... } = lookup Name
+ in raise TERM_SYMTAB_CLASH {common_name=Name, theory1=thry1, theory2=thry2}
+ end handle NOT_FOUND
+ => (add_entry entry;
+     case DorL  
+     of Defining => add_entry{theory = thry1, place = Prefix,
+                              const = Const{Name="$"^Name,Ty = Ty}}
+      | Loading  => if (!Globals.theory_file_option=Globals.make_binary)
+                    then ()
+                    else add_entry{theory = thry1, place = Prefix,
+                                   const = Const{Name="$"^Name,Ty = Ty}});
+d242 4
+a246 1
+(* Return constant just as it was declared *)
+d249 1
+a249 2
+   => raise TERM_ERR{function = "const_decl", 
+                     message = quote x^" not found in signature"};
+d251 4
+d261 2
+a262 2
+      else raise TERM_ERR{function = "fixity_of_term", 
+                          message = quote x^" not found in signature"};
+d272 26
+d306 1
+a306 2
+      else raise TERM_ERR{function = "prec_of_term", 
+                          message = quote x^" not found in signature"};
+d320 16
+a335 1
+(* END TERM SIGNATURE *)
+d337 1
+a337 13
+
+
+(* The free variables of a lambda term.   *)
+local
+fun frees(v as Fv _) free_list = 
+      if (mem v free_list) then free_list else v::free_list
+  | frees(Comb{Rator, Rand}) free_list = frees Rand (frees Rator free_list)
+  | frees(Abs{Body,...}) free_list = frees Body free_list
+  | frees _ free_list = free_list
+in
+fun free_vars tm = frees tm []
+end;
+
+d339 13
+a351 10
+(* The *set* of all variables in a term.   *)
+local
+fun vars (v as Fv _) vlist = 
+      if (mem v vlist) then vlist else v::vlist
+  | vars(Comb{Rator, Rand}) vlist = vars Rand (vars Rator vlist)
+  | vars(Abs{Bvar, Body}) vlist = vars Body (vars Bvar vlist)
+  | vars _ vlist = vlist
+in
+fun all_vars tm = vars tm []
+end;
+a352 1
+fun free_varsl tm_list = itlist (union o free_vars) tm_list []
+d355 4
+a358 1
+(* Does tm occur free in M. This is not defined modulo aconvability.
+d360 2
+a361 1
+ ***********************************************************************)
+d370 4
+d375 10
+a384 11
+(* Total ordering on terms.  Fv < Bv < Const < Comb < Abs *)
+local
+fun atom_lt {Name=(s1:string),Ty=ty1} {Name=s2,Ty=ty2} = 
+   (s1<s2) orelse ((s1=s2) andalso Type.type_lt ty1 ty2)
+val TYANTIQ_ERR = TERM_ERR{function = "term_lt",
+                           message="type antiquotes are not terms"}
+in
+fun term_lt (ty_antiq _) _ = raise TYANTIQ_ERR
+  | term_lt _ (ty_antiq _)= raise TYANTIQ_ERR
+  | term_lt (Fv v1) (Fv v2) = atom_lt v1 v2
+  | term_lt (Fv _) _ = true
+d386 21
+a406 26
+  | term_lt (Bv _) (Fv _) = false
+  | term_lt (Bv i1) (Bv i2) = i1<i2
+  | term_lt (Bv _) _ = true
+
+  | term_lt (Const _) (Fv _) = false
+  | term_lt (Const _) (Bv _) = false
+  | term_lt (Const c1) (Const c2) = atom_lt c1 c2
+  | term_lt (Const _) _ = true
+
+  | term_lt (Comb{Rator=rator1,Rand=rand1}) (Comb{Rator=rator2,Rand=rand2}) =
+      if (term_lt rator1 rator2)
+      then true
+      else if (term_lt rator2 rator1)
+           then false
+           else (term_lt rand1 rand2)
+  | term_lt (Comb _) (Abs _) = true
+  | term_lt (Comb _) _ = false
+
+  | term_lt (Abs{Bvar=bv1, Body=body1}) (Abs{Bvar=bv2, Body=body2}) =
+      if (term_lt bv1 bv2)
+      then true
+      else if (term_lt bv2 bv1)
+           then false
+           else term_lt body1 body2
+  | term_lt (Abs _) _ = false
+end;
+d408 1
+d410 4
+a413 1
+(* Making variables *)
+a414 1
+(* A good place to investigate sharing. *)
+d435 1
+d438 1
+a438 2
+  | var_name _ = raise TERM_ERR{function = "variant.var_name",
+		                message = "not a variable"}
+d440 1
+a440 4
+fun string_variant slist =
+   let fun pass str = if (mem str slist) then pass (str^"'") else str
+   in pass 
+   end
+d445 1
+a445 1
+           let val s = string_variant V name
+d450 1
+a450 2
+  | variant _ _ = raise(TERM_ERR{function = "variant",
+				 message = "2nd arg. should be a variable"})
+d460 1
+a460 1
+  | type_vars_in_term (ty_antiq _) = raise TY_ANTIQ_ERR "type_vars_in_term";
+d463 1
+a463 1
+(*****************************************************************************
+d468 2
+a469 2
+ *           raise TERM_ERR{func = "mk_const",
+ *                          mesg = quote name^" has not been defined"}
+d473 6
+a478 1
+ *****************************************************************************)
+a479 7
+(* Making applications *)
+local
+val INCOMPAT_TYPES = TERM_ERR{function = "list_mk_comb",
+                              message = "incompatible types"}
+val INCOMPAT_TYPES1 = TERM_ERR{function = "mk_comb",
+                              message = "incompatible types"}
+in
+d485 2
+a486 2
+               else raise INCOMPAT_TYPES
+         | loop _ _ = raise INCOMPAT_TYPES
+d490 1
+a490 4
+(*************************************************************************
+ * Special case when Rator is an abstraction - examine the type of
+ * the bound variable.
+ *************************************************************************)
+d492 2
+a493 1
+      if (type_of Rand = Ty) then Comb r else raise INCOMPAT_TYPES1
+d495 3
+a497 2
+                          handle _ => raise INCOMPAT_TYPES1
+end;
+d499 4
+d531 1
+a531 1
+            | bind (ty_antiq _) _ = raise TY_ANTIQ_ERR "mk_abs"
+d536 8
+a543 2
+  | mk_abs _ = raise TERM_ERR{function = "mk_abs",
+			      message = "Bvar not a variable"};
+d547 1
+a547 1
+  | dest_var _ = raise TERM_ERR{function = "dest_var", message = "not a var"}
+d549 1
+a549 1
+  | dest_const _ = raise TERM_ERR{function="dest_const",message="not a const"}
+d551 1
+a551 1
+  | dest_comb _ = raise TERM_ERR{function = "dest_comb",message = "not a comb"}
+d575 2
+a576 2
+ *  | dest_abs _ = raise TERM_ERR{function = "dest_abs",
+ *                                message = "not a lambda abstraction"};
+d592 1
+a592 2
+  | dest_abs _ = raise TERM_ERR{function = "dest_abs",
+                                message = "not a lambda abstraction"}
+d597 1
+a597 2
+  | break_abs _ = raise TERM_ERR{function = "break_abs",
+				 message = "not a lambda abstraction"};
+d599 12
+a610 1
+(* Discriminators.   *)
+d617 5
+a621 1
+(* Derived operations     *)
+d623 1
+a623 1
+  | rator _ = raise TERM_ERR{function = "rator",message = "not a comb"}
+d626 1
+a626 1
+  | rand _ = raise TERM_ERR{function = "rand",message = "not a comb"}
+d636 1
+a636 2
+  | dest_term _ = raise TERM_ERR{function = "dest_term",
+                                 message = "badly formed term"};
+d638 10
+a647 11
+
+(* Prelogic *)
+
+(* 
+fun aconv (Comb{Rator = M1, Rand = M2}) (Comb{Rator=N1,Rand=N2}) =
+          aconv M1 N1 andalso aconv M2 N2
+  | aconv (Abs{Bvar=Fv{Ty=ty1,...}, Body = body1})
+          (Abs{Bvar=Fv{Ty=ty2,...}, Body = body2}) = 
+                         (ty1=ty2) andalso (aconv body1 body2)
+  | aconv tm1 tm2 = (tm1=tm2);
+*)
+d657 1
+a657 1
+(************************************************************************
+d710 1
+a710 1
+ *****************************************************************************)
+d734 1
+a734 2
+         else raise TERM_ERR{function = "subst",
+                             message="redex and residue have different types"};
+d882 2
+a883 2
+ *      else raise TERM_ERR{function = "subst",
+ *                          message = "redex has different type than residue"}
+d949 1
+a949 2
+| beta_conv _ = raise TERM_ERR{function="beta_conv", 
+                               message = "not a beta-redex"};
+d965 8
+a972 1
+(* Compute lambda to get thrown out to.  *)
+a980 2
+(* Note: different from hol88 inst, in that no "away-from" list required *)
+(* Could share consts and free vars *)
+d1013 3
+a1015 3
+            | inst1 (ty_antiq _, _,_) = raise TY_ANTIQ_ERR "inst"
+            | inst1 (_, _,_) = raise TERM_ERR{function = "inst.inst1",
+                                              message = "badly formed term"}
+d1019 1
+a1019 2
+     else raise TERM_ERR{function="inst",
+			 message="redex in type substitution not a variable"};
+d1040 1
+a1040 1
+ *                | inst1 (ty_antiq _) = raise TY_ANTIQ_ERR "inst"
+d1044 2
+a1045 2
+ *     else raise TERM_ERR{function = "inst",
+ *			 message = "redex in type substitution not a variable"}
+@
+
+
+1.5.4.1
+log
+@Removed files are parse files and portability files that have
+effectively been moved elsewhere.
+
+Modified files are up to date for ML 109.26.
+@
+text
+@d11 3
+a13 1
+functor TERM (structure Type : Type_sig) : Term_sig =
+d16 2
+d19 4
+a23 5
+fun TERM_ERR{function,message} = 
+ Exception.HOL_ERR{origin_structure = "Term",
+                   origin_function = function,
+                   message = message};
+
+d30 1
+a30 1
+(*---------------------------------------------------------------------------
+d35 1
+a35 1
+ *---------------------------------------------------------------------------*)
+a42 1
+
+d49 1
+a49 4
+
+(*---------------------------------------------------------------------------
+ * Computing the type of a term.
+ *---------------------------------------------------------------------------*)
+d69 1
+a69 4
+(*---------------------------------------------------------------------------
+ *                 HOL TERM SIGNATURES 
+ *---------------------------------------------------------------------------*)
+
+d75 1
+a75 1
+(*---------------------------------------------------------------------------
+d78 1
+a78 1
+ *---------------------------------------------------------------------------*)
+d81 3
+a83 2
+   let fun hsh(n,m) = hsh (((n*4) + ordof(s,m)) mod table_size, m+1)
+                     handle Ord => n
+d108 1
+a108 1
+(*---------------------------------------------------------------------------
+d121 1
+a121 1
+ *---------------------------------------------------------------------------*)
+d139 1
+a139 1
+(*---------------------------------------------------------------------------
+d149 1
+a149 1
+ *---------------------------------------------------------------------------*)
+d158 1
+a158 1
+      | Loading  => if (SysParams.theory_file_option=SysParams.make_binary)
+d164 1
+a164 3
+(*---------------------------------------------------------------------------
+ * Return constant just as it was declared.
+ *---------------------------------------------------------------------------*)
+d168 1
+a168 1
+                     message = Lib.quote x^" not found in signature"};
+d170 1
+a170 3
+(*---------------------------------------------------------------------------
+ * Is a constant infix, prefix, or a binder.
+ *---------------------------------------------------------------------------*)
+d172 2
+a173 1
+   #place(lookup x) handle NOT_FOUND
+d177 1
+a177 1
+                          message = Lib.quote x^" not found in signature"};
+d180 2
+a181 1
+  | is_binder s = (fixity_of_term s = Binder) handle _ => false;
+d187 1
+a187 3
+(*---------------------------------------------------------------------------
+ * The precedence of a term.
+ *---------------------------------------------------------------------------*)
+d196 1
+a196 1
+                          message = Lib.quote x^" not found in signature"};
+d198 1
+a198 3
+(*---------------------------------------------------------------------------
+ * Is a string the name of a defined constant.
+ *---------------------------------------------------------------------------*)
+d200 2
+a201 1
+   (lookup x; true) handle NOT_FOUND
+d206 1
+a206 3
+(*---------------------------------------------------------------------------
+ * Is a string the name of a polymorphic constant.
+ *---------------------------------------------------------------------------*)
+d214 1
+a214 4
+(*---------------------------------------------------------------------------
+ * The free variables of a lambda term. This could be implemented more 
+ * efficiently, say by an ordered list.
+ *---------------------------------------------------------------------------*)
+d226 1
+a226 26
+(*---------------------------------------------------------------------------
+ * The free variables of a lambda term, in textual order.
+ *---------------------------------------------------------------------------*)
+fun free_vars_lr tm = 
+  let fun frees(v as Fv _) A = if (mem v A) then A else v::A
+        | frees(Comb{Rator, Rand}) A = frees Rator (frees Rand A)
+        | frees(Abs{Body,...}) A = frees Body A
+        | frees _ A = A
+  in frees tm []
+end;
+
+
+local
+fun frees(v as Fv _) free_list = 
+      if (mem v free_list) then free_list else v::free_list
+  | frees(Comb{Rator, Rand}) free_list = frees Rator (frees Rand free_list)
+  | frees(Abs{Body,...}) free_list = frees Body free_list
+  | frees _ free_list = free_list
+in
+fun free_vars_lr tm = frees tm []
+end;
+
+
+(*---------------------------------------------------------------------------
+ * The *set* of all variables in a term.
+ *---------------------------------------------------------------------------*)
+d240 1
+a240 2
+(*---------------------------------------------------------------------------
+ * Does tm occur free in M. This is not defined modulo aconvability.
+d242 1
+a242 1
+ *---------------------------------------------------------------------------*)
+d252 6
+a257 7
+(*---------------------------------------------------------------------------
+ * A total ordering on terms.  Fv < Bv < Const < Comb < Abs
+ *---------------------------------------------------------------------------*)
+local fun atom_lt {Name=(s1:string),Ty=ty1} {Name=s2,Ty=ty2} = 
+               (s1<s2) orelse ((s1=s2) andalso Type.type_lt ty1 ty2)
+      val TYANTIQ_ERR = TERM_ERR{function = "term_lt",
+                                 message = "type antiquotes are not terms"}
+d260 1
+a260 1
+  | term_lt _ (ty_antiq _) = raise TYANTIQ_ERR
+d278 1
+a278 1
+           else term_lt rand1 rand2
+d303 2
+a304 5
+local fun num2name i = "%%genvar%%"^Lib.int_to_string i
+      val nameStrm = Lib.mk_istream (fn x => x+1) 0 num2name
+in
+fun genvar ty = Fv{Name = state(next nameStrm), Ty = ty}
+end;
+d310 1
+a310 1
+(*---------------------------------------------------------------------------
+d314 5
+a318 4
+ *---------------------------------------------------------------------------*)
+local fun var_name(Fv{Name,...}) = Name
+        | var_name _ = raise TERM_ERR{function = "variant.var_name",
+                                      message  = "not a variable"}
+d333 2
+a334 2
+  | variant _ _ = raise TERM_ERR{function = "variant",
+                                 message = "2nd arg. should be a variable"}
+d347 2
+a348 2
+(*---------------------------------------------------------------------------
+ * Making constants without matching. 
+d353 1
+a353 1
+ *                          mesg = Lib.quote name^" has not been defined"}
+d357 1
+a357 1
+ *---------------------------------------------------------------------------*)
+d360 5
+a364 3
+local fun ERR s = TERM_ERR{function = s, message = "incompatible types"}
+      val INCOMPAT_TYPES  = ERR "list_mk_comb"
+      val INCOMPAT_TYPES1 = ERR "mk_comb"
+d376 1
+a376 1
+(*---------------------------------------------------------------------------
+d379 1
+a379 1
+ *---------------------------------------------------------------------------*)
+a406 1
+
+d409 11
+a419 9
+ let fun bind (v as Fv _) i = if (v=Bvar) then mk_bv(i) else v
+       | bind (Comb{Rator,Rand}) i = Comb{Rator=bind Rator i,Rand=bind Rand i}
+       | bind (Abs{Bvar=bv, Body=tm}) i = Abs{Bvar = bv, Body = bind tm (i+1)}
+       | bind (ty_antiq _) _ = raise TY_ANTIQ_ERR "mk_abs"
+       | bind tm _ = tm
+ in
+   Abs{Bvar = Bvar, Body = bind Body 0}
+ end
+ | mk_abs _ = raise TERM_ERR{function = "mk_abs",
+d430 1
+a430 1
+(*---------------------------------------------------------------------------
+d454 1
+a454 1
+ *---------------------------------------------------------------------------*)
+d506 1
+a506 1
+(*--------------------------------------------------------------------------- 
+d513 1
+a513 1
+-----------------------------------------------------------------------------*)
+d515 1
+a515 9
+(*---------------------------------------------------------------------------
+ * The commented-out code is Standard ML; the following is a version that
+ * flouts the type system in order to get better speed. This change was
+ * motivated by experiments that John Harrison did on BDDs.
+ *---------------------------------------------------------------------------*)
+local open System.Unsafe
+      fun EQ (M:term,N:term) = ((cast M:int) = (cast N:int)) 
+in
+fun aconv t1 t2 = EQ(t1,t2) orelse 
+d517 1
+a517 1
+   (Comb{Rator=M,Rand=N},Comb{Rator=P,Rand=Q}) => aconv N Q andalso aconv M P 
+d520 1
+a520 3
+ | (M,N) => (M=N))
+end;
+
+d523 1
+a523 1
+(*---------------------------------------------------------------------------
+d576 1
+a576 1
+ *---------------------------------------------------------------------------*)
+d615 2
+a616 1
+               | NONE => let val L = rev_itlist (Lib.union o opr o #incoming) 
+d674 1
+a674 1
+(*----------------------------------------------------------------------------
+d740 1
+a740 1
+ *---------------------------------------------------------------------------*)
+d742 1
+a742 1
+(*---------------------------------------------------------------------------
+d760 1
+a760 1
+ *fun subst [] = Lib.I
+d776 1
+a776 1
+ *---------------------------------------------------------------------------*)
+d820 1
+a820 1
+(*---------------------------------------------------------------------------
+d831 1
+a831 1
+ *---------------------------------------------------------------------------*)
+d846 1
+a846 1
+     if (Lib.all (fn {redex,...} => Type.is_vartype redex) theta)
+d886 1
+a886 2
+(*---------------------------------------------------------------------------
+ * Non renaming version of inst: different from hol88 inst, in that no 
+d890 1
+a890 1
+ *    Lib.all (fn {redex,...} => Type.is_vartype redex)
+d911 1
+a911 1
+ *---------------------------------------------------------------------------*)
+d913 1
+a913 1
+(*---------------------------------------------------------------------------
+d920 2
+a921 2
+ *---------------------------------------------------------------------------*)
+(*-----------------------------------------------------------------------------
+d925 1
+a925 1
+ *                chk(Body,{ok = ok andalso (Lib.ok_identifier Name),
+d928 2
+a929 2
+ *             {ok = ok andalso (Lib.ok_identifier Name),
+ *              frees = Lib.union aconv frees [v]}
+d946 1
+a946 1
+ *             if (Lib.ok_identifier Name)
+d948 1
+a948 1
+ *             else (Lib.assoc v E, E)
+d954 1
+a954 1
+ *---------------------------------------------------------------------------*)
+@
+
+
+1.5.4.2
+log
+@Made CM-friendly.
+@
+text
+@a14 1
+open Lib;
+@
+
+
+1.5.4.3
+log
+@Removed sys_params.* because it has been replaced by src/SysParams.
+@
+text
+@a27 4
+fun fixity_to_string(Infix i)  = "Infix "^Lib.int_to_string i
+  | fixity_to_string Prefix    = "Prefix"
+  | fixity_to_string Binder    = "Binder";
+
+d145 1
+a145 1
+ * constants in .holsig file, while ascii format stores only one
+@
+
+
+1.5.4.4
+log
+@Changed to use Portable.pointer_eq in the definition of aconv. Previously,
+we weren't making use of it, even though it was defined.:
+@
+text
+@d564 2
+a565 1
+local fun EQ (M:term,N:term) = Portable.pointer_eq(M,N)
+@
+
+
+1.5.4.5
+log
+@These modifications are to make frags known (parse.{sig, sml}), and to
+make the hash function run properly (a change in the underlying exception
+that substring raises (from Ord to Subscript))  (type.sml, term.sml).
+@
+text
+@d90 2
+a91 3
+   let fun hsh(n,m) = hsh (((n*4) + Portable.String.ordof(s,m)) mod table_size,
+                            m+1)
+                     handle Portable.String.Ord => n
+@
+
+
+1.4
+log
+@First phase of hol90.8 development.  hol90 now compiles using NJSML-CM
+108.5, with separate compilation of libraries.  System dependencies
+have been isolated in the makefiles and "portable.sml".
+
+This involved a large number of enhancments to the source files,
+most of which are documented in the 7.changes file (or will be shortly).
+See also the correpsonding email corrspondence between RJB, KLS, TFM,
+JRH and DRS that happened during this development.
+@
+text
+@d515 1
+a515 4
+local open System.Unsafe
+      fun EQ (M:term,N:term) = ((cast M:int) = (cast N:int)) 
+in
+fun aconv t1 t2 = EQ(t1,t2) orelse 
+d520 1
+a520 2
+ | (M,N) => (M=N))
+end;
+a521 1
+
+@
+
+
+1.3
+log
+@Check in after merging in Konrad's changes made after
+the release of hol90.7.  This involved creating a side branch
+in which to check in Konrad's changes, then merging in that
+side branch into the main development (which contains changes
+made by Elsa Gunter).
+
+Some other small modification have been made to the source code,
+as I begun to try to make this version into a working version:
+	- hol90 will now be compiled in an environment were no
+structures can be considered opn.  This means many structures
+now need "open Lib" and other such commands at their head.
+This has not yet been completed, but has been begun.
+	- "rotl" and "rotr" have been added to Lib, something
+which I just did impulsively.   Documentation files
+have also been added in help/90.
+@
+text
+@d17 1
+d20 1
+a20 1
+    Exception.HOL_ERR{origin_structure = "Term",
+d82 2
+a83 2
+       hsh (((n*4) + Sml_system.String.ordof(s,m)) mod table_size, m+1)
+                     handle Sml_system.String.Ord => n
+d158 1
+a158 1
+      | Loading  => if (Sml_system.Sys_params.theory_file_option=Sml_system.Sys_params.make_binary)
+@
+
+
+1.2
+log
+@Keeping you up to date:
+
+I'm about to do a checkin of elsa's modifications to the hol90.7
+sources to create her hol90.pre8.  To recap what I've done:
+	- I checked out hol90 (in /usr/groups/hol/drs1004/hol90)
+		cvs co hol90
+	  (Well, to be honest, I only checked out those
+	  parts of hol90 I knew I'd be changing, e.g. not the
+	  Manual, and only parts of the library.  Checking out the
+	  entire source takes a while, mainly due to the enormous number
+	  of help files.  The limiting factor is files/second, which
+         runs at around 5 when CVS is working on nfs over a network, not
+         KB/second, which you might at first think it would be).
+
+	- By doing a recursive diff between Elsa's source and the
+	hol90.7 source I found all the changes Elsa had made to
+	source files.  I copied relevant files from Elsa's source
+	into my checked out version.  The only new files were
+		- the sml_system files in src/0
+		- some make scripts in src/.
+	Changed files were in:
+		src/{0,1,2,3}
+		library/arith/src/thm_convs.sml
+		library/list/src/list_conv1.sml
+		library/num/src/num_lib.sml
+		library/prog_logic/src/halts_logic.sml
+		library/prog_logic/src/translation.sml
+		library/prog_logic/theories/src/mk_halts.sml
+		library/real/theories/src/Make
+		library/real/theories/src/equiv.sml
+		library/real/theories/src/seq.sml
+		library/reduce/src/arithconv.sml
+		library/string/src/string_conv.sml
+		library/unity/theories/src/aux_definitions.sml
+		library/word/theories/src/*
+
+	- I will now commit these changes, with this email as the log message.
+		cvs commit
+
+	- Tomorrow I will get this version compiling
+	with NJSML 108 (I will probably add
+	the files to enable the NJSML compilation manager to make
+	this easier), then check those changes in.  I think it's
+	good to get things in a working state.
+@
+text
+@d16 1
+d23 2
+a24 1
+type atom = {Name : string, Ty : Type.hol_type}
+d26 1
+a26 1
+(* For logical constants - an attribute that is held in symtab. *)
+d35 1
+a35 1
+datatype term = Fv of atom
+d37 1
+a37 1
+              | Const of atom
+d43 2
+a44 2
+datatype lambda = VAR of atom
+                | CONST of atom
+a47 3
+
+fun TY_ANTIQ_ERR s = TERM_ERR{function = s, message = "ty_antiq in term"};
+
+d63 1
+a63 1
+in
+d100 1
+a100 1
+       val _ = Lib.for_se 0 (table_size-1)
+d123 1
+a123 1
+              if (s = Name) then tr else raise Lib.NOT_FOUND
+d126 1
+a126 1
+         | lft [] = raise Lib.NOT_FOUND
+d150 12
+a161 16
+   let val {theory = thry2, ... } = lookup Name
+   in raise TERM_SYMTAB_CLASH {common_name=Name, theory1=thry1, theory2=thry2}
+   end
+   handle Lib.NOT_FOUND
+   => (add_entry entry;
+       case DorL  
+        of Defining 
+           => add_entry{theory = thry1, 
+                        const = Const{Name="$"^Name,Ty = Ty},
+                        place = Prefix}
+         | Loading 
+           => if (Sml_system.Sys_params.theory_file_option=Sml_system.Sys_params.make_binary)
+              then ()
+              else add_entry{theory = thry1, 
+                             const = Const{Name="$"^Name,Ty = Ty},
+                             place = Prefix});
+d165 1
+a165 1
+   lookup x handle Lib.NOT_FOUND 
+d167 1
+a167 1
+                     message = Lib.quote x^" not found in signature"};
+d172 1
+a172 1
+   handle Lib.NOT_FOUND
+d176 1
+a176 1
+                     message = Lib.quote x^" not found in signature"};
+d191 1
+a191 1
+   handle Lib.NOT_FOUND
+d195 1
+a195 1
+                          message = Lib.quote x^" not found in signature"};
+d200 1
+a200 1
+   handle Lib.NOT_FOUND
+d216 1
+a216 1
+      if (Lib.mem v free_list) then free_list else v::free_list
+d225 1
+a225 1
+(* All the variables in a term.   *)
+d228 1
+a228 1
+      if (Lib.mem v vlist) then vlist else v::vlist
+d236 2
+a237 2
+fun free_varsl tm_list = Lib.itlist (Lib.union o free_vars) tm_list []
+fun all_varsl tm_list = Lib.itlist (Lib.union o all_vars) tm_list [];
+d251 1
+a251 1
+(* Total ordering on terms.   *)
+d254 1
+a254 1
+   (s1<s2) andalso (Type.type_lt ty1 ty2)
+d302 1
+a302 1
+val gname = Lib.fresh_name "%%genvar%%"
+d317 1
+a317 1
+		          message = "first arg. should be a list of variables"}
+d320 1
+a320 1
+   let fun pass str = if (Lib.mem str slist) then pass (str^"'") else str
+d323 9
+a331 2
+fun variant vlist (Fv{Name,Ty}) =
+      mk_primed_var{Name = string_variant (map var_name vlist) Name, Ty = Ty}
+d338 1
+a338 1
+  | type_vars_in_term (Comb{Rator,Rand}) = Lib.union (type_vars_in_term Rator) 
+d340 1
+a340 1
+  | type_vars_in_term (Abs{Bvar,Body}) = Lib.union (type_vars_in_term Bvar)
+d352 1
+a352 1
+ *                          mesg = Lib.quote name^" has not been defined"}
+d362 2
+a374 2
+end;
+
+d380 5
+a384 4
+      if (type_of Rand = Ty)
+      then Comb r
+      else raise TERM_ERR{function = "mk_comb",message = "incompatible types"}
+  | mk_comb{Rator,Rand} = list_mk_comb (Rator,[Rand]);
+d433 1
+a433 1
+ *     Abs{Bvar = v, Body = Comb{Rator = Bv 0, Rand = v}}
+d478 5
+a482 2
+fun is_bvar(Bv _) = true 
+  | is_bvar _ = false;
+a483 5
+fun is_var  (Fv _) = true    | is_var _   = false;
+fun is_const(Const _) = true | is_const _ = false;
+fun is_comb (Comb _) = true  | is_comb _  = false;
+fun is_abs  (Abs _) = true   | is_abs _   = false;
+
+d505 1
+d512 12
+d588 1
+a588 1
+       if (Lib.mem Name free_list) then free_list else Name::free_list
+d620 1
+a620 1
+		                Lib.rev_itlist (Lib.union o opr o #incoming) 
+d638 1
+a638 1
+                               itr(S, n+1, if (Lib.mem s names)
+d764 1
+a764 1
+ *fun subst [] = Lib.I
+d797 1
+a797 1
+                    | itr (s::S,n,top) = itr(S, n+1, if (Lib.mem s names)
+d850 1
+a850 1
+     if (Lib.all (fn {redex,...} => Type.is_vartype redex) theta)
+d894 1
+a894 1
+ *    Lib.all (fn {redex,...} => Type.is_vartype redex)
+d929 1
+a929 1
+ *                chk(Body,{ok = ok andalso (Lib.ok_identifier Name),
+d932 2
+a933 2
+ *             {ok = ok andalso (Lib.ok_identifier Name),
+ *              frees = Lib.union aconv frees [v]}
+d950 1
+a950 1
+ *             if (Lib.ok_identifier Name)
+d952 1
+a952 1
+ *             else (Lib.assoc v E, E)
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d11 2
+a12 1
+functor TERM (structure Lexis: Lexis_sig
+d17 4
+a20 3
+fun TERM_ERR{function,message} = HOL_ERR{origin_structure = "Term",
+					 origin_function = function,
+					 message = message}
+d81 3
+a83 2
+   let fun hsh(n,m) = hsh (((n*4) + ordof(s,m)) mod table_size, m+1)
+                     handle Ord => n
+d101 1
+a101 1
+       val _ = for_se 0 (table_size-1)
+d124 1
+a124 1
+              if (s = Name) then tr else raise NOT_FOUND
+d127 1
+a127 1
+         | lft [] = raise NOT_FOUND
+d154 1
+a154 1
+   handle NOT_FOUND
+d162 1
+a162 1
+           => if (Sys_params.theory_file_option=Sys_params.make_binary)
+d170 1
+a170 1
+   lookup x handle NOT_FOUND 
+d177 1
+a177 1
+   handle NOT_FOUND
+d196 1
+a196 1
+   handle NOT_FOUND
+d205 1
+a205 1
+   handle NOT_FOUND
+d221 1
+a221 1
+      if (mem v free_list) then free_list else v::free_list
+d233 1
+a233 1
+      if (mem v vlist) then vlist else v::vlist
+d241 2
+a242 2
+fun free_varsl tm_list = itlist (union o free_vars) tm_list []
+fun all_varsl tm_list = itlist (union o all_vars) tm_list [];
+d325 1
+a325 1
+   let fun pass str = if (mem str slist) then pass (str^"'") else str
+d336 1
+a336 1
+  | type_vars_in_term (Comb{Rator,Rand}) = union (type_vars_in_term Rator) 
+d338 1
+a338 1
+  | type_vars_in_term (Abs{Bvar,Body}) = union (type_vars_in_term Bvar)
+d574 1
+a574 1
+       if (mem Name free_list) then free_list else Name::free_list
+d605 2
+a606 1
+               | NONE => let val L = rev_itlist (Lib.union o opr o #incoming) 
+d624 1
+a624 1
+                               itr(S, n+1, if (mem s names)
+d783 1
+a783 1
+                    | itr (s::S,n,top) = itr(S, n+1, if (mem s names)
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@
+
+
+1.1.1.1.2.1
+log
+@Konrad's bug fixes up to start of serious
+hol90.8 devel;opment.  Checked into branch revision for
+later merging with trunk (elsa's work).  See
+doc/7.chages for a full description of what's been done.
+@
+text
+@d20 1
+a20 2
+fun TY_ANTIQ_ERR s = TERM_ERR{function = s, message = "ty_antiq in term"};
+
+d22 1
+a22 1
+(* Parsing status of constants - an attribute that is held in symtab. *)
+d31 1
+a31 1
+datatype term = Fv of {Name : string, Ty : Type.hol_type}
+d33 1
+a33 1
+              | Const of {Name : string, Ty : Type.hol_type}
+d39 2
+a40 2
+datatype lambda = VAR of {Name : string, Ty : Type.hol_type}
+                | CONST of {Name : string, Ty : Type.hol_type}
+d44 3
+d62 1
+a62 1
+in 
+d148 16
+a163 11
+ let val {theory = thry2, ... } = lookup Name
+ in raise TERM_SYMTAB_CLASH {common_name=Name, theory1=thry1, theory2=thry2}
+ end handle NOT_FOUND
+ => (add_entry entry;
+     case DorL  
+     of Defining => add_entry{theory = thry1, place = Prefix,
+                              const = Const{Name="$"^Name,Ty = Ty}}
+      | Loading  => if (Sys_params.theory_file_option=Sys_params.make_binary)
+                    then ()
+                    else add_entry{theory = thry1, place = Prefix,
+                                   const = Const{Name="$"^Name,Ty = Ty}});
+a164 1
+
+d178 1
+a178 1
+                          message = Lib.quote x^" not found in signature"};
+d227 1
+a227 1
+(* The *set* of all variables in a term.   *)
+d253 1
+a253 1
+(* Total ordering on terms.  Fv < Bv < Const < Comb < Abs *)
+d256 1
+a256 1
+   (s1<s2) orelse ((s1=s2) andalso Type.type_lt ty1 ty2)
+d319 1
+a319 1
+		                message = "not a variable"}
+d325 2
+a326 9
+fun variant [] v = v
+  | variant vlist (Fv{Name,Ty}) =
+    let val V = map var_name vlist
+        fun loop name = 
+           let val s = string_variant V name
+           in if (is_st_term_const s) then loop (s^"'") else s
+           end
+    in mk_var{Name = loop Name, Ty = Ty}
+    end
+a356 2
+val INCOMPAT_TYPES1 = TERM_ERR{function = "mk_comb",
+                              message = "incompatible types"}
+d368 2
+d375 4
+a378 4
+      if (type_of Rand = Ty) then Comb r else raise INCOMPAT_TYPES1
+  | mk_comb{Rator,Rand} = list_mk_comb (Rator,[Rand]) 
+                          handle _ => raise INCOMPAT_TYPES1
+end;
+a379 1
+
+d427 1
+a427 1
+ *     Abs{Bvar = v, Body = Comb{Rator = Bv 0, Rand = v}}.
+d472 7
+a478 5
+fun is_bvar (Bv _)    = true  | is_bvar _  = false;
+fun is_var  (Fv _)    = true  | is_var _   = false;
+fun is_const(Const _) = true  | is_const _ = false;
+fun is_comb (Comb _)  = true  | is_comb _  = false;
+fun is_abs  (Abs _)   = true  | is_abs _   = false;
+a500 1
+(* 
+a506 12
+*)
+
+local open System.Unsafe
+      fun EQ (M:term,N:term) = ((cast M:int) = (cast N:int)) 
+in
+fun aconv t1 t2 = EQ(t1,t2) orelse 
+(case(t1,t2) of
+   (Comb{Rator=M,Rand=N},Comb{Rator=P,Rand=Q}) => aconv M P andalso aconv N Q
+ | (Abs{Bvar=Fv{Ty=ty1,...}, Body = M},
+    Abs{Bvar=Fv{Ty=ty2,...}, Body = N}) => (ty1=ty2) andalso (aconv M N)
+ | (M,N) => (M=N))
+end;
+@

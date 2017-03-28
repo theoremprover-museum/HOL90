@@ -1,0 +1,259 @@
+<TITLE>Theory: prim_rec</TITLE>
+<H1>Theory: prim_rec</H1>
+<H1>Parents</H1>
+    <UL>
+    <LI><A HREF = "BASIC_HOL.html"><STRONG>BASIC_HOL</STRONG></A>
+    </UL>
+
+
+<HR>
+<H1>Type constants</H1>
+    <UL>
+    
+    </UL>
+
+
+<HR>
+<H1>Term constants</H1>
+    <UL>
+    <LI><STRONG><</STRONG><EM>:num -> num -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Infix 450<STRONG>}</STRONG>
+    <LI><STRONG>SIMP_REC_REL</STRONG><EM>:(num -> 'a) -> 'a -> ('a -> 'a) ->
+                                          num -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>SIMP_REC_FUN</STRONG><EM>:'a -> ('a -> 'a) -> num -> num ->
+                                          'a</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>SIMP_REC</STRONG><EM>:'a -> ('a -> 'a) -> num -> 'a</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>PRE</STRONG><EM>:num -> num</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>PRIM_REC_FUN</STRONG><EM>:'a -> ('a -> num -> 'a) -> num ->
+                                          num -> 'a</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>PRIM_REC</STRONG><EM>:'a -> ('a -> num -> 'a) -> num ->
+                                      'a</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    </UL>
+
+
+<HR>
+<H1>Axioms</H1>
+<DL>
+
+</DL>
+
+
+<HR>
+<H1>Definitions</H1>
+<DL>
+<DT><STRONG>LESS</STRONG>
+<DD>
+<PRE>
+|- !m n. m < n = (?P. (!n. P (SUC n) ==> P n) /\ P m /\ ~(P n))
+</PRE>
+
+<DT><STRONG>SIMP_REC_REL</STRONG>
+<DD>
+<PRE>
+|- !fun x f n.
+     SIMP_REC_REL fun x f n =
+     (fun 0 = x) /\ (!m. m < n ==> (fun (SUC m) = f (fun m)))
+</PRE>
+
+<DT><STRONG>SIMP_REC_FUN</STRONG>
+<DD>
+<PRE>
+|- !x f n. SIMP_REC_FUN x f n = (@fun. SIMP_REC_REL fun x f n)
+</PRE>
+
+<DT><STRONG>SIMP_REC</STRONG>
+<DD>
+<PRE>
+|- !x f n. SIMP_REC x f n = SIMP_REC_FUN x f (SUC n) n
+</PRE>
+
+<DT><STRONG>PRE_DEF</STRONG>
+<DD>
+<PRE>
+|- !m. PRE m = ((m = 0) => 0 | (@n. m = SUC n))
+</PRE>
+
+<DT><STRONG>PRIM_REC_FUN</STRONG>
+<DD>
+<PRE>
+|- !x f. PRIM_REC_FUN x f = SIMP_REC (\n. x) (\fun n. f (fun (PRE n)) n)
+</PRE>
+
+<DT><STRONG>PRIM_REC</STRONG>
+<DD>
+<PRE>
+|- !x f m. PRIM_REC x f m = PRIM_REC_FUN x f m (PRE m)
+</PRE>
+
+</DL>
+
+
+<HR>
+<H1>Theorems</H1>
+<DL>
+<DT><STRONG>INV_SUC_EQ</STRONG>
+<DD>
+<PRE>
+|- !m n. (SUC m = SUC n) = m = n
+</PRE>
+
+<DT><STRONG>LESS_REFL</STRONG>
+<DD>
+<PRE>
+|- !n. ~(n < n)
+</PRE>
+
+<DT><STRONG>SUC_LESS</STRONG>
+<DD>
+<PRE>
+|- !m n. SUC m < n ==> m < n
+</PRE>
+
+<DT><STRONG>NOT_LESS_0</STRONG>
+<DD>
+<PRE>
+|- !n. ~(n < 0)
+</PRE>
+
+<DT><STRONG>LESS_0_0</STRONG>
+<DD>
+<PRE>
+|- 0 < SUC 0
+</PRE>
+
+<DT><STRONG>LESS_MONO</STRONG>
+<DD>
+<PRE>
+|- !m n. m < n ==> SUC m < SUC n
+</PRE>
+
+<DT><STRONG>LESS_SUC_REFL</STRONG>
+<DD>
+<PRE>
+|- !n. n < SUC n
+</PRE>
+
+<DT><STRONG>LESS_SUC</STRONG>
+<DD>
+<PRE>
+|- !m n. m < n ==> m < SUC n
+</PRE>
+
+<DT><STRONG>LESS_LEMMA1</STRONG>
+<DD>
+<PRE>
+|- !m n. m < SUC n ==> (m = n) \/ m < n
+</PRE>
+
+<DT><STRONG>LESS_LEMMA2</STRONG>
+<DD>
+<PRE>
+|- !m n. (m = n) \/ m < n ==> m < SUC n
+</PRE>
+
+<DT><STRONG>LESS_THM</STRONG>
+<DD>
+<PRE>
+|- !m n. m < SUC n = (m = n) \/ m < n
+</PRE>
+
+<DT><STRONG>LESS_SUC_IMP</STRONG>
+<DD>
+<PRE>
+|- !m n. m < SUC n ==> ~(m = n) ==> m < n
+</PRE>
+
+<DT><STRONG>LESS_0</STRONG>
+<DD>
+<PRE>
+|- !n. 0 < SUC n
+</PRE>
+
+<DT><STRONG>EQ_LESS</STRONG>
+<DD>
+<PRE>
+|- !n. (SUC m = n) ==> m < n
+</PRE>
+
+<DT><STRONG>SUC_ID</STRONG>
+<DD>
+<PRE>
+|- !n. ~(SUC n = n)
+</PRE>
+
+<DT><STRONG>NOT_LESS_EQ</STRONG>
+<DD>
+<PRE>
+|- !m n. (m = n) ==> ~(m < n)
+</PRE>
+
+<DT><STRONG>LESS_NOT_EQ</STRONG>
+<DD>
+<PRE>
+|- !m n. m < n ==> ~(m = n)
+</PRE>
+
+<DT><STRONG>SIMP_REC_FUN_LEMMA</STRONG>
+<DD>
+<PRE>
+|- (?fun. SIMP_REC_REL fun x f n) =
+   (SIMP_REC_FUN x f n 0 = x) /\
+   (!m. m < n ==> (SIMP_REC_FUN x f n (SUC m) = f (SIMP_REC_FUN x f n m)))
+</PRE>
+
+<DT><STRONG>SIMP_REC_EXISTS</STRONG>
+<DD>
+<PRE>
+|- !x f n. ?fun. SIMP_REC_REL fun x f n
+</PRE>
+
+<DT><STRONG>LESS_SUC_SUC</STRONG>
+<DD>
+<PRE>
+|- !m. m < SUC m /\ m < SUC (SUC m)
+</PRE>
+
+<DT><STRONG>SIMP_REC_THM</STRONG>
+<DD>
+<PRE>
+|- !x f.
+     (SIMP_REC x f 0 = x) /\ (!m. SIMP_REC x f (SUC m) = f (SIMP_REC x f m))
+</PRE>
+
+<DT><STRONG>PRE</STRONG>
+<DD>
+<PRE>
+|- (PRE 0 = 0) /\ (!m. PRE (SUC m) = m)
+</PRE>
+
+<DT><STRONG>PRIM_REC_EQN</STRONG>
+<DD>
+<PRE>
+|- !x f.
+     (!n. PRIM_REC_FUN x f 0 n = x) /\
+     (!m n. PRIM_REC_FUN x f (SUC m) n = f (PRIM_REC_FUN x f m (PRE n)) n)
+</PRE>
+
+<DT><STRONG>PRIM_REC_THM</STRONG>
+<DD>
+<PRE>
+|- !x f.
+     (PRIM_REC x f 0 = x) /\ (!m. PRIM_REC x f (SUC m) = f (PRIM_REC x f m) m)
+</PRE>
+
+<DT><STRONG>num_Axiom</STRONG>
+<DD>
+<PRE>
+|- !e f. ?!fn1. (fn1 0 = e) /\ (!n. fn1 (SUC n) = f (fn1 n) n)
+</PRE>
+
+</DL>
+
+
+<HR>

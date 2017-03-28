@@ -1,0 +1,299 @@
+head	1.5;
+access;
+symbols
+	HOL97:1.2.0.4
+	bpHOL97:1.2
+	hol90_9_alpha:1.2
+	hol90_pre8_for_multiple_compilers:1.2.0.2
+	hol90_pre8_after_donalds_separate_compilation_changes:1.2
+	hol90_8_after_merging_Konrad_Elsa:1.2
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.5
+date	96.01.04.21.49.35;	author drs1004;	state Exp;
+branches;
+next	1.4;
+
+1.4
+date	96.01.04.13.45.04;	author drs1004;	state Exp;
+branches;
+next	1.3;
+
+1.3
+date	95.12.18.11.34.19;	author drs1004;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	95.10.17.17.06.46;	author drs1004;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	95.10.16.13.29.51;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.29.51;	author rjb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.5
+log
+@*** empty log message ***
+@
+text
+@(* ===================================================================== *)
+(* FILE          : exception.sml                                         *)
+(* DESCRIPTION   : This defines a single error format for hol90. There   *)
+(*                 is one exception constructor:                         *)
+(*                                                                       *)
+(*                     HOL_ERR : {origin_structure:string,               *)
+(*                                origin_function:string,                *)
+(*                                message:string} -> exn                 *)
+(*                                                                       *)
+(*                 It takes three strings: the structure name, what      *)
+(*                 routine it is being raised in, and what the message   *)
+(*                 is. There is an (assignable) function for printing    *)
+(*                 HOL_ERRs, plus an experimental function Raise that    *)
+(*                 will print out exceptions at the site of occurrence.  *)
+(*                 It may prove to be helpful in debugging.              *)
+(*                                                                       *)
+(* AUTHOR        : (c) Konrad Slind, University of Calgary               *)
+(* DATE          : September 12, 1991                                    *)
+(*                                                                       *)
+(* Modified      : 27 October, 1991, E. L. Gunter                        *)
+(* Modified      : 16 November 1995, D.R. Syme                           *)
+(* ===================================================================== *)
+
+
+structure Exception  : Exception_sig =
+struct
+
+
+exception HOL_ERR of {origin_structure:string,
+		      origin_function:string,
+		      message:string}
+
+fun print_HOL_ERR (HOL_ERR sss) = !Globals.output_HOL_ERR sss
+  | print_HOL_ERR _ = print_HOL_ERR(HOL_ERR{origin_structure="Exception",
+                                            origin_function="print_HOL_ERR",
+                                            message="(not a HOL error)"})
+val print_exn = print_HOL_ERR;
+
+fun Raise (e as HOL_ERR sss) = 
+     ( if (!Globals.print_exceptions)
+       then !Globals.output_HOL_ERR sss
+       else ();
+       raise e)
+  | Raise (e as _) = raise e
+
+fun WRAP_ERR s (f,e) = 
+    (raise e)
+    handle (e as HOL_ERR{origin_structure,origin_function,message}) =>
+       (raise (if (f = origin_function andalso s = origin_structure) then
+		   e
+	       else HOL_ERR {origin_structure=(s^"."^f^" - "^origin_structure),
+			     origin_function=origin_function,
+			     message=message})
+	    )
+         | Io err =>
+       (raise HOL_ERR{origin_structure=s, 
+                      origin_function=(s^"."^f),
+                      message= #name err})
+         | Fail message =>
+       (raise HOL_ERR{origin_structure=s,
+                      origin_function=(s^"."^f),
+                      message=message})
+         | Match =>
+       (raise HOL_ERR{origin_structure=s,
+                      origin_function=(s^"."^f),
+                      message="Match"})
+         | Bind =>
+       (raise HOL_ERR{origin_structure=s,
+                      origin_function=(s^"."^f),
+                      message="Bind"})
+
+fun ERR s (f,e) =
+    raise HOL_ERR{origin_structure=s,origin_function=f,message=e};
+
+
+(*------------------------------------------------------------------------
+ * My preferred version. DRS
+ *
+
+exception HOL_ERR' of {
+       origin_structure:string,
+       origin_function:string,
+       message:string,
+       exn:exn option
+}
+
+fun ERR str (func,mesg) =
+    raise HOL_ERR' {
+        origin_structure=str,
+        origin_function=func,
+        message=mesg,
+        exn=NONE 
+    }
+
+fun WRAP_ERR str (func,exn) =
+    raise HOL_ERR' {
+        origin_structure=str,
+        origin_function=func,
+        message="",
+        exn=SOME exn
+    }
+
+fun print_exn (HOL_ERR' {origin_structure,origin_function,message,exn}) = 
+     (say origin_structure; say "."; 
+      say origin_function; say " - "; 
+      say message;
+      case exn of
+         NONE => ()
+       | SOME exn => print_exn exn);
+
+ | print_exn (Fail s) = say s
+ | print_exn (Io s) = say s
+ | print_exn _ = ();
+
+fun Raise e = (say "Exception raised: "; print_exn e; raise e)
+
+
+val print_HOL_ERR = print_exn;
+fun HOL_ERR {origin_structure,origin_function,message} =
+    HOL_ERR' {
+       origin_structure=origin_structure,
+       origin_function=origin_function,
+       message=message,
+       exn = NONE
+    }
+ *--------------------------------------------------------------------------*)
+
+end  (* EXCEPTION *)
+@
+
+
+1.4
+log
+@Fixed types, pretypes, fixities, parsing.
+@
+text
+@d56 1
+a56 1
+       (raise HOL_ERR{origin_structure=s,
+d58 1
+a58 1
+                      message=err})
+@
+
+
+1.3
+log
+@Preterm and other changes, see 7.changes
+@
+text
+@d36 1
+a36 1
+                                            message="not a HOL error"})
+d48 7
+a54 4
+    handle HOL_ERR{origin_structure,origin_function,message} =>
+       (raise HOL_ERR{origin_structure=(s^"."^f^" - "^origin_structure),
+                      origin_function=origin_function,
+                      message=message})
+@
+
+
+1.2
+log
+@Keeping you up to date:
+
+I'm about to do a checkin of elsa's modifications to the hol90.7
+sources to create her hol90.pre8.  To recap what I've done:
+	- I checked out hol90 (in /usr/groups/hol/drs1004/hol90)
+		cvs co hol90
+	  (Well, to be honest, I only checked out those
+	  parts of hol90 I knew I'd be changing, e.g. not the
+	  Manual, and only parts of the library.  Checking out the
+	  entire source takes a while, mainly due to the enormous number
+	  of help files.  The limiting factor is files/second, which
+         runs at around 5 when CVS is working on nfs over a network, not
+         KB/second, which you might at first think it would be).
+
+	- By doing a recursive diff between Elsa's source and the
+	hol90.7 source I found all the changes Elsa had made to
+	source files.  I copied relevant files from Elsa's source
+	into my checked out version.  The only new files were
+		- the sml_system files in src/0
+		- some make scripts in src/.
+	Changed files were in:
+		src/{0,1,2,3}
+		library/arith/src/thm_convs.sml
+		library/list/src/list_conv1.sml
+		library/num/src/num_lib.sml
+		library/prog_logic/src/halts_logic.sml
+		library/prog_logic/src/translation.sml
+		library/prog_logic/theories/src/mk_halts.sml
+		library/real/theories/src/Make
+		library/real/theories/src/equiv.sml
+		library/real/theories/src/seq.sml
+		library/reduce/src/arithconv.sml
+		library/string/src/string_conv.sml
+		library/unity/theories/src/aux_definitions.sml
+		library/word/theories/src/*
+
+	- I will now commit these changes, with this email as the log message.
+		cvs commit
+
+	- Tomorrow I will get this version compiling
+	with NJSML 108 (I will probably add
+	the files to enable the NJSML compilation manager to make
+	this easier), then check those changes in.  I think it's
+	good to get things in a working state.
+@
+text
+@d21 1
+d28 1
+d37 1
+d46 79
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d24 1
+a24 1
+functor EXCEPTION (structure Globals : Globals_sig) : Exception_sig =
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

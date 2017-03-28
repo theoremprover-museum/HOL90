@@ -1,0 +1,139 @@
+head	1.1;
+access;
+symbols
+	HOL97:1.1.2.1.0.2
+	bpHOL97:1.1.2.1
+	hol90_9_alpha:1.1.2.1
+	hol90_pre8_for_multiple_compilers:1.1.0.2;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	96.08.23.09.14.21;	author rjb;	state dead;
+branches
+	1.1.2.1;
+next	;
+
+1.1.2.1
+date	96.08.23.09.14.22;	author rjb;	state Exp;
+branches
+	1.1.2.1.2.1;
+next	;
+
+1.1.2.1.2.1
+date	97.07.11.19.38.37;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@file types.sml was initially added on branch hol90_pre8_for_multiple_compilers.
+@
+text
+@@
+
+
+1.1.2.1
+log
+@Initial version.
+@
+text
+@a0 80
+(****************************************************************************)
+(* FILE          : types.sml                                                *)
+(* DESCRIPTION   : Decision procedure for recursive types.                  *)
+(*                                                                          *)
+(* AUTHOR        : R.J.Boulton, University of Cambridge                     *)
+(* DATE          : 31st May 1996                                            *)
+(*                                                                          *)
+(* LAST MODIFIED : R.J.Boulton                                              *)
+(* DATE          : 19th August 1996                                         *)
+(****************************************************************************)
+
+structure DecideTypes =
+struct
+
+local
+
+val make_lazy = HOLTypeInfo.transform_type_info LazyThm.mk_proved_pre_thm;
+
+val decision_type_info = ref [make_lazy HOLTypeInfo.list_type_info];
+
+open Psyntax DecisionSupport;
+
+fun types_discrim tm =
+   let val type_infos = !decision_type_info
+       (* The following info ought to be cached in a dictionary. *)
+       val constructor_infos = flat (map #constructors type_infos)
+       and discriminator_infos = flat (map #discriminators type_infos)
+       val constructors =
+          map (fn i => (#name i,length (#arg_types i))) constructor_infos
+       and selectors = flat (map (map #1 o #selectors) constructor_infos)
+       and discriminators = map #name discriminator_infos
+       fun is_constructor name arity = member (name,arity) constructors
+       and is_selector name = member name selectors
+       and is_discriminator name = member name discriminators
+       val (f,args) = strip_comb tm
+       val arity = length args
+   in  if (is_var f) andalso (arity = 0)
+       then (fn _ => tm,[])
+       else let val name = #Name (Rsyntax.dest_const f)
+            in  if (is_constructor name arity) orelse
+                   (is_selector name) orelse
+                   (is_discriminator name)
+                then if (arity = 0)
+                     then (fn _ => tm,[])
+                     else (fn args' => list_mk_comb (f,args'),args)
+                else Decide.failwith "types_discrim"
+            end
+            handle HOL_ERR _ => Decide.failwith "types_discrim"
+   end;
+
+in
+
+fun known_types () = !decision_type_info;
+
+fun add_type_lazy type_info =
+   if (exists (fn i => #name i = #name type_info) (!decision_type_info))
+   then ()
+   else decision_type_info := type_info :: !decision_type_info;
+
+fun add_type type_info = add_type_lazy (make_lazy type_info);
+
+fun delete_type name =
+   if (exists (fn i => #name i = name) (!decision_type_info))
+   then decision_type_info :=
+           filter (fn i => not (#name i = name)) (!decision_type_info)
+   else ();
+
+val types_proc =
+   {Name = "types",
+    Description = "Theory of equality on recursive types",
+    Author = "Richard J. Boulton",
+    Discriminator = types_discrim,
+    Normalizer = DecisionConv.ALL_CONV,
+    Procedure =
+       Decide.make_incremental_procedure LazyRules.CONJ
+          (fn tm => CongruenceClosureTypes.REC_TYPE_CONV (known_types ()) tm)};
+
+end;
+
+end; (* DecideTypes *)
+@
+
+
+1.1.2.1.2.1
+log
+@Making the library CM friendly.
+@
+text
+@d21 1
+a21 1
+open Exception CoreHol.Term CoreHol.Dsyntax Psyntax DecisionSupport;
+@

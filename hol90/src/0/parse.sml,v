@@ -1,0 +1,942 @@
+head	1.7;
+access;
+symbols
+	HOL97:1.4.2.1.0.2
+	bpHOL97:1.4.2.1
+	hol90_9_alpha:1.4.2.1
+	hol90_pre8_for_multiple_compilers:1.4.0.2
+	hol90_pre8_after_donalds_separate_compilation_changes:1.3
+	hol90_8_after_merging_Konrad_Elsa:1.3
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.7
+date	96.02.08.00.31.33;	author drs1004;	state Exp;
+branches;
+next	1.6;
+
+1.6
+date	96.01.04.13.45.30;	author drs1004;	state Exp;
+branches;
+next	1.5;
+
+1.5
+date	95.12.18.11.34.53;	author drs1004;	state Exp;
+branches;
+next	1.4;
+
+1.4
+date	95.11.15.13.24.35;	author rjb;	state Exp;
+branches
+	1.4.2.1;
+next	1.3;
+
+1.3
+date	95.10.18.16.37.09;	author drs1004;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	95.10.17.17.07.15;	author drs1004;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	95.10.16.13.29.55;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.29.55;	author rjb;	state Exp;
+branches
+	1.1.1.1.2.1;
+next	;
+
+1.1.1.1.2.1
+date	95.10.17.18.43.00;	author drs1004;	state Exp;
+branches;
+next	;
+
+1.4.2.1
+date	96.06.25.15.41.33;	author rjb;	state Exp;
+branches
+	1.4.2.1.2.1;
+next	;
+
+1.4.2.1.2.1
+date	97.06.11.17.24.20;	author kxs;	state Exp;
+branches;
+next	1.4.2.1.2.2;
+
+1.4.2.1.2.2
+date	97.07.10.20.31.33;	author kxs;	state Exp;
+branches;
+next	1.4.2.1.2.3;
+
+1.4.2.1.2.3
+date	97.10.05.21.07.24;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.7
+log
+@New theory mechanism, by Donald Syme, and many other enhancements.
+@
+text
+@(* ===================================================================== *)
+(* FILE          : parse.sml                                             *)
+(* DESCRIPTION   : Implements parsing of HOL terms and types.            *)
+(*                                                                       *)
+(* AUTHOR        : Donald Syme, Univ. Cambridge                          *)
+(* DATE          : August 26, 1991                                       *)
+(* ===================================================================== *)
+
+
+(*--------------------------------------------------------------------
+ * The parser
+ *-------------------------------------------------------------------*)
+
+structure Parse : Parse_sig =
+struct    
+	
+    open Parse0 Io_transformers Preterm;
+    val WRAP_ERR = Exception.WRAP_ERR "Parse";
+
+
+
+    (*--------------------------------------------------------------------
+     * The parser state
+     *-------------------------------------------------------------------*)
+
+    val enhanced_io_ref = ref true;
+    fun enhanced_io () = (!enhanced_io_ref);
+	
+    val maximize_types_ref = ref true;
+	
+    fun set_maximize_types v = 
+	maximize_types_ref := v;
+    fun maximize_types () = !maximize_types_ref;
+	
+
+    val typetable_ref = ref  ([]: typetable);
+    fun set_typetable t = (typetable_ref := mk_typetable t);
+    fun clear_typetable () = (typetable_ref := []);
+    fun current_typetable () = !typetable_ref;
+      
+    val type_map_ref = ref  ([]: type_map);
+    fun current_type_map () = !type_map_ref;
+	
+    val term_map_ref = ref  ([]: term_map);
+    fun current_term_map () = !term_map_ref;
+	
+    fun install_type_macros_pp macros = 
+	Hol_pp.Extend_hol_pp.extend_pp_type (type_macros_pp macros);
+	
+    val type_macros_ref = ref  (mk_type_macros []);
+	
+	
+    fun current_type_macros () = !type_macros_ref;
+	
+    fun install_term_macros_pp macros = Hol_pp.Extend_hol_pp.extend_pp_term (term_macros_pp macros);
+	
+    val term_macros_ref = ref  (mk_term_macros []: term_macros);
+    fun current_term_macros () = !term_macros_ref;
+
+    fun simple_constants name =
+	if Term.is_constant name then
+	    let val ty =
+		if Lexis.is_num_literal name then
+		    Tyapp ("num",[])
+		else if Lexis.is_string_literal name then
+		    Tyapp ("string",[])
+		     else type_to_pretype (Term.type_of (#const (Term.const_decl name)))
+	    in SOME (Const (name,ty))
+	    end
+	else NONE;
+	    
+    (* the default constant resolver *)
+    val constant_resolver_ref = 
+	ref (fn name => case simple_constants name of SOME x => [x] | NONE => []);
+	
+    fun current_constant_resolver () = !constant_resolver_ref;
+    fun set_constant_resolver t = (constant_resolver_ref := t);
+      
+
+    (*--------------------------------------------------------------------
+     * The parser functions
+     *-------------------------------------------------------------------*)
+
+    local open Hol_pp.Extend_hol_pp
+    in fun reinstall_pps () =
+	(Hol_pp.Extend_hol_pp.reset_pp_term ();
+	 Hol_pp.Extend_hol_pp.reset_pp_type ();
+	 if (enhanced_io()) then
+	     (set_pp_type_string_mapper (type_string_mapper (current_type_map()));
+	      set_pp_term_string_mapper (term_string_mapper (current_term_map()));
+	      extend_pp_type (type_macros_pp (current_type_macros()));
+	      extend_pp_term (term_macros_pp (current_term_macros())))
+	 else ())
+    end;
+    
+
+    fun set_enhanced_io b = (enhanced_io_ref := b; reinstall_pps());
+	
+    fun set_type_map t = (type_map_ref := t; reinstall_pps());
+    fun set_term_map t = (term_map_ref := t; reinstall_pps());
+    
+    fun set_type_macros t = 
+	let fun mk_one (a,b,c) = (a,Parse0.pretype_parser b,
+				  Parse0.pretype_parser c)
+	    val t' = mk_type_macros (map mk_one t)
+	in (type_macros_ref := t'; reinstall_pps())
+	end;
+    fun set_term_macros t = 
+	let fun mk_one (a,b,c) = (a,Parse0.preterm_parser b,
+				  Parse0.preterm_parser c)
+	    val t' = mk_term_macros (map mk_one t)
+	in (term_macros_ref := t'; reinstall_pps())
+	end;
+	
+	
+    fun clear_type_map () = (type_map_ref := [];
+			      reinstall_pps());
+    fun clear_term_map () = (term_map_ref := [];
+			      reinstall_pps());
+    fun clear_type_macros () = (type_macros_ref := mk_type_macros [];
+			      reinstall_pps());
+    fun clear_term_macros () = (term_macros_ref := mk_term_macros [];
+			      reinstall_pps());
+	
+    fun simple_type_parser q =
+	Parse0.mk_type_parser [] q;
+
+    fun type_parser q = 
+	if (enhanced_io()) then
+	    Parse0.mk_type_parser [type_macros (current_type_macros()),
+				   type_map (current_type_map())] q
+	else simple_type_parser q;
+	    
+	
+	
+    fun == q _ = (type_parser q) handle e => Exception.Raise e;
+
+    fun simple_term_parser q =
+	Parse0.mk_term_parser [simple_attribution simple_constants,
+			       type_inference,
+			       type_maximization] q;
+
+    fun term_parser q = 
+	if (enhanced_io()) then
+	    Parse0.mk_term_parser 
+	    [pretype_fun (type_macros (current_type_macros())),
+	     term_macros (current_term_macros()),
+	     pretype_fun (type_map (current_type_map())),
+	     term_map (current_term_map()),
+	     overloading_attribution (current_constant_resolver()),
+	     type_inference,
+	     typetable (current_typetable()),
+	     type_maximization] q
+	else simple_term_parser q;
+	    
+    fun -- q _ = term_parser q handle e => Exception.Raise e;
+	
+    fun string_to_type s = type_parser [QUOTE s]
+	handle e => WRAP_ERR("string_to_type",e);
+	    
+    fun string_to_term s = term_parser [QUOTE s]
+	handle e => WRAP_ERR("string_to_term",e);
+end;
+
+
+
+
+
+@
+
+
+1.6
+log
+@Fixed types, pretypes, fixities, parsing.
+@
+text
+@d5 1
+a5 1
+(* AUTHOR        : Konrad Slind, University of Calgary                   *)
+d10 84
+a93 45
+functor PARSE (structure P : ARG_PARSER
+               structure Preterm : Preterm_sig
+               structure Parse_support : Parse_support_sig
+               sharing
+                 P.Parse_support = Parse_support
+               sharing
+                  Parse_support.Preterm = Preterm
+               sharing 
+                 type P.result = Parse_support.parse
+               sharing 
+                 type P.arg = unit
+                sharing 
+                 type P.pos = int) : Parse_sig =
+
+struct
+structure Parse_support = Parse_support
+structure Preterm = Preterm
+structure Term = Parse_support.Preterm.Term;
+open Lib;
+
+type preterm = Preterm.preterm
+type term = Term.term
+type typ = Term.Type.typ;
+    
+val ERR = Exception.ERR "Parse";
+val WRAP_ERR = Exception.WRAP_ERR "Parse";
+    
+local
+fun T [] ol ml = (ol, rev ml) |
+    T ((ANTIQUOTE  x)::rst) ol ml = T rst (ol^"^") (x::ml) |
+    T ((QUOTE s)::rst) ol ml = T rst (ol^s) ml
+in
+fun format (q:'a frag list) = T q "" []
+end;
+
+val current = ref "";
+    
+fun min (n:int,m) = (if n < m then n else m);
+    
+fun error (s,front,back) = 
+    let val cut = Portable.String.substring(!current,front,min(30,Portable.String.size (!current)-front)) handle _ => "??"
+    in (output(std_out,("HOL parser error: "^s^"near "^cut^"\n"));
+        output(std_out,("front = "^int_to_string front^"\n"));
+        output(std_out,("back = "^int_to_string back^"\n"));
+        ERR("first pass of parsing",s))
+a95 1
+		     
+d97 67
+a163 89
+(*------------------------------------------------------------------------
+ * Performs the first pass, parsing into preterms.
+ *-----------------------------------------------------------------------*)
+
+fun p (ol_frag_list:Term.term frag list) =
+   let val _ = Preterm.reset_type_num()
+       val (s,antiq_list) = format ol_frag_list
+       val _ = (current := s)
+       val strm = Portable.open_string s
+       val lexer = P.makeLexer(fn _ => Portable.input_line strm) 
+                              (ref antiq_list : Term.term list ref)
+       val (res,_) = P.parse(0,lexer,error,())
+   in res
+   end;
+
+
+(* string to preterm (also types, via ty_antiq) *)
+fun ps s =
+   let val _ = Preterm.reset_type_num()
+       val _ = (current := s)
+       val strm = Portable.open_string s
+       val lexer = P.makeLexer(fn _ => Portable.input_line strm) 
+                              (ref [] : Term.term list ref)
+       val (res,_) = P.parse(0,lexer,error,())
+   in res
+   end;
+
+
+(*------------------------------------------------------------------------
+ * Parsing of terms
+ *-----------------------------------------------------------------------*)
+
+fun preterm_parser frag_list =
+  (Globals.in_type_spec := NONE;
+   case (p frag_list)
+     of (Parse_support.PTM ptm) => ptm
+      | _ => ERR("preterm_parser", "Not a preterm."));
+
+fun string_to_preterm s =
+  (Globals.in_type_spec := NONE;
+   case (ps s)
+     of (Parse_support.PTM ptm) => ptm
+      | _ => ERR("string_to_preterm","Not a preterm."));
+
+fun mk_term_parser funs fl = 
+    let val ptm = preterm_parser fl
+	val ptm' = foldl (fn (f,ptm) => f ptm) ptm funs
+    in Preterm.typecheck ptm'
+    end
+    handle e => WRAP_ERR("term_parser",e);
+
+val term_parser = mk_term_parser [];
+
+fun -- frag_list _ = term_parser frag_list handle e => Exception.Raise e;
+
+fun string_to_term s =
+    Preterm.typecheck (string_to_preterm s)
+    handle e => WRAP_ERR("string_to_term",e);
+
+
+(*------------------------------------------------------------------------
+ * Parsing of types
+ *-----------------------------------------------------------------------*)
+
+
+fun pretype_parser frag_list =
+  (Globals.in_type_spec := NONE;
+   case (p frag_list)
+     of (Parse_support.PTY ty) => ty
+      | _ => ERR("type_parser","Not a type."));
+
+val type_parser = Preterm.pretype_to_type o pretype_parser;
+    
+fun == frag_list _ = (type_parser frag_list) handle e => Exception.Raise e;
+
+fun string_to_pretype s =
+  (Globals.in_type_spec := NONE;
+   case (ps s)
+     of (Parse_support.PTY ty) => ty
+      | _ => ERR("string_to_pretype","Not a type."));
+
+fun string_to_type s =
+    Preterm.pretype_to_type (string_to_pretype s)
+    handle e => WRAP_ERR("string_to_type",e);
+
+(*------------------------------------------------------------------------
+ * Parsing of type specifications
+ *-----------------------------------------------------------------------*)
+
+a164 1
+fun colon s = ":"^s;
+a165 6
+fun type_spec_parser (QUOTE s :: rst) =
+    (Globals.in_type_spec := SOME "";
+     case ((p (QUOTE(colon s)::rst)) handle e => Exception.Raise e)
+	 of (Parse_support.TY_SPEC sp) => sp
+       | _ => ERR("type_spec_parser","Not a type specification."))
+  | type_spec_parser _ = ERR("type_spec_parser", "Badly formed quotation.");
+a167 5
+fun string_to_type_spec s =
+  (Globals.in_type_spec := SOME "";
+   case (ps (colon s))
+     of (Parse_support.TY_SPEC sp) => sp
+      | _ => ERR("string_to_type_spec", "Not a type specification."));
+a168 1
+end; (* PARSE *)
+@
+
+
+1.5
+log
+@Preterm and other changes, see 7.changes
+@
+text
+@d20 3
+a22 1
+                 type P.arg = unit) : Parse_sig =
+d34 1
+a34 1
+val PARSE_ERR = Exception.ERR "Parse";
+d45 12
+a56 2
+fun error (s,_,_) = (output(std_out,("HOL parser error: "^s^"\n"));
+                     PARSE_ERR("first pass of parsing",s));
+d66 1
+d78 1
+d95 1
+a95 1
+      | _ => PARSE_ERR("preterm_parser", "Not a preterm."));
+d101 1
+a101 1
+      | _ => PARSE_ERR("string_to_preterm","Not a preterm."));
+d128 1
+a128 1
+      | _ => PARSE_ERR("type_parser","Not a type."));
+d138 1
+a138 1
+      | _ => PARSE_ERR("string_to_pretype","Not a type."));
+d155 2
+a156 2
+       | _ => PARSE_ERR("type_spec_parser","Not a type specification."))
+  | type_spec_parser _ = PARSE_ERR("type_spec_parser", "Badly formed quotation.");
+d163 1
+a163 1
+      | _ => PARSE_ERR("string_to_type_spec", "Not a type specification."));
+@
+
+
+1.4
+log
+@The HOL90 sources have been changed to allow for the use of different
+Standard ML compilers (possibly simultaneously).
+
+ * Many files in "src/0" changed to make them more portable across different
+   ML compilers. Various additions have been made to the Portable structure
+   and files changed to access identifiers in the Portable structure rather
+   than from the global environment. Worthy of special note are:
+
+   - The pointer equality used in "src/0/term.sml" has been made into a
+     function in the Portable structure.
+
+   - The ML-Lex and ML-Yacc files for the various parsers have been changed
+     to access the Portable structure. Both the source files and the SML
+     produced from them have been changed but I have not verified that the
+     source files would reproduce the new SML versions if ML-Lex and ML-Yacc
+     were to be rerun on them. The changes involve some hacks that exploit the
+     way ML-Lex and ML-Yacc work. See the sources for details.
+
+R.J.Boulton, 15th November 1995.
+@
+text
+@a26 1
+open Exception;
+d28 7
+a34 5
+fun PARSE_ERR{function,message} =
+    HOL_ERR{origin_structure = "Parse",
+		      origin_function = function,
+		      message = message}
+
+d44 6
+a49 2
+                     raise PARSE_ERR{function = "first pass of parsing",
+				     message = s});
+a50 1
+(* Performs the first pass, parsing into preterms. *)
+d52 1
+a52 1
+   let val _ = Term.Type.reset_type_num()
+d64 1
+a64 1
+   let val _ = Term.Type.reset_type_num()
+d73 3
+a75 1
+(* Parsing of terms *)
+d81 1
+a81 2
+      | _ => raise PARSE_ERR{function = "preterm_parser",
+			     message = "Not a preterm."});
+d87 1
+a87 2
+      | _ => raise PARSE_ERR{function = "string_to_preterm",
+			     message = "Not a preterm."});
+d89 6
+a94 6
+fun term_parser frag_list =
+  (Globals.in_type_spec := NONE;
+   case (p frag_list)
+     of (Parse_support.PTM ptm) => Preterm.typecheck ptm
+      | _ => raise PARSE_ERR{function = "term_parser",
+			     message = "Not a term."});
+d96 1
+a96 1
+fun -- frag_list _ = term_parser frag_list handle e => Raise e;
+d98 1
+d101 3
+a103 5
+  (Globals.in_type_spec := NONE;
+   case (ps s)
+     of (Parse_support.PTM ptm) => Preterm.typecheck ptm
+      | _ => raise PARSE_ERR{function = "string_to_term",
+			     message = "Not a term."});
+d105 3
+a108 1
+(* Parsing of types *)
+d110 1
+a110 1
+fun type_parser frag_list =
+d113 2
+a114 3
+     of (Parse_support.TY ty) => ty
+      | _ => raise PARSE_ERR{function = "type_parser",
+			     message = "Not a type."});
+d116 3
+a118 1
+fun == frag_list _ = (type_parser frag_list) handle e => Raise e;
+d120 1
+a120 1
+fun string_to_type s =
+d123 10
+a132 3
+     of (Parse_support.TY ty) => ty
+      | _ => raise PARSE_ERR{function = "string_to_type",
+			     message = "Not a type."});
+a134 1
+(* Parsing of type specifications *)
+d138 5
+a142 7
+     (Globals.in_type_spec := SOME "";
+      case ((p (QUOTE(colon s)::rst)) handle e => Raise e)
+        of (Parse_support.TY_SPEC sp) => sp
+         | _ => raise PARSE_ERR{function = "type_spec_parser",
+                                message = "Not a type specification."})
+  | type_spec_parser _ = raise PARSE_ERR{function = "type_spec_parser",
+                                          message = "Badly formed quotation."};
+d149 1
+a149 2
+      | _ => raise PARSE_ERR{function = "string_to_type_spec",
+			     message = "Not a type specification."});
+@
+
+
+1.4.2.1
+log
+@The core of hol90.9.alpha now builds successfully with SML/NJ 109,
+SML/NJ 108.5 (using CM), SML/NJ 0.93, and Poly/ML 3.0.
+I have not yet tried rebuilding the theory files.
+@
+text
+@d54 1
+a54 1
+   in close_in strm; res
+d65 1
+a65 1
+   in close_in strm; res
+@
+
+
+1.4.2.1.2.1
+log
+@Removed files are parse files and portability files that have
+effectively been moved elsewhere.
+
+Modified files are up to date for ML 109.26.
+@
+text
+@d10 12
+a21 1
+structure Parse : Parse_sig =
+d24 32
+d57 9
+a65 24
+structure PD_Tokens = HolLrValsFun(LrParser.Token);
+structure Lex = HolLex(structure Tokens = PD_Tokens.Tokens
+                       structure Parse_support = Parse_support);
+structure P = JoinWithArg(structure ParserData = PD_Tokens.ParserData
+                          structure Lex = Lex
+                          structure LrParser = LrParser);
+
+
+fun PARSE_ERR{func,mesg} = 
+ Exception.HOL_ERR{origin_structure = "Parse",
+              origin_function = func,
+              message = mesg}
+
+fun error (s,_,_) = raise PARSE_ERR{func="Parsing error", mesg=s}
+
+fun format [] ol ml = (ol, rev ml) 
+  | format (ANTIQUOTE  x::rst) ol ml = format rst (ol^"^") (x::ml)
+  | format (QUOTE s::rst) ol ml = format rst (ol^s) ml;
+
+
+fun parse0 tyvars s aqs =
+   let val strm = Portable.open_string s
+       val lexer = P.makeLexer(fn _ => Portable.input_line strm) (ref aqs)
+   in Lib.fst(P.parse(0,lexer,error,tyvars))
+d68 2
+a69 1
+fun pstring tyvars = Lib.C (parse0 tyvars) [];
+d71 1
+a71 9
+fun pquote tyvars ol_frag_list =
+   let val (s,antiq_list) = format ol_frag_list "" []
+   in parse0 tyvars s antiq_list
+   end; 
+
+(*---------------------------------------------------------------------------
+ * Parsing to preterms.
+ *---------------------------------------------------------------------------*)
+fun preterm_parser tyvars frag_list =
+d73 1
+a73 1
+   case (pquote tyvars frag_list)
+d75 2
+a76 2
+      | _ => raise PARSE_ERR{func = "preterm_parser",
+			     mesg = "Not a preterm."});
+d78 1
+a78 1
+fun string_to_preterm tyvars s =
+d80 1
+a80 1
+   case (pstring tyvars s)
+d82 2
+a83 2
+      | _ => raise PARSE_ERR{func = "string_to_preterm",
+			     mesg = "Not a preterm."});
+a84 3
+(*---------------------------------------------------------------------------
+ * Parsing to terms.
+ *---------------------------------------------------------------------------*)
+d86 8
+a93 6
+  let val _ = Globals.in_type_spec := NONE;
+      val tyvars = Type.fresh_tyvar_stream()
+  in case (pquote tyvars frag_list)
+       of (Parse_support.PTM ptm) => Preterm.typecheck tyvars ptm
+        | _ => raise PARSE_ERR{func = "term_parser",
+                               mesg = "Not a term."}       end;
+d96 8
+a103 14
+  let val _ = Globals.in_type_spec := NONE;
+      val tyvars = Type.fresh_tyvar_stream()
+  in case (pstring tyvars s)
+     of (Parse_support.PTM ptm) => Preterm.typecheck tyvars ptm
+      | _ => raise PARSE_ERR{func = "string_to_term",
+			     mesg = "Not a term."}       end;
+
+(*---------------------------------------------------------------------------
+ * Parsing to types 
+ *---------------------------------------------------------------------------*)
+
+val dummy_tyvars = Type.fresh_tyvar_stream()
+val ty_quote = pquote dummy_tyvars
+val ty_string = pstring dummy_tyvars;
+d106 7
+a112 5
+  let val _ = Globals.in_type_spec := NONE
+  in case (ty_quote frag_list)
+     of Parse_support.TY ty => ty
+      | _ => raise PARSE_ERR{func = "type_parser",
+			     mesg = "Not a type."}     end;
+d115 5
+a119 8
+  let val _ = Globals.in_type_spec := NONE;
+  in case (ty_string s)
+     of Parse_support.TY ty => ty
+      | _ => raise PARSE_ERR{func = "string_to_type",
+			     mesg = "Not a type."}    end;
+
+fun -- frag_list _ = Lib.try term_parser frag_list;
+fun == frag_list _ = Lib.try type_parser frag_list;
+d122 1
+a122 3
+(*---------------------------------------------------------------------------
+ * Parsing of type specifications
+ *---------------------------------------------------------------------------*)
+d127 1
+a127 1
+      case (try ty_quote (QUOTE(colon s)::rst))
+d129 4
+a132 4
+         | _ => raise PARSE_ERR{func = "type_spec_parser",
+                                mesg = "Not a type specification."})
+  | type_spec_parser _ = raise PARSE_ERR{func = "type_spec_parser",
+                                         mesg = "Badly formed quotation."};
+d137 1
+a137 1
+   case (ty_string (colon s))
+d139 2
+a140 2
+      | _ => raise PARSE_ERR{func = "string_to_type_spec",
+			     mesg = "Not a type specification."});
+@
+
+
+1.4.2.1.2.2
+log
+@Minor editing for CM-friendliness, and to use tyvar streams in parsing.
+@
+text
+@a12 1
+open CoreHol;
+d116 1
+a116 1
+      case (Lib.try ty_quote (QUOTE(colon s)::rst))
+@
+
+
+1.4.2.1.2.3
+log
+@These modifications are to make frags known (parse.{sig, sml}), and to
+make the hash function run properly (a change in the underlying exception
+that substring raises (from Ord to Subscript))  (type.sml, term.sml).
+@
+text
+@a21 1
+datatype frag = datatype Portable.frag;
+@
+
+
+1.3
+log
+@Check in after merging in Konrad's changes made after
+the release of hol90.7.  This involved creating a side branch
+in which to check in Konrad's changes, then merging in that
+side branch into the main development (which contains changes
+made by Elsa Gunter).
+
+Some other small modification have been made to the source code,
+as I begun to try to make this version into a working version:
+	- hol90 will now be compiled in an environment were no
+structures can be considered opn.  This means many structures
+now need "open Lib" and other such commands at their head.
+This has not yet been completed, but has been begun.
+	- "rotl" and "rotr" have been added to Lib, something
+which I just did impulsively.   Documentation files
+have also been added in help/90.
+@
+text
+@d50 2
+a51 2
+       val strm = open_string s
+       val lexer = P.makeLexer(fn _ => input_line strm) 
+d61 2
+a62 2
+       val strm = open_string s
+       val lexer = P.makeLexer(fn _ => input_line strm) 
+@
+
+
+1.2
+log
+@Keeping you up to date:
+
+I'm about to do a checkin of elsa's modifications to the hol90.7
+sources to create her hol90.pre8.  To recap what I've done:
+	- I checked out hol90 (in /usr/groups/hol/drs1004/hol90)
+		cvs co hol90
+	  (Well, to be honest, I only checked out those
+	  parts of hol90 I knew I'd be changing, e.g. not the
+	  Manual, and only parts of the library.  Checking out the
+	  entire source takes a while, mainly due to the enormous number
+	  of help files.  The limiting factor is files/second, which
+         runs at around 5 when CVS is working on nfs over a network, not
+         KB/second, which you might at first think it would be).
+
+	- By doing a recursive diff between Elsa's source and the
+	hol90.7 source I found all the changes Elsa had made to
+	source files.  I copied relevant files from Elsa's source
+	into my checked out version.  The only new files were
+		- the sml_system files in src/0
+		- some make scripts in src/.
+	Changed files were in:
+		src/{0,1,2,3}
+		library/arith/src/thm_convs.sml
+		library/list/src/list_conv1.sml
+		library/num/src/num_lib.sml
+		library/prog_logic/src/halts_logic.sml
+		library/prog_logic/src/translation.sml
+		library/prog_logic/theories/src/mk_halts.sml
+		library/real/theories/src/Make
+		library/real/theories/src/equiv.sml
+		library/real/theories/src/seq.sml
+		library/reduce/src/arithconv.sml
+		library/string/src/string_conv.sml
+		library/unity/theories/src/aux_definitions.sml
+		library/word/theories/src/*
+
+	- I will now commit these changes, with this email as the log message.
+		cvs commit
+
+	- Tomorrow I will get this version compiling
+	with NJSML 108 (I will probably add
+	the files to enable the NJSML compilation manager to make
+	this easier), then check those changes in.  I think it's
+	good to get things in a working state.
+@
+text
+@d11 1
+d15 2
+d24 1
+a24 1
+structure Preterm = Parse_support.Preterm
+d26 2
+d30 1
+a30 1
+    Exception.HOL_ERR{origin_structure = "Parse",
+a69 1
+(* val term_parser = Preterm.typecheck_cleanup o Preterm.typecheck o p; *)
+d88 1
+a88 2
+     of (Parse_support.PTM ptm) => 
+                Preterm.typecheck_cleanup(Preterm.typecheck ptm)
+d92 2
+a93 1
+fun -- frag_list _ = term_parser frag_list handle e => Exception.Raise e;
+a94 1
+(* val string_to_term = Preterm.typecheck_cleanup o Preterm.typecheck o ps; *)
+d98 1
+a98 2
+     of (Parse_support.PTM ptm) => 
+                Preterm.typecheck_cleanup(Preterm.typecheck ptm)
+d112 1
+a112 1
+fun == frag_list _ = (type_parser frag_list) handle e => Exception.Raise e;
+d127 1
+a127 1
+      case ((p (QUOTE(colon s)::rst)) handle e => Exception.Raise e)
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d24 4
+a27 3
+fun PARSE_ERR{function,message} = HOL_ERR{origin_structure = "Parse",
+					  origin_function = function,
+					  message = message}
+d89 1
+a89 1
+fun -- frag_list _ = term_parser frag_list handle e => Raise e;
+d110 1
+a110 1
+fun == frag_list _ = (type_parser frag_list) handle e => Raise e;
+d125 1
+a125 1
+      case ((p (QUOTE(colon s)::rst)) handle e => Raise e)
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@
+
+
+1.1.1.1.2.1
+log
+@Konrad's bug fixes up to start of serious
+hol90.8 devel;opment.  Checked into branch revision for
+later merging with trunk (elsa's work).  See
+doc/7.chages for a full description of what's been done.
+@
+text
+@a10 1
+               structure Preterm : Preterm_sig
+a13 2
+               sharing
+                  Parse_support.Preterm = Preterm
+d21 1
+a21 1
+structure Preterm = Preterm
+d64 1
+d83 2
+a84 1
+     of (Parse_support.PTM ptm) => Preterm.typecheck ptm
+d90 1
+a90 1
+
+d94 2
+a95 1
+     of (Parse_support.PTM ptm) => Preterm.typecheck ptm
+@

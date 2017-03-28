@@ -1,0 +1,220 @@
+head	1.1;
+access;
+symbols;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	96.02.08.00.31.26;	author drs1004;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@New theory mechanism, by Donald Syme, and many other enhancements.
+@
+text
+@(* ===================================================================== 
+ * FILE          : library.sml                                           
+ * DESCRIPTION   : Provides functionality for HOL libraries.             
+ *                                                                       
+ * AUTHOR        : Konrad Slind, University of Calgary                   
+ *                                                                       
+ * DATE          : December 9, 1991                                      
+ *                                                                       
+ * Modified      : Dec 25, 1992 (kls)                                    
+ *                 Builds on modifications made by Elsa Gunter.          
+ *                 New library scheme: library info held in data         
+ *                 structure instead of on a disk file. Can then write a 
+ *                 load_library function that works uniformly on the     
+ *                 data structure.                                       
+ *                                                                       
+ *                 Jan 12, 1993 (kls)                                    
+ *                 Changed to be more like theories: libraries are       
+ *                 represented on disk, are accessible once more via a   
+ *                 path, which is OK, since the evil of paths has been   
+ *                 circumvented.                                         
+ *                                                                       
+ *                 March 23, 1993 (kls)                                  
+ *                 Bugfix to load_library - it needs to find the theories
+ *                 of a library wrt the "path" field of the library, not 
+ *                 the theory_path.                                      
+ *                                                                       
+ *                 October, 1994 (kls)                                   
+ *                 Changed semantics of "load_library" so that given a   
+ *                 theory name not equal to the current theory, it will  
+ *                 always declare that theory.                           
+ *                                                                       
+ *                 October 1995 (drs)                                    
+ *                 Added prim_load_library' to accept a loader which     
+ *                 takes a list of files as its argument, to support     
+ *                 quicker loading under CM.                             
+ *
+ *                 January 1996 (drs)
+ *                 Dramatically simplified.  Libraries are now much more
+ *                 lightweight, and are not manipulated from ML except 
+ *                 by loading.
+ * ===================================================================== *)
+
+
+(* In the following, there is a general confusion between "the" library and 
+   a library. The library contains all the libraries. Unfortunately.
+*)
+structure Library: Library_sig = 
+struct
+structure Theory = Theory;
+
+val ERR = Exception.ERR "Library";
+val WRAP_ERR = Exception.WRAP_ERR "Library";
+open Lib;
+    
+
+val suffix = ".hol_lib";
+type lib = string;
+    
+
+local 
+open Sexprs;
+in    
+fun sdict_to_lib sdict =
+    let fun dest_SCON (SCON x) = x
+	fun dest_SAPP (SAPP x) = x
+	fun dest_SLIST x = map dest_SCON (dest_SAPP x) 
+	val doc = SOME (dest_SCON (assoc "doc" sdict)) handle NOT_FOUND => NONE
+	val parents = dest_SLIST (assoc "parents" sdict) handle NOT_FOUND => []
+	val theories = dest_SLIST (assoc "theories" sdict) handle NOT_FOUND => []
+	val code = dest_SLIST (assoc "code" sdict) handle NOT_FOUND => []
+	val help = dest_SLIST (assoc "help" sdict) handle NOT_FOUND => []
+	val loaded = SOME (dest_SCON (assoc "loaded" sdict)) handle NOT_FOUND => NONE
+    in {doc=doc,parents=parents,theories=theories,
+	code=code,help=help,loaded=loaded}
+    end
+    handle e => WRAP_ERR("strerm_to_lib",e)
+end;
+
+
+
+fun find_lib str =
+    let val {file,path} = File.find_file (!Globals.library_path) (str^suffix)
+	val sdict = Sdict_io.read_sdict file
+	val {doc,parents,theories,code,help,loaded}=sdict_to_lib sdict
+    in {doc=doc,path=path,parents=parents,theories=theories,
+	code=code,help=help,loaded=loaded}
+    end
+handle e => WRAP_ERR("find_lib",e);
+	    
+    
+fun atomic_library_op f x =
+   let val hp = !Globals.help_path
+       val thp = !Globals.theory_path
+   in Theory.atomic_theory_op f x
+      handle e => (Globals.help_path := hp; 
+                   Globals.theory_path := thp;
+                   raise e)
+   end;
+                  
+
+fun lib_theory_path prefix = prefix^"theories/"^Globals.theory_file_type^"/";
+
+
+(* If we come to add a new parent and it is not already a parent (or 
+ * the current theory) and we are already in draft mode, make it a new 
+ * parent; otherwise fail.
+ *************************************************************************)
+
+(*
+fun add_new_parent ances sprefix s =
+     if mem s ances
+     then ()
+     else if Theory.draft_mode()
+        then Theory.new_parent (sprefix^s)
+	    handle e => WRAP_ERR("add_new_parent",e)
+        else ERR("add_new_parent",
+    quote s^" is not a parent theory, and can not be \
+      \ added as a parent theory because we are not in draft mode.");
+*)
+
+		 
+
+(* Documentation : see doc/library.html. *)
+(*----------------------------------------------------------------------*)
+(* So what does load_lib do?                                        *)
+(*                                                                      *)
+(*   1. declares new theory if necessary                                *)
+(*   2. loads parent libraries                                          *)
+(*   3. does new_parent-ing, if necessary                               *)
+(*   4. import code, binary if possible                                 *)
+(*   5. adjust help path                                                *)
+(*   6. apply loaded                                                    *)
+(*   7. updates "loaded_libs"                                           *)
+(*   8. If any exceptions raised, clean up as best as possible.         *)
+(*----------------------------------------------------------------------*)
+
+
+val loaded_libraries_ref = ref ([] : string list);
+fun loaded_libraries() = (!loaded_libraries_ref);
+    
+fun prim_load_lib' lib loader {doc,path,parents,theories,code,help,loaded} =
+    let fun f() =
+	let val lib_code_path = path^"src/"
+	    val lib_help_path = path^"help/"
+	    val lib_thy_path = lib_theory_path path
+	    fun load_parent_lib lib = 
+		if mem lib (loaded_libraries()) then ()
+		else prim_load_lib' lib loader (find_lib lib)
+	    val _ = map load_parent_lib parents
+	    val _ = say ("\n  The parent libraries of library "^lib^
+			 " have been loaded.\n")
+(*	    val heritage = Theory.ancestry "-"
+	    val _ = map (add_new_parent heritage lib_thy_path) theories
+	    val _ =  say("\n  The theories belonging to library "^lib^
+			 " have been incorporated.\n") *)
+	    val _ = loader (map (fn s => (lib_code_path^s)) code);
+	    val _ = say("\n  The code of "^lib^" has been loaded.\n")
+	    val _ = rev_itlist(fn p => fn _ => 
+			       cons_path (lib_help_path^p)Globals.help_path) help ()
+	    val _ = say("\n  The help path for library "^lib^" has been adjusted.\n")
+	    val _ = case loaded of
+		SOME x => Portable.interpret (lib_code_path^x)
+	      | NONE => ()
+	in ()
+	end
+    in say ("\nLoading the library "^lib^".\n");
+	atomic_library_op f ();
+	say ("\nThe library "^lib^" is loaded.\n")
+    end;
+
+
+
+fun prim_load_lib loader = prim_load_lib' "<user library>" loader;
+
+fun load_lib lib = 
+    let val _ = prim_load_lib' lib Portable.load (find_lib lib);
+	val _ = loaded_libraries_ref := lib::(!loaded_libraries_ref)
+    in () 
+    end
+handle e => Exception.Raise e;
+    
+fun reload_lib lib = 
+    let val _ = loaded_libraries_ref := subtract (!loaded_libraries_ref) [lib]
+        val _ = load_lib lib
+    in () 
+    end
+handle e => Exception.Raise e;
+    
+(*------------------------------------------------------------------------*)
+(*------------------------------------------------------------------------*)
+
+val load_library_in_place = load_lib;
+fun load_library {lib,theory} = load_lib lib;
+    
+    
+end; (* LIBRARY *)
+
+@

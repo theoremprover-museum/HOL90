@@ -1,0 +1,27 @@
+#!/bin/sh 
+holdir="/usr/groups/hol"
+version="hol90.7"
+arch=`/bin/arch`
+opsys=`/bin/uname -sr`
+case $arch in
+     sun4*) print="Sparcs";
+            case $opsys in
+                 "SunOS "4*) ext="sparc-sunos";;
+                 "SunOS "5*) ext="sparc-solaris";;
+                 *) ext="sparc";;
+            esac;;
+     mips*) print="DECStations";
+            ext=$arch;;
+     *) print=$arch;
+        ext=$arch;;
+esac
+if [ -r $holdir/$version/src/hol90.$ext ]
+then
+   exec $holdir/$version/src/hol90.$ext
+else
+   echo ""
+   echo "   $version is not built for $print under $opsys."
+   echo ""
+   echo "   Mail hol-support@cl.cam.ac.uk to see if it can be made available."
+   echo ""
+fi

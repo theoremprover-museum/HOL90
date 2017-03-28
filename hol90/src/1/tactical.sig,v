@@ -1,0 +1,193 @@
+head	1.3;
+access;
+symbols
+	HOL97:1.2.0.4
+	bpHOL97:1.2
+	hol90_9_alpha:1.2
+	hol90_pre8_for_multiple_compilers:1.2.0.2
+	hol90_pre8_after_donalds_separate_compilation_changes:1.2
+	hol90_8_after_merging_Konrad_Elsa:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.3
+date	96.02.08.00.36.21;	author drs1004;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	95.10.31.15.05.30;	author drs1004;	state Exp;
+branches
+	1.2.4.1;
+next	1.1;
+
+1.1
+date	95.10.16.13.30.18;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.30.18;	author rjb;	state Exp;
+branches;
+next	;
+
+1.2.4.1
+date	97.07.11.15.16.17;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.3
+log
+@New theory mechanism, code reorganisation and other enhancements by Don Syme.
+@
+text
+@(* ===================================================================== *)
+(* FILE          : tactical.sig                                          *)
+(* DESCRIPTION   : Signature for functions that glue tactics together.   *)
+(*                 From LCF, and added to through the years. Translated  *)
+(*                 from hol88.                                           *)
+(*                                                                       *)
+(* AUTHORS       : (c) University of Edinburgh and                       *)
+(*                     University of Cambridge, for hol88                *)
+(* TRANSLATOR    : Konrad Slind, University of Calgary                   *)
+(* DATE          : September 11, 1991                                    *)
+(* ===================================================================== *)
+
+
+signature Tactical_sig =
+sig
+structure Thm : Thm_sig
+val TAC_PROOF : Abbrev.goal * Abbrev.tactic -> Thm.thm
+val prove : Thm.Term.term * Abbrev.tactic -> Thm.thm
+val ASSUM_LIST : (Thm.thm list -> Abbrev.tactic) -> Abbrev.tactic
+val POP_ASSUM : Abbrev.thm_tactic -> Abbrev.tactic
+val POP_ASSUM_LIST : (Thm.thm list -> Abbrev.tactic) -> Abbrev.tactic
+val THEN : Abbrev.tactic * Abbrev.tactic -> Abbrev.tactic
+val THENL : Abbrev.tactic * Abbrev.tactic list -> Abbrev.tactic
+val ORELSE : Abbrev.tactic * Abbrev.tactic -> Abbrev.tactic
+val FAIL_TAC : string -> Abbrev.goal -> 'a
+val NO_TAC : Abbrev.goal -> 'a
+val ALL_TAC : Abbrev.tactic
+val TRY : Abbrev.tactic -> Abbrev.tactic
+val REPEAT : Abbrev.tactic -> Abbrev.tactic
+val VALID : Abbrev.tactic -> Abbrev.tactic
+val EVERY : Abbrev.tactic list -> Abbrev.tactic
+val FIRST : Abbrev.tactic list -> Abbrev.tactic
+val MAP_EVERY : ('a -> Abbrev.tactic) -> 'a list -> Abbrev.tactic
+val MAP_FIRST : ('a -> Abbrev.tactic) -> 'a list -> Abbrev.tactic
+val EVERY_ASSUM : Abbrev.thm_tactic -> Abbrev.tactic
+val FIRST_ASSUM : Abbrev.thm_tactic -> Abbrev.tactic
+val SUBGOAL_THEN : Thm.Term.term -> Abbrev.thm_tactic -> Abbrev.tactic
+val CHANGED_TAC : Abbrev.tactic -> Abbrev.tactic
+end;
+@
+
+
+1.2
+log
+@First phase of hol90.8 development.  hol90 now compiles using NJSML-CM
+108.5, with separate compilation of libraries.  System dependencies
+have been isolated in the makefiles and "portable.sml".
+
+This involved a large number of enhancments to the source files,
+most of which are documented in the 7.changes file (or will be shortly).
+See also the correpsonding email corrspondence between RJB, KLS, TFM,
+JRH and DRS that happened during this development.
+@
+text
+@a18 1
+val store_thm : string * Thm.Term.term * Abbrev.tactic -> Thm.thm
+@
+
+
+1.2.4.1
+log
+@Minor changes to make HOL CM-friendly.
+@
+text
+@d17 23
+a39 24
+
+  val TAC_PROOF : Abbrev.goal * Abbrev.tactic -> Thm.thm
+  val prove : Thm.Term.term * Abbrev.tactic -> Thm.thm
+  val store_thm : string * Thm.Term.term * Abbrev.tactic -> Thm.thm
+  val ASSUM_LIST : (Thm.thm list -> Abbrev.tactic) -> Abbrev.tactic
+  val POP_ASSUM : Abbrev.thm_tactic -> Abbrev.tactic
+  val POP_ASSUM_LIST : (Thm.thm list -> Abbrev.tactic) -> Abbrev.tactic
+  val THEN : Abbrev.tactic * Abbrev.tactic -> Abbrev.tactic
+  val THENL : Abbrev.tactic * Abbrev.tactic list -> Abbrev.tactic
+  val ORELSE : Abbrev.tactic * Abbrev.tactic -> Abbrev.tactic
+  val FAIL_TAC : string -> Abbrev.goal -> 'a
+  val NO_TAC : Abbrev.goal -> 'a
+  val ALL_TAC : Abbrev.tactic
+  val TRY : Abbrev.tactic -> Abbrev.tactic
+  val REPEAT : Abbrev.tactic -> Abbrev.tactic
+  val VALID : Abbrev.tactic -> Abbrev.tactic
+  val EVERY : Abbrev.tactic list -> Abbrev.tactic
+  val FIRST : Abbrev.tactic list -> Abbrev.tactic
+  val MAP_EVERY : ('a -> Abbrev.tactic) -> 'a list -> Abbrev.tactic
+  val MAP_FIRST : ('a -> Abbrev.tactic) -> 'a list -> Abbrev.tactic
+  val EVERY_ASSUM : Abbrev.thm_tactic -> Abbrev.tactic
+  val FIRST_ASSUM : Abbrev.thm_tactic -> Abbrev.tactic
+  val SUBGOAL_THEN : Thm.Term.term -> Abbrev.thm_tactic -> Abbrev.tactic
+  val CHANGED_TAC : Abbrev.tactic -> Abbrev.tactic
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d17 23
+a39 23
+val TAC_PROOF : goal * tactic -> Thm.thm
+val prove : Thm.Term.term * tactic -> Thm.thm
+val store_thm : string * Thm.Term.term * tactic -> Thm.thm
+val ASSUM_LIST : (Thm.thm list -> tactic) -> tactic
+val POP_ASSUM : thm_tactic -> tactic
+val POP_ASSUM_LIST : (Thm.thm list -> tactic) -> tactic
+val THEN : tactic * tactic -> tactic
+val THENL : tactic * tactic list -> tactic
+val ORELSE : tactic * tactic -> tactic
+val FAIL_TAC : string -> goal -> 'a
+val NO_TAC : goal -> 'a
+val ALL_TAC : tactic
+val TRY : tactic -> tactic
+val REPEAT : tactic -> tactic
+val VALID : tactic -> tactic
+val EVERY : tactic list -> tactic
+val FIRST : tactic list -> tactic
+val MAP_EVERY : ('a -> tactic) -> 'a list -> tactic
+val MAP_FIRST : ('a -> tactic) -> 'a list -> tactic
+val EVERY_ASSUM : thm_tactic -> tactic
+val FIRST_ASSUM : thm_tactic -> tactic
+val SUBGOAL_THEN : Thm.Term.term -> thm_tactic -> tactic
+val CHANGED_TAC : tactic -> tactic
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

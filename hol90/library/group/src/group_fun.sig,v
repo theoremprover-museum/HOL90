@@ -1,0 +1,233 @@
+head	1.2;
+access;
+symbols
+	HOL97:1.2.0.4
+	bpHOL97:1.2
+	hol90_9_alpha:1.2
+	hol90_pre8_for_multiple_compilers:1.2.0.2
+	hol90_pre8_after_donalds_separate_compilation_changes:1.2
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.2
+date	95.10.31.15.10.16;	author drs1004;	state Exp;
+branches
+	1.2.4.1;
+next	1.1;
+
+1.1
+date	95.10.16.13.30.39;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.30.39;	author rjb;	state Exp;
+branches;
+next	;
+
+1.2.4.1
+date	97.07.11.19.45.40;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.2
+log
+@First phase of hol90.8 development.  hol90 now compiles using NJSML-CM
+108.5, with separate compilation of libraries.  System dependencies
+have been isolated in the makefiles and "portable.sml".
+
+This involved a large number of enhancments to the source files,
+most of which are documented in the 7.changes file (or will be shortly).
+See also the correpsonding email corrspondence between RJB, KLS, TFM,
+JRH and DRS that happened during this development.
+@
+text
+@(*======================================================================*)
+(* FILE		: group_fun.sig						*)
+(* DESCRIPTION  : gives the input signature GroupSig and body		*)
+(*		  signature GroupFunSig for the functor GroupFunFunc.	*)
+(*									*)
+(*									*)
+(* AUTHOR	: E. L. Gunter						*)
+(* DATE		: 91.25.12						*)
+(*									*)
+(*======================================================================*)
+
+(* Copyright 1991 by AT&T Bell Laboratories *)
+(* Share and Enjoy *)
+
+(* The signature of the formal parameter to the functor GroupFunFunc *)
+signature GroupSig =
+    sig
+	val IsGroupThm : Thm.thm
+            (*
+	       The conclusion of IsGroupThm must state GROUP(G,prod)
+	       for some predicate G and operation prod.
+	    *)
+
+	val InstStructureName : string
+	    (*
+	       The string InstStructureName should be the name of the
+	       structure to be created by applying the functor GroupFunFunc
+	       to this structure as its argument
+	    *)
+    end
+
+
+
+(* The signature of the body of the functor GroupFunFunc *)
+signature GroupFunSig =
+    sig
+        type term sharing type term = Term.term
+        type thm sharing type thm = Thm.thm
+        type tactic sharing type tactic = Abbrev.tactic
+
+	val GROUP_TAC : thm list -> tactic
+	val GROUP_ELT_TAC : tactic
+	    (*
+	       GROUP_ELT_TAC is a tactic for solving routine goals of
+	       group membership. 
+	       GROUP_TAC is like GROUP_ELT_TAC, accecpt that you can supply
+	       an additional list of theorems to be used in reducing goals.
+	    *)
+
+	val GROUP_RIGHT_ASSOC_TAC : term -> tactic
+            (*
+	       GROUP_RIGHT_ASSOC_TAC (prod (prod a b) c) :
+
+	         A |-  t(prod (prod a b) c)
+		----------------------------
+		 A |-  t(prod a (prod b c))
+
+	       GROUP_RIGHT_ASSOC_TAC uses GROUP_ELT_TAC to handle the group
+	       membership requirements which arise.
+	    *)
+
+	val GROUP_LEFT_ASSOC_TAC : term -> tactic
+	    (*
+	       GROUP_LEFT_ASSOC_TAC (prod a (prod b c)) :
+
+	         A |-  t(prod a (prod b c))
+		----------------------------
+		 A |-  t(prod (prod a b) c)
+
+	       GROUP_LEFT_ASSOC_TAC uses GROUP_ELT_TAC to handle the group
+	       membership requirements which arise.
+	    *)
+
+	val return_GROUP_thm : {elt_gp_thm_name:string,
+				rewrites: thm list} -> thm
+	    (*
+	       return_GROUP_thm returns the intstantiated and simplfied
+	       version of a theorem from elt_gp.th.
+
+	       The string <elt_gp_thm_name> is the name of the elt_gp.th
+	       theorem to be instantiated; the list of theorems <rewrites>
+	       are for use in simplifying the instantiated theorem.
+	    *)
+
+	val include_GROUP_thm : {elt_gp_thm_name : string,
+				 current_thm_name : string,
+				 rewrites : thm list} -> thm
+	    (*
+	        include_GROUP_thm instantiates a named theorem from elt_gp.th,
+		simplifies it, stores the result in the current theory, and
+		returns it.
+
+		The string <elt_gp_thm_name> is the name of the elt_gp.th
+		theorem to be instantiated; the string <current_thm_name> is
+		the name under which the resultant theorem will be store in
+		the current theory; the list of theorems <rewrites> are for
+		use in simplifying the instantiated theorem, prior to storing.
+	     *)
+
+	val return_GROUP_theory : {thm_name_prefix:string,
+				   rewrites:thm list} -> (string * thm)list
+	    (*
+	       return_GROUP_theory returns the list of all pairs of names of
+	       theorems, prefixed by the given string <thm_name_prefix>,
+	       together with the instantiated and simplfied version of the
+	       corresponding theorem from from elt_gp.th.
+	       
+	       The string <thm_name_prefix> is the prefix to be added to
+	       all names of the theorems from  elt_gp.th; the list of
+	       theorems <rewrites> are for use in simplifying the
+	       instantiated theorems.
+	    *)
+
+	val include_GROUP_theory : {thm_name_prefix:string,
+				     rewrites: thm list} -> unit
+            (*
+	       include_GROUP_theory instantiates all the theorems from
+	       elt_gp.th, simplifies them using <rewrites>, removes all
+	       trivial theorems, stores the resulting theorems in the current
+	       theory under their old name prefixed by the given string
+	       <thm_name_prefix>, and binds them in the current environment
+	       to the names under which they were stored.
+
+	       The string <thm_name_prefix> is the prefix to be added to the
+	       names of all the theorems from elt_gp.th after instantiation;
+	       the list <rewrites> of theorems are for use in simplifying the
+	       instantiated theorem, prior to storing.
+	    *)
+
+    end (* signature GroupFunSig *)
+@
+
+
+1.2.4.1
+log
+@Upgrade to CM.
+@
+text
+@d18 1
+a18 1
+	val IsGroupThm : CoreHol.Thm.thm
+d36 4
+a39 4
+ sig
+    type term
+    type thm
+    type tactic
+d106 1
+a106 1
+	       corresponding theorem from elt_gp.th.
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d18 1
+a18 1
+	val IsGroupThm : thm
+d37 4
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

@@ -1,0 +1,149 @@
+structure Theory_data = Theory_data
+structure Term = Term
+
+type type_record = {tyc:Term.Type.hol_type, arity :int, theory:string}
+type term_record = {const:Term.term, theory:string, place:Term.fixity};
+
+type hol_sig = { thid: Theory_data.theory_id,
+                 parents : Theory_data.theory_id list,
+                 type_constants : type_record list,
+                 term_constants : term_record list
+               };
+
+val global_theory_name = ref "";
+
+fun THEORY_PARSE_ERR(s1,s2) = 
+ Exception.HOL_ERR{origin_structure = "Theory_parse",
+                   origin_function = s1,
+                   message = s2};
+
+%%
+%term lbrace | rbrace
+    | lbracket | rbracket
+    | lparen | rparen
+    | comma
+    | eq
+    | thid
+    | name
+    | ty
+    | fixity
+    | Binder
+    | Prefix
+    | Infix
+    | parents
+    | types
+    | constants
+    | type_var of string
+    | symbolic of string
+    | string_constant of string
+    | id of string
+    | num of string
+    | EOLEX
+    | EOF 
+
+%nonterm START of hol_sig
+       | HOLSIG of hol_sig
+       | CURR_THID of Theory_data.theory_id
+       | THID of Theory_data.theory_id
+       | TYC of type_record
+       | TY of Term.Type.hol_type
+       | CID of string
+       | FIX of Term.fixity
+       | TMC of term_record
+       | TY_LIST of Term.Type.hol_type list
+       | TYC_LIST of type_record list
+       | TMC_LIST of term_record list
+       | THID_LIST of Theory_data.theory_id list
+
+
+%start START
+%eop EOF EOLEX
+%pos int
+%header (functor holsigLrValsFun (structure Token : TOKEN
+                                  structure Theory_data : Theory_data_sig
+                                  structure Term: Term_sig
+                                  sharing
+                                    Theory_data.Thm.Term = Term))
+%name holsig
+%noshift EOF
+%pure
+%%
+
+START : HOLSIG (HOLSIG)
+
+HOLSIG : thid eq CURR_THID 
+         parents eq lbracket THID_LIST rbracket
+         types eq lbracket TYC_LIST rbracket
+         constants eq lbracket TMC_LIST rbracket
+                 ({ thid = CURR_THID,
+                    parents = THID_LIST,
+                    type_constants = TYC_LIST,
+                    term_constants = TMC_LIST})
+
+CURR_THID : lparen CID comma num comma num rparen
+       (global_theory_name := CID;
+        Theory_data.mk_theory_id
+            {name = CID, 
+             timestamp = Portable.Time.mk_time{sec = num1, usec = num2}})
+
+THID : lparen CID comma num comma num rparen
+       (Theory_data.mk_theory_id
+            {name = CID, 
+             timestamp = Portable.Time.mk_time{sec = num1, usec = num2}})
+
+TYC : lparen CID comma num rparen
+      ({tyc = Term.Type.Tyc CID,
+        arity = Lib.string_to_int num, theory = (!global_theory_name)})
+
+TY  : type_var (Term.Type.Utv type_var)
+    | CID      (Term.Type.Tyc CID)
+    | lparen CID comma lbracket TY_LIST rbracket rparen
+               (Term.Type.Tyapp{Tyop = CID, Args = TY_LIST})
+        
+
+CID : id              (id)
+    | eq              ("=")
+    | comma           (",")
+    | thid            ("thid")
+    | name            ("name")
+    | fixity          ("fixity")
+    | Binder          ("Binder")
+    | Prefix          ("Prefix")
+    | Infix           ("Infix")
+    | ty              ("ty")
+    | parents         ("parents")
+    | types           ("types")
+    | constants       ("constants")
+    | num             (num)
+    | string_constant (string_constant)
+    | symbolic        (symbolic)
+
+FIX : Binder    (Term.Binder)
+    | Prefix    (Term.Prefix)
+    | Infix num (Term.Infix (Lib.string_to_int num))
+
+TMC : lbrace name eq lparen CID rparen comma
+               ty eq TY comma
+           fixity eq FIX
+      rbrace
+     ({const = Term.Const{Name = CID, Ty = TY},
+       theory = !global_theory_name,
+       place = FIX})
+
+
+THID_LIST : ([])
+            |
+            THID ([THID])
+            |
+            THID comma THID_LIST(THID::THID_LIST)
+
+TY_LIST : ([])
+        | TY ([TY])
+        | TY comma TY_LIST(TY::TY_LIST)
+TYC_LIST : ([])
+         | TYC ([TYC])
+         | TYC comma TYC_LIST(TYC::TYC_LIST)
+
+TMC_LIST : ([])
+         | TMC ([TMC])
+         | TMC comma TMC_LIST(TMC::TMC_LIST)

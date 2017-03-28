@@ -1,0 +1,454 @@
+head	1.2;
+access;
+symbols;
+locks; strict;
+comment	@# @;
+
+
+1.2
+date	96.01.04.15.59.21;	author drs1004;	state dead;
+branches;
+next	1.1;
+
+1.1
+date	95.12.18.11.36.41;	author drs1004;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.2
+log
+@io transformers moved to 0/
+@
+text
+@
+
+structure Advanced_inference : Advanced_inference_sig =
+struct
+
+    structure Preterm = Preterm;
+    open Term;
+    open Preterm;
+    open Preterm.Term.Type;
+    open Parse;
+	
+	
+
+    open Lib;
+    infix ##;
+	
+	
+(*----------------------------------------------------------------------
+ * Type checking which allocates types for free type variables too.
+ * Trial implemantation by DRS.
+ * Free type variables are allocated types 'a1, 'a2 etc.  These
+ * should not be used elsewhere in the term as this will result in 
+ * a non-maximal type.
+ * --------------------------------------------------------------------*)
+
+    val maximize_types =
+	let val n = ref 0
+	    fun maximize_ty (Link(r as ref ty)) = 
+		(r := maximize_ty ty; !r)
+	      | maximize_ty (Tyapp{Tyop, Args}) = 
+		Tyapp{Tyop = Tyop, Args = map maximize_ty Args}
+	      | maximize_ty (Stv x) = (inc n;Utv ("'a"^(int_to_string (!n))))
+	      | maximize_ty ty = ty;
+		
+	    fun maximize (Var {Name, Ty}) = Var {Name=Name, Ty=maximize_ty Ty}
+	      | maximize (Const {Name, Ty}) = Const {Name=Name,Ty=Ty}
+	      | maximize (Comb {Rator, Rand}) = Comb {Rator=maximize Rator,
+						      Rand=maximize Rand}
+	      | maximize (Abs {Bvar, Body}) = Abs {Bvar=maximize Bvar,
+						   Body=maximize Body}
+	      | maximize (Constrained (pt,ty)) = Constrained(pt,maximize_ty ty)
+	      | maximize (Antiq tm) = Antiq tm
+	in (fn tm => (n := 0; maximize tm))
+	end;
+	
+(*----------------------------------------------------------------------
+ * typetables
+ * --------------------------------------------------------------------*)
+
+     
+  type typetable = (string * typ) list
+
+  val mk_typetable = I;
+      
+  fun add_types l tt =  itlist add_assoc l tt;
+  fun remove_types l tt =  itlist remove_assoc l tt;
+  fun dest_typetable  l = l
+  
+  fun retype var_ty new_ty =
+      (unify var_ty new_ty; var_ty) handle UNIFY _ => var_ty;
+
+
+(*----------------------------------------------------------------------
+ * typetable
+ *
+ * Apply a typetable to a preterm.
+ * Fully functional - simply attaches types to unconstrained variables.
+ * --------------------------------------------------------------------*)
+
+  fun typetable ss =
+      let fun tys (pt as Var {Name, Ty}) =
+	  (case (assoc1 Name ss) of
+	       SOME (_,ty) => (unify Ty (Preterm.type_to_pretype ty)
+			       handle UNIFY _ => (); 
+			       pt)
+	     | NONE => pt)
+	    | tys (Comb {Rator, Rand}) = 
+	      Comb {Rator=tys Rator,Rand=tys Rand}
+	    | tys (Abs {Bvar, Body}) = 
+	      Abs {Bvar=tys Bvar,Body=tys Body}
+	    | tys x = x
+      in tys 
+      end;
+
+(*----------------------------------------------------------------------
+ * glean
+ *
+ * Work out some new sticky types from a preterm.
+ * --------------------------------------------------------------------*)
+
+  fun glean (Var {Name, Ty}) =
+      ([(Name,Preterm.pretype_to_type (shrink_pretype Ty))] handle _ => [])
+    | glean (Comb {Rator, Rand}) = glean Rator@@glean Rand
+    | glean (Abs {Bvar, Body}) = glean Bvar@@glean Body
+    | glean (Constrained (pt,_)) = glean pt
+    | glean _ = [];
+      
+						 
+
+(*----------------------------------------------------------------------
+ * gen_apply_sticky_types
+ *
+ * Functional application of a type table, returning a new type table
+ * based on the original but extended to include new type information 
+ * gleaned from the resulting preterm.
+ * --------------------------------------------------------------------*)
+
+  fun gen_apply_sticky_types (pt,tt) =
+     let val pt' = typetable tt pt
+	 val tt' = add_types (glean pt') tt
+     in (pt',tt')
+     end;
+     
+
+(*----------------------------------------------------------------------
+ * new_stickyset
+ * apply_sticky_types
+ *
+ * Apply a type table reference using gen_apply_sticky_types and update
+ * the reference.
+ * --------------------------------------------------------------------*)
+
+  fun new_stickyset () = ref ([]:typetable);
+      
+  fun apply_sticky_types r pt =
+      let val (pt',tt') = gen_apply_sticky_types (pt,!r)
+	  val _ = r := tt'
+      in pt'
+      end
+
+
+(*----------------------------------------------------------------------
+ * sticky_types
+ *
+ * Apply a global type table using apply_sticky_types.
+ * --------------------------------------------------------------------*)
+  val sticky_types_ref = ref ([]:typetable);
+      
+  val sticky_types = apply_sticky_types sticky_types_ref;
+
+
+(*----------------------------------------------------------------------
+ * string interface_maps for terms and types
+ * --------------------------------------------------------------------*)
+
+
+  datatype string_map = 
+      INTERFACE_MAP of {term_map:(string * string) list,
+	       type_map: (string * string) list};
+      
+  fun mk_string_map x = INTERFACE_MAP x;
+      
+  fun dest_string_map (INTERFACE_MAP x) = x;
+      
+  val fresh_pretype_stvs =
+      let fun freshen (Tyapp {Tyop,Args}) =
+	  Tyapp {Tyop=Tyop,Args=map freshen Args}
+	    | freshen (Link (ref (Stv x))) = new_type_var ()
+	    | freshen (Link (r as (ref ty))) = (r := freshen ty; !r)
+	    | freshen x = x
+      in freshen
+      end;
+
+  val fresh_preterm_stvs =
+      let fun freshen (Comb {Rator,Rand}) = 
+	Comb {Rator=freshen Rator,Rand=freshen Rand}
+	    | freshen (Abs {Bvar,Body}) =
+	      Abs {Bvar=freshen Bvar,Body=freshen Body}
+	    | freshen (Var {Name,Ty}) = Var {Name=Name,Ty=fresh_pretype_stvs Ty}
+	    | freshen (Const {Name,Ty}) = Const {Name=Name,Ty=fresh_pretype_stvs Ty}
+	    | freshen (Constrained (pt,cons)) = Constrained (freshen pt,fresh_pretype_stvs cons)
+	    | freshen x = x
+      in freshen
+      end;
+    
+	
+
+(*----------------------------------------------------------------------
+ * string_map
+ *
+ * Apply a string_map to a preterm.
+ * Careful to allocate new Stv's for unconstrained Stv's in each 
+ * new preterm slotted into the input preterm.
+ * --------------------------------------------------------------------*)
+
+  fun string_map_ty (tt as (INTERFACE_MAP {type_map,term_map})) = 
+      let fun lookup_tyop tyop = 
+  	      #2 (first (fn (ext,int) => (ext = tyop)) type_map)
+	      handle _ => tyop
+	  fun m (Tyapp {Tyop,Args}) =
+	      Tyapp {Tyop=lookup_tyop Tyop,
+		     Args=map m Args}
+	    | m x = x
+      in m
+      end;
+
+  open Parse_support;
+  
+  fun string_map (tt as (INTERFACE_MAP {type_map,term_map})) = 
+      let 
+	  fun lookup_const c = 
+	      #2 (first (fn (ext,int) => (ext = c)) term_map)
+
+	  fun m (Comb {Rator,Rand}) = Comb {Rator=m Rator,Rand=m Rand}
+	    | m (Abs {Bvar,Body}) = Abs {Bvar=Bvar,Body=m Body}
+	    | m (c as Const {Name,Ty}) = 
+	      ((case (make_preterm (make_atom (lookup_const Name))) of 
+		    PTM x => x) handle _ => c)
+	    | m (v as Var {Name,Ty}) = 
+	      ((case (make_preterm (make_atom (lookup_const Name))) of 
+		    PTM x => x) handle _ => v)
+	    | m (Constrained (pt,x)) = Constrained (m pt, string_map_ty tt x)
+	    | m (x as Antiq _) = x
+      in m
+      end;
+      
+
+(*----------------------------------------------------------------------
+ * string_map_pp
+ *
+ * Pretty printing function to reverse interface map.
+ * - Adding the constraints helps remove unwanted system vars from display.
+ * - Type maps are not yet reversed on output
+ *
+ * Code would be 
+ *   let val {Tyop,Args}= dest_type tm
+ *       val ext = #1 (first (fn (ext,int) => Tyop = int) type_map)
+ *    etc.
+ *
+ * --------------------------------------------------------------------*)
+
+open PP Hol_pp.Extend_hol_pp;
+    
+fun string_map_pp_tm (INTERFACE_MAP {type_map,term_map}) _ _ tm ppstrm =
+    let val name = #Name (dest_const tm) handle _ => 
+	           #Name (dest_var tm)
+	val ext = #1 (first (fn (ext,int) => name = int) term_map)
+    in add_string ppstrm ext
+    end;
+
+fun string_map_pp_ty (INTERFACE_MAP {type_map,term_map}) a b ty ppstrm =
+    raise Match;
+	
+    
+fun install_string_map_pp string_map = 
+    (extend_pp_term (string_map_pp_tm string_map);
+     extend_pp_type (string_map_pp_ty string_map));
+    
+(*----------------------------------------------------------------------
+ * macro interface_maps for terms and types (Experimental)
+ * --------------------------------------------------------------------*)
+
+  fun term_to_preterm tm =
+      case (dest_term tm) of
+	  LAMB {Bvar,Body} => Abs {Bvar=term_to_preterm Bvar,
+				  Body=term_to_preterm Body}
+	| COMB {Rator,Rand} => Comb {Rator=term_to_preterm Rator,
+				     Rand=term_to_preterm Rand}
+	| CONST {Name,Ty} => Const {Name=Name,Ty=type_to_pretype Ty}
+	| VAR {Name,Ty} => Var {Name=Name,Ty=type_to_pretype Ty};
+	      
+
+  datatype imap = IMAP of (pretype * typ) list * (preterm * term) list;
+      
+  fun mk_imap {type_map=typs,term_map=tms} = 
+      IMAP (map (pretype_parser ## I) typs,
+	    map (preterm_parser ## I) tms);
+      
+  fun dest_imap (IMAP (type_map,term_map)) = {type_map=type_map,term_map=term_map};
+      
+  fun imap_pty_match (Utv v1,Utv v2) = (v1 = v2)
+    | imap_pty_match (Tyapp d1,Tyapp d2) = 
+      (#Tyop d1 = #Tyop d2) andalso 
+      all2 (curry imap_pty_match) (#Args d1) (#Args d2)
+    | imap_pty_match _ = false;
+      
+(*  fun imap_ty_match (ty,Utv v2) = 
+      is_vartype ty andalso (dest_vartype ty = v2)
+    | imap_ty_match (ty,Tyapp d2) = 
+      (let val {Tyop,Args} = dest_type ty
+       in (Tyop = #Tyop d2) andalso 
+	   all2 (curry imap_ty_match) Args (#Args d2)
+       end
+	   handle _ => false)
+    | imap_ty_match _ = false;
+*)
+      
+  fun imap_ptm_match (Var v1,Var v2) = (#Name v1 = #Name v2)
+    | imap_ptm_match (Const v1,Const v2) = (#Name v1 = #Name v2)
+    | imap_ptm_match (Comb d1,Comb d2) = 
+      imap_ptm_match (#Rator d1, #Rator d2) andalso imap_ptm_match (#Rand d1, #Rand d2)
+    | imap_ptm_match (Abs d1,Abs d2) = 
+      imap_ptm_match (#Bvar d1, #Bvar d2) andalso imap_ptm_match (#Body d1, #Body d2)
+    | imap_ptm_match (Constrained (pt,_), x) = imap_ptm_match (pt,x)
+    | imap_ptm_match (x, Constrained (pt,_)) = imap_ptm_match (x,pt)
+    | imap_ptm_match _ = false;
+      
+(*  fun imap_tm_match (tm,Var v2) = 
+      is_var tm andalso (#Name (dest_var tm) = #Name v2)
+    | imap_tm_match (tm,Const v2) = 
+      is_const tm andalso (#Name (dest_const tm) = #Name v2)
+    | imap_tm_match (tm,Comb d2) = 
+      is_comb tm andalso 
+      imap_tm_match (rator tm, #Rator d2) andalso 
+      imap_tm_match (rand tm, #Rand d2)
+    | imap_tm_match (tm,Abs d2) = 
+      is_abs tm
+      andalso imap_tm_match (bvar tm, #Bvar d2) 
+      andalso imap_tm_match (body tm, #Body d2)
+    | imap_tm_match (x, Constrained (pt,_)) = imap_tm_match (x,pt)
+    | imap_tm_match _ = false;
+*)      
+      
+val qfresh_pretype_stvs =
+    let fun freshen (Tyapp {Tyop,Args}) =
+	Tyapp {Tyop=Tyop,Args=appl_qfun freshen Args}
+	  | freshen (Link (ref (Stv x))) = new_type_var ()
+	  | freshen (Link (r as (ref ty))) = (r := freshen ty; !r)
+	  | freshen x = raise UNCHANGED
+    in freshen
+    end;
+
+val qfresh_preterm_stvs =
+    let fun freshen (Comb {Rator,Rand}) = 
+	let val (rator,rand) = app2_qfun (freshen,freshen) (Rator,Rand)
+	in Comb {Rator=rator,Rand=rand}
+	end
+	  | freshen (Abs {Bvar,Body}) =
+	    let val (bvar,body) = app2_qfun (freshen,freshen) (Bvar,Body)
+	    in Abs {Bvar=bvar,Body=body}
+	    end
+	  | freshen (Var {Name,Ty}) = 
+	    Var {Name=Name,Ty=qfresh_pretype_stvs Ty}
+	  | freshen (Const {Name,Ty}) = 
+	    Const {Name=Name,Ty=qfresh_pretype_stvs Ty}
+	  | freshen (Constrained d) =
+	    Constrained (app2_qfun (freshen,qfresh_pretype_stvs) d)
+	  | freshen x = raise UNCHANGED
+    in freshen
+    end;
+    
+val fresh_preterm_stvs = qfun_to_fun fresh_preterm_stvs;
+    
+
+(*----------------------------------------------------------------------
+ * imap
+ *
+ * Apply a imap to a preterm.
+ * Careful to allocate new Stv's for unconstrained Stv's in each 
+ * new preterm slotted into the input preterm.
+ * --------------------------------------------------------------------*)
+
+  fun qimap_ty (tt as (IMAP (type_map,term_map))) = 
+      let fun m pt = 
+	  type_to_pretype ((#2 (first (fn (ext,int) => imap_pty_match (pt,ext)) type_map) ))
+	  handle _ => 
+	      case pt of
+		  Tyapp {Tyop,Args} => Tyapp {Tyop=Tyop,
+					      Args=appl_qfun (qimap_ty tt) Args}
+		| x => raise UNCHANGED
+      in m
+      end;
+
+  fun imap_ty tt = qfun_to_fun (qimap_ty tt);
+
+  fun qimap (tt as (IMAP (type_map,term_map))) = 
+      let fun m pt = 
+	  fresh_preterm_stvs (term_to_preterm (#2 (first (fn (ext,int) => imap_ptm_match (pt,ext)) term_map) ))
+	  handle _ => 
+	      case pt of
+		  Comb {Rator,Rand} => 
+		      let val (rator,rand) = app2_qfun (m,m) (Rator,Rand)
+		      in Comb {Rator=rator,Rand=rand}
+		      end
+		| Abs {Bvar,Body} => 
+		      let val (bvar,body) = app2_qfun (m,m) (Bvar,Body)
+		      in Abs {Bvar=bvar,Body=body}
+		      end
+		| Const {Name,Ty} => Const {Name=Name,Ty=qimap_ty tt Ty}
+		| Var {Name,Ty} => Var {Name=Name,Ty=qimap_ty tt Ty}
+		| Constrained d => Constrained (app2_qfun (m,qimap_ty tt) d)
+		| (x as Antiq _) => raise UNCHANGED
+      in m
+      end;
+
+  fun imap tt = qfun_to_fun (qimap tt);
+      
+
+(*----------------------------------------------------------------------
+ * imap_pp
+ *
+ * Pretty printing function to reverse interface map.
+ * - Adding the constraints helps remove unwanted system vars from display.
+ * This problem is by no means completelely solved, but should be
+* for sile variable and constant translations.
+ * --------------------------------------------------------------------*)
+
+open PP Hol_pp.Extend_hol_pp;
+    
+fun imap_pp_tm (IMAP (type_map,term_map)) _ _ tm ppstrm =
+    let val ext = #1 (first (fn (ext,int) => tm = int) term_map)
+	val constr_ext = Constrained (ext,type_to_pretype (type_of tm))
+    in add_string ppstrm (preterm_to_string constr_ext)
+    end;
+
+fun imap_pp_ty (IMAP (type_map,term_map)) _ _ ty ppstrm =
+    let val ext = #1 (first (fn (ext,int) => ty = int) type_map)
+    in add_string ppstrm (pretype_to_string ext)
+    end;
+    
+    
+fun install_imap_pp imap = 
+    (extend_pp_term (imap_pp_tm imap);
+     extend_pp_type (imap_pp_ty imap));
+    
+    
+end;
+
+@
+
+
+1.1
+log
+@Preterm and other changes, see 7.changes
+@
+text
+@@

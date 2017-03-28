@@ -1,0 +1,292 @@
+<TITLE>Theory: more_list</TITLE>
+<H1>Theory: more_list</H1>
+<H1>Parents</H1>
+    <UL>
+    <LI><A HREF = "HOL.html"><STRONG>HOL</STRONG></A>
+    </UL>
+
+
+<HR>
+<H1>Type constants</H1>
+    <UL>
+    <LI><STRONG>nonemptylist</STRONG>(Arity = 1)
+    <LI><STRONG>option</STRONG>(Arity = 1)
+    </UL>
+
+
+<HR>
+<H1>Term constants</H1>
+    <UL>
+    <LI><STRONG>FOLDR</STRONG><EM>:('a -> 'b -> 'b) -> 'a list -> 'b ->
+                                   'b</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>FOLDL</STRONG><EM>:('b -> 'a -> 'b) -> 'a list -> 'b ->
+                                   'b</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>FILTER</STRONG><EM>:('a -> bool) -> 'a list -> 'a list</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>REP_nonemptylist</STRONG><EM>:'a nonemptylist ->
+                                              ('a + 'a) ltree</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>ABS_nonemptylist</STRONG><EM>:('a + 'a) ltree ->
+                                              'a nonemptylist</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>ONE</STRONG><EM>:'a -> 'a nonemptylist</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>MORE</STRONG><EM>:'a -> 'a nonemptylist ->
+                                  'a nonemptylist</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>nonempty_MAP</STRONG><EM>:('a -> 'b) -> 'a nonemptylist ->
+                                          'b nonemptylist</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>nonempty_FOLDR</STRONG><EM>:('a -> 'b -> 'b) -> 'b ->
+                                            'a nonemptylist -> 'b</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>nonempty_FOLDR_TO_ONE</STRONG><EM>:('a -> 'a -> 'a) ->
+                                                   'a nonemptylist -> 'a</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>nonempty_FOLDL</STRONG><EM>:'b -> ('b -> 'a -> 'b) ->
+                                            'a nonemptylist -> 'b</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>nonempty_FOLDL_WITH_INIT</STRONG><EM>:('a -> 'a -> 'a) ->
+                                                      'a nonemptylist ->
+                                                      'a</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>REP_option</STRONG><EM>:'a option -> (one + 'a) ltree</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>ABS_option</STRONG><EM>:(one + 'a) ltree -> 'a option</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>NONE</STRONG><EM>:'a option</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>SOME</STRONG><EM>:'a -> 'a option</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>SOME_arg</STRONG><EM>:'a option -> 'a</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    </UL>
+
+
+<HR>
+<H1>Axioms</H1>
+<DL>
+
+</DL>
+
+
+<HR>
+<H1>Definitions</H1>
+<DL>
+<DT><STRONG>FOLDR_DEF</STRONG>
+<DD>
+<PRE>
+|- (!f start. FOLDR f [] start = start) /\
+   (!f x l start. FOLDR f (CONS x l) start = f x (FOLDR f l start))
+</PRE>
+
+<DT><STRONG>FOLDL_DEF</STRONG>
+<DD>
+<PRE>
+|- (!f. FOLDL f [] = (\start. start)) /\
+   (!f l x. FOLDL f (CONS x l) = (\start. FOLDL f l (f start x)))
+</PRE>
+
+<DT><STRONG>FILTER_DEF</STRONG>
+<DD>
+<PRE>
+|- (!pred. FILTER pred [] = []) /\
+   (!pred tl hd.
+     FILTER pred (CONS hd tl) =
+     ((pred hd) => (CONS hd (FILTER pred tl)) | (FILTER pred tl)))
+</PRE>
+
+<DT><STRONG>nonemptylist_TY_DEF</STRONG>
+<DD>
+<PRE>
+|- ?rep.
+     TYPE_DEFINITION
+       (TRP
+         (\v tl.
+           (?x. v = INL x) /\ (LENGTH tl = 0) \/
+           (?x. v = INR x) /\ (LENGTH tl = SUC 0)))
+       rep
+</PRE>
+
+<DT><STRONG>nonemptylist_ISO_DEF</STRONG>
+<DD>
+<PRE>
+|- (!a. ABS_nonemptylist (REP_nonemptylist a) = a) /\
+   (!r.
+     TRP
+       (\v tl.
+         (?x. v = INL x) /\ (LENGTH tl = 0) \/
+         (?x. v = INR x) /\ (LENGTH tl = SUC 0))
+       r =
+     REP_nonemptylist (ABS_nonemptylist r) =
+     r)
+</PRE>
+
+<DT><STRONG>ONE_DEF</STRONG>
+<DD>
+<PRE>
+|- !x. ONE x = ABS_nonemptylist (Node (INL x) [])
+</PRE>
+
+<DT><STRONG>MORE_DEF</STRONG>
+<DD>
+<PRE>
+|- !x n. MORE x n = ABS_nonemptylist (Node (INR x) [REP_nonemptylist n])
+</PRE>
+
+<DT><STRONG>nonempty_MAP_DEF</STRONG>
+<DD>
+<PRE>
+|- (!f x. nonempty_MAP f (ONE x) = ONE (f x)) /\
+   (!f xs x. nonempty_MAP f (MORE x xs) = MORE (f x) (nonempty_MAP f xs))
+</PRE>
+
+<DT><STRONG>nonempty_FOLDR_DEF</STRONG>
+<DD>
+<PRE>
+|- (!f start x. nonempty_FOLDR f start (ONE x) = f x start) /\
+   (!f start l y.
+     nonempty_FOLDR f start (MORE y l) = f y (nonempty_FOLDR f start l))
+</PRE>
+
+<DT><STRONG>nonempty_FOLDR_TO_ONE_DEF</STRONG>
+<DD>
+<PRE>
+|- (!f x. nonempty_FOLDR_TO_ONE f (ONE x) = x) /\
+   (!f l y.
+     nonempty_FOLDR_TO_ONE f (MORE y l) = f y (nonempty_FOLDR_TO_ONE f l))
+</PRE>
+
+<DT><STRONG>nonempty_FOLDL_DEF</STRONG>
+<DD>
+<PRE>
+|- (!start f x. nonempty_FOLDL start f (ONE x) = f start x) /\
+   (!start f xs x.
+     nonempty_FOLDL start f (MORE x xs) = nonempty_FOLDL (f start x) f xs)
+</PRE>
+
+<DT><STRONG>nonempty_FOLDL_WITH_INIT_DEF</STRONG>
+<DD>
+<PRE>
+|- (!f x. nonempty_FOLDL_WITH_INIT f (ONE x) = x) /\
+   (!f xs x. nonempty_FOLDL_WITH_INIT f (MORE x xs) = nonempty_FOLDL x f xs)
+</PRE>
+
+<DT><STRONG>option_TY_DEF</STRONG>
+<DD>
+<PRE>
+|- ?rep.
+     TYPE_DEFINITION
+       (TRP
+         (\v tl.
+           (v = INL one) /\ (LENGTH tl = 0) \/
+           (?x. v = INR x) /\ (LENGTH tl = 0)))
+       rep
+</PRE>
+
+<DT><STRONG>option_ISO_DEF</STRONG>
+<DD>
+<PRE>
+|- (!a. ABS_option (REP_option a) = a) /\
+   (!r.
+     TRP
+       (\v tl.
+         (v = INL one) /\ (LENGTH tl = 0) \/
+         (?x. v = INR x) /\ (LENGTH tl = 0))
+       r =
+     REP_option (ABS_option r) =
+     r)
+</PRE>
+
+<DT><STRONG>NONE_DEF</STRONG>
+<DD>
+<PRE>
+|- NONE = ABS_option (Node (INL one) [])
+</PRE>
+
+<DT><STRONG>SOME_DEF</STRONG>
+<DD>
+<PRE>
+|- !x. SOME x = ABS_option (Node (INR x) [])
+</PRE>
+
+<DT><STRONG>SOME_arg_DEF</STRONG>
+<DD>
+<PRE>
+|- !x. SOME_arg (SOME x) = x
+</PRE>
+
+</DL>
+
+
+<HR>
+<H1>Theorems</H1>
+<DL>
+<DT><STRONG>nonemptylist_Axiom</STRONG>
+<DD>
+<PRE>
+|- !f0 f1.
+     ?!fn. (!x. fn (ONE x) = f0 x) /\ (!x n. fn (MORE x n) = f1 (fn n) x n)
+</PRE>
+
+<DT><STRONG>nonemptylist_induction_thm</STRONG>
+<DD>
+<PRE>
+|- !P. (!x. P (ONE x)) /\ (!n. P n ==> (!x. P (MORE x n))) ==> (!n. P n)
+</PRE>
+
+<DT><STRONG>nonemptylist_cases_thm</STRONG>
+<DD>
+<PRE>
+|- !n. (?x. n = ONE x) \/ (?n' x. n = MORE x n')
+</PRE>
+
+<DT><STRONG>nonemptylist_constructors_one_one</STRONG>
+<DD>
+<PRE>
+|- (!x x'. (ONE x = ONE x') = x = x') /\
+   (!x n x' n'. (MORE x n = MORE x' n') = (x = x') /\ (n = n'))
+</PRE>
+
+<DT><STRONG>nonemptylist_constructors_distinct</STRONG>
+<DD>
+<PRE>
+|- !n x' x. ~(ONE x = MORE x' n)
+</PRE>
+
+<DT><STRONG>option_Axiom</STRONG>
+<DD>
+<PRE>
+|- !e f. ?!fn. (fn NONE = e) /\ (!x. fn (SOME x) = f x)
+</PRE>
+
+<DT><STRONG>option_induction_thm</STRONG>
+<DD>
+<PRE>
+|- !P. P NONE /\ (!x. P (SOME x)) ==> (!o'. P o')
+</PRE>
+
+<DT><STRONG>option_cases_thm</STRONG>
+<DD>
+<PRE>
+|- !o'. (o' = NONE) \/ (?x. o' = SOME x)
+</PRE>
+
+<DT><STRONG>option_constructors_one_one</STRONG>
+<DD>
+<PRE>
+|- !x x'. (SOME x = SOME x') = x = x'
+</PRE>
+
+<DT><STRONG>option_constructors_distinct</STRONG>
+<DD>
+<PRE>
+|- !x. ~(NONE = SOME x)
+</PRE>
+
+</DL>
+
+
+<HR>

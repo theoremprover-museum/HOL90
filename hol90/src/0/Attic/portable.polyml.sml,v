@@ -1,0 +1,726 @@
+head	1.1;
+access;
+symbols
+	HOL97:1.1.2.3.0.2
+	bpHOL97:1.1.2.3
+	hol90_9_alpha:1.1.2.3
+	hol90_pre8_for_multiple_compilers:1.1.0.2;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	96.06.25.15.41.51;	author rjb;	state dead;
+branches
+	1.1.2.1;
+next	;
+
+1.1.2.1
+date	96.06.25.15.41.52;	author rjb;	state Exp;
+branches;
+next	1.1.2.2;
+
+1.1.2.2
+date	96.06.27.16.00.23;	author rjb;	state Exp;
+branches;
+next	1.1.2.3;
+
+1.1.2.3
+date	96.08.23.14.53.49;	author rjb;	state Exp;
+branches
+	1.1.2.3.2.1;
+next	;
+
+1.1.2.3.2.1
+date	97.06.11.17.24.29;	author kxs;	state dead;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@file portable.polyml.sml was initially added on branch hol90_pre8_for_multiple_compilers.
+@
+text
+@@
+
+
+1.1.2.1
+log
+@The core of hol90.9.alpha now builds successfully with SML/NJ 109,
+SML/NJ 108.5 (using CM), SML/NJ 0.93, and Poly/ML 3.0.
+I have not yet tried rebuilding the theory files.
+@
+text
+@a0 577
+(* ===================================================================== *)
+(* FILE          : portable.polyml.sml                                   *)
+(* DESCRIPTION   : Structure for SML System dependent functions.         *)
+(*                                                                       *)
+(* AUTHOR        : R.J.Boulton, University of Cambridge                  *)
+(*                 based on code by                                      *)
+(*                 Elsa L. Gunter, AT&T Bell Laboratories                *)
+(* DATE          : 3 November, 1995                                      *)
+(* ===================================================================== *)
+
+(* Copyright 1993 by AT&T Bell Laboratories *)
+(* Copyright 1996 by University of Cambridge *)
+
+(* Share and Enjoy *)
+
+structure Portable : Portable_sig =
+struct
+
+(* Set system variables relavent to the interactive mode of hol90 *)
+
+val _ = PolyML.print_depth 350;
+
+structure General =
+    struct
+	exception Bind = Bind
+	exception Match = Match
+	exception Subscript
+	exception Size
+	exception Overflow
+	exception Div = Div
+	exception Ln = Ln
+	exception Sqrt = Sqrt
+	exception Fail of string
+
+	datatype 'a option = NONE | SOME of 'a
+
+	datatype order = LESS | EQUAL | GREATER
+
+	val op <> = op <>
+
+	val ! = !
+	val op := = op :=
+
+	val op o = op o
+	(* Relies on arguments being evaluated from left to right *)
+	fun before (a,b) = a
+	val ignore = fn _ => ()
+    end;
+
+structure List =
+    struct
+	open General
+	type 'a list = 'a list
+	exception Empty
+	fun null [] = true
+	  | null _ = false
+	fun hd [] = raise Empty
+	  | hd (x::_) = x
+	fun tl [] = raise Empty
+	  | tl (_::r) = r
+	fun last [] = raise Empty
+	  | last [x] = x
+	  | last (_::r) = last r
+
+	fun nth (l,n) =
+	    let
+		fun loop ((e::_),0) = e
+		  | loop ([],_) = raise Subscript
+		  | loop ((_::t),n) = loop(t,n-1)
+	    in
+		if n >= 0 then loop (l,n) else raise Subscript
+	    end
+
+	fun take (l, n) =
+	    let
+		fun loop (l, 0) = []
+		  | loop ([], _) = raise Subscript
+		  | loop ((x::t), n) = x :: loop (t, n-1)
+	    in
+		if n >= 0 then loop (l, n) else raise Subscript
+	    end
+
+	fun drop (l, n) =
+	    let
+		fun loop (l,0) = l
+		  | loop ([],_) = raise Subscript
+		  | loop ((_::t),n) = loop(t,n-1)
+	    in
+		if n >= 0 then loop (l,n) else raise Subscript
+	    end
+
+	fun length l =
+	    let
+	        fun len n [] = n
+		  | len n (_::r) = len (n + 1) r
+	    in
+	        len 0 l
+	    end
+
+	val rev = rev
+
+	val op @@ = op @@
+
+	fun concat [] = []
+	  | concat (l::r) = l @@ concat r
+
+	fun revAppend ([],l) = l
+	  | revAppend (h::t,l) = revAppend(t,h::l)
+
+	fun app f [] = ()
+	  | app f (x::r) = (f x; app f r)
+
+	val map = map
+
+	fun mapPartial pred l =
+	    let
+		fun mapp ([], l) = rev l
+		  | mapp (x::r, l) = (case (pred x)
+					  of SOME y => mapp(r, y::l)
+					| NONE => mapp(r, l)
+	    (* end case *))
+	    in
+		mapp (l, [])
+	    end
+
+	fun find pred [] = NONE
+	  | find pred (a::rest) = if pred a then SOME a else (find pred rest)
+
+	fun filter pred [] = []
+	  | filter pred (a::rest) = if pred a then a::(filter pred rest) 
+				    else (filter pred rest)
+
+	fun partition pred l =
+	    let
+		fun loop ([],trueList,falseList) =
+		    (rev trueList, rev falseList)
+		  | loop (h::t,trueList,falseList) = 
+		    if pred h then loop(t, h::trueList, falseList)
+		    else loop(t, trueList, h::falseList)
+	    in loop (l,[],[])
+	    end
+
+	fun foldr f b =
+	    let
+		fun f2 [] = b
+		  | f2 (a::t) = f(a,f2 t)
+	    in f2
+	    end
+
+	fun foldl f b l =
+	    let
+		fun f2 ([],b) = b
+		  | f2 (a::r,b) = f2(r,f(a,b))
+	    in f2 (l,b)
+	    end
+
+	fun exists pred =
+	    let 
+		fun f [] = false
+		  | f (h::t) = pred h orelse f t
+	    in f
+	    end
+
+	fun all pred =
+	    let 
+		fun f [] = true
+		  | f (h::t) = pred h andalso f t
+	    in f
+	    end
+
+	fun tabulate (len, genfn) = 
+	    if len < 0 then raise Size
+	    else let
+		     fun loop n = if n = len then []
+				  else (genfn n)::(loop(n+1))
+		 in loop 0
+		 end
+
+    end;
+
+structure Vector =
+    struct
+	open Vector
+	val maxLen = 33554431
+	val fromList = vector
+	fun sub (vector,i) =
+	    Vector.sub (vector,i) handle Subscript => raise General.Subscript
+	fun listofvector {start_index,length = 0,vector,list} = list
+	  | listofvector {start_index,length,vector,list} =
+	    let val new_length = length - 1
+	    in listofvector {start_index = start_index,
+			     length = new_length,
+			     vector = vector,
+			     list = sub(vector,start_index + new_length)
+			            :: list}
+	    end
+	fun extract (a,start_index,lengthopt) =
+            let val length =
+                   case lengthopt
+                   of General.SOME l => l
+		    | General.NONE => Vector.length a - start_index
+	    in  Vector.vector (listofvector{vector = a,
+					    start_index = start_index,
+					    length = length,
+					    list = []})
+	    end
+	val concat =
+	    fn vector_list => 
+	    Vector.vector
+	    (List.foldr
+	        (fn (vector,list) =>
+		      listofvector{vector = vector,
+				   start_index = 0,
+				   length = Vector.length vector,
+				   list = list})
+		[]
+		vector_list)
+    end;
+
+structure Array =
+    struct
+	open Array
+	val maxLen = 33554431
+	val fromList = arrayoflist
+	fun sub (array,i) =
+	    Array.sub (array,i) handle Subscript => raise General.Subscript
+	fun update (array,i,x) =
+	    Array.update (array,i,x)
+	    handle Subscript => raise General.Subscript
+	fun listofarray {start_index,length = 0,array,list} = list
+	  | listofarray {start_index,length,array,list} =
+	    let val new_length = length - 1
+	    in listofarray {start_index = start_index,
+			    length = new_length,
+			    array = array,
+			    list = sub(array,start_index + new_length)
+			           :: list}
+	    end
+	fun extract (a,start_index,lengthopt) =
+            let val length =
+                   case lengthopt
+                   of General.SOME l => l
+		    | General.NONE => Array.length a - start_index
+	    in  Vector.vector (listofarray{array = a,
+					   start_index = start_index,
+					   length = length,
+					   list = []})
+	    end
+    end;
+
+structure Ref =
+    struct
+	fun inc r = (r := !r + 1)
+	fun dec r = (r := !r - 1)
+    end;
+
+structure Char =
+    struct
+	type char = string
+	open PolyML.StringBuiltIns
+	exception Chr = Chr
+	val chr = chr
+	val ord = ord
+	val maxOrd = 255
+	val op < = lt
+	val op <= = le
+	val op > = gt
+	val op >= = ge
+    end;
+
+structure String =
+    struct
+	type string = string
+	val maxLen = 33554431
+	open PolyML.StringBuiltIns
+	exception Ord = General.Subscript
+	val size = size
+	fun substring (s,i,n) =
+	    PolyML.StringBuiltIns.substring (s,i+1,n)
+	    handle Substring => raise General.Subscript
+	fun sub (s,i) = substring (s,i,1)
+	val concat = implode
+	val op ^ = op ^
+	fun str c = c
+	fun ordof (s,i) =
+	    PolyML.StringBuiltIns.ordof (s,i+1)
+	    handle Ordof => raise General.Subscript
+	val implode = implode
+	val explode = explode
+	val op < = lt
+	val op <= = le
+	val op > = gt
+	val op >= = ge
+    end;
+
+(* Should check range of integers *)
+structure ByteArray =
+    struct
+	type bytearray = int Array.array
+	exception Range
+	open Array
+	(* The next definition isn't quite right *)
+        fun extract (a,i,nopt) =
+            let val l = Array.length a
+                val n =
+                    case nopt of General.SOME n => n | General.NONE => l - i
+                fun bytes j =
+                    if (j >= i + n) then []
+                    else Array.sub (a,j) :: bytes (j + 1)
+            in String.implode (map Char.chr (bytes i))
+            end
+    end;
+
+(* interp and linewidth are dummies *)
+val interp = ref false;
+fun say s = output (std_out,s);
+val linewidth = ref 78;
+
+structure PrettyPrint =
+    struct
+        fun spaces n = if (n <= 0) then "" else " " ^ spaces (n - 1)
+        type ppfuns = (string -> unit) *
+                      (int * bool -> unit) *
+                      (int * int -> unit) *
+                      (unit -> unit)
+        type ppconsumer =
+           {consumer : string -> unit,flush : unit -> unit,linewidth : int}
+	type ppstream = ppfuns * ppconsumer
+	datatype break_style = CONSISTENT | INCONSISTENT
+        (* Doesn't really pretty-print *)
+	fun mk_ppstream (ppcon as {consumer,...} : ppconsumer) =
+           ((consumer,
+             fn (ind,style) => (),
+             fn (size,offset) => consumer (spaces size),
+             fn () => ()),
+            ppcon)
+	fun dest_ppstream (_,ppcon) = ppcon
+	fun clear_ppstream _ = ()
+	fun flush_ppstream (_,{flush,...} : ppconsumer) = flush ()
+	fun add_break ((_,_,breakf,_),_) = breakf
+	fun add_newline ((_,_,breakf,_),{linewidth,...} : ppconsumer) =
+           breakf (999 (* or linewidth *),0)
+	fun add_string ((stringf,_,_,_),_) = stringf
+	fun begin_block ((_,beginf,_,_),_) bs i =
+           beginf (i,case bs of CONSISTENT => true | INCONSISTENT => false)
+	fun end_block ((_,_,_,endf),_) = endf ()
+	fun with_pp ppcon f = f (mk_ppstream ppcon)
+        fun install_pp path s _ =
+           PolyML.compiler
+              (fn () =>
+                  "PolyML.install_pp (fn ppfs as (stringf,_,_,_) => fn x =>" ^
+                  "   let val pps =" ^
+                  "          (ppfs,{consumer = stringf,flush = fn () => ()," ^
+                  "                 linewidth = !Portable.linewidth})" ^
+                  "   in  Portable.PrettyPrint.begin_block pps" ^
+                  "          Portable.PrettyPrint.CONSISTENT 0;" ^
+                  "       Portable.PrettyPrint.add_break pps (0,0);" ^
+                  "       " ^ s ^ " pps x;" ^
+                  "       Portable.PrettyPrint.add_break pps (0,0);" ^
+                  "       Portable.PrettyPrint.end_block pps" ^
+                  "   end);",
+               fn s => ())
+              ()
+        fun pp_to_string linewidth printit x =
+           let val sref = ref ""
+               val ppstrm = mk_ppstream {consumer = fn s => sref := !sref ^ s,
+                                         flush = fn () => (),
+                                         linewidth = linewidth}
+           in  printit ppstrm x; !sref
+           end
+	fun with_ppstream ppstrm =
+	   {add_string = add_string ppstrm,
+	    add_break = add_break ppstrm,
+	    begin_block = begin_block ppstrm,
+	    end_block = fn () => end_block ppstrm, 
+	    add_newline = fn () => add_newline ppstrm, 
+	    clear_ppstream = fn () => clear_ppstream ppstrm, 
+	    flush_ppstream = fn () => flush_ppstream ppstrm}
+	fun defaultConsumer () =
+	   {consumer = say,
+	    flush = fn () => ExtendedIO.flush_out std_out,
+	    linewidth = !linewidth}
+    end;
+
+structure Time =
+    struct
+	datatype time = TIME of {sec:int, usec:int}
+	fun dest_time (TIME t) = t
+	fun mk_time t = TIME t
+	fun timestamp () = mk_time {sec = System.gettime (),usec = 0}
+	fun time_eq t1 t2 = (t1 = t2)
+	fun time_lt (TIME {sec = s1,usec = u1}) (TIME {sec = s2,usec = u2}) =
+	    (s1 < s2) orelse ((s1 = s2) andalso (u1 < u2))
+	fun time_to_string (TIME {sec,usec}) =
+	    let fun zeros n = if (n < 1) then "" else "0" ^ zeros (n - 1)
+		val us = PolyML.makestring usec
+	    in  PolyML.makestring sec ^ "." ^ zeros (6 - String.size us) ^ us
+	    end
+    end;
+
+structure Timer =
+    struct
+	open Time
+	val zero_time = mk_time {sec = 0,usec = 0}
+	fun sub_time (t1,t2) =
+	    let val {sec = s1,usec = u1} = dest_time t1
+	        and {sec = s2,usec = u2} = dest_time t2
+	    in  if (u2 > u1)
+		then mk_time {sec = s1 - (s2 + 1),usec = (1000000 + u1) - u2}
+		else mk_time {sec = s1 - s2,usec = u1 - u2}
+	    end
+	type cpu_timer = time
+	fun startCPUTimer () = mk_time {sec = System.processtime (),usec = 0}
+	fun checkCPUTimer t =
+	    {usr = sub_time
+	               (mk_time {sec = System.processtime (),usec = 0},t),
+	     sys = zero_time,
+	     gc = zero_time}
+	fun totalCPUTimer () = mk_time {sec = System.processtime (),usec = 0}
+	val init_time = ref(Time.timestamp())
+	abstype real_timer = Real_time of unit -> Time.time
+	with
+	    fun startRealTimer () =
+		let val time_cell = ref(Time.timestamp())
+		in  Real_time (fn () => sub_time (timestamp (),!time_cell))
+		end
+	    fun checkRealTimer (Real_time f) = f ()
+	    fun totalRealTimer () =
+		Real_time (fn () => sub_time (timestamp (),!init_time))
+	end (* abstype *)
+    end;
+
+fun execute (c,l) =
+    ExtendedIO.execute (c ^ String.concat (map (fn s => " " ^ s) l));
+
+fun connect_streams (is,os) =
+    if (end_of_stream is)
+    then ExtendedIO.flush_out os
+    else (output (os,input (is,1)); connect_streams (is,os));
+
+(* Should return non-zero value if an error occurs *)
+fun system s =
+    let val (is,os) = ExtendedIO.execute s
+    in  close_out os; connect_streams (is,std_out); close_in is; 0
+    end;
+
+local
+    fun input_lines is =
+       if (end_of_stream is)
+       then []
+       else let val s = ExtendedIO.input_line is in s :: input_lines is end
+    fun get_unix_data s =
+	let val (is,os) = ExtendedIO.execute s
+	    val data = input_lines is
+	in  close_in is; close_out os; data
+        end
+    fun drop_newline s = String.substring (s,0,String.size s - 1)
+in
+fun getEnv var =
+    let val value = drop_newline (List.hd (get_unix_data ("echo $" ^ var)))
+    in  if value = "" then General.NONE else General.SOME value
+    end
+fun pwd () = drop_newline (List.hd (get_unix_data "/bin/pwd"))
+(* Doesn't fail correctly *)
+fun listDir dir_name =
+   List.map drop_newline (get_unix_data ("/bin/ls -a " ^ dir_name))
+(* suffix to distinquish hol90s for different architectures. *)
+val arch =
+   case getEnv "ARCH"
+   of General.SOME s => s
+    | General.NONE => drop_newline (List.hd (get_unix_data "/bin/arch"))
+end;
+
+fun file_exists_for_reading s =
+    (close_in (open_in s); true)
+    handle Interrupt => raise Interrupt | _ => false;
+
+local
+
+val hol_dir =
+   case getEnv "HOL_DIR"
+   of General.SOME s => s
+    | General.NONE => raise General.Fail "HOL_DIR variable not bound";
+
+val quote_filter = hol_dir ^ "/bin/quote-filter." ^ arch;
+
+in
+
+(* Old version where use_stream doesn't go through the quotation filter
+fun use_stream str =
+   if (end_of_stream str)
+   then ()
+   else (PolyML.compiler
+            (fn () => ExtendedIO.input_line str,fn s => output (std_out,s)) ();
+         use_stream str)
+
+fun use filename =
+   let val (is,os) =
+          ExtendedIO.execute ("/bin/cat " ^ filename ^ " | " ^ quote_filter)
+   in  close_out os; use_stream is; close_in is
+   end
+*)
+
+(* NB: `end_of_stream' wedges when there is no input ready! *)
+fun use_stream error_string str =
+   let fun annotate s =
+          if (String.substring (s,0,6) = "Error:"
+              handle General.Subscript => false)
+          then "Error:" ^ error_string ^
+               String.substring (s,6,String.size s - 6)
+          else s
+       val (is,os) = ExtendedIO.execute quote_filter
+       fun inputc is = input (is,1)
+       fun get_char () =
+          if (ExtendedIO.can_input (is,1))
+          then inputc is
+          else if (ExtendedIO.can_input (is,0)) (* not end of stream `is' *)
+               then if (end_of_stream str)
+                    then (close_out os; inputc is)
+                    else (output (os,ExtendedIO.input_line str);
+                          ExtendedIO.flush_out os;
+                          get_char ())
+               else ""
+       fun use_str () =
+          if (ExtendedIO.can_input (is,0)) (* not end of stream `is' *)
+          then (PolyML.compiler
+                   (get_char,fn s => output (std_out,annotate s)) ();
+		use_str ())
+          else close_in is
+   in  use_str () handle e => (close_out os; close_in is; raise e)
+   end
+
+fun use filename =
+   let val is = (output (std_out,"[opening " ^ filename ^ "]\n");
+                 open_in filename)
+   in  use_stream (" in '" ^ filename ^ "'") is
+          handle e => (close_in is; raise e);
+       close_in is
+   end
+
+val use_stream = use_stream "";
+
+end;
+
+fun load files = (map use files; ());
+
+val cd = PolyML.cd;
+fun ls () = system "ls";
+(* Not implemented *)
+fun getArgs () = [];
+
+val version = {system = "Poly/ML",version_id = [],date = ""};
+
+val sml_banner = "Poly/ML";
+
+fun exit () = PolyML.exit 0;
+
+val int_to_string = PolyML.makestring : int -> string;
+val real_to_string = PolyML.makestring : real -> string;
+
+fun export "" = (PolyML.commit (); ())
+  | export _ = raise General.Fail "export: not implemented";
+
+val flush_out = ExtendedIO.flush_out;
+val input_line = ExtendedIO.input_line;
+
+fun open_string s =
+    let val (is,os) = ExtendedIO.execute "/bin/cat"
+    in  output (os,s); flush_out os; close_out os; is
+    end;
+
+val pointer_eq = System.pointerEq;
+
+end (* structure Portable *)
+
+
+datatype 'a frag = QUOTE of string | ANTIQUOTE of 'a;
+@
+
+
+1.1.2.2
+log
+@Theory files now build with SML/NJ 109, SML/NJ 108.5 (using CM), SML/NJ 0.93,
+and Poly/ML 3.0.
+The filter processes executed in the SML/NJ 109 version used to hang around
+after they had done their job. They are now terminated explicitly.
+@
+text
+@d342 1
+a342 1
+           breakf (linewidth,0)
+@
+
+
+1.1.2.3
+log
+@Added a structure Int.
+Defined and exported HOL_base_directory.
+Added an unfiltered version of use_stream.
+Added a function for batch processing (exits after using a file).
+@
+text
+@a49 20
+structure Int =
+    struct
+	type int = int
+	exception Div = Div
+	exception Mod = Mod
+	val op * = op * : int * int -> int
+	val op + = op + : int * int -> int
+	val op - = op - : int * int -> int
+	val op < = op < : int * int -> bool
+	val op <= = op <= : int * int -> bool
+	val op > = op > : int * int -> bool
+	val op >= = op >= : int * int -> bool
+        val abs = abs : int -> int
+        val op div = op div : int * int -> int
+        val op mod = op mod : int * int -> int
+        fun max (i,j) : int = if (i > j) then i else j
+        fun min (i,j) : int = if (i < j) then i else j
+        val ~ = ~ : int -> int
+    end;
+
+d478 3
+a480 1
+val HOL_base_directory =
+d485 3
+a487 1
+local
+d489 7
+a495 1
+val quote_filter = HOL_base_directory ^ "/bin/quote-filter." ^ arch;
+d497 6
+a502 1
+in
+a542 15
+fun unfiltered_use_stream str =
+   if (end_of_stream str)
+   then ()
+   else (PolyML.compiler
+            (fn () => ExtendedIO.input_line str,fn s => output (std_out,s)) ();
+         unfiltered_use_stream str)
+
+(* Old version using a use_stream that doesn't go through the quotation filter
+fun use filename =
+   let val (is,os) =
+          ExtendedIO.execute ("/bin/cat " ^ filename ^ " | " ^ quote_filter)
+   in  close_out os; unfiltered_use_stream is; close_in is
+   end
+*)
+
+a557 3
+fun use_and_exit print_err filename =
+   (use filename; exit ()) handle e => (print_err e; PolyML.exit 1);
+
+@
+
+
+1.1.2.3.2.1
+log
+@Removed files are parse files and portability files that have
+effectively been moved elsewhere.
+
+Modified files are up to date for ML 109.26.
+@
+text
+@@

@@ -1,0 +1,82 @@
+(* initial fragment *)
+
+(* signature for base type *)
+
+signature NewType =
+     sig
+	type base 
+	val leq_base : base * base -> bool      (* comparison *)
+	val name_base : string                  (* type name *)
+	val eq_base : base * base -> bool       (* equality test *)
+	val hash_base : base -> int             (* size for dup-elim *)
+        val parse_base : string -> base         (* parser for base *)
+	val string_of_base : base -> string     (* for destruction *)
+	val pp_base : System.PrettyPrint.ppstream -> base -> unit
+                                       (* prettyprinter for base *)
+     end;
+
+signature commonsig =
+    sig
+	structure BTS : NewType 
+	type base
+	sharing type base = BTS.base
+	datatype co_type = Baset | Boolt | Unitt | Vart of int | Strt | Numt | 
+	                   Prodt of co_type * co_type | Sett of co_type | 
+	                   Orsett of co_type
+
+(*	datatype 'a set = Empty |  Ins of 'a * 'a set *)
+
+(*	datatype 'a orset = Emptyo | Inso of 'a * 'a orset *)
+
+	datatype co = Base of base |
+	              Unit | Bool of bool | Num of int | Str of string |
+	              Prod of co * co | Set of co list | Orset of co list
+	val flat_list : 'a list list -> 'a list
+	val isnil : 'a list -> bool
+(*	val mklistoforset : 'a orset -> 'a list *)
+(* 	val mklistofset : 'a set -> 'a list *)
+        val Base_symb : string ref 
+        val End_symb : string ref 
+        val Dup_elim : bool ref
+    end
+	
+
+functor COMMON (structure BTS : NewType) : commonsig =
+
+struct
+structure BTS = BTS
+
+type base = BTS.base 
+
+datatype co_type = Baset | Boolt | Unitt | Vart of int | Strt | Numt | 
+                  Prodt of co_type * co_type | Sett of co_type | 
+                  Orsett of co_type;
+
+datatype co = Base of base |
+              Unit | Bool of bool | Num of int | Str of string |
+              Prod of co * co | Set of co list | Orset of co list;
+
+
+val Base_symb = ref "@"
+
+val End_symb  = ref "." 
+
+val Dup_elim = ref true
+
+fun isnil [] = true | isnil _ = false
+
+fun flat_list [] = [] |
+    flat_list (l::L) = l@flat_list(L);
+
+end (* functor COMMON *)
+
+
+
+
+
+
+
+
+
+
+

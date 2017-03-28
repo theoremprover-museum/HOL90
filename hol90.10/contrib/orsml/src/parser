@@ -1,0 +1,133 @@
+(**************************************************)
+(*                                                *)
+(*           PARSER FOR OBJECTS                   *)
+(*                                                *)
+(**************************************************)
+
+signature parsersig = 
+  sig
+    structure Make : makesig 
+    val create : string -> Make.Type.Common.co
+    val make : unit -> Make.Type.Common.co
+    val elements : string list * string -> string list 
+  end
+
+
+functor PARSER (Make : makesig)  : parsersig  =
+
+struct 
+
+structure Make = Make
+
+local open Make Make.Type Make.Dupelim Make.Dupelim.Common in
+
+(* creation of objects: converts strings to objects *)
+
+fun getstring [] = raise Badobject |
+    getstring (a::nil) = if a = "'" then "" else raise Badobject |
+    getstring (a::x) = if a = "'" then "" else a^getstring(x);
+
+fun eltsofset ([], symb) = [] |
+    eltsofset (a::x, symb) = let 
+ fun simpleparse ({arg = [], level = i , fobj = _},symb) = 
+             if i = 0 then {arg = [], level = 0, fobj = []} 
+               else raise Badobject |
+     simpleparse ({arg = (a::x), level = i, fobj = obj1},symb) =
+                 let val addtolevel = if a="(" orelse a="{" orelse a="<" 
+                                         then 1 
+                                      else if a=")" orelse a="}" orelse a=">"
+                                         then ~1 else 0
+                     val isend = (i=0) andalso ((a = ",") orelse (a=symb))
+          in if isend then {arg = x, level = i, fobj = obj1}
+               else simpleparse ({arg = x, 
+                                 level = i + addtolevel, 
+                                  fobj = obj1@[a]}, symb) 
+          end           
+ val {arg=obj2, level = _ , fobj = obj1} =
+     simpleparse({arg=(a::x),level=0,fobj=[]},symb)
+in obj1::eltsofset(obj2,symb) end
+
+fun elements x = map implode (eltsofset x)
+
+local 
+fun rmspace (y) = let fun rmsomesp ([],b) = [] |
+                          rmsomesp ((a::x),b) = if a = "'" then 
+                                             a::rmsomesp(x,(not b))
+                                  else if a = " " then 
+                                     (if b then a::rmsomesp(x,b) 
+                                      else rmsomesp(x,b))
+                                  else a::rmsomesp(x,b)
+in 
+  rmsomesp(y,false) 
+end
+fun getint(l) =
+   let fun getreverse [] = raise Badobject |
+           getreverse (a::nil) = if a >= "0" andalso a <= "9" then
+                                 ord(a) - 48 else raise Badobject |
+           getreverse (a::b::x) = if a >= "0" andalso a <= "9" then 
+                                  (ord(a) - 48) + 10*getreverse(b::x)
+                                  else raise Badobject 
+in 
+getreverse(rev(l))
+end
+
+fun getbase l = let fun remfirstspace [] = [] |
+                        remfirstspace (a::x) = if a = " " then 
+                                 remfirstspace x else (a::x) 
+                    val s_of_l = implode(remfirstspace(rev(                  
+                             remfirstspace(rev(l)))))
+in 
+      BTS.parse_base(substring(s_of_l,1,size(s_of_l)-2)) 
+      handle _ => raise Badobject 
+end
+
+fun cco [] = raise Badobject |
+    cco (a::x) = if a = "T" then mkboolco(true)
+               else if a = "F" then mkboolco(false)
+               else if a = "'" then mkstringco(getstring(x))
+               else if a >= "0" andalso a <= "9" then mkintco(getint(a::x))
+               else if a = (!Base_symb) then mkbaseco(getbase(x))
+               else if a = "{" then 
+                                 let val tmplist = eltsofset(x,"}")
+                    in if isnil(hd(tmplist)) then (Set []) 
+                         else (Set (remdupl(map cco tmplist))) end 
+               else if a = "<" then 
+                                 let val tmplist = eltsofset(x,">")
+                    in if isnil(hd(tmplist)) then (Orset [])
+                         else (Orset (remdupl(map cco tmplist))) end 
+               else if a = "(" then 
+                                 let val tmplist = eltsofset(x,")")
+                    in if tl(tl(tmplist)) = [] then 
+                         mkprodco(cco(hd(tmplist)), 
+                                  cco(hd(tl(tmplist))))
+                       else raise Badobject end 
+               else raise Badobject
+in
+fun create (x) = let val v = cco(rmspace(explode(x))) handle _ => 
+                                                   raise Badobject
+                     val _ = typeof(v) handle Dontunify => raise Badobject
+                 in v end
+end;
+
+
+(* interactive creation of objects *)
+
+fun make () = 
+     let fun getstr s = if lookahead(s) = (!End_symb)
+                           then (input(s,2); "")
+                           else input(s,1)^(getstr s)
+         fun rem_enter [] = [] |
+             rem_enter (a::x) = if a = "\n" then rem_enter(x) 
+                                   else a::rem_enter(x)
+in 
+  create(implode(rem_enter(explode(getstr(std_in)))))
+end;
+
+end
+
+end (* Functor PARSER *)
+
+
+(* end of parsing *)
+
+

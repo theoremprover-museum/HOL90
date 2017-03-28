@@ -1,0 +1,141 @@
+head	1.1;
+access;
+symbols
+	HOL97:1.1.2.2.0.2
+	bpHOL97:1.1.2.2
+	hol90_9_alpha:1.1.2.2
+	hol90_pre8_for_multiple_compilers:1.1.0.2;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	96.08.23.09.14.26;	author rjb;	state dead;
+branches
+	1.1.2.1;
+next	;
+
+1.1.2.1
+date	96.08.23.09.14.27;	author rjb;	state Exp;
+branches;
+next	1.1.2.2;
+
+1.1.2.2
+date	96.09.03.15.26.45;	author rjb;	state Exp;
+branches
+	1.1.2.2.2.1;
+next	;
+
+1.1.2.2.2.1
+date	97.07.11.19.38.41;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@file user.sml was initially added on branch hol90_pre8_for_multiple_compilers.
+@
+text
+@@
+
+
+1.1.2.1
+log
+@Initial version.
+@
+text
+@a0 48
+(****************************************************************************)
+(* FILE          : user.sml                                                 *)
+(* DESCRIPTION   : User-level combined decision procedure.                  *)
+(*                                                                          *)
+(* AUTHOR        : R.J.Boulton                                              *)
+(* DATE          : 22nd February 1995                                       *)
+(*                                                                          *)
+(* LAST MODIFIED : R.J.Boulton                                              *)
+(* DATE          : 19th August 1996                                         *)
+(****************************************************************************)
+
+val _ = LazyThm.set_proof_mode LazyThm.Lazy;
+
+structure DecisionUser =
+struct
+
+local
+
+val number_of_vars = length o free_vars o (fn (tm,_) => tm);
+
+fun lambda_free tm =
+   case (dest_term tm)
+   of LAMB _ => false
+    | COMB {Rator,Rand} => lambda_free Rator andalso lambda_free Rand
+    | _ => true;
+
+fun LIST_UNDISCH_TAC [] = ALL_TAC
+  | LIST_UNDISCH_TAC (h :: hs) = LIST_UNDISCH_TAC hs THEN UNDISCH_TAC h;
+
+in
+
+fun DECISION_TAC conv p : tactic =
+   fn gl as (hs,_) => (LIST_UNDISCH_TAC (filter p hs) THEN CONV_TAC conv) gl;
+
+val show_proving = ref false;
+
+fun DECIDE_CONV tm =
+   (NumArith.reset_multiplication_theorems ();
+    Decide.DECIDE_FORMULA_CONV (!show_proving) number_of_vars
+       [DecideNum.num_proc,DecideProp.prop_proc,DecidePair.pair_proc,
+        DecideTypes.types_proc,DecideUninterp.uninterp_proc]
+          DecisionConv.ALL_CONV tm);
+
+val DECIDE_TAC = DECISION_TAC DECIDE_CONV lambda_free;
+
+end;
+
+end; (* DecisionUser *)
+@
+
+
+1.1.2.2
+log
+@Added a function DECIDE to prove |- t from a term t.
+@
+text
+@d9 1
+a9 1
+(* DATE          : 3rd September 1996                                       *)
+a43 2
+val DECIDE = EQT_ELIM o DECIDE_CONV;
+
+@
+
+
+1.1.2.2.2.1
+log
+@Making the library CM friendly.
+@
+text
+@d12 1
+d17 1
+a17 4
+local open Lib CoreHol.Term Drule Tactic Tactical Conv
+      infix THEN
+
+val _ = LazyThm.set_proof_mode LazyThm.Lazy;
+d32 1
+a32 1
+fun DECISION_TAC conv p : Abbrev.tactic =
+a46 7
+
+(*---------------------------------------------------------------------------
+ * No online help as yet.
+ *---------------------------------------------------------------------------*)
+(* val _ = Lib.cons_path (!Globals.HOLdir^"library/decision/help/entries/") 
+ *                       Globals.help_path;
+ *)
+@

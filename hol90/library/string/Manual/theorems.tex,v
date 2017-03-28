@@ -1,0 +1,154 @@
+head	1.1;
+branch	1.1.1;
+access;
+symbols
+	HOL97:1.1.1.1.0.6
+	bpHOL97:1.1.1.1
+	hol90_9_alpha:1.1.1.1
+	hol90_pre8_for_multiple_compilers:1.1.1.1.0.4
+	hol90_pre8_after_donalds_separate_compilation_changes:1.1.1.1
+	hol90_8_after_merging_Konrad_Elsa:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@% @;
+
+
+1.1
+date	95.10.16.13.31.07;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.31.07;	author rjb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@\chapter{Pre-proved Theorems}
+\input{theorems-intro}
+\section{Definitions}
+\THEOREM ASCII\_DEF ascii
+|- !b0 b1 b2 b3 b4 b5 b6 b7.
+    ASCII b0 b1 b2 b3 b4 b5 b6 b7 =
+    ABS_ascii(Node(b0,b1,b2,b3,b4,b5,b6,b7)[])
+\ENDTHEOREM
+\THEOREM ascii\_ISO\_DEF ascii
+|- (!a. ABS_ascii(REP_ascii a) = a) /\
+   (!r.
+     TRP
+     (\v tl.
+       (?b0 b1 b2 b3 b4 b5 b6 b7. v = b0,b1,b2,b3,b4,b5,b6,b7) /\
+       (LENGTH tl = 0))
+     r =
+     (REP_ascii(ABS_ascii r) = r))
+\ENDTHEOREM
+\THEOREM ascii\_TY\_DEF ascii
+|- ?rep.
+    TYPE_DEFINITION
+    (TRP
+     (\v tl.
+       (?b0 b1 b2 b3 b4 b5 b6 b7. v = b0,b1,b2,b3,b4,b5,b6,b7) /\
+       (LENGTH tl = 0)))
+    rep
+\ENDTHEOREM
+\THEOREM STRING\_DEF string
+|- !a s. STRING a s = ABS_string(Node(INR a)[REP_string s])
+\ENDTHEOREM
+\THEOREM string\_ISO\_DEF string
+|- (!a. ABS_string(REP_string a) = a) /\
+   (!r.
+     TRP
+     (\v tl.
+       (v = INL one) /\ (LENGTH tl = 0) \/
+       (?a. v = INR a) /\ (LENGTH tl = SUC 0))
+     r =
+     (REP_string(ABS_string r) = r))
+\ENDTHEOREM
+\THEOREM string\_TY\_DEF string
+|- ?rep.
+    TYPE_DEFINITION
+    (TRP
+     (\v tl.
+       (v = INL one) /\ (LENGTH tl = 0) \/
+       (?a. v = INR a) /\ (LENGTH tl = SUC 0)))
+    rep
+\ENDTHEOREM
+\THEOREM ``\_DEF string
+|- `` = ABS_string(Node(INL one)[]))
+\ENDTHEOREM
+\section{Theorems}
+\THEOREM ASCII\_11 ascii
+|- !b0 b1 b2 b3 b4 b5 b6 b7 b0' b1' b2' b3' b4' b5' b6' b7'.
+    (ASCII b0 b1 b2 b3 b4 b5 b6 b7 =
+     ASCII b0' b1' b2' b3' b4' b5' b6' b7') =
+    (b0 = b0') /\
+    (b1 = b1') /\
+    (b2 = b2') /\
+    (b3 = b3') /\
+    (b4 = b4') /\
+    (b5 = b5') /\
+    (b6 = b6') /\
+    (b7 = b7')
+\ENDTHEOREM
+\THEOREM ascii\_Axiom ascii
+|- !f.
+    ?! fn.
+     !b0 b1 b2 b3 b4 b5 b6 b7.
+      fn(ASCII b0 b1 b2 b3 b4 b5 b6 b7) = f b0 b1 b2 b3 b4 b5 b6 b7
+\ENDTHEOREM
+\THEOREM ascii\_CASES ascii
+|- !a. ?b0 b1 b2 b3 b4 b5 b6 b7. a = ASCII b0 b1 b2 b3 b4 b5 b6 b7
+\ENDTHEOREM
+\THEOREM ascii\_Induct ascii
+|- !P.
+    (!b0 b1 b2 b3 b4 b5 b6 b7. P(ASCII b0 b1 b2 b3 b4 b5 b6 b7)) ==>
+    (!a. P a)
+\ENDTHEOREM
+\THEOREM NOT\_EMPTY\_STRING string
+|- !a s. ~(STRING a s = ``)
+\ENDTHEOREM
+\THEOREM NOT\_STRING\_EMPTY string
+|- !a s. ~(`` = STRING a s)
+\ENDTHEOREM
+\THEOREM STRING\_11 string
+|- !a s a' s'. (STRING a s = STRING a' s') = (a = a') /\ (s = s')
+\ENDTHEOREM
+\THEOREM string\_Axiom string
+|- !e f. ?! fn. (fn `` = e) /\ (!a s. fn(STRING a s) = f(fn s)a s)
+\ENDTHEOREM
+\THEOREM string\_CASES string
+|- !s. (s = ``) \/ (?s' a. s = STRING a s')
+\ENDTHEOREM
+\THEOREM string\_Induct string
+|- !P. P `` /\ (!s. P s ==> (!a. P(STRING a s))) ==> (!s. P s)
+\ENDTHEOREM
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

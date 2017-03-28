@@ -1,0 +1,978 @@
+head	1.2;
+access;
+symbols;
+locks; strict;
+comment	@# @;
+
+
+1.2
+date	96.01.04.14.15.23;	author drs1004;	state dead;
+branches;
+next	1.1;
+
+1.1
+date	95.12.18.11.40.00;	author drs1004;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.2
+log
+@Added simplifier components, added drule files, added MK_ABS_CONV, better error messages
+@
+text
+@(* ===================================================================== 
+ * FILE          : traverse.sml 
+ * DESCRIPTION   : A programmable term traversal engine for hol90
+ *                                                                       
+ * AUTHOR        : Donald Syme
+ *                 Based loosely on original HOL rewriting by 
+ *                 Larry Paulson et al.
+ * ===================================================================== *)
+
+
+(* =====================================================================
+ * The Traversal/Reduction Engine
+ * =====================================================================*)
+
+signature Traverse_sig =
+sig
+
+   (* ---------------------------------------------------------------------
+    * relations
+    *
+    * Nb. Relations must be constants.  This restriction may be lifted
+    * in the future.
+    *
+    * Once things are set up, the user of this module generally
+    * specifies a relation as a term, e.g. (--`$=`--).  Since
+    * relations are just constants, underneath we just use strings to
+    * key relations.
+    * ---------------------------------------------------------------------*)
+
+   datatype relation = RELATION of {
+      relname : string,
+      TRANS : Thm.thm -> Thm.thm -> Thm.thm,
+      REFL : Term.term -> Thm.thm
+   };
+
+   val mk_relation : {TRANS_THM : Thm.thm, 
+                      REFL_THM : Thm.thm} -> relation;
+
+   (* ---------------------------------------------------------------------
+    * type context
+    *
+    * ---------------------------------------------------------------------*)
+
+
+  datatype context = 
+          THMNET of Thm.thm BvarNet.net | 
+          CONVNET of ((Term.term -> Thm.thm) -> Abbrev.conv) BvarNet.net | 
+          THMLIST of Thm.thm list
+
+   (* ---------------------------------------------------------------------
+    * type travset
+    *
+    * Travsets specify term traversal strategies.  At each stage
+    * during traversal we are trying to find a term that the current
+    * term is related to by the current relation.  In normal equality
+    * reasoning (rewriting) the relation is (--`$=`--).  
+    *
+    * Traversal is achieved by means of congruence procedures.
+    * A congruence procedure has ML type
+    *       {solver, depther} -> conv
+    * where "conv" here is interpreted in the wider sense that the
+    * function will return a theorem showing REL(t1,t2) for the
+    * relation over which the congruence procedure acts.
+    *
+    * Congruence procedures are typically simple layers on top
+    * of a congruence theorem (though they may also implement an
+    * infinite class of congurence theorems).  For example,
+    *    !f x. (x = x') ==> (f = f') --> (f x = f' x')
+    * is a very simple congruence theorem for constructs of
+    * the form (--`f x`--) under the (--`$=`--) relation.
+    * (Nb. This congruence procedure is actually implemented
+    * by a special procedure for efficiency reasons).
+    *
+    * Congruence procedures are typically created by using
+    * the function CONGRULE.
+    *   
+    * Congruence rules may have side conditions which should be solved
+    * by the solver provided to the congruence procedure.  If they
+    * are not solved they can be added as assumptions to the theorem
+    * returned, and will need to be discharged by the user after
+    * traversal.
+    *
+    * The default solver just assumes the side conditions.
+    * A more optimistic solver could traverses the term 
+    * under equality (--`$=`--) or (--`<==`--)
+    * seeking to reduce the side condition to (--`T`--).  If it fails
+    * to do this it could then assume the side condition.
+    * ---------------------------------------------------------------------*)
+
+  type travset
+
+   (* ---------------------------------------------------------------------
+    * Reducers
+    *   These are the things that get applied at appropriate points in
+    * the traversal.  Each reducer collects its own context (of one
+    * of the forms described above - Nb. if another form of context
+    * storage is needed it may be possible to add it in future versions).
+    *
+    * The "apply" routine is the reducer itself.  The arguments passed by
+    * the traversal engine to the reduce routine are:
+    *    solver: 
+    *      A continuation function, to be used if the reducer needs to
+    *      solve some side conditions and want to continue traversing
+    *      in order to do so.  The continuation invokes traversal
+    *      under equality, then calls EQT_ELIM.
+    *
+    *      If it proves useful, in future versions this continuation
+    *      may be used to invoke traversal under any relation.  At
+    *      the moment the continuation is primarily designed to 
+    *      be used to solve side conditions in context.
+    *
+    *      Note that this function is *not* the same as 
+    *      the congruence side condition solver.
+    *
+    *    context:
+    *      The reducer's current view of the context, as 
+    *      collected by its "addcontext" function.
+    *
+    * The "addcontext" routine is invoked every time more context is added
+    * to the current environment by virtue of congruence routines.
+    * ---------------------------------------------------------------------*)
+    
+  type reducer;
+  val mk_reducer : {
+         name : string,
+         relation : Term.term,
+         initial: context,
+         addcontext : context * Thm.thm list -> context,
+         apply: {solver:Term.term -> Thm.thm, context: context} -> Abbrev.conv
+       } -> reducer;
+
+   (* ---------------------------------------------------------------------
+    * Basic operations on travsets
+    * 
+    * ---------------------------------------------------------------------*)
+    
+  val empty_ts: travset 
+  val merge_ts: travset -> travset -> travset
+ 
+  val addrelation: relation -> travset -> travset;
+
+  val addcongproc: {
+         name : string,
+         relation : Term.term,
+         proc : Congprocs.congproc
+       } -> travset -> travset
+  val addweakenproc: {
+         name : string,
+         relation : Term.term,
+         proc : Congprocs.congproc
+       } -> travset -> travset
+(*  val addopenproc: {
+         name : string,
+         relation : Term.term,
+         proc : Congprocs.openproc
+       } -> travset -> travset *)
+  val addcongrule: Thm.thm -> travset -> travset
+  val addweakenrule: Thm.thm -> travset -> travset
+  val addrewriter: reducer -> travset -> travset
+  val adddproc: reducer -> travset -> travset
+
+   (* ---------------------------------------------------------------------
+    * TRAVERSE : travset -> thm list -> conv
+    * 
+    * Implements a procedure which tries to prove a term is related 
+    * to a (simpler) term by the relation given in the travset.
+    * This is done by traversing the term, applying the
+    * procedures specified in the travset at certain subterms.  
+    * The traversal strategy is similar to TOP_DEPTH_CONV.
+    *
+    * The traversal has to be justified by congruence rules.
+    * These are also in the travset.  See "Congprocs" for a more
+    * detailed description of congruence rules.
+    *
+    * In the case of rewriting and simplification, the relation used is  
+    * equality (--`$=`--).  However traversal can also be used with
+    * congruences and preorders.
+    *
+    * The behavious of TRAVERSE depends almost totally on what 
+    * is contained in the input travset.
+    *
+    * The theorem list is a set of theorems to add initially as context 
+    * to the traversal.
+    *
+    * FAILURE CONDITIONS
+    *
+    * TRAVERSE never fails, though it may diverge.  Beware of
+    * divergence when trying to solve conditions to congruence rules.
+    * ---------------------------------------------------------------------*)
+
+   type trav_context;
+   val initial_context : travset * Term.term -> trav_context
+   val add_context : travset -> (trav_context * Thm.thm list) -> trav_context; 
+   val change_relation : travset -> (trav_context * Term.term) -> trav_context; 
+   val TRAVERSE_IN_CONTEXT : travset -> trav_context -> Abbrev.conv
+   val TRAVERSE : travset * Term.term -> Thm.thm list -> Abbrev.conv
+
+   (* ---------------------------------------------------------------------
+    * TRAVERSE_TAC
+    *    - Uses TRAVERSE to reduce part of the goal under the given relation,
+    *      producing a theorem |- A REL A'.
+    *    - When instantiated with A and A', and the A REL A' assumption is
+    *      discharged, the provided theorem 
+    *      should be suitable for a MATCH_MP_TAC on the current goal,
+    *      thus justifying the reduction performed.
+    *    - With ASM_TRAVERSE_TAC, Assumptions are added as context.
+    *    - With FULL_TRAVERSE_TAC, assumptions are 
+    *      traversed under equality before using ASM_TRAVERSE_TAC.
+    *
+    * The part of the goal to reduce is specified by the given term finder.
+    * 
+    * EXAMPLES OF JUSTIFYING THEOREMS
+    *  1. Reduction on the left.
+    *
+    *  Any relation suitable for traversal (i.e. any preorder)
+    *  can give rise to the following
+    *  theorem justifying reduction on the left.  In this situation,
+    *  think of the goal as (--`A REL B`--), and we want to reduce
+    *  A by traversal.  This gives rise to a new goal (--`A' REL B`--),
+    *  which, if solved, implies the first goal.  The justifying
+    *  theorem is thus:
+    *    |- A REL A' ==> A' REL B ==> A REL B
+    *
+    *  2. Reduction on the right.
+    * 
+    *  Any congruence can give rise to the following
+    *  theorem justifying reduction on the right:
+    *    |- (A == A') ==> (B == A') ==> (B == A)
+    *
+    *  3. Reduction under equality (simplification).
+    *
+    *  Standard HOL equality can be used to justfy reduction of
+    *  the entire goal in a similar fashion to CONV_TAC:
+    *    |- (A = A') ==> A' ==> A 
+    *
+    * NOTE
+    *   A better way of implementing this may be to simply provide an initial
+    * congruence rule for the (--`<==`--) relation (if it were defined in
+    * core HOL).
+    *
+    * At the moment FULL_TRAVERSE_TAC only supports traversal of the
+    * assumptions under the equality relation.  Thus this aspect
+    * of the traversal is not programmable in the way that the traversal
+    * of the goal is. In a future release it may be.  For example,
+    * traversing the assumptions under (--`==>`--) would give a limited
+    * form of ground-case resolution.
+    * ---------------------------------------------------------------------*)
+
+   val TRAVERSE_TAC : 
+           {rule:Thm.thm,
+            finder: Term.term -> Term.term,
+            travset: travset,
+            relation: Term.term} -> Abbrev.tactic; 
+
+   val ASM_TRAVERSE_TAC : 
+           {rule:Thm.thm,
+            finder: Term.term -> Term.term,
+            travset: travset,
+            relation: Term.term} -> Abbrev.tactic; 
+
+   val FULL_TRAVERSE_TAC : 
+           {rule:Thm.thm,
+            finder: Term.term -> Term.term,
+            travset: travset,
+            relation: Term.term} -> Abbrev.tactic; 
+
+   (* ---------------------------------------------------------------------
+    * TRAVERSE_RULE
+    *    - Uses TRAVERSE to reduce part of the theorem under 
+    *      the given relation, producing a theorem |- A REL A'.
+    *    - When MP'd with |- A REL A', the provided theorem 
+    *      should be suitable for a MATCH_MP with the initial theorem,
+    *      completing the reduction performed.
+    *    - With ASM_TRAVERSE_RULE, assumptions are added as context.
+    *    - With FULL_TRAVERSE_RULE, assumptions are 
+    *      traversed under equality before using ASM_TRAVERSE_RULE.
+    *
+    * The part of the goal to reduce is specified by the given term finder.
+    * 
+    * EXAMPLES OF JUSTIFYING THEOREMS
+    *  1. Reduction on the right of a relational theorem
+    *
+    *  Any relation suitable for traversal (i.e. any preorder)
+    *  can give rise to the following
+    *  theorem justifying reduction on the left.  In this situation,
+    *  think of the goal as (--`A REL B`--), and we want to reduce
+    *  A by traversal.  This gives rise to a new goal (--`A' REL B`--),
+    *  which, if solved, implies the first goal.  The justifying
+    *  theorem is thus:
+    *    |- B REL B' ==> A REL B ==> A REL B'
+    *
+    *  2. Reduction on the left of a relational theorem
+    * 
+    *  Any congruence can give rise to the following
+    *  theorem justifying reduction on the right:
+    *    |- (A == A') ==> (A == B) ==> (A' == B)
+    *
+    *  3. Reduction under equality (simplification).
+    *
+    *  Standard HOL equality can be used to justfy reduction
+    *  in a similar fashion to CONV_RULE:
+    *    |- (A = A') ==> A ==> A'
+    *
+    * NOTE
+    *   A better way of implementing this may be to simply provide an initial
+    * congruence rule for the (--`==>`--) relation (if it were defined in
+    * core HOL).
+    *
+    * In the future the relation used to traverse the assumptions in
+    * FULL_TRAVERSE_RULE may be programmable
+    * in the same way that TRAVERSE_RULE is programmable to act
+    * on different kinds of theorems.
+    * ---------------------------------------------------------------------*)
+
+   val TRAVERSE_RULE : 
+          {rule:Thm.thm,
+           finder: Term.term -> Term.term,
+           travset: travset,
+           relation: Term.term} -> Thm.thm -> Thm.thm; 
+
+   val ASM_TRAVERSE_RULE : 
+          {rule:Thm.thm,
+           finder: Term.term -> Term.term,
+           travset: travset,
+           relation: Term.term} -> Thm.thm -> Thm.thm; 
+
+   val FULL_TRAVERSE_RULE : 
+          {rule:Thm.thm,
+           finder: Term.term -> Term.term,
+           travset: travset,
+           relation: Term.term} -> Thm.thm -> Thm.thm; 
+
+   (* ---------------------------------------------------------------------
+    * Travset pretty printing
+    * ---------------------------------------------------------------------*)
+
+   val pp_travset : Portable.PrettyPrint.ppstream -> travset -> unit 
+end;
+
+
+structure Traverse : Traverse_sig = 
+struct
+
+   open Core;
+     infix ORELSEQC THENQC;
+   open Psyntax;
+   open Trace;
+   open Congprocs;
+
+val WRAP = Exception.WRAP_ERR "Traverse";
+   val ERR = Exception.ERR "Traverse";
+
+   (* ---------------------------------------------------------------------
+    * relations
+    * ---------------------------------------------------------------------*)
+
+val equality = #const (const_decl "=");
+
+datatype relation = RELATION of {
+      relname : string,
+      TRANS : thm -> thm -> thm,
+      REFL : term -> thm
+};
+
+fun find_relation rel  =
+   let val relname = fst (dest_const rel)
+       fun f ((h as RELATION {relname=relname',...})::t) = 
+             if relname' = relname then h else f t
+         | f [] = ERR("find_relation","relation not found")
+   in f
+   end;
+
+fun ARB_TRANS thm c1 c2 = MATCH_MP thm (CONJ c1 c2);
+
+fun mk_relation {TRANS_THM,REFL_THM} = 
+   RELATION {
+       relname=fst(dest_const(rator(rator(snd(dest_forall(concl REFL_THM)))))),
+       TRANS=ARB_TRANS TRANS_THM, 
+       REFL=fn x => SPEC x REFL_THM
+   };
+
+   (* ---------------------------------------------------------------------
+    * travsets and basic operations on them
+    *
+    * One termnet is stored for each priority level.  Termnets contains
+    * conversions and nothing else.
+    *
+    * CONTEXTS
+    *   CONVNET contexts are used by the simplifier.  Each item stored
+    * is a conversion parameterized by a side-condition solver.
+    *
+    *  THMLIST contexts are used by most other strategies.
+    * ---------------------------------------------------------------------*)
+
+  datatype context = 
+                THMNET of thm BvarNet.net | 
+                CONVNET of ( (term -> thm) -> conv) BvarNet.net | 
+                THMLIST of thm list
+  datatype trav_context = 
+       TRAV_CONTEXT of {
+               relation : relation,
+               contexts1 : context list,
+               contexts2 : context list,
+               freevars : term list
+       };
+
+  type reducer = {
+         name : string,
+         relation : term,
+         initial: context,
+         addcontext : context * Thm.thm list -> context,
+         apply: {solver:term -> thm, context: context} -> Abbrev.conv
+       };
+   val mk_reducer = I;
+   type congproc' = {
+         name : string,
+         relation : Term.term,
+         proc : Congprocs.congproc
+       };
+   datatype travset = TS of {
+       relations : relation list,
+       solver : travset -> trav_context -> term -> thm,
+       congprocs : congproc' list,
+       weakenprocs : congproc' list,
+       rewriters : reducer list, 
+       dprocs : reducer list
+    };
+
+
+   (* ---------------------------------------------------------------------
+    * dest
+    * ---------------------------------------------------------------------*)
+
+   fun dest(TS x)  = x;
+   
+   (* ---------------------------------------------------------------------
+    * empty
+    * ---------------------------------------------------------------------*)
+
+   val empty_ts = TS{
+        solver=K (K ASSUME),
+        rewriters= [],
+        dprocs=[],
+        congprocs=[],
+        weakenprocs=[],
+        relations=[]
+     };
+   
+   (* ---------------------------------------------------------------------
+    * addcongproc
+    * ---------------------------------------------------------------------*)
+
+   fun addcongproc newproc (TS tsdata) = TS {
+	   relations = #relations tsdata,
+	   solver = #solver tsdata,
+           rewriters = #rewriters tsdata,
+           dprocs = #dprocs tsdata,
+           congprocs=newproc:: #congprocs tsdata,
+	   weakenprocs = #weakenprocs tsdata
+       };
+    
+   (* ---------------------------------------------------------------------
+    * addweakenproc
+    * ---------------------------------------------------------------------*)
+
+   fun addweakenproc newproc (TS tsdata) = TS {
+	   relations = #relations tsdata,
+	   solver = #solver tsdata,
+           rewriters = #rewriters tsdata,
+           dprocs = #dprocs tsdata,
+           congprocs = #congprocs tsdata,
+	   weakenprocs=newproc:: #weakenprocs tsdata
+       };
+    
+   (* ---------------------------------------------------------------------
+    * addrelation
+    * ---------------------------------------------------------------------*)
+
+   fun addrelation newrelation (TS tsdata) = TS {
+	   relations=newrelation:: #relations tsdata,
+	   solver = #solver tsdata,
+           rewriters = #rewriters tsdata,
+           dprocs = #dprocs tsdata,
+           congprocs = #congprocs tsdata,
+	   weakenprocs = #weakenprocs tsdata
+       };
+    
+
+   (* ---------------------------------------------------------------------
+    * addrewriter
+    * ---------------------------------------------------------------------*)
+
+   fun wrap_reducer level (x as {name,apply,initial,addcontext,relation}:reducer) =
+      let val text1 = "Trying "^name^" on"
+          fun wrapped args tm =
+            (trace_tm(4,text1,tm);
+             trace_production(level,tm,name,apply args tm))
+      in {name=name,apply=wrapped,initial=initial,
+          addcontext=addcontext,relation=relation}:reducer
+      end
+      handle e => WRAP("wrap_reducer",e);
+           
+   fun addrewriter (newproc:reducer) (TS tsdata) = TS {
+	   relations = #relations tsdata,
+	   solver = #solver tsdata,
+           rewriters=(wrap_reducer 2 newproc):: #rewriters tsdata,
+           dprocs = #dprocs tsdata,
+           congprocs = #congprocs tsdata,
+	   weakenprocs = #weakenprocs tsdata
+       }
+   handle e => WRAP("addrewriter",e);
+    
+   (* ---------------------------------------------------------------------
+    * adddproc
+    * ---------------------------------------------------------------------*)
+
+   fun adddproc newproc (TS tsdata) = TS {
+	   relations = #relations tsdata,
+	   solver = #solver tsdata,
+           rewriters = #rewriters tsdata,
+           dprocs= wrap_reducer 1 newproc:: #dprocs tsdata,
+           congprocs = #congprocs tsdata,
+	   weakenprocs = #weakenprocs tsdata
+       }
+   handle e => WRAP("adddproc",e);
+
+   (* ---------------------------------------------------------------------
+    * addcongrule  (simpler interface to addcongproc)
+    * ---------------------------------------------------------------------*)
+
+fun addcongrule thm (ts as TS tsdata) =
+   let val relation = Congprocs.rel_of_congrule thm
+       val RELATION{REFL,...} = find_relation relation (#relations tsdata)
+       val name = thm_to_string (SPEC_ALL thm)
+   in ts |> addcongproc {name=name,
+                         relation=relation,
+                         proc=CONGPROC REFL thm}
+   end
+   handle e => WRAP("addcongrule",e);
+
+   (* ---------------------------------------------------------------------
+    * addweakenrule  (simpler interface to addweakenproc)
+    * ---------------------------------------------------------------------*)
+
+fun addweakenrule thm (ts as TS tsdata) =
+   let val relation = Congprocs.rel_of_congrule thm
+       val RELATION{REFL,...} = find_relation relation (#relations tsdata)
+       val name = thm_to_string (SPEC_ALL thm)
+   in ts |> addweakenproc {name=name,
+                           relation=relation,
+                           proc=CONGPROC REFL thm}
+   end
+   handle e => WRAP("addweakenrule",e);
+
+   (* ---------------------------------------------------------------------
+    * merge
+    * 
+    * ---------------------------------------------------------------------*)
+
+fun relation_eq (RELATION rel1, RELATION rel2) =
+        (#relname rel1 = #relname rel2);
+fun reducer_eq (red1:reducer,red2:reducer) = (#name red1 = #name red2);
+fun congproc_eq (cp1:congproc',cp2:congproc') = (#name cp1 = #name cp2);
+fun weakenproc_eq (cp1:congproc',cp2:congproc') = (#name cp1 = #name cp2);
+
+fun merge_ts (TS ts2) (TS ts1) =
+   TS {
+     relations=op_union (curry relation_eq) (#relations ts1) (#relations ts2),
+     rewriters=op_union (curry reducer_eq) (#rewriters ts1) (#rewriters ts2),
+     dprocs=op_union (curry reducer_eq) (#dprocs ts1) (#dprocs ts2),
+     congprocs=op_union (curry congproc_eq) (#congprocs ts1) (#congprocs ts2),
+     weakenprocs=op_union (curry weakenproc_eq) (#weakenprocs ts1) (#weakenprocs ts2),
+     solver = #solver ts1
+   };
+
+(* ---------------------------------------------------------------------
+ * add_context
+ *
+ * ---------------------------------------------------------------------*)
+
+fun add_context (TS{rewriters,dprocs,relations,...}) =
+  let val rewrite_collectors' = map #addcontext rewriters
+      val dproc_collectors' = map #addcontext dprocs
+  in fn (context as 
+              TRAV_CONTEXT {contexts1,contexts2,freevars,relation}, thms) =>
+       if (null thms)
+       then context
+       else 
+       let 
+           val more_freevars = free_varsl (flatten (map hyp thms))
+           val _ = map (fn thm => trace_thm(5,"more_context",thm)) thms
+           fun mk_more_privcontext maker privcontext = 
+                 maker (privcontext,thms)
+           val newcontexts1 = 
+             if (null thms) 
+             then contexts1
+             else map2 mk_more_privcontext rewrite_collectors' contexts1
+           val newcontexts2 = 
+             if (null thms) 
+             then contexts2
+             else map2 mk_more_privcontext dproc_collectors' contexts2
+           val newfreevars = 
+             if (null more_freevars) 
+             then freevars
+             else more_freevars@@freevars
+       in TRAV_CONTEXT{contexts1=newcontexts1,
+                       contexts2=newcontexts2,
+                       freevars=newfreevars,
+                       relation=relation}
+       end
+      
+  end;
+
+
+(* ---------------------------------------------------------------------
+ * change_relation
+ *
+ * ---------------------------------------------------------------------*)
+
+fun change_relation 
+       (TS{rewriters,dprocs,relations,...})
+       (context as 
+              TRAV_CONTEXT {contexts1,contexts2,freevars,  
+                            relation as RELATION{relname=oldrelname,...}},
+         rel) =
+      if (fst (dest_const rel) = oldrelname)
+      then context
+      else TRAV_CONTEXT{contexts1=contexts1,
+                        contexts2=contexts2,
+                        freevars=freevars,
+                        relation=find_relation rel relations};
+
+(* ---------------------------------------------------------------------
+ * Quick, General conversion routines.
+ *
+ * ---------------------------------------------------------------------*)
+
+fun rhs x = rand x;
+fun lhs x = rand (rator x);
+
+fun GEN_QCONV (RELATION{REFL,...}) conv tm = conv tm
+                   handle UNCHANGED => REFL tm;
+
+fun GEN_THENQC (RELATION{TRANS,...}) (conv1,conv2) tm =
+  let val th1 = conv1 tm
+  in  
+     TRANS th1 (conv2 (rhs (concl th1)))
+     handle UNCHANGED => th1
+  end
+  handle UNCHANGED => conv2 tm
+
+fun GEN_REPEATQC relation =
+   let val op THENQC = GEN_THENQC relation
+       fun REPEATQC conv tm =
+          ((conv THENQC (REPEATQC conv)) ORELSEQC ALL_QCONV) tm
+   in REPEATQC
+   end;
+
+fun mapfilter2 f (h1::t1) (h2::t2) =
+   (f h1 h2::mapfilter2 f t1 t2 handle _ => mapfilter2 f t1 t2)
+  | mapfilter2 f _ _ = [];
+
+fun FIRST_QCONV [] tm = ERR("FIRST_QCONV","no conversion applied")
+ | FIRST_QCONV (c::rst) tm = 
+      ((c tm) handle UNCHANGED => (raise UNCHANGED) | _ => FIRST_QCONV rst tm
+);
+
+(* ---------------------------------------------------------------------
+ * TRAVERSE_IN_CONTEXT
+ *
+ * NOTES
+ *   - Rewriters/Dprocs should always fail if unchanged (but not with
+ *     UNCHANGED).
+ *   - Congruence rule procs should only fail if they do not match.
+ *     They can fail with UNCHANGED if nothing changes.
+ *   - The depther should only fail with UNCHANGED.
+ * ---------------------------------------------------------------------*)
+
+
+
+fun TRAVERSE_IN_CONTEXT
+        (ts as TS{relations,rewriters,congprocs,weakenprocs,dprocs,solver,...}) 
+         =
+let 
+    val add_context' = add_context ts
+    val change_relation' = change_relation ts
+    val solver' = solver ts
+
+    fun traverse_in_context (context as TRAV_CONTEXT {contexts1,contexts2,
+                  freevars,relation as (RELATION {relname,...})}) =
+      let 
+       fun ctxt_solver tm = 
+              EQT_ELIM (traverse_in_context 
+                            (change_relation' (context,equality)) tm)
+       fun apply_reducer (reducer:reducer) context =
+              if (#Name (Term.dest_const (#relation reducer)) = relname) 
+              then (#apply reducer) {solver=ctxt_solver,context=context}
+              else ERR("not applicable","");
+       val high_priority = 
+              FIRST_QCONV (mapfilter2 apply_reducer rewriters contexts1)
+       val low_priority = 
+              FIRST_QCONV (mapfilter2 apply_reducer dprocs contexts2)
+       fun depther (thms,relation) = 
+           traverse_in_context (change_relation' 
+               (add_context' (context,thms), relation));
+
+       val congproc_args = {
+             solver=solver' context,
+             depther=depther,
+             freevars=freevars};
+       fun apply_congproc (congproc:congproc') =
+              if (#Name (Term.dest_const (#relation congproc)) = relname) 
+              then ((#proc congproc) congproc_args) 
+              else ERR("not applicable","");
+       val descend =
+           FIRST_QCONV (mapfilter apply_congproc congprocs);
+       val weaken =
+           FIRST_QCONV (mapfilter apply_congproc weakenprocs);
+       val op THENQC = GEN_THENQC relation
+       val REPEATQC = GEN_REPEATQC relation
+
+       fun loop tm =
+        let val conv =
+                REPEATQC high_priority THENQC
+               ((CHANGED_QCONV descend THENQC
+                   TRY_QCONV ((high_priority THENQC loop) ORELSEQC
+                              (low_priority THENQC loop))) 
+                  ORELSEQC
+                (CHANGED_QCONV weaken THENQC loop)
+                  ORELSEQC
+                (TRY_QCONV (low_priority THENQC loop)))
+        in (trace_tm_2string (2,"Simplifying",tm," under ",relname); conv tm)
+        end;
+       in loop
+       end;
+in traverse_in_context
+
+end;
+
+(* ---------------------------------------------------------------------
+ * initial_context
+ *
+ * ---------------------------------------------------------------------*)
+
+fun initial_context (ts as TS{rewriters,dprocs,relations,...}, rel) = 
+   TRAV_CONTEXT{contexts1=map #initial rewriters,
+                contexts2=map #initial dprocs,
+                freevars=[],
+                relation = find_relation rel relations};
+
+(* ---------------------------------------------------------------------
+ * TRAVERSE
+ *
+ * ---------------------------------------------------------------------*)
+
+fun TRAVERSE (travset,rel) thms = 
+   let val add_context' = add_context travset
+       val context = initial_context (travset,rel)
+       val context' = add_context' (context,thms)
+   in TRAVERSE_IN_CONTEXT travset context'
+   end;
+
+
+(* ---------------------------------------------------------------------
+ * TRAVERSE_TAC
+ *
+ * ---------------------------------------------------------------------*)
+
+fun TRAVERSE_TAC {rule,finder,travset,relation} (asms,gl) =
+   let val orig = finder gl
+       val new_thm = TRAVERSE (travset,relation) [] orig
+       val rule' = MATCH_MP rule new_thm
+   in MATCH_MP_TAC rule' (asms,gl)
+   end
+   handle UNCHANGED => ALL_TAC (asms,gl);
+
+(* ---------------------------------------------------------------------
+ * ASM_TRAVERSE_TAC
+ *
+ * ---------------------------------------------------------------------*)
+
+fun ASM_TRAVERSE_TAC {rule,finder,travset,relation} (asms,gl) =
+   let val orig = finder gl
+       val new_thm = TRAVERSE (travset,relation) (map ASSUME asms) orig
+       val rule' = MATCH_MP rule new_thm
+   in MATCH_MP_TAC rule' (asms,gl)
+   end
+   handle UNCHANGED => ALL_TAC (asms,gl);
+
+(* ---------------------------------------------------------------------
+ * FULL_TRAVERSE_TAC
+ *   Traverse the assumptions under equality before moving onto
+ * the goal (where we just use ASM_TRAVERSE_TAC).
+ *
+ * In the future the relation used to traverse the assumptions (and
+ * the location in each assumption to traverse) may be programmable
+ * in the same way that TRAVERSE_TAC is for the goal.
+ * ---------------------------------------------------------------------*)
+
+
+fun chopn 0 l       = ([],l)
+  | chopn n (x::xs) = if n < 0 then 
+                        ERR("chopn", "negative argument")
+                      else
+                        let val (fhalf, shalf) = chopn (n-1) xs in
+                          (x::fhalf, shalf)
+                        end
+  | chopn _ []       = ERR ("chopn", "Trying to chop an empty list")
+fun drop_old_TAC n (asms,g) =
+  let val l = length asms 
+  in
+    if (n > l) then
+      ERR ("drop_old_TAC", "Bad cut off number")
+    else
+       POP_ASSUM_LIST (fn asms =>
+         MAP_EVERY ASSUME_TAC (rev (fst (chopn (l-n) asms)))) 
+       (asms,g) 
+  end
+
+val STRIP_ASSUME_TAC' = 
+  (* differs only in that it doesn't call DISCARD_TAC *)
+  (REPEAT_TCL STRIP_THM_THEN) 
+  (fn th => FIRST [CONTR_TAC th, ACCEPT_TAC th, ASSUME_TAC th]);
+
+fun FULL_TRAVERSE_TAC (args as {rule,finder,travset,relation}) (asms,gl) =
+  let val l = length asms
+      val add_context' = add_context travset
+      fun simp_asm asm (context,asms) = 
+        let val res = CONV_RULE (TRAVERSE_IN_CONTEXT travset context) asm
+                      handle UNCHANGED => asm
+        in (add_context'(context,[res]), res::asms)
+        end
+      val init_context = initial_context (travset,equality)
+  in
+    ASSUM_LIST (fn asms =>
+       let val (_,new_asms) = rev_itlist simp_asm asms (init_context,[])
+       in MAP_EVERY STRIP_ASSUME_TAC' new_asms THEN 
+          drop_old_TAC l THEN 
+          ASM_TRAVERSE_TAC args
+       end) (asms,gl)
+     end;
+
+(* ---------------------------------------------------------------------
+ * TRAVERSE_RULE
+ *
+ * ---------------------------------------------------------------------*)
+
+fun TRAVERSE_RULE {rule,finder,travset,relation} thm =
+   let val orig = finder (concl thm)
+       val new_thm = TRAVERSE (travset,relation) [] orig
+       val rule' = MATCH_MP rule new_thm
+   in MATCH_MP rule' thm
+   end
+   handle UNCHANGED => thm;
+
+(* ---------------------------------------------------------------------
+ * ASM_TRAVERSE_RULE
+ *
+ * ---------------------------------------------------------------------*)
+
+fun ASM_TRAVERSE_RULE {rule,finder,travset,relation} thm =
+   let val orig = finder (concl thm)
+       val new_thm = TRAVERSE (travset,relation) (map ASSUME (hyp thm)) orig
+       val rule' = MATCH_MP rule new_thm
+   in MATCH_MP rule' thm
+   end
+   handle UNCHANGED => thm;
+
+(* ---------------------------------------------------------------------
+ * FULL_TRAVERSE_RULE
+ *   Traverse the assumptions under equality before moving onto
+ * the goal (where we just use ASM_TRAVERSE_RULE).
+ *
+ * In the future the relation used to traverse the assumptions (and
+ * the location in each assumption to traverse) may be programmable
+ * in the same way that TRAVERSE_RULE is for the goal.
+ * ---------------------------------------------------------------------*)
+
+fun FULL_TRAVERSE_RULE {rule,finder,travset,relation} thm = 
+    ERR("FULL_TRAVERSE_RULE","not yet implemented");
+
+(* ---------------------------------------------------------------------
+ * Pretty printer for Travsets
+ * ---------------------------------------------------------------------*)
+   
+open PP;
+
+fun pp_travset ppstrm (TS ts) =
+    let val {add_string,add_break,begin_block,end_block,add_newline,...} = 
+               with_ppstream ppstrm
+        val pp_thm = pp_thm ppstrm
+        val pp_term = pp_term ppstrm
+        val how_many_rewriters = length (#rewriters ts)
+        val how_many_dprocs = length (#dprocs ts)
+        val how_many_congprocs = length (#congprocs ts)
+        val how_many_relations = length (#relations ts)
+    in begin_block PP.CONSISTENT 0;
+       add_string("Relations: ");
+       if (how_many_relations = 0)
+       then (add_string "<none>")
+       else ( begin_block PP.INCONSISTENT 0;
+              pr_list (fn RELATION{relname,...} => add_string (quote relname))
+                      (fn () => add_string",")
+                      (fn () => add_break(1,0)) (#relations ts);
+              end_block());
+       add_newline();
+       add_string("High Priority Reducers: ");
+       if (how_many_rewriters = 0)
+       then (add_string "<none>")
+       else ( begin_block PP.INCONSISTENT 0;
+              pr_list (fn rewriter => add_string (quote (#name rewriter)))
+                      (fn () => add_string",")
+                      (fn () => add_break(1,0)) (#rewriters ts);
+              end_block());
+       add_newline();
+       add_string("Low Priority Reducers: ");
+       if (how_many_dprocs = 0)
+       then (add_string "<none>")
+       else ( begin_block PP.INCONSISTENT 0;
+              pr_list (fn dproc => add_string (quote (#name dproc))) 
+                      (fn () => add_string",")
+                      (fn () => add_break(1,0)) (#dprocs ts);
+              end_block());
+       add_newline();
+       add_string("Congruence Rules, in order:");
+       add_newline();
+       if (how_many_congprocs = 0)
+       then (add_string "<none>")
+       else ( begin_block PP.INCONSISTENT 0;
+              pr_list (fn congproc => add_string (#name congproc)) 
+                      (fn () => add_string",")
+                      (fn () => add_break(1,0)) (#congprocs ts);
+              end_block());
+       add_newline()
+     end;
+
+
+end;
+
+
+
+
+@
+
+
+1.1
+log
+@Preterm and other changes, see 7.changes
+@
+text
+@@

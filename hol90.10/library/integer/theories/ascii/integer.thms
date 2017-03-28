@@ -1,0 +1,586 @@
+thid = (integer, 942751933, 20785)
+axioms = []
+definitions =
+[((mod_div_DEF),
+  [],
+  `((! :(integer -> bool) -> bool) (\(D :integer).
+   ((! :(integer -> bool) -> bool) (\(X :integer). ((==> (~
+   (((= :integer -> integer -> bool) $1) (INT 0)))) ((/\
+   (((= :integer -> integer -> bool) $0) ((plus ((times ((div $0) $1))
+   $1)) ((mod $0) $1)))) ((((COND :bool -> bool -> bool -> bool) (POS
+   $1)) ((/\ (~ (NEG ((mod $0) $1)))) ((below ((mod $0) $1)) $1)))
+   ((/\ (~ (POS ((mod $0) $1)))) ((below $1) ((mod $0) $1))))))))))`),
+ ((abs_DEF),
+  [],
+  `((! :(integer -> bool) -> bool) (\(N :integer).
+   (((= :integer -> integer -> bool) (integer_abs $0))
+   ((((COND :bool -> integer -> integer -> integer) (~ (NEG $0))) $0)
+   (neg $0)))))`),
+ ((BELOW_DEF),
+  [],
+  `((! :(integer -> bool) -> bool) (\(M :integer).
+   ((! :(integer -> bool) -> bool) (\(N :integer).
+   (((= :bool -> bool -> bool) ((below $1) $0)) (POS ((minus $0)
+   $1)))))))`),
+ ((NEG_DEF),
+  [],
+  `((! :(integer -> bool) -> bool) (\(M :integer).
+   (((= :bool -> bool -> bool) (NEG $0)) (POS (neg $0)))))`),
+ ((POS_DEF),
+  [],
+  `((! :(integer -> bool) -> bool) (\(M :integer).
+   (((= :bool -> bool -> bool) (POS $0)) ((? :(num -> bool) -> bool)
+   (\(n :num). (((= :integer -> integer -> bool) $1) (INT (SUC
+   $0))))))))`),
+ ((TIMES_DEF),
+  [],
+  `((! :(integer -> bool) -> bool) (\(M :integer).
+   ((! :(integer -> bool) -> bool) (\(N :integer).
+   (((= :integer -> integer -> bool) ((times $1) $0)) (proj
+   (((, :num -> num -> num # num) ((+ ((* ((FST :num # num -> num)
+   (REP_integer $1))) ((FST :num # num -> num) (REP_integer $0)))) ((*
+   ((SND :num # num -> num) (REP_integer $1)))
+   ((SND :num # num -> num) (REP_integer $0))))) ((+ ((*
+   ((FST :num # num -> num) (REP_integer $1)))
+   ((SND :num # num -> num) (REP_integer $0)))) ((*
+   ((SND :num # num -> num) (REP_integer $1)))
+   ((FST :num # num -> num) (REP_integer $0)))))))))))`),
+ ((MINUS_DEF),
+  [],
+  `((! :(integer -> bool) -> bool) (\(M :integer).
+   ((! :(integer -> bool) -> bool) (\(N :integer).
+   (((= :integer -> integer -> bool) ((minus $1) $0)) ((plus $1) (neg
+   $0)))))))`),
+ ((neg_DEF),
+  [],
+  `(((= :(integer -> integer) -> (integer -> integer) -> bool) neg)
+   ((INV :(integer -> bool) # (integer -> integer -> integer) ->
+          integer -> integer)
+   (((, :(integer -> bool) -> (integer -> integer -> integer) ->
+         (integer -> bool) # (integer -> integer -> integer))
+   (\(N :integer). T)) plus)))`),
+ ((PLUS_DEF),
+  [],
+  `((! :(integer -> bool) -> bool) (\(M :integer).
+   ((! :(integer -> bool) -> bool) (\(N :integer).
+   (((= :integer -> integer -> bool) ((plus $1) $0)) (proj
+   (((, :num -> num -> num # num) ((+ ((FST :num # num -> num)
+   (REP_integer $1))) ((FST :num # num -> num) (REP_integer $0)))) ((+
+   ((SND :num # num -> num) (REP_integer $1)))
+   ((SND :num # num -> num) (REP_integer $0))))))))))`),
+ ((INT_DEF),
+  [],
+  `((! :(num -> bool) -> bool) (\(p :num).
+   (((= :integer -> integer -> bool) (INT $0)) (proj
+   (((, :num -> num -> num # num) $0) 0)))))`),
+ ((PROJ_DEF),
+  [],
+  `((! :(num -> bool) -> bool) (\(p :num). ((! :(num -> bool) -> bool)
+   (\(n :num). (((= :integer -> integer -> bool) (proj
+   (((, :num -> num -> num # num) $1) $0)))
+   ((((COND :bool -> integer -> integer -> integer) ((< $0) $1))
+   ((@ :(integer -> bool) -> integer) (\(N :integer).
+   (((= :num # num -> num # num -> bool) (REP_integer $0))
+   (((, :num -> num -> num # num) ((- $2) $1)) 0)))))
+   ((@ :(integer -> bool) -> integer) (\(N :integer).
+   (((= :num # num -> num # num -> bool) (REP_integer $0))
+   (((, :num -> num -> num # num) 0) ((- $1) $2)))))))))))`),
+ ((integer_ISO_DEF),
+  [],
+  `((/\ ((! :(integer -> bool) -> bool) (\(a :integer).
+   (((= :integer -> integer -> bool) (ABS_integer (REP_integer $0)))
+   $0)))) ((! :(num # num -> bool) -> bool) (\(r :num # num).
+   (((= :bool -> bool -> bool) ((\(X :num # num). ((\/
+   ((? :(num -> bool) -> bool) (\(p :num).
+   (((= :num # num -> num # num -> bool)
+   (((, :num -> num -> num # num) $0) 0)) $1))))
+   ((? :(num -> bool) -> bool) (\(n :num).
+   (((= :num # num -> num # num -> bool)
+   (((, :num -> num -> num # num) 0) $0)) $1))))) $0))
+   (((= :num # num -> num # num -> bool) (REP_integer (ABS_integer
+   $0))) $0)))))`),
+ ((integer_TY_DEF),
+  [],
+  `((? :((integer -> num # num) -> bool) -> bool)
+   (\(rep :integer -> num # num).
+   (((TYPE_DEFINITION :(num # num -> bool) ->
+                       (integer -> num # num) -> bool)
+   (\(X :num # num). ((\/ ((? :(num -> bool) -> bool) (\(p :num).
+   (((= :num # num -> num # num -> bool)
+   (((, :num -> num -> num # num) $0) 0)) $1))))
+   ((? :(num -> bool) -> bool) (\(n :num).
+   (((= :num # num -> num # num -> bool)
+   (((, :num -> num -> num # num) 0) $0)) $1)))))) $0)))`)]
+theorems =
+[((ABS_SQUARE),
+  [],
+  `((! :(integer -> bool) -> bool) (\(N :integer).
+   (((= :integer -> integer -> bool) (integer_abs ((times $0) $0)))
+   ((times $0) $0))))`),
+ ((ABS_TIMES_IS_ABS_TIMES_ABS),
+  [],
+  `((! :(integer -> bool) -> bool) (\(M :integer).
+   ((! :(integer -> bool) -> bool) (\(N :integer).
+   (((= :integer -> integer -> bool) (integer_abs ((times $1) $0)))
+   ((times (integer_abs $1)) (integer_abs $0)))))))`),
+ ((ABS_NEG),
+  [],
+  `((! :(integer -> bool) -> bool) (\(N :integer). ((==> (NEG $0))
+   (((= :integer -> integer -> bool) (integer_abs $0)) (neg $0)))))`),
+ ((ABS_POS),
+  [],
+  `((! :(integer -> bool) -> bool) (\(N :integer). ((==> (POS $0))
+   (((= :integer -> integer -> bool) (integer_abs $0)) $0))))`),
+ ((ABS_ZERO),
+  [],
+  `(((= :integer -> integer -> bool) (integer_abs (INT 0))) (INT
+   0))`),
+ ((ABS_ABS),
+  [],
+  `((! :(integer -> bool) -> bool) (\(N :integer).
+   (((= :integer -> integer -> bool) (integer_abs (integer_abs $0)))
+   (integer_abs $0))))`),
+ ((ABS_NOT_NEG),
+  [],
+  `((! :(integer -> bool) -> bool) (\(N :integer). (~ (NEG
+   (integer_abs $0)))))`),
+ ((DISCRETE),
+  [],
+  `((! :((integer -> bool) -> bool) -> bool)
+   (\(IntSet :integer -> bool). ((==> ((? :(integer -> bool) -> bool)
+   (\(M :integer). ($1 $0)))) ((/\ ((==>
+   ((? :(integer -> bool) -> bool) (\(LB :integer).
+   ((! :(integer -> bool) -> bool) (\(N :integer). ((==> ((below $0)
+   $1)) (~ ($2 $0)))))))) ((? :(integer -> bool) -> bool)
+   (\(GLB :integer). ((/\ ($1 $0)) ((! :(integer -> bool) -> bool)
+   (\(N :integer). ((==> ((below $0) $1)) (~ ($2 $0)))))))))) ((==>
+   ((? :(integer -> bool) -> bool) (\(UB :integer).
+   ((! :(integer -> bool) -> bool) (\(N :integer). ((==> ((below $1)
+   $0)) (~ ($2 $0)))))))) ((? :(integer -> bool) -> bool)
+   (\(LUB :integer). ((/\ ($1 $0)) ((! :(integer -> bool) -> bool)
+   (\(N :integer). ((==> ((below $1) $0)) (~ ($2 $0)))))))))))))`),
+ ((PLUS_BELOW_TRANSL),
+  [],
+  `((! :(integer -> bool) -> bool) (\(M :integer).
+   ((! :(integer -> bool) -> bool) (\(N :integer).
+   ((! :(integer -> bool) -> bool) (\(P :integer).
+   (((= :bool -> bool -> bool) ((below $2) $1)) ((below ((plus $2)
+   $0)) ((plus $1) $0)))))))))`),
+ ((DOUBLE_INF),
+  [],
+  `((! :(integer -> bool) -> bool) (\(M :integer). ((/\
+   ((? :(integer -> bool) -> bool) (\(N :integer). ((below $0) $1))))
+   ((? :(integer -> bool) -> bool) (\(P :integer). ((below $1)
+   $0))))))`),
+ ((COMPAR),
+  [],
+  `((! :(integer -> bool) -> bool) (\(M :integer).
+   ((! :(integer -> bool) -> bool) (\(N :integer). ((\/ ((below $1)
+   $0)) ((\/ ((below $0) $1)) (((= :integer -> integer -> bool) $1)
+   $0)))))))`),
+ ((TRANSIT),
+  [],
+  `((! :(integer -> bool) -> bool) (\(M :integer).
+   ((! :(integer -> bool) -> bool) (\(N :integer).
+   ((! :(integer -> bool) -> bool) (\(P :integer). ((==> ((/\ ((below
+   $2) $1)) ((below $1) $0))) ((below $2) $0))))))))`),
+ ((ANTISYM),
+  [],
+  `((! :(integer -> bool) -> bool) (\(M :integer). (~ ((below $0)
+   $0))))`),
+ ((NEG_MULT_REV_BELOW),
+  [],
+  `((! :(integer -> bool) -> bool) (\(M :integer).
+   ((! :(integer -> bool) -> bool) (\(N :integer).
+   ((! :(integer -> bool) -> bool) (\(P :integer). ((==> (NEG $2))
+   (((= :bool -> bool -> bool) ((below $1) $0)) ((below ((times $2)
+   $0)) ((times $2) $1))))))))))`),
+ ((POS_MULT_PRES_BELOW),
+  [],
+  `((! :(integer -> bool) -> bool) (\(M :integer).
+   ((! :(integer -> bool) -> bool) (\(N :integer).
+   ((! :(integer -> bool) -> bool) (\(P :integer). ((==> (POS $2))
+   (((= :bool -> bool -> bool) ((below $1) $0)) ((below ((times $2)
+   $1)) ((times $2) $0))))))))))`),
+ ((neg_REV_BELOW),
+  [],
+  `((! :(integer -> bool) -> bool) (\(M :integer).
+   ((! :(integer -> bool) -> bool) (\(N :integer).
+   (((= :bool -> bool -> bool) ((below (neg $1)) (neg $0))) ((below
+   $0) $1))))))`),
+ ((NUM_LESS_IS_INT_BELOW),
+  [],
+  `((! :(num -> bool) -> bool) (\(m :num). ((! :(num -> bool) -> bool)
+   (\(n :num). (((= :bool -> bool -> bool) ((< $1) $0)) ((below (INT
+   $1)) (INT $0)))))))`),
+ ((NEG_IS_BELOW_ZERO),
+  [],
+  `((! :(integer -> bool) -> bool) (\(N :integer).
+   (((= :bool -> bool -> bool) (NEG $0)) ((below $0) (INT 0)))))`),
+ ((POS_IS_ZERO_BELOW),
+  [],
+  `((! :(integer -> bool) -> bool) (\(N :integer).
+   (((= :bool -> bool -> bool) (POS $0)) ((below (INT 0)) $0))))`),
+ ((INT_CASES),
+  [],
+  `((! :((integer -> bool) -> bool) -> bool) (\(P :integer -> bool).
+   ((==> ((/\ ((! :(num -> bool) -> bool) (\(m :num). ($1 (INT $0)))))
+   ((! :(num -> bool) -> bool) (\(m :num). ($1 (neg (INT $0)))))))
+   ((! :(integer -> bool) -> bool) (\(M :integer). ($1 $0))))))`),
+ ((NOT_POS_neg_INT),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num). (~ (POS (neg (INT
+   $0))))))`),
+ ((NON_POS_INT_IS_neg_NUM),
+  [],
+  `((! :(integer -> bool) -> bool) (\(N :integer).
+   (((= :bool -> bool -> bool) (~ (POS $0)))
+   ((? :(num -> bool) -> bool) (\(n :num).
+   (((= :integer -> integer -> bool) $1) (neg (INT $0))))))))`),
+ ((NEG_IS_neg_INT),
+  [],
+  `((! :(integer -> bool) -> bool) (\(N :integer).
+   (((= :bool -> bool -> bool) (NEG $0)) ((? :(num -> bool) -> bool)
+   (\(n :num). (((= :integer -> integer -> bool) $1) (neg (INT (SUC
+   $0)))))))))`),
+ ((NOT_NEG_INT),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num). (~ (NEG (INT $0)))))`),
+ ((NON_NEG_INT_IS_NUM),
+  [],
+  `((! :(integer -> bool) -> bool) (\(N :integer).
+   (((= :bool -> bool -> bool) (~ (NEG $0)))
+   ((? :(num -> bool) -> bool) (\(n :num).
+   (((= :integer -> integer -> bool) $1) (INT $0)))))))`),
+ ((TIMES_RIGHT_CANCELLATION),
+  [],
+  `((! :(integer -> bool) -> bool) (\(x :integer).
+   ((! :(integer -> bool) -> bool) (\(y :integer).
+   ((! :(integer -> bool) -> bool) (\(z :integer). ((==> (~
+   (((= :integer -> integer -> bool) $2) (INT 0)))) ((==>
+   (((= :integer -> integer -> bool) ((times $1) $2)) ((times $0)
+   $2))) (((= :integer -> integer -> bool) $1) $0)))))))))`),
+ ((TIMES_LEFT_CANCELLATION),
+  [],
+  `((! :(integer -> bool) -> bool) (\(x :integer).
+   ((! :(integer -> bool) -> bool) (\(y :integer).
+   ((! :(integer -> bool) -> bool) (\(z :integer). ((==> (~
+   (((= :integer -> integer -> bool) $2) (INT 0)))) ((==>
+   (((= :integer -> integer -> bool) ((times $2) $1)) ((times $2)
+   $0))) (((= :integer -> integer -> bool) $1) $0)))))))))`),
+ ((INT_INTEGRAL_DOMAIN),
+  [],
+  `((! :(integer -> bool) -> bool) (\(x :integer).
+   ((! :(integer -> bool) -> bool) (\(y :integer). ((==>
+   (((= :integer -> integer -> bool) ((times $1) $0)) (INT 0))) ((\/
+   (((= :integer -> integer -> bool) $1) (INT 0)))
+   (((= :integer -> integer -> bool) $0) (INT 0))))))))`),
+ ((NEG_TIMES_NEG_IS_POS),
+  [],
+  `((! :(integer -> bool) -> bool) (\(M :integer).
+   ((! :(integer -> bool) -> bool) (\(N :integer). ((==> ((/\ (NEG
+   $1)) (NEG $0))) (POS ((times $1) $0)))))))`),
+ ((POS_TIMES_NEG_IS_NEG),
+  [],
+  `((! :(integer -> bool) -> bool) (\(M :integer).
+   ((! :(integer -> bool) -> bool) (\(N :integer). ((==> ((/\ (POS
+   $1)) (NEG $0))) (NEG ((times $1) $0)))))))`),
+ ((POS_TIMES_POS_IS_POS),
+  [],
+  `((! :(integer -> bool) -> bool) (\(M :integer).
+   ((! :(integer -> bool) -> bool) (\(N :integer). ((==> ((/\ (POS
+   $1)) (POS $0))) (POS ((times $1) $0)))))))`),
+ ((NEG_PLUS_NON_POS_IS_NEG),
+  [],
+  `((! :(integer -> bool) -> bool) (\(M :integer).
+   ((! :(integer -> bool) -> bool) (\(N :integer). ((==> ((/\ (NEG
+   $1)) (~ (POS $0)))) (NEG ((plus $1) $0)))))))`),
+ ((POS_TIMES_NON_NEG_IS_POS),
+  [],
+  `((! :(integer -> bool) -> bool) (\(M :integer).
+   ((! :(integer -> bool) -> bool) (\(N :integer). ((==> ((/\ (POS
+   $1)) (~ (NEG $0)))) (POS ((plus $1) $0)))))))`),
+ ((TRICHOTOMY),
+  [],
+  `((! :(integer -> bool) -> bool) (\(M :integer). ((/\ ((\/ (POS $0))
+   ((\/ (NEG $0)) (((= :integer -> integer -> bool) $0) (INT 0)))))
+   ((/\ (~ ((/\ (POS $0)) (NEG $0)))) ((/\ (~ ((/\ (POS $0))
+   (((= :integer -> integer -> bool) $0) (INT 0))))) (~ ((/\ (NEG $0))
+   (((= :integer -> integer -> bool) $0) (INT 0)))))))))`),
+ ((ZERO_NOT_NEG), [], `(~ (NEG (INT 0)))`),
+ ((ZERO_NOT_POS), [], `(~ (POS (INT 0)))`),
+ ((NEG_PLUS_NEG_IS_NEG),
+  [],
+  `((! :(integer -> bool) -> bool) (\(M :integer).
+   ((! :(integer -> bool) -> bool) (\(N :integer). ((==> ((/\ (NEG
+   $1)) (NEG $0))) (NEG ((plus $1) $0)))))))`),
+ ((POS_PLUS_POS_IS_POS),
+  [],
+  `((! :(integer -> bool) -> bool) (\(M :integer).
+   ((! :(integer -> bool) -> bool) (\(N :integer). ((==> ((/\ (POS
+   $1)) (POS $0))) (POS ((plus $1) $0)))))))`),
+ ((NEG_neg_INT),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num). (NEG (neg (INT (SUC
+   $0))))))`),
+ ((POS_INT),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num). (POS (INT (SUC $0)))))`),
+ ((neg_ONE_ONE),
+  [],
+  `((! :(integer -> bool) -> bool) (\(x :integer).
+   ((! :(integer -> bool) -> bool) (\(y :integer).
+   (((= :bool -> bool -> bool) (((= :integer -> integer -> bool) (neg
+   $1)) (neg $0))) (((= :integer -> integer -> bool) $1) $0))))))`),
+ ((neg_IS_TIMES_neg1),
+  [],
+  `((! :(integer -> bool) -> bool) (\(M :integer).
+   (((= :integer -> integer -> bool) (neg $0)) ((times $0) (neg (INT
+   1))))))`),
+ ((TIMES_neg),
+  [],
+  `((/\ ((! :(integer -> bool) -> bool) (\(M :integer).
+   ((! :(integer -> bool) -> bool) (\(N :integer).
+   (((= :integer -> integer -> bool) ((times $1) (neg $0))) (neg
+   ((times $1) $0)))))))) ((! :(integer -> bool) -> bool)
+   (\(M :integer). ((! :(integer -> bool) -> bool) (\(N :integer).
+   (((= :integer -> integer -> bool) ((times (neg $1)) $0)) (neg
+   ((times $1) $0))))))))`),
+ ((TIMES_ZERO),
+  [],
+  `((! :(integer -> bool) -> bool) (\(M :integer). ((/\
+   (((= :integer -> integer -> bool) ((times $0) (INT 0))) (INT 0)))
+   (((= :integer -> integer -> bool) ((times (INT 0)) $0)) (INT
+   0)))))`),
+ ((LEFT_PLUS_DISTRIB),
+  [],
+  `((! :(integer -> bool) -> bool) (\(M :integer).
+   ((! :(integer -> bool) -> bool) (\(N :integer).
+   ((! :(integer -> bool) -> bool) (\(P :integer).
+   (((= :integer -> integer -> bool) ((times $2) ((plus $1) $0)))
+   ((plus ((times $2) $1)) ((times $2) $0)))))))))`),
+ ((RIGHT_PLUS_DISTRIB),
+  [],
+  `((! :(integer -> bool) -> bool) (\(M :integer).
+   ((! :(integer -> bool) -> bool) (\(N :integer).
+   ((! :(integer -> bool) -> bool) (\(P :integer).
+   (((= :integer -> integer -> bool) ((times ((plus $2) $1)) $0))
+   ((plus ((times $2) $0)) ((times $1) $0)))))))))`),
+ ((TIMES_IDENTITY),
+  [],
+  `((! :(integer -> bool) -> bool) (\(M :integer). ((/\
+   (((= :integer -> integer -> bool) ((times $0) (INT 1))) $0))
+   (((= :integer -> integer -> bool) ((times (INT 1)) $0)) $0))))`),
+ ((COMM_TIMES),
+  [],
+  `((! :(integer -> bool) -> bool) (\(M :integer).
+   ((! :(integer -> bool) -> bool) (\(N :integer).
+   (((= :integer -> integer -> bool) ((times $1) $0)) ((times $0)
+   $1))))))`),
+ ((ASSOC_TIMES),
+  [],
+  `((! :(integer -> bool) -> bool) (\(M :integer).
+   ((! :(integer -> bool) -> bool) (\(N :integer).
+   ((! :(integer -> bool) -> bool) (\(P :integer).
+   (((= :integer -> integer -> bool) ((times $2) ((times $1) $0)))
+   ((times ((times $2) $1)) $0))))))))`),
+ ((NUM_MULT_IS_INT_MULT),
+  [],
+  `((! :(num -> bool) -> bool) (\(m :num). ((! :(num -> bool) -> bool)
+   (\(n :num). (((= :integer -> integer -> bool) ((times (INT $1))
+   (INT $0))) (INT ((* $1) $0)))))))`),
+ ((PROJ_TIMES),
+  [],
+  `((! :(num -> bool) -> bool) (\(p :num). ((! :(num -> bool) -> bool)
+   (\(n :num). ((! :(num -> bool) -> bool) (\(p' :num).
+   ((! :(num -> bool) -> bool) (\(n' :num).
+   (((= :integer -> integer -> bool) ((times (proj
+   (((, :num -> num -> num # num) $3) $2))) (proj
+   (((, :num -> num -> num # num) $1) $0)))) (proj
+   (((, :num -> num -> num # num) ((+ ((* $3) $1)) ((* $2) $0))) ((+
+   ((* $3) $0)) ((* $2) $1)))))))))))))`),
+ ((PROJ_neg),
+  [],
+  `((! :(num -> bool) -> bool) (\(p :num). ((! :(num -> bool) -> bool)
+   (\(n :num). (((= :integer -> integer -> bool) (neg (proj
+   (((, :num -> num -> num # num) $1) $0)))) (proj
+   (((, :num -> num -> num # num) $0) $1)))))))`),
+ ((PLUS_DIST_INV_LEMMA),
+  [],
+  `((! :(integer -> bool) -> bool) (\(x :integer).
+   ((! :(integer -> bool) -> bool) (\(y :integer).
+   (((= :integer -> integer -> bool) ((plus (neg $1)) (neg $0))) (neg
+   ((plus $0) $1)))))))`),
+ ((PLUS_INV_INV_LEMMA),
+  [],
+  `((! :(integer -> bool) -> bool) (\(x :integer).
+   (((= :integer -> integer -> bool) (neg (neg $0))) $0)))`),
+ ((PLUS_INV_ID_LEMMA),
+  [],
+  `(((= :integer -> integer -> bool) (neg (INT 0))) (INT 0))`),
+ ((PLUS_UNIQUE_INV),
+  [],
+  `((! :(integer -> bool) -> bool) (\(x :integer).
+   ((! :(integer -> bool) -> bool) (\(u :integer). ((==>
+   (((= :integer -> integer -> bool) ((plus $0) $1)) (INT 0)))
+   (((= :integer -> integer -> bool) $0) (neg $1)))))))`),
+ ((PLUS_UNIQUE_ID),
+  [],
+  `((! :(integer -> bool) -> bool) (\(e :integer). ((==> ((\/
+   ((? :(integer -> bool) -> bool) (\(x :integer).
+   (((= :integer -> integer -> bool) ((plus $1) $0)) $0))))
+   ((? :(integer -> bool) -> bool) (\(x :integer).
+   (((= :integer -> integer -> bool) ((plus $0) $1)) $0)))))
+   (((= :integer -> integer -> bool) $0) (INT 0)))))`),
+ ((PLUS_LEFT_ONE_ONE_ONTO),
+  [],
+  `((! :(integer -> bool) -> bool) (\(x :integer).
+   ((! :(integer -> bool) -> bool) (\(y :integer).
+   ((? :(integer -> bool) -> bool) (\(z :integer). ((/\
+   (((= :integer -> integer -> bool) ((plus $0) $2)) $1))
+   ((! :(integer -> bool) -> bool) (\(u :integer). ((==>
+   (((= :integer -> integer -> bool) ((plus $0) $3)) $2))
+   (((= :integer -> integer -> bool) $0) $1)))))))))))`),
+ ((PLUS_RIGHT_ONE_ONE_ONTO),
+  [],
+  `((! :(integer -> bool) -> bool) (\(x :integer).
+   ((! :(integer -> bool) -> bool) (\(y :integer).
+   ((? :(integer -> bool) -> bool) (\(z :integer). ((/\
+   (((= :integer -> integer -> bool) ((plus $2) $0)) $1))
+   ((! :(integer -> bool) -> bool) (\(u :integer). ((==>
+   (((= :integer -> integer -> bool) ((plus $3) $0)) $2))
+   (((= :integer -> integer -> bool) $0) $1)))))))))))`),
+ ((PLUS_RIGHT_CANCELLATION),
+  [],
+  `((! :(integer -> bool) -> bool) (\(x :integer).
+   ((! :(integer -> bool) -> bool) (\(y :integer).
+   ((! :(integer -> bool) -> bool) (\(z :integer). ((==>
+   (((= :integer -> integer -> bool) ((plus $1) $2)) ((plus $0) $2)))
+   (((= :integer -> integer -> bool) $1) $0))))))))`),
+ ((PLUS_LEFT_CANCELLATION),
+  [],
+  `((! :(integer -> bool) -> bool) (\(x :integer).
+   ((! :(integer -> bool) -> bool) (\(y :integer).
+   ((! :(integer -> bool) -> bool) (\(z :integer). ((==>
+   (((= :integer -> integer -> bool) ((plus $2) $1)) ((plus $2) $0)))
+   (((= :integer -> integer -> bool) $1) $0))))))))`),
+ ((PLUS_INV_LEMMA),
+  [],
+  `((! :(integer -> bool) -> bool) (\(x :integer). ((/\
+   (((= :integer -> integer -> bool) ((plus (neg $0)) $0)) (INT 0)))
+   (((= :integer -> integer -> bool) ((plus $0) (neg $0))) (INT
+   0)))))`),
+ ((PLUS_LEFT_RIGHT_INV),
+  [],
+  `((! :(integer -> bool) -> bool) (\(x :integer).
+   ((! :(integer -> bool) -> bool) (\(y :integer). ((==>
+   (((= :integer -> integer -> bool) ((plus $0) $1)) (INT 0)))
+   (((= :integer -> integer -> bool) ((plus $1) $0)) (INT 0)))))))`),
+ ((PLUS_ID_LEMMA),
+  [],
+  `((/\ ((! :(integer -> bool) -> bool) (\(x :integer).
+   (((= :integer -> integer -> bool) ((plus (INT 0)) $0)) $0)))) ((/\
+   ((! :(integer -> bool) -> bool) (\(x :integer).
+   (((= :integer -> integer -> bool) ((plus $0) (INT 0))) $0))))
+   ((! :(integer -> bool) -> bool) (\(x :integer).
+   ((? :(integer -> bool) -> bool) (\(y :integer).
+   (((= :integer -> integer -> bool) ((plus $0) $1)) (INT 0))))))))`),
+ ((PLUS_GROUP_ASSOC),
+  [],
+  `((! :(integer -> bool) -> bool) (\(x :integer).
+   ((! :(integer -> bool) -> bool) (\(y :integer).
+   ((! :(integer -> bool) -> bool) (\(z :integer).
+   (((= :integer -> integer -> bool) ((plus ((plus $2) $1)) $0))
+   ((plus $2) ((plus $1) $0)))))))))`),
+ ((ID_EQ_0),
+  [],
+  `(((= :integer -> integer -> bool)
+   ((ID :(integer -> bool) # (integer -> integer -> integer) ->
+         integer)
+   (((, :(integer -> bool) -> (integer -> integer -> integer) ->
+         (integer -> bool) # (integer -> integer -> integer))
+   (\(N :integer). T)) plus))) (INT 0))`),
+ ((integer_as_GROUP),
+  [],
+  `((GROUP :(integer -> bool) # (integer -> integer -> integer) ->
+            bool)
+   (((, :(integer -> bool) -> (integer -> integer -> integer) ->
+         (integer -> bool) # (integer -> integer -> integer))
+   (\(N :integer). T)) plus))`),
+ ((PLUS_INV),
+  [],
+  `((! :(integer -> bool) -> bool) (\(M :integer).
+   ((? :(integer -> bool) -> bool) (\(N :integer).
+   (((= :integer -> integer -> bool) ((plus $0) $1)) (INT 0))))))`),
+ ((PLUS_ID),
+  [],
+  `((! :(integer -> bool) -> bool) (\(M :integer).
+   (((= :integer -> integer -> bool) ((plus (INT 0)) $0)) $0)))`),
+ ((PROJ_ZERO),
+  [],
+  `((! :(num -> bool) -> bool) (\(m :num).
+   (((= :integer -> integer -> bool) (proj
+   (((, :num -> num -> num # num) $0) $0))) (INT 0))))`),
+ ((COMM_PLUS),
+  [],
+  `((! :(integer -> bool) -> bool) (\(M :integer).
+   ((! :(integer -> bool) -> bool) (\(N :integer).
+   (((= :integer -> integer -> bool) ((plus $1) $0)) ((plus $0)
+   $1))))))`),
+ ((ASSOC_PLUS),
+  [],
+  `((! :(integer -> bool) -> bool) (\(M :integer).
+   ((! :(integer -> bool) -> bool) (\(N :integer).
+   ((! :(integer -> bool) -> bool) (\(P :integer).
+   (((= :integer -> integer -> bool) ((plus $2) ((plus $1) $0)))
+   ((plus ((plus $2) $1)) $0))))))))`),
+ ((NUM_ADD_IS_INT_ADD),
+  [],
+  `((! :(num -> bool) -> bool) (\(m :num). ((! :(num -> bool) -> bool)
+   (\(n :num). (((= :integer -> integer -> bool) ((plus (INT $1)) (INT
+   $0))) (INT ((+ $1) $0)))))))`),
+ ((PROJ_PLUS),
+  [],
+  `((! :(num -> bool) -> bool) (\(p :num). ((! :(num -> bool) -> bool)
+   (\(n :num). ((! :(num -> bool) -> bool) (\(p' :num).
+   ((! :(num -> bool) -> bool) (\(n' :num).
+   (((= :integer -> integer -> bool) ((plus (proj
+   (((, :num -> num -> num # num) $3) $2))) (proj
+   (((, :num -> num -> num # num) $1) $0)))) (proj
+   (((, :num -> num -> num # num) ((+ $3) $1)) ((+ $2)
+   $0))))))))))))`),
+ ((INT_ONE_ONE),
+  [],
+  `((! :(num -> bool) -> bool) (\(m :num). ((! :(num -> bool) -> bool)
+   (\(n :num). (((= :bool -> bool -> bool)
+   (((= :integer -> integer -> bool) (INT $1)) (INT $0)))
+   (((= :num -> num -> bool) $1) $0))))))`),
+ ((PROJ_EQ),
+  [],
+  `((! :(num -> bool) -> bool) (\(p :num). ((! :(num -> bool) -> bool)
+   (\(n :num). ((! :(num -> bool) -> bool) (\(p' :num).
+   ((! :(num -> bool) -> bool) (\(n' :num).
+   (((= :bool -> bool -> bool) (((= :integer -> integer -> bool) (proj
+   (((, :num -> num -> num # num) $3) $2))) (proj
+   (((, :num -> num -> num # num) $1) $0)))) (((= :num -> num -> bool)
+   ((+ $3) $0)) ((+ $1) $2)))))))))))`),
+ ((REP_PROJ),
+  [],
+  `((/\ ((! :(num -> bool) -> bool) (\(p :num).
+   (((= :num # num -> num # num -> bool) (REP_integer (proj
+   (((, :num -> num -> num # num) $0) 0))))
+   (((, :num -> num -> num # num) $0) 0)))))
+   ((! :(num -> bool) -> bool) (\(n :num).
+   (((= :num # num -> num # num -> bool) (REP_integer (proj
+   (((, :num -> num -> num # num) 0) $0))))
+   (((, :num -> num -> num # num) 0) $0)))))`),
+ ((PROJ_REP),
+  [],
+  `((! :(integer -> bool) -> bool) (\(N :integer).
+   (((= :integer -> integer -> bool) (proj (REP_integer $0))) $0)))`),
+ ((PROJ_ONTO),
+  [],
+  `((! :(integer -> bool) -> bool) (\(M :integer).
+   ((? :(num -> bool) -> bool) (\(n :num). ((? :(num -> bool) -> bool)
+   (\(p :num). (((= :integer -> integer -> bool) $2) (proj
+   (((, :num -> num -> num # num) $0) $1)))))))))`)]

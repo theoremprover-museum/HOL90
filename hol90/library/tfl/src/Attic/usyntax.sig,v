@@ -1,0 +1,275 @@
+head	1.1;
+access;
+symbols
+	HOL97:1.1.2.3.0.2
+	bpHOL97:1.1.2.3
+	hol90_9_alpha:1.1.2.3
+	TFL_1:1.1.2.1
+	hol90_pre8_for_multiple_compilers:1.1.0.2;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	96.06.29.15.11.41;	author rjb;	state dead;
+branches
+	1.1.2.1;
+next	;
+
+1.1.2.1
+date	96.06.29.15.11.42;	author rjb;	state Exp;
+branches;
+next	1.1.2.2;
+
+1.1.2.2
+date	96.08.05.15.42.22;	author rjb;	state Exp;
+branches;
+next	1.1.2.3;
+
+1.1.2.3
+date	96.08.23.10.45.39;	author rjb;	state Exp;
+branches
+	1.1.2.3.2.1;
+next	;
+
+1.1.2.3.2.1
+date	97.07.11.19.16.40;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@file usyntax.sig was initially added on branch hol90_pre8_for_multiple_compilers.
+@
+text
+@@
+
+
+1.1.2.1
+log
+@TFL version 1 for HOL: A well-founded recursive function definition package.
+@
+text
+@a0 155
+signature USyntax_sig =
+sig
+  structure Utils : Utils_sig
+
+  type Type
+  type Term
+  type Preterm
+  
+  datatype lambda = VAR   of {Name : string, Ty : Type}
+                  | CONST of {Name : string, Ty : Type}
+                  | COMB  of {Rator: Preterm, Rand : Preterm}
+                  | LAMB  of {Bvar : Preterm, Body : Preterm}
+
+  val alpha : Type
+  val bool  : Type
+  val mk_preterm : Term -> Preterm
+
+  (* Types *)
+  val type_vars  : Type -> Type list
+  val type_varsl : Type list -> Type list
+  val mk_type    : {Tyop: string, Args:Type list} -> Type
+  val dest_type  : Type -> {Tyop : string, Args : Type list}
+  val mk_vartype : string -> Type
+  val dest_vartype : Type -> string
+  val is_vartype : Type -> bool
+  val type_lt    : Type -> Type -> bool
+  val type_subst : Type Utils.binding list -> Type -> Type
+  val -->        : Type * Type -> Type
+  val strip_type : Type -> Type list * Type
+  val strip_prod_type : Type -> Type list
+
+  (* Terms *)
+  val free_vars  : Preterm -> Preterm list
+  val free_varsl : Preterm list -> Preterm list
+  val free_vars_lr : Preterm -> Preterm list
+  val free_in    : Preterm -> Preterm -> bool
+  val all_vars   : Preterm -> Preterm list
+  val all_varsl  : Preterm list -> Preterm list
+  val term_lt    : Preterm -> Preterm -> bool
+  val genvar     : Type -> Preterm
+  val genvars    : Type -> int -> Preterm list
+  val variant    : Preterm list -> Preterm -> Preterm
+  val type_of    : Preterm -> Type
+  val type_vars_in_term : Preterm -> Type list
+  val dest_term  : Preterm -> lambda
+  
+  (* Prelogic *)
+  val aconv     : Preterm -> Preterm -> bool
+  val subst     : Preterm Utils.binding list -> Preterm -> Preterm
+  val inst      : Type Utils.binding list -> Preterm -> Preterm
+  val beta_conv : Preterm -> Preterm
+
+
+  (* Construction routines *)
+  val mk_var    :{Name : string, Ty : Type} -> Preterm
+  val mk_const  :{Name : string, Ty : Type} -> Preterm
+  val mk_primed_var :{Name : string, Ty : Type} -> Preterm
+  val mk_comb   :{Rator : Preterm, Rand : Preterm} -> Preterm
+  val mk_abs    :{Bvar  : Preterm, Body : Preterm} -> Preterm
+
+  val mk_eq     :{lhs : Preterm, rhs : Preterm} -> Preterm
+  val mk_imp    :{ant : Preterm, conseq :  Preterm} -> Preterm
+  val mk_select :{Bvar : Preterm, Body : Preterm} -> Preterm
+  val mk_forall :{Bvar : Preterm, Body : Preterm} -> Preterm
+  val mk_exists :{Bvar : Preterm, Body : Preterm} -> Preterm
+  val mk_neg    :Preterm -> Preterm
+  val mk_conj   :{conj1 : Preterm, conj2 : Preterm} -> Preterm
+  val mk_disj   :{disj1 : Preterm, disj2 : Preterm} -> Preterm
+  val mk_cond   :{cond: Preterm, larm : Preterm, rarm : Preterm} -> Preterm
+  val mk_pair   :{fst : Preterm, snd : Preterm} -> Preterm
+  val mk_let    :{func : Preterm, arg : Preterm} -> Preterm
+  val mk_cons   :{hd : Preterm, tl : Preterm} -> Preterm
+  val mk_list   :{els : Preterm list, ty :Type} -> Preterm
+  val mk_pabs   :{varstruct : Preterm, body : Preterm} -> Preterm
+
+  (* Destruction routines *)
+  val dest_var  : Preterm -> {Name : string, Ty : Type}
+  val dest_const: Preterm -> {Name : string, Ty : Type}
+  val dest_comb : Preterm -> {Rator : Preterm, Rand : Preterm}
+  val dest_abs  : Preterm -> {Bvar : Preterm, Body : Preterm}
+  val dest_eq     : Preterm -> {lhs : Preterm, rhs : Preterm}
+  val dest_imp    : Preterm -> {ant : Preterm, conseq : Preterm}
+  val dest_select : Preterm -> {Bvar : Preterm, Body : Preterm}
+  val dest_forall : Preterm -> {Bvar : Preterm, Body : Preterm}
+  val dest_exists : Preterm -> {Bvar : Preterm, Body : Preterm}
+  val dest_neg    : Preterm -> Preterm
+  val dest_conj   : Preterm -> {conj1 : Preterm, conj2 : Preterm}
+  val dest_disj   : Preterm -> {disj1 : Preterm, disj2 : Preterm}
+  val dest_cond   : Preterm -> {cond:Preterm, larm:Preterm, rarm:Preterm}
+  val dest_pair   : Preterm -> {fst : Preterm, snd : Preterm}
+  val dest_let    : Preterm -> {func : Preterm, arg : Preterm}
+  val dest_cons   : Preterm -> {hd : Preterm, tl : Preterm}
+  val dest_list   : Preterm -> {els : Preterm list, ty :Type}
+  val dest_pabs   : Preterm -> {varstruct : Preterm, body : Preterm}
+
+  val lhs   : Preterm -> Preterm
+  val rhs   : Preterm -> Preterm
+  val rator : Preterm -> Preterm
+  val rand  : Preterm -> Preterm
+  val bvar  : Preterm -> Preterm
+  val body  : Preterm -> Preterm
+  
+
+  (* Query routines *)
+  val is_var  : Preterm -> bool
+  val is_const: Preterm -> bool
+  val const_decl : string -> Preterm
+  val is_comb : Preterm -> bool
+  val is_abs  : Preterm -> bool
+  val is_eq     : Preterm -> bool
+  val is_imp    : Preterm -> bool
+  val is_select : Preterm -> bool 
+  val is_forall : Preterm -> bool 
+  val is_exists : Preterm -> bool 
+  val is_neg    : Preterm -> bool
+  val is_conj   : Preterm -> bool
+  val is_disj   : Preterm -> bool
+  val is_cond   : Preterm -> bool
+  val is_pair   : Preterm -> bool
+  val is_let    : Preterm -> bool
+  val is_cons   : Preterm -> bool
+  val is_list   : Preterm -> bool
+  val is_pabs   : Preterm -> bool
+
+  (* Construction of a Preterm from a list of Preterms *)
+  val list_mk_comb   : (Preterm * Preterm list) -> Preterm
+  val list_mk_abs    : (Preterm list * Preterm) -> Preterm
+  val list_mk_imp    : (Preterm list * Preterm) -> Preterm
+  val list_mk_forall : (Preterm list * Preterm) -> Preterm
+  val list_mk_exists : (Preterm list * Preterm) -> Preterm
+  val list_mk_conj   : Preterm list -> Preterm
+  val list_mk_disj   : Preterm list -> Preterm
+  val list_mk_pair   : Preterm list -> Preterm
+
+  (* Destructing a Preterm to a list of Preterms *)
+  val strip_comb     : Preterm -> (Preterm * Preterm list)
+  val strip_abs      : Preterm -> (Preterm list * Preterm)
+  val strip_imp      : Preterm -> (Preterm list * Preterm)
+  val strip_forall   : Preterm -> (Preterm list * Preterm)
+  val strip_exists   : Preterm -> (Preterm list * Preterm)
+  val strip_conj     : Preterm -> Preterm list
+  val strip_disj     : Preterm -> Preterm list
+  val strip_pair     : Preterm -> Preterm list
+
+  (* Miscellaneous *)
+  val mk_vstruct : Type -> Preterm list -> Preterm
+  val gen_all    : Preterm -> Preterm
+  val find_term  : (Preterm -> bool) -> Preterm -> Preterm
+  val find_terms : (Preterm -> bool) -> Preterm -> Preterm list
+  val dest_relation : Preterm -> Preterm * Preterm * Preterm
+  val is_WFR : Preterm -> bool
+
+  (* Prettyprinting *)
+  val Term_to_string : Term -> string
+end;
+@
+
+
+1.1.2.2
+log
+@Updated to TFL release 4.
+@
+text
+@d8 1
+a8 2
+  type 'a binding
+
+a16 1
+  val drop_Trueprop : Preterm -> Preterm
+d24 1
+d26 2
+a30 1
+  val match_type: Type -> Type -> Type binding list
+d36 1
+d39 3
+d49 2
+a50 2
+  val subst     : Preterm binding list -> Preterm -> Preterm
+  val inst      : Type binding list -> Preterm -> Preterm
+d53 1
+a54 1
+  val mk_prop   :Preterm -> Preterm
+d57 1
+d66 1
+d69 5
+d89 1
+d91 3
+d107 1
+d112 1
+d118 1
+d120 3
+d133 1
+a151 1
+  val ARB : Type -> Preterm
+@
+
+
+1.1.2.3
+log
+@Propagated fact that Preterm is an eqtype.
+@
+text
+@d7 1
+a7 1
+  eqtype Preterm
+@
+
+
+1.1.2.3.2.1
+log
+@Small changes to make CM-friendly.
+@
+text
+@d7 1
+a7 1
+  type Preterm
+@

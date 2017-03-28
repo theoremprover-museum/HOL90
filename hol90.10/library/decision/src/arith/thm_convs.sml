@@ -1,0 +1,172 @@
+(*****************************************************************************)
+(* FILE          : thm_convs.sml                                             *)
+(* DESCRIPTION   : Conversions for rewriting with arithmetic theorems.       *)
+(*                                                                           *)
+(* AUTHOR        : R.J.Boulton, University of Cambridge                      *)
+(* DATE          : 4th March 1991                                            *)
+(*                                                                           *)
+(* TRANSLATOR    : R.J.Boulton, University of Cambridge                      *)
+(* DATE          : 5th February 1993                                         *)
+(*                                                                           *)
+(* LAST MODIFIED : R.J.Boulton                                               *)
+(* DATE          : 13th August 1996                                          *)
+(*****************************************************************************)
+
+structure Arith_thm_convs : Arith_thm_convs_sig =
+struct
+type conv = Abbrev.conv
+
+open Rsyntax;
+open Arith_theorems;
+open Parse;
+open CoreHol.Theory;
+open CoreHol.Thm;
+open Drule;
+open Conv;
+open Lib;
+open Rewrite;
+open Taut_thms;
+
+val dense = false;
+
+val thm = theorem "arithmetic";
+
+val m = --`m:num`--
+and n = --`n:num`--
+and p = --`p:num`--;
+
+(*===========================================================================*)
+(* Conversions for rewriting arithmetic terms                                *)
+(*===========================================================================*)
+
+val ADD_ASSOC_CONV = REWR_CONV (thm "ADD_ASSOC");
+
+val ADD_SYM_CONV = REWR_CONV (thm "ADD_SYM");
+
+val GATHER_BOTH_CONV =
+ REWR_CONV
+  (SYM
+    (SPECL [--`a:num`--,--`b:num`--,--`x:num`--] (thm "RIGHT_ADD_DISTRIB")));
+
+val GATHER_LEFT_CONV =
+ REWR_CONV
+  (SUBS [el 3 (CONJUNCTS (SPECL [--`x:num`--,n] (thm "MULT_CLAUSES")))]
+    (SYM (SPECL [--`a:num`--,--`1`--,--`x:num`--] (thm "RIGHT_ADD_DISTRIB"))));
+
+val GATHER_NEITHER_CONV = REWR_CONV (GSYM (thm "TIMES2"));
+
+val GATHER_RIGHT_CONV =
+ REWR_CONV
+  (SUBS [el 3 (CONJUNCTS (SPECL [--`x:num`--,n] (thm "MULT_CLAUSES")))]
+    (SYM (SPECL [--`1`--,--`b:num`--,--`x:num`--] (thm "RIGHT_ADD_DISTRIB"))));
+
+val GEQ_NORM_CONV = REWR_CONV (thm "GREATER_EQ");
+
+val GREAT_NORM_CONV =
+   if dense
+   then REWR_CONV (definition "arithmetic" "GREATER_DEF")
+   else REWR_CONV
+         (SUBS [SYM (SPECL [m,n] (definition "arithmetic" "GREATER_DEF")),
+                SPEC n (thm "SUC_ONE_ADD")]
+           (SPECL [n,m] (thm "LESS_EQ")));
+
+val LEFT_ADD_DISTRIB_CONV = REWR_CONV (thm "LEFT_ADD_DISTRIB");
+
+val LESS_NORM_CONV =
+   if dense
+   then ALL_CONV
+   else REWR_CONV
+         (SUBS [SPEC m (thm "SUC_ONE_ADD")] (SPECL [m,n] (thm "LESS_EQ")));
+
+val MULT_ASSOC_CONV = REWR_CONV (thm "MULT_ASSOC");
+
+val MULT_COMM_CONV = REWR_CONV MULT_COMM;
+
+val NOT_GEQ_NORM_CONV =
+   if dense
+   then REWR_CONV (TRANS (SPECL [m,n] (thm "NOT_GREATER_EQ"))
+                         (SYM (SPECL [m,n] (thm "LESS_EQ"))))
+   else REWR_CONV
+         (SUBS [SPEC m (thm "SUC_ONE_ADD")]
+           (SPECL [m,n] (thm "NOT_GREATER_EQ")));
+
+val NOT_GREAT_NORM_CONV = REWR_CONV (thm "NOT_GREATER");
+
+val NOT_LEQ_NORM_CONV =
+   if dense
+   then REWR_CONV (TRANS (SPECL [m,n] (thm "NOT_LEQ"))
+                         (SYM (SPECL [n,m] (thm "LESS_EQ"))))
+   else REWR_CONV
+         (SUBS [SPEC n (thm "SUC_ONE_ADD")] (SPECL [m,n] (thm "NOT_LEQ")));
+
+val NOT_LESS_NORM_CONV = REWR_CONV (thm "NOT_LESS");
+
+val NOT_NUM_EQ_NORM_CONV =
+   if dense
+   then REWR_CONV
+         (SUBS [SYM (SPECL [m,n] (thm "LESS_EQ")),
+                SYM (SPECL [n,m] (thm "LESS_EQ"))]
+           (SPECL [m,n] (thm "NOT_NUM_EQ")))
+   else REWR_CONV
+         (SUBS [SPEC m (thm "SUC_ONE_ADD"),SPEC n (thm "SUC_ONE_ADD")]
+           (SPECL [m,n] (thm "NOT_NUM_EQ")));
+
+val ONE_MULT_CONV = REWR_CONV ONE_MULT;
+
+val PLUS_ZERO_CONV = REWR_CONV PLUS_ZERO;
+
+val SYM_ADD_ASSOC_CONV = REWR_CONV (GSYM (thm "ADD_ASSOC"));
+
+val ZERO_MULT_CONV = REWR_CONV ZERO_MULT;
+
+val ZERO_MULT_PLUS_CONV =
+ REWR_CONV
+  (SUBS
+    [SYM (CONJUNCT1 (SPECL [--`a:num`--,--`b:num`--] (thm "MULT_CLAUSES")))]
+    (SPEC (--`b:num`--) (GEN_ALL (CONJUNCT1 (thm "ADD_CLAUSES")))));
+
+val ZERO_PLUS_CONV = REWR_CONV ZERO_PLUS;
+
+(*===========================================================================*)
+(* Conversions for rewriting inequalities                                    *)
+(*===========================================================================*)
+
+val EQ_PLUS_CONV =
+ REWR_CONV
+  (SUBS [SPECL [m,p] (thm "ADD_SYM"),SPECL [n,p] (thm "ADD_SYM")]
+    (SPECL [m,n,p] (thm "EQ_MONO_ADD_EQ")));
+
+val LEQ_PLUS_CONV = REWR_CONV (thm "ADD_MONO_LESS_EQ");
+
+val LESS_PLUS_CONV =
+ REWR_CONV
+  (SUBS [SPECL [m,p] (thm "ADD_SYM"),SPECL [n,p] (thm "ADD_SYM")]
+    (SPECL [m,n,p] (thm "LESS_MONO_ADD_EQ")));
+
+(*===========================================================================*)
+(* Conversions for normalising and eliminating subtraction                   *)
+(*===========================================================================*)
+
+val NUM_COND_RATOR_CONV =
+ REWR_CONV
+  (INST_TYPE [{residue = (==`:num`==),redex = (==`:'a`==)}] COND_RATOR);
+
+val NUM_COND_RAND_CONV =
+ REWR_CONV
+  (INST_TYPE [{residue = (==`:num`==),redex = (==`:'a`==)}] COND_RAND);
+
+val SUB_NORM_CONV =
+ (GEN_REWRITE_CONV I Rewrite.empty_rewrites o map thm)
+ ["SUB_LEFT_ADD",          "SUB_RIGHT_ADD",
+  "SUB_LEFT_SUB",          "SUB_RIGHT_SUB",
+  "LEFT_SUB_DISTRIB",      "RIGHT_SUB_DISTRIB",
+  "SUB_LEFT_SUC",
+  "SUB_LEFT_LESS_EQ",      "SUB_RIGHT_LESS_EQ",
+  "SUB_LEFT_LESS",         "SUB_RIGHT_LESS",
+  "SUB_LEFT_GREATER_EQ",   "SUB_RIGHT_GREATER_EQ",
+  "SUB_LEFT_GREATER",      "SUB_RIGHT_GREATER",
+  "SUB_LEFT_EQ",           "SUB_RIGHT_EQ",
+  "PRE_SUB1"
+ ];
+
+end;

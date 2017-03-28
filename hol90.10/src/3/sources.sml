@@ -1,0 +1,12 @@
+use "../theories/src/ld_HOL.sml";
+use "3/core.sml";
+use "3/rsyntax.sig";
+use "3/rsyntax.sml";
+use "3/psyntax.sig";
+use "3/psyntax.sml";
+use "3/gstack.sig";
+use "3/gstack.sml";
+use "3/define_type.sig";
+use "3/define_type.sml";
+use "3/sys_lib.sig";
+use "3/sys_lib.sml";

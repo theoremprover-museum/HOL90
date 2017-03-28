@@ -1,0 +1,188 @@
+head	1.1;
+branch	1.1.1;
+access;
+symbols
+	HOL97:1.1.1.1.0.6
+	bpHOL97:1.1.1.1
+	hol90_9_alpha:1.1.1.1
+	hol90_pre8_for_multiple_compilers:1.1.1.1.0.4
+	hol90_pre8_after_donalds_separate_compilation_changes:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	95.10.16.13.31.07;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.31.07;	author rjb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@+ =====================================================================	+
+|									|
+| LIBRARY	: taut							|
+|									|
+| DESCRIPTION   : A tautology checker.					|
+|									|
+| AUTHOR	: R.J.Boulton						|
+| DATE		: 9th July 1991						|
+|									|
++ =====================================================================	+
+
+
++ --------------------------------------------------------------------- +
+|									|
+| FILES:								|
+|									|
++ --------------------------------------------------------------------- +
+
+    taut.sig            contains the tautology checker signature
+    taut.sml            contains the tautology checker functions
+
++ --------------------------------------------------------------------- +
+|									|
+| TO REBUILD THE LIBRARY:						|
+|									|
++ --------------------------------------------------------------------- +
+
+   1) You never have to rebuild the library
+
++ --------------------------------------------------------------------- +
+|									|
+| DOCUMENTATION:							|
+|									|
++ --------------------------------------------------------------------- +
+
+Tautology checking by Boolean case analysis.
+
+Method suggested by Tom Melham.
+
+Simplification done after each variable instantiation.
+
+Optimised for terms with more than two variables by eliminating some
+duplicated sub-calls.
+
+Optimised for cases when the body simplifies to true or false before all the
+variables have been analysed.
+
+Simplification optimised to avoid rebuilding subterms that are not changed.
+
+Experiments have been performed with special code for cases when the first
+argument of AND, OR, IMP and COND simplifies to a value that makes
+simplification of certain other arguments unnecessary. The results suggested
+that in general slightly fewer intermediate theorems are generated, but that
+due to the overhead of testing, the execution times are slightly longer.
+
+
+PTAUT_CONV : conv
+
+   Given a propositional term with all variables universally quantified,
+   e.g. "!x1 ... xn. f[x1,...,xn]", this conversion proves the term to be
+   either true or false, i.e. it returns one of:
+
+      |- (!x1 ... xn. f[x1,...,xn]) = T
+      |- (!x1 ... xn. f[x1,...,xn]) = F
+
+   This conversion also accepts propositional terms that are not fully
+   universally quantified. However, for such a term, the conversion will fail
+   if it is not true. Consider the term "!x2 ... xn. f[x1,...,xn]". The
+   conversion first proves one of:
+
+      |- (!x1 ... xn. f[x1,...,xn]) = T
+      |- (!x1 ... xn. f[x1,...,xn]) = F
+
+   The former can be manipulated as follows:
+
+      |- (!x1 ... xn. f[x1,...,xn]) = T
+      |- !x1 ... xn. f[x1,...,xn]
+      |- !x2 ... xn. f[x1,...,xn]
+      |- (!x2 ... xn. f[x1,...,xn]) = T
+
+   However when the fully quantified term is false, we have:
+
+      |- (!x1 ... xn. f[x1,...,xn]) = F
+      |- ~(!x1 ... xn. f[x1,...,xn])
+      |- ?x1. ~(!x2 ... xn. f[x1,...,xn])
+      |- ?x1. ((!x2 ... xn. f[x1,...,xn]) = F)
+
+   whereas we want:
+
+      |- !x1. ((!x2 ... xn. f[x1,...,xn]) = F)
+
+   i.e.
+
+      |- (!x2 ... xn. f[x1,...,xn]) = F
+
+   The conversions given here are not capable of proving the latter theorem
+   since it is not purely propositional.
+
+
+PTAUT_TAC : tactic
+
+   Tactic for solving propositional terms. If the current goal is a tautology
+   then PTAUT_TAC will prove it.
+
+
+PTAUT_PROVE : conv
+
+   Given a propositional term "t", this conversion returns the theorem |- t
+   if "t" is a tautology. Otherwise it fails.
+
+
+TAUT_CONV : conv
+
+   Given a term, "t", that is a valid propositional formula or valid instance
+   of a propositional formula, this conversion returns the theorem |- t = T.
+   The variables in "t" do not have to be universally quantified.
+
+   Example:
+
+      TAUT_CONV "!x n y z. x \/ ~(n < 0) \/ y \/ z \/ (n < 0)"  --->
+      |- (!x n y z. x \/ ~n < 0 \/ y \/ z \/ n < 0) = T
+
+
+TAUT_TAC : tactic
+
+   Tactic for solving propositional formulae and instances of propositional
+   formulae.
+
+
+TAUT_PROVE : conv
+
+   Given a valid propositional formula, or a valid instance of a
+   propositional formula, "t", this conversion returns the theorem |- t.
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

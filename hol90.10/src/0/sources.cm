@@ -1,0 +1,122 @@
+(*------------------------------------------------------------------------
+ * $Id: sources.cm,v 1.1.2.1.2.4 1997/10/05 21:07:26 kxs Exp $
+ *
+ * Kernel Hol sources.
+ *-----------------------------------------------------------------------*)
+
+(*---------------------------------------------------------------------------
+ Switch between different styles of theory.
+
+    CM.SymVal.define ("THY_AS_MODULE",0);
+ *---------------------------------------------------------------------------*)
+
+
+Group
+
+is
+
+   ../SysParams.sml
+   ../portableML/njsml.109.32.sml
+   ../quote-filter/filter.sml
+
+  globals.sig    globals.sml
+  exception.sig  exception.sml
+  lib.sig        lib.sml
+  file.sig       file.sml
+  help.sig       help.sml
+  save_hol.sig   save_hol.sml
+  lexis.sig      lexis.sml
+  type.sig       type.sml
+  term.sig       term.sml
+  match.sig      match.sml
+  dsyntax.sig    dsyntax.sml
+  pp.sig         pp.sml
+  hol_pp.extensible.sig
+  hol_pp.extensible.sml
+  thm.sig        thm.sml
+  net.sig        net.sml
+  preterm.sig    preterm.sml
+  uid.sig        uid.sml
+
+#if (THY_AS_MODULE)
+  ../Grammars/raw.yak : MLYacc
+  ../Grammars/raw.lex
+  graph.sig      graph.sml
+  pp_theory.sig  pp_theory.sml
+  thy.sig        thy.sml
+#else
+  theory/data.sig       theory/data.sml
+  theory/thy_pp.sig     theory/thy_pp.sml
+
+  ../Grammars/ParseBase/sources.cm
+  ../Grammars/thy.yak : MLYacc
+  ../Grammars/thy.lex
+  theory/thy_parse.sig
+
+#if (SMLNJ_VERSION>109 || ((SMLNJ_VERSION == 109) && SMLNJ_MINOR_VERSION>=28))
+theory/thy_parse.sml
+#else
+theory/thy_parse.90.sml
+#endif
+
+  ../Grammars/holsig.lex
+  ../Grammars/holsig.yak : MLYacc
+
+  ../Grammars/thms.lex
+  ../Grammars/thms.yak : MLYacc
+
+   theory/regime.sig
+   theory/disk_io.sig
+
+#if (SMLNJ_VERSION>109 || ((SMLNJ_VERSION == 109) && SMLNJ_MINOR_VERSION>=28))
+theory/disk_io.ascii.sml
+#else
+theory/disk_io.ascii.90.sml
+#endif
+
+  theory/regime.sml
+  cache.sml
+  theory/cache.sig
+  theory/graph.sig   theory/graph.sml
+  theory/io.sig       theory/io.sml
+
+  theory/ops.sig
+#if (SMLNJ_VERSION>109 || ((SMLNJ_VERSION == 109) && SMLNJ_MINOR_VERSION>=28))
+theory/ops.sml
+#else
+theory/ops.90.sml
+#endif
+
+  theory/theory.sig
+
+#if (SMLNJ_VERSION>109 || ((SMLNJ_VERSION == 109) && SMLNJ_MINOR_VERSION>=28))
+  theory/theory.sml
+#else
+  theory/theory.90.sml
+#endif
+#endif
+
+(*---------------------------------------------------------------------------
+     Libraries supplanted by CM
+
+  library/lib_data.sig      library/lib_data.sml
+  ../Grammars/lib.yak : MLYacc
+  ../Grammars/lib.lex
+  library/lib_io.sig
+
+#if (SMLNJ_VERSION>109 || ((SMLNJ_VERSION == 109) && SMLNJ_MINOR_VERSION>=28))
+library/lib_io.sml
+#else
+library/lib_io.90.sml
+#endif
+
+  library/lib.sig   library/lib.sml
+ *---------------------------------------------------------------------------*)
+
+(*  install.sig    install.sml   *)
+
+  exists_def.sig   exists_def.sml
+  const_spec.sig   const_spec.sml
+  type_def.sig     type_def.sml
+  const_def.sig    const_def.sml
+

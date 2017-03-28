@@ -1,0 +1,94 @@
+thid = (string, 942751592, 799693)
+axioms = []
+definitions =
+[((STRING_DEF),
+  [],
+  `((! :(ascii -> bool) -> bool) (\(a :ascii).
+   ((! :(string -> bool) -> bool) (\(s :string).
+   (((= :string -> string -> bool) ((STRING $1) $0)) (ABS_string
+   (((Node :one + ascii -> (one + ascii) ltree list ->
+            (one + ascii) ltree) ((INR :ascii -> one + ascii) $1))
+   (((CONS :(one + ascii) ltree -> (one + ascii) ltree list ->
+            (one + ascii) ltree list) (REP_string $0))
+   (NIL :(one + ascii) ltree list)))))))))`),
+ ((eps_DEF),
+  [],
+  `(((= :string -> string -> bool) "") (ABS_string
+   (((Node :one + ascii -> (one + ascii) ltree list ->
+            (one + ascii) ltree) ((INL :one -> one + ascii) one))
+   (NIL :(one + ascii) ltree list))))`),
+ ((string_ISO_DEF),
+  [],
+  `((/\ ((! :(string -> bool) -> bool) (\(a :string).
+   (((= :string -> string -> bool) (ABS_string (REP_string $0)))
+   $0)))) ((! :((one + ascii) ltree -> bool) -> bool)
+   (\(r :(one + ascii) ltree). (((= :bool -> bool -> bool)
+   (((TRP :(one + ascii -> (one + ascii) ltree list -> bool) ->
+           (one + ascii) ltree -> bool) (\(v :one + ascii).
+   (\(tl :(one + ascii) ltree list). ((\/ ((/\
+   (((= :one + ascii -> one + ascii -> bool) $1)
+   ((INL :one -> one + ascii) one))) (((= :num -> num -> bool)
+   ((LENGTH :(one + ascii) ltree list -> num) $0)) 0))) ((/\
+   ((? :(ascii -> bool) -> bool) (\(a :ascii).
+   (((= :one + ascii -> one + ascii -> bool) $2)
+   ((INR :ascii -> one + ascii) $0))))) (((= :num -> num -> bool)
+   ((LENGTH :(one + ascii) ltree list -> num) $0)) (SUC 0))))))) $0))
+   (((= :(one + ascii) ltree -> (one + ascii) ltree -> bool)
+   (REP_string (ABS_string $0))) $0)))))`),
+ ((string_TY_DEF),
+  [],
+  `((? :((string -> (one + ascii) ltree) -> bool) -> bool)
+   (\(rep :string -> (one + ascii) ltree).
+   (((TYPE_DEFINITION :((one + ascii) ltree -> bool) ->
+                       (string -> (one + ascii) ltree) -> bool)
+   ((TRP :(one + ascii -> (one + ascii) ltree list -> bool) ->
+          (one + ascii) ltree -> bool) (\(v :one + ascii).
+   (\(tl :(one + ascii) ltree list). ((\/ ((/\
+   (((= :one + ascii -> one + ascii -> bool) $1)
+   ((INL :one -> one + ascii) one))) (((= :num -> num -> bool)
+   ((LENGTH :(one + ascii) ltree list -> num) $0)) 0))) ((/\
+   ((? :(ascii -> bool) -> bool) (\(a :ascii).
+   (((= :one + ascii -> one + ascii -> bool) $2)
+   ((INR :ascii -> one + ascii) $0))))) (((= :num -> num -> bool)
+   ((LENGTH :(one + ascii) ltree list -> num) $0)) (SUC 0))))))))
+   $0)))`)]
+theorems =
+[((NOT_STRING_EMPTY),
+  [],
+  `((! :(string -> bool) -> bool) (\(s :string).
+   ((! :(ascii -> bool) -> bool) (\(a :ascii). (~
+   (((= :string -> string -> bool) "") ((STRING $0) $1)))))))`),
+ ((STRING_11),
+  [],
+  `((! :(ascii -> bool) -> bool) (\(a :ascii).
+   ((! :(string -> bool) -> bool) (\(s :string).
+   ((! :(ascii -> bool) -> bool) (\(a' :ascii).
+   ((! :(string -> bool) -> bool) (\(s' :string).
+   (((= :bool -> bool -> bool) (((= :string -> string -> bool)
+   ((STRING $3) $2)) ((STRING $1) $0))) ((/\
+   (((= :ascii -> ascii -> bool) $3) $1))
+   (((= :string -> string -> bool) $2) $0)))))))))))`),
+ ((string_CASES),
+  [],
+  `((! :(string -> bool) -> bool) (\(s :string). ((\/
+   (((= :string -> string -> bool) $0) ""))
+   ((? :(string -> bool) -> bool) (\(s' :string).
+   ((? :(ascii -> bool) -> bool) (\(a :ascii).
+   (((= :string -> string -> bool) $2) ((STRING $0) $1)))))))))`),
+ ((string_Induct),
+  [],
+  `((! :((string -> bool) -> bool) -> bool) (\(P :string -> bool).
+   ((==> ((/\ ($0 "")) ((! :(string -> bool) -> bool) (\(s :string).
+   ((==> ($1 $0)) ((! :(ascii -> bool) -> bool) (\(a :ascii). ($2
+   ((STRING $0) $1))))))))) ((! :(string -> bool) -> bool)
+   (\(s :string). ($1 $0))))))`),
+ ((string_Axiom),
+  [],
+  `((! :('a -> bool) -> bool) (\(e :'a).
+   ((! :(('a -> ascii -> string -> 'a) -> bool) -> bool)
+   (\(f :'a -> ascii -> string -> 'a).
+   ((?! :((string -> 'a) -> bool) -> bool) (\(fn :string -> 'a). ((/\
+   (((= :'a -> 'a -> bool) ($0 "")) $2)) ((! :(ascii -> bool) -> bool)
+   (\(a :ascii). ((! :(string -> bool) -> bool) (\(s :string).
+   (((= :'a -> 'a -> bool) ($2 ((STRING $1) $0))) ((($3 ($2 $0)) $1)
+   $0)))))))))))))`)]

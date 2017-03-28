@@ -1,0 +1,104 @@
+head	1.1;
+branch	1.1.1;
+access;
+symbols
+	HOL97:1.1.1.1.0.6
+	bpHOL97:1.1.1.1
+	hol90_9_alpha:1.1.1.1
+	hol90_pre8_for_multiple_compilers:1.1.1.1.0.4
+	hol90_pre8_after_donalds_separate_compilation_changes:1.1.1.1
+	hol90_8_after_merging_Konrad_Elsa:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	95.10.16.13.31.29;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.31.29;	author rjb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@\DOC ARITH_FORM_NORM_CONV
+
+\TYPE {ARITH_FORM_NORM_CONV : conv}
+
+\SYNOPSIS
+Normalises an unquantified formula of linear natural number arithmetic.
+
+\LIBRARY arith
+
+\DESCRIBE
+{ARITH_FORM_NORM_CONV} converts a formula of natural number arithmetic into a
+disjunction of conjunctions of less-than-or-equal-to inequalities. The
+arithmetic expressions are only allowed to contain natural number constants,
+numeric variables, addition, the {SUC} function, and multiplication by a
+constant. The formula must not contain quantifiers, but may have disjunction,
+conjunction, negation, implication, equality on Booleans (if-and-only-if), and
+the natural number relations: {<}, {<=}, {=}, {>=}, {>}. The formula must not
+contain products of two expressions which both contain variables.
+
+The inequalities in the result are normalised so that each variable appears on
+only one side of the inequality, and each side is a linear sum in which any
+constant appears first followed by products of a constant and a variable. The
+variables are ordered lexicographically, and if the coefficient of the
+variable is {1}, the product of {1} and the variable appears in the term
+rather than the variable on its own.
+
+\FAILURE
+The function fails if the argument term is not a formula in the specified
+subset.
+
+\EXAMPLE
+{
+#ARITH_FORM_NORM_CONV "m < n";;
+|- m < n = (1 + (1 * m)) <= (1 * n)
+
+#ARITH_FORM_NORM_CONV
+# "(n < 4) ==> ((n = 0) \/ (n = 1) \/ (n = 2) \/ (n = 3))";;
+|- n < 4 ==> (n = 0) \/ (n = 1) \/ (n = 2) \/ (n = 3) =
+   4 <= (1 * n) \/
+   (1 * n) <= 0 /\ 0 <= (1 * n) \/
+   (1 * n) <= 1 /\ 1 <= (1 * n) \/
+   (1 * n) <= 2 /\ 2 <= (1 * n) \/
+   (1 * n) <= 3 /\ 3 <= (1 * n)
+}
+\USES
+Useful in constructing decision procedures for linear arithmetic.
+
+\ENDDOC
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

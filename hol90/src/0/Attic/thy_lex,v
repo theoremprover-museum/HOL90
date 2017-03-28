@@ -1,0 +1,304 @@
+head	1.4;
+access;
+symbols
+	HOL97:1.3.0.4
+	bpHOL97:1.3
+	hol90_9_alpha:1.3
+	hol90_pre8_for_multiple_compilers:1.3.0.2
+	hol90_pre8_after_donalds_separate_compilation_changes:1.2
+	hol90_8_after_merging_Konrad_Elsa:1.2
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.4
+date	96.02.08.00.32.18;	author drs1004;	state dead;
+branches;
+next	1.3;
+
+1.3
+date	95.11.15.13.24.43;	author rjb;	state Exp;
+branches
+	1.3.4.1;
+next	1.2;
+
+1.2
+date	95.10.17.17.07.34;	author drs1004;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	95.10.16.13.29.59;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.29.59;	author rjb;	state Exp;
+branches;
+next	;
+
+1.3.4.1
+date	97.06.11.17.24.48;	author kxs;	state dead;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.4
+log
+@New theory mechanism, by Donald Syme, and many other enhancements.
+@
+text
+@type pos = int;
+val line:pos = 0;
+type svalue = Tokens.svalue;
+type ('a,'b) token = ('a,'b) Tokens.token;
+type lexresult = (svalue,pos) Tokens.token;
+
+
+fun error(s,_,_) = output(std_out,"Theory lexer error: "^s^"\n");
+fun eof () = Tokens.EOF(line,line);
+
+val type_paren_count = ref 0;
+val string_list = ref ([]:string list);
+
+local
+fun ch_list_to_num (dollar::(L as (_::_))) =
+    if dollar = Sml_system.String.sub("$",0)
+	then
+	    let fun rev_it([],A) = A
+		  | rev_it ((ch::rst),A) =
+		    rev_it (rst, (A*10)+(Sml_system.Char.ord ch-48))
+	    in
+		rev_it(L,0)
+	    end
+    else raise Exception.HOL_ERR{origin_structure = "Theory_lexer",
+                                     origin_function="ch_list_to_num",
+                                     message = "malformed dB"}
+  | ch_list_to_num _ =
+             raise Exception.HOL_ERR{origin_structure = "Theory_lexer",
+                                     origin_function="ch_list_to_num",
+                                     message = "malformed dB"}
+in
+fun break_dB "$0" = 0    | break_dB "$1" = 1
+  | break_dB "$2" = 2    | break_dB "$3" = 3
+  | break_dB "$4" = 4    | break_dB "$5" = 5
+  | break_dB "$6" = 6    | break_dB "$7" = 7
+  | break_dB "$8" = 8    | break_dB "$9" = 9
+  | break_dB "$10" = 10  | break_dB "$11" = 11
+  | break_dB "$12" = 12  | break_dB "$13" = 13
+  | break_dB "$14" = 14  | break_dB "$15" = 15
+  | break_dB "$16" = 16
+  | break_dB s = ch_list_to_num (explode s)
+end;
+
+exception LEX_ERR of string;
+
+(* The next "end" closes the UserDeclarations structure in the compiled file
+   so that the declarations below are available in the rest of the compiled
+   code. The Empty structure then matches with the "end" that should have
+   closed the UserDeclarations structure.
+*)
+end
+
+val substring = Portable.String.substring;
+val ordof = Portable.String.ordof;
+val concat = Portable.String.concat;
+structure Vector = Portable.Vector;
+
+structure Empty =
+struct
+%%
+%header (functor THY_LEX(structure Lib : Lib_sig
+                         structure Tokens : thy_TOKENS));
+
+%s TYPE STRING;
+ident = [A-Za-z0-9] [A-Za-z0-9_']*;
+symbolic_ident = [#\?\+\*\/\\\=\<\>&%@@!:\,\;_\|\~-]+;
+type_var_ident = ['] [A-Za-z][A-Za-z0-9_]*;
+num = [0-9]+;
+db_ident = [$] ([0-9]+);
+ws = [\ \t \010 \012];
+%%
+<INITIAL>\n => (continue());
+<INITIAL>{ws}+ => (continue());
+<INITIAL>"\"" => ( YYBEGIN STRING; string_list := [yytext]; continue());
+<INITIAL>"\\" => (Tokens.lambda(line,line));
+<INITIAL>"." => (Tokens.dot(line,line));
+<INITIAL>"(" => (Tokens.lparen(line,line));
+<INITIAL>")" => (Tokens.rparen(line,line));
+<INITIAL>{num} => (Tokens.num(yytext,line,line));
+<INITIAL>{db_ident} => (Tokens.db_index(break_dB yytext,line,line));
+<INITIAL>{ident} => (Tokens.ident(yytext,line,line));
+<INITIAL>{symbolic_ident} => 
+          ( case yytext 
+              of ":" => ( YYBEGIN TYPE; 
+                          type_paren_count := 0;
+                          Tokens.colon(line,line))
+               |   _  => Tokens.ident(yytext,line,line));
+
+<INITIAL>. => (raise LEX_ERR "INITIAL.catchall");
+
+<TYPE>\n => (continue());
+<TYPE>{ws}+ => (continue());
+<TYPE>{type_var_ident} => (Tokens.type_var_ident(yytext,line,line));
+<TYPE>{ident} => (Tokens.type_ident(yytext,line,line));
+<TYPE>"->" => (Tokens.type_right_arrow(line,line));
+<TYPE>"+" => (Tokens.type_plus(line,line));
+<TYPE>"#" => (Tokens.type_hash(line,line));
+<TYPE>"," => (Tokens.type_comma(line,line));
+
+<TYPE>"("  => (Lib.inc type_paren_count; Tokens.type_lparen(line,line));
+<TYPE>")"  => (if (!type_paren_count = 0)
+               then (YYBEGIN INITIAL; Tokens.rparen(line,line))
+               else (Lib.dec type_paren_count; Tokens.type_rparen(line,line)));
+<TYPE>. => (raise LEX_ERR "TYPE.catchall");
+
+<STRING>"\n" => (string_list :=  yytext::(!string_list); continue());
+<STRING>"\\\"" =>(string_list := "\""::(!string_list); continue());
+<STRING>"\"" => (YYBEGIN INITIAL; 
+              Tokens.string_(Sml_system.String.concat(rev(yytext::(!string_list))),line,line));
+<STRING>. => (string_list :=  yytext::(!string_list); continue());
+@
+
+
+1.3
+log
+@The HOL90 sources have been changed to allow for the use of different
+Standard ML compilers (possibly simultaneously).
+
+ * Many files in "src/0" changed to make them more portable across different
+   ML compilers. Various additions have been made to the Portable structure
+   and files changed to access identifiers in the Portable structure rather
+   than from the global environment. Worthy of special note are:
+
+   - The pointer equality used in "src/0/term.sml" has been made into a
+     function in the Portable structure.
+
+   - The ML-Lex and ML-Yacc files for the various parsers have been changed
+     to access the Portable structure. Both the source files and the SML
+     produced from them have been changed but I have not verified that the
+     source files would reproduce the new SML versions if ML-Lex and ML-Yacc
+     were to be rerun on them. The changes involve some hacks that exploit the
+     way ML-Lex and ML-Yacc work. See the sources for details.
+
+R.J.Boulton, 15th November 1995.
+@
+text
+@@
+
+
+1.3.4.1
+log
+@Removed files are parse files and portability files that have
+effectively been moved elsewhere.
+
+Modified files are up to date for ML 109.26.
+@
+text
+@@
+
+
+1.2
+log
+@Keeping you up to date:
+
+I'm about to do a checkin of elsa's modifications to the hol90.7
+sources to create her hol90.pre8.  To recap what I've done:
+	- I checked out hol90 (in /usr/groups/hol/drs1004/hol90)
+		cvs co hol90
+	  (Well, to be honest, I only checked out those
+	  parts of hol90 I knew I'd be changing, e.g. not the
+	  Manual, and only parts of the library.  Checking out the
+	  entire source takes a while, mainly due to the enormous number
+	  of help files.  The limiting factor is files/second, which
+         runs at around 5 when CVS is working on nfs over a network, not
+         KB/second, which you might at first think it would be).
+
+	- By doing a recursive diff between Elsa's source and the
+	hol90.7 source I found all the changes Elsa had made to
+	source files.  I copied relevant files from Elsa's source
+	into my checked out version.  The only new files were
+		- the sml_system files in src/0
+		- some make scripts in src/.
+	Changed files were in:
+		src/{0,1,2,3}
+		library/arith/src/thm_convs.sml
+		library/list/src/list_conv1.sml
+		library/num/src/num_lib.sml
+		library/prog_logic/src/halts_logic.sml
+		library/prog_logic/src/translation.sml
+		library/prog_logic/theories/src/mk_halts.sml
+		library/real/theories/src/Make
+		library/real/theories/src/equiv.sml
+		library/real/theories/src/seq.sml
+		library/reduce/src/arithconv.sml
+		library/string/src/string_conv.sml
+		library/unity/theories/src/aux_definitions.sml
+		library/word/theories/src/*
+
+	- I will now commit these changes, with this email as the log message.
+		cvs commit
+
+	- Tomorrow I will get this version compiling
+	with NJSML 108 (I will probably add
+	the files to enable the NJSML compilation manager to make
+	this easier), then check those changes in.  I think it's
+	good to get things in a working state.
+@
+text
+@d46 14
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d15 10
+a24 7
+fun ch_list_to_num ("$"::(L as (_::_))) =
+      let fun rev_it([],A) = A
+            | rev_it ((ch::rst),A) = rev_it (rst, (A*10)+(ord ch-48))
+      in
+      rev_it(L,0)
+      end
+  | ch_list_to_num _ = raise HOL_ERR{origin_structure = "Theory_lexer",
+d27 4
+d47 2
+a48 1
+%header (functor THY_LEX(structure Tokens : thy_TOKENS));
+d86 1
+a86 1
+<TYPE>"("  => (inc type_paren_count; Tokens.type_lparen(line,line));
+d89 1
+a89 1
+               else (dec type_paren_count; Tokens.type_rparen(line,line)));
+d95 1
+a95 1
+              Tokens.string_(implode(rev(yytext::(!string_list))),line,line));
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

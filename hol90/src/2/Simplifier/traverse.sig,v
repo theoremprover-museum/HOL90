@@ -1,0 +1,335 @@
+head	1.2;
+access;
+symbols;
+locks; strict;
+comment	@# @;
+
+
+1.2
+date	96.02.08.00.45.34;	author drs1004;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	96.01.04.14.06.44;	author drs1004;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.2
+log
+@New theory mechanism, code reorganisation and other enhancements by Don Syme.
+@
+text
+@(* ===================================================================== 
+ * FILE          : traverse.sig
+ * DESCRIPTION   : A programmable term traversal engine for hol90
+ *                                                                       
+ * AUTHOR        : Donald Syme
+ *                 Based loosely on original HOL rewriting by 
+ *                 Larry Paulson et al.
+ * ===================================================================== *)
+
+
+(* =====================================================================
+ * The Traversal/Reduction Engine
+ * =====================================================================*)
+
+
+signature Traverse_sig =
+sig
+   structure Travrules : Travrules_sig;
+
+   (* ---------------------------------------------------------------------
+    * type context
+    *
+    * Each reducer collects a working context as assumptions are given
+    * to it.  A context object is the current state of a single reducer.
+    * ---------------------------------------------------------------------*)
+
+  datatype context = 
+      THMNET of Thm.thm Ho_net.net | 
+      CONVNET of ((Term.term -> Thm.thm) -> Abbrev.conv) Ho_net.net | 
+      THMLIST of Thm.thm list |
+      ANYCONTEXT of exn (* well known SML hack to allow any kind of data *)
+
+
+  type travrules sharing type travrules = Travrules.travrules;
+      
+   (* ---------------------------------------------------------------------
+    * Reducers
+    *   These are the things that get applied to terms at during 
+    * fully automated traversal.  They prove theorems which state
+    * that the current term reduces to a related term.
+    *
+    * Each reducer collects its own context (of one
+    * of the forms above - Nb. in SML exceptions are able to contain
+    * any kind of data, so contexts can be any appropriate format.  This
+    * is a hack, but it is the best way to get good data hiding in SML
+    * without resorting to functors)
+    *
+    * The fields of a reducer are:
+    *
+    * apply:  This is the reducer itself.  The arguments passed by
+    *   the traversal engine to the reduce routine are:
+    *    solver: 
+    *      A continuation function, to be used if the reducer needs to
+    *      solve some side conditions and want to continue traversing
+    *      in order to do so.  The continuation invokes traversal
+    *      under equality, then calls EQT_ELIM.
+    *
+    *      If it proves useful, in future versions this continuation
+    *      may be used to invoke traversal under any preorder.  At
+    *      the moment the continuation is primarily designed to 
+    *      be used to solve side conditions in context.
+    *
+    *      Note that this function is *not* the same as 
+    *      the congruence side condition solver.
+    *
+    *    context:
+    *      The reducer's current view of the context, as 
+    *      collected by its "addcontext" function.
+    *
+    * addcontext: routine is invoked every time more context is added
+    *   to the current environment by virtue of congruence routines.
+    *
+    * initial:  The inital context.
+    *
+    * preorder : Which relation the reducer proves things for.  E.g.
+    *   a rewriter is a reducer which proves things about equality.
+    * 
+    * name:
+    * ---------------------------------------------------------------------*)
+    
+  type reducer;
+  val mk_reducer : {
+         name : string,
+         relation : Term.term,
+         initial: context,
+         addcontext : context * Thm.thm list -> context,
+         apply: {solver:Term.term -> Thm.thm, context: context} -> Abbrev.conv
+       } -> reducer;
+  val dest_reducer : reducer -> {
+         name : string,
+         relation : Term.term,
+         initial: context,
+         addcontext : context * Thm.thm list -> context,
+         apply: {solver:Term.term -> Thm.thm, context: context} -> Abbrev.conv
+       };
+
+   (* ---------------------------------------------------------------------
+    * TRAVERSE : {rewriters: reducer list,
+    *             dprocs: reducer list,
+    *             travrules: travrules,
+    *             relation: term}
+    *             -> thm list -> conv
+    * 
+    * Implements a procedure which tries to prove a term is related 
+    * to a (simpler) term by the relation given in the travrules.
+    * This is done by traversing the term, applying the
+    * procedures specified in the travrules at certain subterms.  
+    * The traversal strategy is similar to TOP_DEPTH_CONV.
+    *
+    * The traversal has to be justified by congruence rules.
+    * These are also in the travrules.  See "Congprocs" for a more
+    * detailed description of congruence rules.
+    *
+    * In the case of rewriting and simplification, the relation used is  
+    * equality (--`$=`--).  However traversal can also be used with
+    * congruences and preorders.
+    *
+    * The behavious of TRAVERSE depends almost totally on what 
+    * is contained in the input travrules.
+    *
+    * The theorem list is a set of theorems to add initially as context 
+    * to the traversal.
+    *
+    * FAILURE CONDITIONS
+    *
+    * TRAVERSE never fails, though it may diverge.  Bad congruence rules
+    * may cause very strange behaviour.
+    * ---------------------------------------------------------------------*)
+
+   type trav_context;
+
+   val initial_context : 
+       {rewriters: reducer list,
+	dprocs: reducer list,
+	travrules: travrules,
+	relation: Term.term} -> trav_context
+
+   val add_context : 
+       {rewriters: reducer list,
+	dprocs: reducer list} -> (trav_context * Thm.thm list) -> trav_context;
+
+   val change_relation : 
+	travrules -> (trav_context * Term.term) -> trav_context; 
+
+   val TRAVERSE_IN_CONTEXT : 
+       {rewriters: reducer list,
+	dprocs: reducer list,
+	travrules: travrules} -> trav_context -> Abbrev.conv
+
+   val TRAVERSE : 
+       {rewriters: reducer list,
+	dprocs: reducer list,
+	travrules: travrules,
+	relation: Term.term} -> Thm.thm list -> Abbrev.conv
+
+   (* ---------------------------------------------------------------------
+    * TRAVERSE_TAC
+    *    - Uses TRAVERSE to reduce part of the goal under the given relation,
+    *      producing a theorem |- A REL A'.
+    *    - When instantiated with A and A', and the A REL A' assumption is
+    *      discharged, the provided theorem 
+    *      should be suitable for a MATCH_MP_TAC on the current goal,
+    *      thus justifying the reduction performed.
+    *    - With ASM_TRAVERSE_TAC, Assumptions are added as context.
+    *    - With FULL_TRAVERSE_TAC, assumptions are 
+    *      traversed under equality before using ASM_TRAVERSE_TAC.
+    *
+    * The part of the goal to reduce is specified by the given term finder.
+    * 
+    * EXAMPLES OF JUSTIFYING THEOREMS
+    *  1. Reduction on the left.
+    *
+    *  Any relation suitable for traversal (i.e. any preorder)
+    *  can give rise to the following
+    *  theorem justifying reduction on the left.  In this situation,
+    *  think of the goal as (--`A REL B`--), and we want to reduce
+    *  A by traversal.  This gives rise to a new goal (--`A' REL B`--),
+    *  which, if solved, implies the first goal.  The justifying
+    *  theorem is thus:
+    *    |- A REL A' ==> A' REL B ==> A REL B
+    *
+    *  2. Reduction on the right.
+    * 
+    *  Any congruence can give rise to the following
+    *  theorem justifying reduction on the right:
+    *    |- (A == A') ==> (B == A') ==> (B == A)
+    *
+    *  3. Reduction under equality (simplification).
+    *
+    *  Standard HOL equality can be used to justfy reduction of
+    *  the entire goal in a similar fashion to CONV_TAC:
+    *    |- (A = A') ==> A' ==> A 
+    *
+    * NOTE
+    *   A better way of implementing this may be to simply provide an initial
+    * congruence rule for the (--`<==`--) relation (if it were defined in
+    * core HOL).
+    *
+    * At the moment FULL_TRAVERSE_TAC only supports traversal of the
+    * assumptions under the equality relation.  Thus this aspect
+    * of the traversal is not programmable in the way that the traversal
+    * of the goal is. In a future release it may be.  For example,
+    * traversing the assumptions under (--`==>`--) would give a limited
+    * form of ground-case resolution.
+    * ---------------------------------------------------------------------*)
+
+   val TRAVERSE_TAC : 
+           {rule:Thm.thm,
+            finder: Term.term -> Term.term,
+	    rewriters: reducer list,
+	    dprocs: reducer list,
+            travrules: travrules,
+            relation: Term.term} -> Abbrev.tactic; 
+
+   val ASM_TRAVERSE_TAC : 
+           {rule:Thm.thm,
+            finder: Term.term -> Term.term,
+	    rewriters: reducer list,
+	    dprocs: reducer list,
+            travrules: travrules,
+            relation: Term.term} -> Abbrev.tactic; 
+
+   val FULL_TRAVERSE_TAC : 
+           {rule:Thm.thm,
+            finder: Term.term -> Term.term,
+	    rewriters: reducer list,
+	    dprocs: reducer list,
+            travrules: travrules,
+            relation: Term.term} -> Abbrev.tactic; 
+
+   (* ---------------------------------------------------------------------
+    * TRAVERSE_RULE
+    *    - Uses TRAVERSE to reduce part of the theorem under 
+    *      the given relation, producing a theorem |- A REL A'.
+    *    - When MP'd with |- A REL A', the provided theorem 
+    *      should be suitable for a MATCH_MP with the initial theorem,
+    *      completing the reduction performed.
+    *    - With ASM_TRAVERSE_RULE, assumptions are added as context.
+    *    - With FULL_TRAVERSE_RULE, assumptions are 
+    *      traversed under equality before using ASM_TRAVERSE_RULE.
+    *
+    * The part of the goal to reduce is specified by the given term finder.
+    * 
+    * EXAMPLES OF JUSTIFYING THEOREMS
+    *  1. Reduction on the right of a relational theorem
+    *
+    *  Any relation suitable for traversal (i.e. any preorder)
+    *  can give rise to the following
+    *  theorem justifying reduction on the left.  In this situation,
+    *  think of the goal as (--`A REL B`--), and we want to reduce
+    *  A by traversal.  This gives rise to a new goal (--`A' REL B`--),
+    *  which, if solved, implies the first goal.  The justifying
+    *  theorem is thus:
+    *    |- B REL B' ==> A REL B ==> A REL B'
+    *
+    *  2. Reduction on the left of a relational theorem
+    * 
+    *  Any congruence can give rise to the following
+    *  theorem justifying reduction on the right:
+    *    |- (A == A') ==> (A == B) ==> (A' == B)
+    *
+    *  3. Reduction under equality (simplification).
+    *
+    *  Standard HOL equality can be used to justfy reduction
+    *  in a similar fashion to CONV_RULE:
+    *    |- (A = A') ==> A ==> A'
+    *
+    * NOTE
+    *   A better way of implementing this may be to simply provide an initial
+    * congruence rule for the (--`==>`--) relation (if it were defined in
+    * core HOL).
+    *
+    * In the future the relation used to traverse the assumptions in
+    * FULL_TRAVERSE_RULE may be programmable
+    * in the same way that TRAVERSE_RULE is programmable to act
+    * on different kinds of theorems.
+    * ---------------------------------------------------------------------*)
+
+   val TRAVERSE_RULE : 
+          {rule:Thm.thm,
+           finder: Term.term -> Term.term,
+	   rewriters: reducer list,
+	   dprocs: reducer list,
+           travrules: travrules,
+           relation: Term.term} -> Thm.thm -> Thm.thm; 
+
+   val ASM_TRAVERSE_RULE : 
+          {rule:Thm.thm,
+           finder: Term.term -> Term.term,
+	   rewriters: reducer list,
+	   dprocs: reducer list,
+           travrules: travrules,
+           relation: Term.term} -> Thm.thm -> Thm.thm; 
+
+end;
+@
+
+
+1.1
+log
+@Added simplifier components, added drule files, added MK_ABS_CONV, better error messages
+@
+text
+@d28 2
+a29 2
+      THMNET of Thm.thm BvarNet.net | 
+      CONVNET of ((Term.term -> Thm.thm) -> Abbrev.conv) BvarNet.net | 
+@

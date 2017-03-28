@@ -1,0 +1,206 @@
+head	1.2;
+access;
+symbols;
+locks; strict;
+comment	@# @;
+
+
+1.2
+date	96.01.04.14.15.01;	author drs1004;	state dead;
+branches;
+next	1.1;
+
+1.1
+date	95.12.18.11.39.30;	author drs1004;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.2
+log
+@Added simplifier components, added drule files, added MK_ABS_CONV, better error messages
+@
+text
+@(* ===================================================================== 
+ * FILE          : net.sml                                               
+ * DESCRIPTION   : Implementation of term nets, from the group at ICL.   
+ *                 Thanks! A term net is a database, keyed by terms.     
+ *                 Term nets were initially implemented by Larry Paulson 
+ *                 for Cambridge LCF.                                    
+ *                                                                       
+ * AUTHOR        : Somebody in the ICL group.                            
+ * DATE          : August 26, 1991                                       
+ * MODIFIED      : Sept 5, 1992, to use deBruijn representation          
+ *
+ * MODIFIED	: Donald Syme, 1995, to add assumption-bound variables.
+ *  
+ * Assumption bound variables are for storing rewrites like
+ *  [x=0] |- x = 0.
+ * Since "x" is free in the assumptions, this rewrite should only match
+ * terms which are exactly "x" on the left.  The old termnets chose this
+ * rewrite to try to rewrite every term!!
+ *
+ * This only becomes really important when you have contextual rewriting.
+ *
+ * I'm sure all this code could be made faster.  The Isabelle term-nets
+ * are no doubt much superior.  Also, this is compiled against the
+ * public, not private Term structure.  The private might be faster.
+ *
+ * MODIFIED    : Donald Syme, November 1995, to be keyed up to higher order
+ *               matching, based on JRH's code from GTT.  This may change
+ *               the order rewrites are returned...
+ *
+ * ===================================================================== *)
+
+
+(*--------------------------------------------------------------------
+ * Labels ascribed to terms we are trying to match against the
+ * net. 
+ * Tests:
+ * 
+ * open BvarNet;
+ * 
+ * val x = empty_net;
+ * val x = enter ([(--`a:num`--)],(--`a + b = c`--),"a + b = c") x;
+ * val x = enter ([],(--`x + y = z`--),"x + y = z") x;
+ * val x = enter ([],(--`a - b = c`--),"a - b = c") x;
+ * lookup (--`a + f = g`--) x;          (* 2 matches *)
+ * lookup (--`c + f = g`--) x;          (* 1 match *)
+ * lookup (--`a-b = g`--) x;            (* 1 match *)
+ * 
+ * val x = empty_net;
+ * val x = enter ([],(--`P:'a`--),"P") x;
+ * lookup (--`1`--) x;                   (* matches *)
+ * lookup (--`P:num`--) x;               (* matches *)
+ * lookup (--`P 1:num`--) x;             (* matches *)
+ * lookup (--`(P:num->num) x`--) x;      (* matches *)
+ * lookup (--`\x. (P:num->num) x`--) x;  (* matches *)
+ * 
+ * val x = empty_net;
+ * val x = enter ([],(--`\x:num. 1`--),"\\x. 1") x;
+ * lookup (--`1`--) x;            (* no match *)
+ * lookup (--`\x:num. 1`--) x;    (* matches *)
+ * 
+ * val x = empty_net;
+ * val x = enter ([],(--`~!x:'a. P x`--),"~!x:'a. P x") x;
+ * lookup (--`~!x:num. P x`--) x;           (* matches *)
+ * lookup (--`~!x:'a. P x`--) x;            (* matches *)
+ * lookup (--`~!x:'a. P x (y:'a)`--) x;     (* matches *)
+ * lookup (--`~!x:'a. P`--) x;              (* matches *)
+ * 
+ *-------------------------------------------------------------------*)
+
+
+signature BvarNet_sig =
+sig
+type 'a net
+val empty_net : 'a net
+val enter : Term.term list * Term.term * 'a -> 'a net -> 'a net
+val lookup :  Term.term -> 'a net -> 'a list
+end;
+
+
+structure BvarNet : BvarNet_sig =
+struct
+
+open Core;
+open Exception;
+open Lib;
+
+val ERR = Exception.ERR "BvarNet";
+
+(*--------------------------------------------------------------------
+ * Labels ascribed to head-operators of terms.
+ *-------------------------------------------------------------------*)
+
+datatype term_label = 
+       Vnet | 
+       FVnet of string * int | 
+       Cnet of string * int |  
+       Lnet of int;            
+
+fun remove p l =
+ (case l of
+    [] => ERR("remove","")
+  | (h::t) => if p(h) then (h,t) else
+              let val (y,n) = remove p t in (y,h::n) end);
+
+fun stored_label (fvars,tm) =
+    let val (oper,args) = strip_comb tm 
+        val args' = map (fn x => (fvars,x)) args
+    in case dest_term oper 
+         of CONST {Name,...} => (Cnet(Name,length args),args')
+          | LAMB {Body,Bvar} => (Lnet(length args),
+                                (subtract fvars [Bvar],Body)::args')
+          | VAR {Name,...} => 
+                if (mem oper fvars) 
+                then (FVnet(Name,length args),args')
+                else (Vnet,[])
+    end;
+
+fun label_for_lookup tm =
+    let val (oper,args) = strip_comb tm 
+    in case dest_term oper 
+         of CONST {Name,...} => (Cnet(Name,length args),args)
+          | LAMB {Body,Bvar} => (Lnet(length args),Body::args)
+          | VAR {Name,...} => (FVnet(Name,length args),args)
+    end;
+
+
+datatype 'a net = NODE of (term_label * 'a net) list * 'a list
+
+val empty_net = NODE ([],[]);
+
+fun net_update (elem,tms,NODE(edges,tips)) =
+   (case tms of
+      [] => NODE(edges,elem::tips)
+    | (tm::rtms) =>
+          let val (label,ntms) = stored_label tm
+              val (child,others) =
+                    (snd ## I) (remove (fn (x,y) => x = label) edges)
+                  handle _ => (empty_net,edges)
+              val new_child = net_update(elem,ntms @@ rtms,child)
+          in NODE ((label,new_child)::others,tips)
+          end);
+
+fun follow (tms,NODE(edges,tips)) =
+    case tms of
+      [] => tips
+    | (tm::rtms) =>
+        let val (label,ntms) = label_for_lookup tm
+            val collection =
+              let val child = assoc label edges 
+              in follow(ntms @@ rtms, child)
+              end
+              handle _ => []
+        in
+            (collection @@ follow(rtms,assoc Vnet edges)
+              handle _ => collection)
+        end;
+
+
+fun enter (fvars,tm,elem) net = net_update(elem,[(fvars,tm)],net);
+
+fun lookup tm net = follow([tm],net);
+
+
+end; (* NET *)
+
+
+
+
+
+
+@
+
+
+1.1
+log
+@Preterm and other changes, see 7.changes
+@
+text
+@@

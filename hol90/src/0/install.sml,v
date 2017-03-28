@@ -1,0 +1,506 @@
+head	1.6;
+access;
+symbols
+	HOL97:1.4.0.4
+	bpHOL97:1.4
+	hol90_9_alpha:1.4
+	hol90_pre8_for_multiple_compilers:1.4.0.2
+	hol90_pre8_after_donalds_separate_compilation_changes:1.3
+	hol90_8_after_merging_Konrad_Elsa:1.2
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.6
+date	96.02.08.00.31.17;	author drs1004;	state Exp;
+branches;
+next	1.5;
+
+1.5
+date	95.12.18.11.34.42;	author drs1004;	state Exp;
+branches;
+next	1.4;
+
+1.4
+date	95.11.15.13.24.30;	author rjb;	state Exp;
+branches
+	1.4.4.1;
+next	1.3;
+
+1.3
+date	95.10.31.13.56.16;	author drs1004;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	95.10.17.17.07.06;	author drs1004;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	95.10.16.13.30.01;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.30.01;	author rjb;	state Exp;
+branches;
+next	;
+
+1.4.4.1
+date	97.06.11.17.24.09;	author kxs;	state Exp;
+branches;
+next	1.4.4.2;
+
+1.4.4.2
+date	97.07.10.20.01.10;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.6
+log
+@New theory mechanism, by Donald Syme, and many other enhancements.
+@
+text
+@(* ===================================================================== *)
+(* FILE          : install.sml                                           *)
+(* DESCRIPTION   : Also defines "install", for updating system paths     *)
+(*                 when the root directory of the hol90 sources is       *)
+(*                 moved.                                                *)
+(*                                                                       *)
+(* AUTHOR        : Elsa L. Gunter, AT&T Bell Laboratories                *)
+(* DATE          : 20 November, 1992                                     *)
+(* AUGMENTED     : Jan28 1993, to have "install", which allows one to    *)
+(*                 move the hol90 directory structure after it has been  *)
+(*                 built. (Konrad Slind)                                 *)
+(* ===================================================================== *)
+
+(* Copyright 1992 by AT&T Bell Laboratories *)
+
+structure Install : Install_sig =
+struct
+
+
+open Lib;
+	
+
+(*------------------------------------------------------------------------
+ * install
+ *
+ * Informs the system of its new location, if one moves the hol90 sources
+ * after the system has been built.
+ *----------------------------------------------------------------------*)
+
+fun last_char str = Portable.String.substring(str, size str - 1, 1)
+fun pathify str = if (last_char str = "/")
+                  then str
+                  else str^"/"
+
+fun install base =
+   let val base = pathify base
+       val help_base = base^"help/"
+       val lib_base = base^"library/"
+       val contrib_base = base^"contrib/"
+       val theory_suffix = "theories/"^Globals.theory_file_type^"/"
+   in
+     Globals.HOLdir := base;
+     Globals.help_path := ["", help_base^"90/", help_base^"88/ENTRIES/"];
+     Globals.library_path := ["", lib_base^"desc/", contrib_base^"desc/"];
+     (* move the system theories  *)
+     Globals.theory_path := (["", base^theory_suffix]);
+     
+     say ("hol90 root directory now regarded as "^quote base^".\n")
+   end
+
+(*-----------------------------------------------------------------------
+ * REMOVED DUE TO SIMPLIFICATION OF LIBRARIES:  [DRS JAN 96]
+ *  all known but unloaded libraries 
+ *       val unloaded_libs = op_set_diff Library.lib_eq 
+ *                                        (Library.known_libraries())
+ *                                        (Library.loaded_libraries() 
+ *        (* the unloaded libs that supply theories  *)
+ *       val theory_suppliers = 
+ * 	   itlist (fn lib => fn A => 
+ *                        let val {name,theories,...} = Library.dest_library lib
+ *                        in if (Portable.List.null theories)
+ *                           then A
+ *                           else name::A
+ *                        end)
+ *                     unloaded_libs [] 
+ * @@ (map (fn s => lib_base^s^"/"^theory_suffix)
+ *                                   theory_suppliers)); 
+ *      (* move the unloaded but known libraries *)
+ *      map (fn lib => Library.move_library
+ *                     (lib, lib_base^(#name(Library.dest_library lib))^"/"))
+ *          unloaded_libs; 
+ * ---------------------------------------------------------------------*)
+
+
+(*------------------------------------------------------------------------
+ * print_banner
+ *
+ *----------------------------------------------------------------------*)
+
+fun print_banner date =
+ ( output(std_out, "\n\n");
+   output(std_out,
+"          HHH                 LL\n \
+\         HHH                  LL\n \
+\         HHH                   LL\n \
+\         HHH                    LL\n \
+\         HHH          OOOO       LL\n \
+\         HHHHHHH     OO  OO       LL\n \
+\         HHHHHHH     OO  OO       LLL\n \
+\         HHH          OOOO        LLLL\n \
+\         HHH                     LL  LL\n \
+\         HHH                    LL    LL\n \
+\         HHH                   LL      LL\n \
+\         HHH                  LL        LL90."^
+(int_to_string Globals.version_number)^"\n\n"^
+"Created on "^date^"using: " ^ Portable.sml_banner ^"\n\n\n"));
+
+
+(*------------------------------------------------------------------------
+ * read_init_file
+ *
+ *----------------------------------------------------------------------*)
+
+val init_files = 
+    #1 (foldl (fn (v,(l,s)) => (l@@[(s^"."^v^".sml")], (s^"."^v))) 
+    (["hol-init.sml"],"hol-init")  Portable.sml_version);
+
+fun try_init_file f =
+    if (Portable.file_exists_for_reading f) then 
+	(Portable.use f; true)
+    else
+	false;
+
+fun read_init_file () =
+    let val local_init_files = map (fn x => "./"^x) init_files
+	val home_init_files = 
+	    case Portable.getEnv "HOME"
+		of NONE => []
+	      | SOME home => map (fn x => home^"/"^x) init_files
+    in
+	(first try_init_file (local_init_files@@home_init_files)
+	 handle _ => "";
+	 ())
+    end;
+    
+
+(*----------------------------------------------------------------------
+ * save_hol
+ *
+ * We don't raise an error when looking up HOME
+ * fails because non-unix systems 
+ * may not have a HOME env var.
+ *--------------------------------------------------------------------*)
+	
+fun save_hol str = 
+    let (*val (I,O) = execute_in_env ("/bin/date",[],[])
+	val date = input_line I;
+        val _ = close_in I
+        val _ = close_out O *)
+	val date = "???"
+    in 
+       Portable.export str;
+       print_banner date;
+       if (!Globals.use_init_file) then 
+	   read_init_file()
+       else ()
+    end
+
+
+end; (* Install *)
+
+
+@
+
+
+1.5
+log
+@Preterm and other changes, see 7.changes
+@
+text
+@a40 13
+       (* all known but unloaded libraries *)
+       val unloaded_libs = op_set_diff Library.lib_eq 
+                                       (Library.known_libraries())
+                                       (Library.loaded_libraries())
+       (* the unloaded libs that supply theories *)
+       val theory_suppliers = 
+	   itlist (fn lib => fn A => 
+                       let val {name,theories,...} = Library.dest_library lib
+                       in if (Portable.List.null theories)
+                          then A
+                          else name::A
+                       end)
+                    unloaded_libs []
+d45 3
+a47 9
+     (* move the system theories and also the theories of any unloaded but
+        known libraries *)
+     Globals.theory_path := (["", base^theory_suffix]@@
+                             (map (fn s => lib_base^s^"/"^theory_suffix)
+                                  theory_suppliers));
+     (* move the unloaded but known libraries *)
+     map (fn lib => Library.move_library
+                    (lib, lib_base^(#name(Library.dest_library lib))^"/"))
+         unloaded_libs;
+d51 22
+d74 1
+d136 1
+a136 1
+    let val (I,O) = execute_in_env ("/bin/date",[],[])
+d139 2
+a140 1
+        val _ = close_out O
+@
+
+
+1.4
+log
+@The HOL90 sources have been changed to allow for the use of different
+Standard ML compilers (possibly simultaneously).
+
+ * Many files in "src/0" changed to make them more portable across different
+   ML compilers. Various additions have been made to the Portable structure
+   and files changed to access identifiers in the Portable structure rather
+   than from the global environment. Worthy of special note are:
+
+   - The pointer equality used in "src/0/term.sml" has been made into a
+     function in the Portable structure.
+
+   - The ML-Lex and ML-Yacc files for the various parsers have been changed
+     to access the Portable structure. Both the source files and the SML
+     produced from them have been changed but I have not verified that the
+     source files would reproduce the new SML versions if ML-Lex and ML-Yacc
+     were to be rerun on them. The changes involve some hacks that exploit the
+     way ML-Lex and ML-Yacc work. See the sources for details.
+
+R.J.Boulton, 15th November 1995.
+@
+text
+@d3 1
+a3 6
+(* DESCRIPTION   : Defines the function install_system_theory for use    *)
+(*                 when rebuilding the system to either rebuild new      *)
+(*                 theory files, or load existing as determined by       *)
+(*                 Globals.remake_theory_files.                          *)
+(*                                                                       *)
+(*                 Also defines "install", for updating system paths     *)
+d16 1
+a16 7
+functor INSTALL (structure Globals : Globals_sig
+                 (* structure Lib : Lib_sig *)
+                 structure Theory : Theory_sig
+                 structure Add_to_sml : Add_to_sml_sig
+                 structure Library : Library_sig)  
+       : Install_sig =
+
+a18 7
+fun install_system_theory thy_name =
+    if Globals.remake_theory_files
+	then
+	    Portable.use ((!Globals.HOLdir)^"theories/src/mk_"^thy_name^".sml")
+    else
+	(Theory.load_theory thy_name;
+	 Add_to_sml.add_theory_to_sml thy_name)
+d20 2
+d23 6
+a29 4
+(* Informs the system of its new location, if one moves the hol90 sources
+   after the system has been built.
+*)
+local
+d34 1
+a34 11
+fun op_mem eq_func i =
+   let val eqi = eq_func i
+       fun mem [] = false
+         | mem (a::b) = eqi a orelse mem b
+   in mem
+   end
+fun op_set_diff eq_func a b = 
+   let val mem = Lib.C (op_mem eq_func) b
+   in Lib.gather (not o mem) a
+   end
+in
+d47 1
+a47 1
+	   Lib.itlist (fn lib => fn A => 
+d67 1
+a67 1
+     Lib.say ("hol90 root directory now regarded as "^Lib.quote base^".\n")
+d69 78
+a146 1
+end;
+a147 1
+end;  (* Install *)
+@
+
+
+1.4.4.1
+log
+@Removed files are parse files and portability files that have
+effectively been moved elsewhere.
+
+Modified files are up to date for ML 109.26.
+@
+text
+@d6 1
+a6 1
+(*                 SysParams.remake_theory_files.                        *)
+d22 1
+d31 6
+a36 4
+    if SysParams.remake_theory_files
+    then Portable.use ((!Globals.HOLdir)^"theories/src/mk_"^thy_name^".sml")
+    else (Theory.load_theory thy_name;
+	  Add_to_sml.add_theory_to_sml thy_name)
+d40 3
+a42 4
+(*---------------------------------------------------------------------------
+ * Informs the system of its new location, if one moves the hol90 sources
+ *   after the system has been built.
+ *---------------------------------------------------------------------------*)
+d45 3
+a47 1
+fun pathify str = if (last_char str = "/") then str else str^"/"
+d64 1
+a64 1
+       val theory_suffix = "theories/"^SysParams.theory_file_type^"/"
+@
+
+
+1.4.4.2
+log
+@The module has been changed from a functor to a structure.
+@
+text
+@d21 6
+a26 1
+structure Install : Install_sig =
+a27 2
+
+open CoreHol;
+@
+
+
+1.3
+log
+@First phase of hol90.8 development.  hol90 now compiles using NJSML-CM
+108.5, with separate compilation of libraries.  System dependencies
+have been isolated in the makefiles and "portable.sml".
+
+This involved a large number of enhancments to the source files,
+most of which are documented in the 7.changes file (or will be shortly).
+See also the correpsonding email corrspondence between RJB, KLS, TFM,
+JRH and DRS that happened during this development.
+@
+text
+@d44 1
+a44 1
+fun last_char str = substring(str, size str - 1, 1)
+d73 1
+a73 1
+                       in if (null theories)
+@
+
+
+1.2
+log
+@Keeping you up to date:
+
+I'm about to do a checkin of elsa's modifications to the hol90.7
+sources to create her hol90.pre8.  To recap what I've done:
+	- I checked out hol90 (in /usr/groups/hol/drs1004/hol90)
+		cvs co hol90
+	  (Well, to be honest, I only checked out those
+	  parts of hol90 I knew I'd be changing, e.g. not the
+	  Manual, and only parts of the library.  Checking out the
+	  entire source takes a while, mainly due to the enormous number
+	  of help files.  The limiting factor is files/second, which
+         runs at around 5 when CVS is working on nfs over a network, not
+         KB/second, which you might at first think it would be).
+
+	- By doing a recursive diff between Elsa's source and the
+	hol90.7 source I found all the changes Elsa had made to
+	source files.  I copied relevant files from Elsa's source
+	into my checked out version.  The only new files were
+		- the sml_system files in src/0
+		- some make scripts in src/.
+	Changed files were in:
+		src/{0,1,2,3}
+		library/arith/src/thm_convs.sml
+		library/list/src/list_conv1.sml
+		library/num/src/num_lib.sml
+		library/prog_logic/src/halts_logic.sml
+		library/prog_logic/src/translation.sml
+		library/prog_logic/theories/src/mk_halts.sml
+		library/real/theories/src/Make
+		library/real/theories/src/equiv.sml
+		library/real/theories/src/seq.sml
+		library/reduce/src/arithconv.sml
+		library/string/src/string_conv.sml
+		library/unity/theories/src/aux_definitions.sml
+		library/word/theories/src/*
+
+	- I will now commit these changes, with this email as the log message.
+		cvs commit
+
+	- Tomorrow I will get this version compiling
+	with NJSML 108 (I will probably add
+	the files to enable the NJSML compilation manager to make
+	this easier), then check those changes in.  I think it's
+	good to get things in a working state.
+@
+text
+@d33 1
+a33 1
+	    Sml_system.use ((!Globals.HOLdir)^"theories/src/mk_"^thy_name^".sml")
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d22 1
+d33 1
+a33 1
+	    use ((!Globals.HOLdir)^"theories/src/mk_"^thy_name^".sml")
+d55 2
+a56 2
+   let val mem = C (op_mem eq_func) b
+   in gather (not o mem) a
+d71 1
+a71 1
+             itlist (fn lib => fn A => 
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

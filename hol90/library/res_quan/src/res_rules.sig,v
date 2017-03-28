@@ -1,0 +1,159 @@
+head	1.2;
+access;
+symbols
+	HOL97:1.2.0.4
+	bpHOL97:1.2
+	hol90_9_alpha:1.2
+	hol90_pre8_for_multiple_compilers:1.2.0.2
+	hol90_pre8_after_donalds_separate_compilation_changes:1.2
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.2
+date	95.10.31.15.31.49;	author drs1004;	state Exp;
+branches
+	1.2.4.1;
+next	1.1;
+
+1.1
+date	95.10.16.13.33.18;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.33.18;	author rjb;	state Exp;
+branches;
+next	;
+
+1.2.4.1
+date	97.07.14.17.46.40;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.2
+log
+@Changes by DRS for separate compilation using NJSML 108.5/CM
+@
+text
+@(* =====================================================================*)
+(* FILE          : res_rules.sig                                        *)
+(* DESCRIPTION   : Signature for restricted quantification inference    *)
+(*                 rules 					        *)
+(* AUTHOR	 : P Curzon 					        *)
+(* DATE		 : May 1993						*)
+(*                                                                      *)
+(* =====================================================================*)
+
+signature Res_quan_sig =
+sig
+   type term sharing type term = Term.term
+   type thm sharing type thm = Thm.thm
+   type tactic sharing type tactic = Abbrev.tactic
+   type conv sharing type conv = Abbrev.conv
+   type thm_tactic sharing type thm_tactic = Abbrev.thm_tactic
+
+val mk_resq_forall: term * term * term -> term
+val mk_resq_exists: term * term * term -> term
+val mk_resq_select: term * term * term -> term
+val mk_resq_abstract: term * term * term -> term
+val list_mk_resq_forall: (term * term) list * term -> term
+val list_mk_resq_exists: (term * term) list * term -> term
+val dest_resq_forall: term -> term * term * term
+val dest_resq_exists: term -> term * term * term
+val dest_resq_select: term -> term * term * term
+val dest_resq_abstract: term -> term * term * term
+val strip_resq_forall: term -> (term * term) list * term
+val strip_resq_exists: term -> (term * term) list * term
+val is_resq_forall: term -> bool
+val is_resq_exists: term -> bool
+val is_resq_select: term -> bool
+val is_resq_abstract: term -> bool
+val RESQ_SPEC: term -> thm -> thm
+val RESQ_SPECL: term list -> thm -> thm
+val RESQ_SPEC_ALL: thm -> thm
+val GQSPEC: term -> thm -> thm
+val GQSPECL: term list -> thm -> thm
+val GQSPEC_ALL: thm -> thm
+val RESQ_HALF_SPEC: thm -> thm
+val RESQ_HALF_EXISTS: thm -> thm
+val RESQ_GEN: term * term -> thm -> thm
+val RESQ_GENL: (term * term) list -> thm -> thm
+val RESQ_GEN_ALL: thm -> thm
+val RESQ_MATCH_MP: thm -> thm -> thm
+val RESQ_HALF_GEN_TAC: tactic
+val RESQ_GEN_TAC: tactic
+val GGEN_TAC: tactic
+val RESQ_EXISTS_TAC:  term -> tactic
+val RESQ_IMP_RES_THEN: thm_tactic -> thm_tactic
+val RESQ_RES_THEN: thm_tactic -> tactic
+val RESQ_IMP_RES_TAC: thm_tactic
+val RESQ_RES_TAC: tactic
+val LHS_CONV: conv -> conv
+val RHS_CONV: conv -> conv
+val RF_BODY_CONV: conv -> conv
+val RF_CONV: conv -> conv
+val RESQ_FORALL_CONV: conv
+val LIST_RESQ_FORALL_CONV: conv
+val IMP_RESQ_FORALL_CONV: conv
+val RESQ_FORALL_AND_CONV: conv
+val AND_RESQ_FORALL_CONV: conv
+val RESQ_FORALL_SWAP_CONV: conv
+val RESQ_EXISTS_CONV: conv
+val RESQ_REWR_CANON: thm -> thm
+val RESQ_REWRITE1_TAC:  thm_tactic
+val RESQ_REWRITE1_CONV:  thm list -> thm -> conv
+val new_resq_definition: string * term -> thm
+val new_infix_resq_definition: string * term * int -> thm
+val new_binder_resq_definition: string * term -> thm
+end;
+@
+
+
+1.2.4.1
+log
+@The "res_quan" library now loads under CM.
+@
+text
+@d12 5
+a16 5
+   type term
+   type thm
+   type tactic
+   type conv
+   type thm_tactic
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d12 6
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

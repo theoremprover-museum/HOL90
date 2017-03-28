@@ -1,0 +1,117 @@
+<TITLE>Theory: safety_automata</TITLE>
+<H1>Theory: safety_automata</H1>
+<H1>Parents</H1>
+    <UL>
+    <LI><A HREF = "safe_live.html"><STRONG>safe_live</STRONG></A>
+    <LI><A HREF = "automata.html"><STRONG>automata</STRONG></A>
+    <LI><A HREF = "HOL.html"><STRONG>HOL</STRONG></A>
+    </UL>
+
+
+<HR>
+<H1>Type constants</H1>
+    <UL>
+    
+    </UL>
+
+
+<HR>
+<H1>Term constants</H1>
+    <UL>
+    <LI><STRONG>Klarlund</STRONG><EM>:((num -> 'a) -> bool) ->
+                                      ('a # ((num -> 'a) -> bool) # num ->
+                                      bool) #
+                                      ('a # ((num -> 'a) -> bool) # num ->
+                                      'a # ((num -> 'a) -> bool) # num ->
+                                      bool)</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    </UL>
+
+
+<HR>
+<H1>Axioms</H1>
+<DL>
+
+</DL>
+
+
+<HR>
+<H1>Definitions</H1>
+<DL>
+<DT><STRONG>Klarlund</STRONG>
+<DD>
+<PRE>
+|- !P.
+     Klarlund P =
+     ((\(e,s,n). (!w. s w) /\ (n = 0)),
+      (\(e,s,n) (e',s',n').
+        (n' = SUC n) /\ (!w. s' w = s w /\ (w n = e)) /\ (?w. s w /\ P w)))
+</PRE>
+
+</DL>
+
+
+<HR>
+<H1>Theorems</H1>
+<DL>
+<DT><STRONG>Safety_Limit</STRONG>
+<DD>
+<PRE>
+|- !Q N. Safety (Limit_Trace (Q,N))
+</PRE>
+
+<DT><STRONG>Safety_Deterministic</STRONG>
+<DD>
+<PRE>
+|- !Q N. Deterministic (Q,N) ==> Safety (Trace (Q,N))
+</PRE>
+
+<DT><STRONG>Deterministic_Klarlund</STRONG>
+<DD>
+<PRE>
+|- !P. Deterministic (Klarlund P)
+</PRE>
+
+<DT><STRONG>Safe_Trace_Klarlund</STRONG>
+<DD>
+<PRE>
+|- !P. Safe P = Trace (Klarlund P)
+</PRE>
+
+<DT><STRONG>Safety_Klarlund</STRONG>
+<DD>
+<PRE>
+|- !P. Safety P ==> (Trace (Klarlund P) = P)
+</PRE>
+
+<DT><STRONG>Safety_eq_Deterministic</STRONG>
+<DD>
+<PRE>
+|- !P. Safety P = (?Q N. Deterministic (Q,N) /\ (P = Trace (Q,N)))
+</PRE>
+
+<DT><STRONG>Stutter_not_Safety</STRONG>
+<DD>
+<PRE>
+|- ?Q N. Stuttering (Q,N) /\ ~(Safety (Trace (Q,N)))
+</PRE>
+
+<DT><STRONG>No_Dead_Limit_Safe</STRONG>
+<DD>
+<PRE>
+|- !Q N. No_Dead (Q,N) ==> (!e. Limit_Trace (Q,N) e ==> Safe (Trace (Q,N)) e)
+</PRE>
+
+<DT><STRONG>No_Dead_Safety_Powerset</STRONG>
+<DD>
+<PRE>
+|- !Q N.
+     Safety (Trace (Q,N)) ==>
+     No_Dead (Q,N) ==>
+     (!e. Trace (Powerset (Q,N)) e ==> Trace (Q,N) e)
+</PRE>
+
+</DL>
+
+
+<HR>

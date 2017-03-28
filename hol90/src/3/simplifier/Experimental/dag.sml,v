@@ -1,0 +1,441 @@
+head	1.1;
+access;
+symbols;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	96.01.04.15.59.40;	author drs1004;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@io transformers moved to 0/
+@
+text
+@signature NodeKey_sig =
+sig
+    type node_key
+    val hashVal : node_key -> int
+    val sameKey : node_key * node_key -> bool
+end;
+
+
+signature DAG_sig = 
+sig
+    type ('a,'b) dag
+    type node_key 
+
+        
+    datatype cycle =  CYCLE of node_key list 
+    exception CONNECTION_CYCLE of cycle
+    exception NOT_FOUND
+
+    val add_node : ('_a,'_b) dag * (node_key * '_a) -> unit
+    val children : ('a,'b) dag * node_key -> (node_key * 'b) list
+    val connect : ('a,'_b) dag * (node_key * node_key * '_b) -> unit
+
+    (* these return their answers in topological order *)
+    val descendants : ('a,'b) dag * node_key -> node_key list
+    val forw_closure : ('a,'b) dag * node_key -> node_key list (* includes node *)
+    val ancestors : ('a,'b) dag * node_key -> node_key list
+    val back_closure : ('a,'b) dag * node_key -> node_key list (* includes node *)
+    val topological_ordering : ('a,'b) dag -> node_key list
+
+    val copy : ('_a,'_b) dag -> ('_a,'_b) dag
+
+    val connect_and_close : ('_b -> '_b -> '_b) ->
+			    ('_a,'_b) dag * (node_key * node_key * '_b) -> 
+                            unit
+
+    val disconnect : ('a,'_b) dag * (node_key * node_key) -> unit
+    val find_node : ('a,'b) dag * node_key -> 'a
+    val find_edge : ('a,'b) dag * (node_key * node_key) -> 'b
+    val edge_exists : ('a,'b) dag * (node_key * node_key) -> bool
+    val node_exists : ('a,'b) dag * node_key -> bool
+    val modify_node : ('_a -> '_a)  -> ('_a,'_b) dag * node_key -> unit
+
+    val edges : ('a,'b) dag -> (node_key * (node_key * 'b) list) list
+    val nodes : ('a,'b) dag -> (node_key * 'a) list
+    val initial_nodes : ('a,'b) dag -> node_key list
+    val is_ancestor_of : ('a,'b) dag -> node_key -> node_key -> bool
+    val is_descendant_of : ('a,'b) dag -> node_key -> node_key -> bool
+    val mk_dag : unit -> ('_a,'_b) dag
+    val parents : ('a,'b) dag * node_key -> (node_key * 'b) list
+    val remove_node : ('a,'_b) dag * node_key -> unit
+    val terminal_nodes : ('a,'b) dag -> node_key list
+
+end;
+
+
+
+functor HASH_DAG(NodeKey: NodeKey_sig) : DAG_sig =
+struct
+    structure NodeKey = NodeKey;
+        
+
+    open Lib;
+    infix ##;
+	
+    open List;
+        
+    exception NOT_FOUND;
+        
+    fun op_mem e x (h::t) = e (h,x) orelse op_mem e x t 
+      | op_mem e x [] = false;
+    fun op_insert e x l = if op_mem e x l then l else x::l;
+
+    fun op_remove eqfun x [] = []
+      | op_remove eqfun x (h::t) = 
+        if (eqfun (x,h)) then t else h::(op_remove eqfun x t);
+            
+    fun op_assoc e x ((k,d)::t) = if e (k,x) then d else op_assoc e x t
+      | op_assoc e x [] = raise NOT_FOUND;
+        
+    fun op_remove_assoc e x =
+	let exception UNCHANGED
+            fun remove [] = raise UNCHANGED
+	      | remove ((h as (l,r))::t) = if (e (x,l)) then t else (h::remove t)
+	in fn l => (remove l handle UNCHANGED => l)
+	end;
+	
+    fun op_add_assoc e (x as (l,r)) ll = x::(op_remove_assoc e l ll);
+
+	
+
+    structure T = 
+        HashTable(struct
+                      type hash_key = NodeKey.node_key
+                      val hashVal = NodeKey.hashVal
+                      val sameKey = NodeKey.sameKey
+                  end);
+        
+        
+        
+    open NodeKey;
+    
+            
+    datatype ('a,'b) dag = 
+        DAG of {nodes : ('a * bool ref) T.hash_table,
+                forwards : (node_key * 'b) list T.hash_table,
+                backwards : (node_key * 'b) list T.hash_table};
+        
+    
+    fun mk_dag () = DAG {nodes = T.mkTable(3,NOT_FOUND),
+                         forwards = T.mkTable(3,NOT_FOUND),
+                         backwards = T.mkTable(3,NOT_FOUND) };
+        
+    fun add_node(DAG {nodes,forwards,backwards},(key,data)) =
+        (T.insert nodes (key,(data,ref false));
+         T.insert forwards (key,[]);
+         T.insert backwards (key,[]));
+        
+    fun copy(DAG {nodes,forwards,backwards}) =
+        DAG{nodes = T.copy nodes,
+	    forwards = T.copy forwards,
+	    backwards = T.copy backwards};
+        
+    datatype cycle = CYCLE of node_key list;
+    exception CONNECTION_CYCLE of cycle;
+    
+					    
+    fun find_node (DAG {nodes,...},key) = #1 (T.find nodes key);
+        
+    fun node_exists (DAG {nodes,...},key) = 
+        (T.find nodes key; true) handle NOT_FOUND => false;
+
+    fun edge_exists (DAG {forwards,...},(key1,key2)) = 
+        (can (op_assoc sameKey key2) (T.find forwards key1)) handle NOT_FOUND => false;
+    fun find_edge (DAG {forwards,...},(key1,key2)) = 
+        op_assoc sameKey key2 (T.find forwards key1);
+	
+
+    fun modify_node f (dag as (DAG {nodes,...}),key) = 
+        T.insert nodes (key,(f (find_node (dag,key)), ref false));
+        
+    fun nodes(dag as DAG {nodes=nodes',...}) = 
+        map (fn (key,(data,_)) => (key,data)) (T.listItems nodes');
+    fun edges(dag as DAG {forwards,...}) = T.listItems forwards;
+        
+    fun initial_nodes(dag as DAG {backwards,...}) =
+        map #1 (filter (fn (_,l) => null l) (T.listItems backwards));
+        
+    fun terminal_nodes(dag as DAG {forwards,...}) =
+        map #1 (filter (fn (_,l) => null l) (T.listItems forwards));
+        
+    fun children(dag as DAG {forwards,...},key) =
+        T.find forwards key;
+        
+    fun parents(dag as DAG {backwards,...},key) =
+        T.find backwards key;
+        
+        
+    fun clean_flags (dag as DAG {nodes,...}) =
+        T.apply (fn (key,(data,flag)) => (flag := false)) nodes;
+        
+
+    
+    fun forw_closure(dag as DAG {nodes,forwards,...},key) =
+        let val _ = clean_flags dag
+            fun desc key =
+                let val (_,flag) = T.find nodes key
+                    val _ = (flag := true)
+                    val succ_keys = map #1 (T.find forwards key)
+                    val new_succ_keys = 
+                        filter (not o ! o #2 o T.find nodes) succ_keys
+                    val desc' = 
+                        concat (rev (map desc new_succ_keys))
+                in key::desc'
+                end;
+        in desc key
+        end;
+
+    (* for each element in the forward closure, a connection list  *)
+    (* is generated from the key to that element                   *)        
+    fun forw_closure_with_paths(dag as DAG {nodes,forwards,...},key) =
+        let val _ = clean_flags dag
+            fun desc key =
+                let val (_,flag) = T.find nodes key
+                    val _ = (flag := true)
+                    val succ_keys = T.find forwards key
+                    val new_succ_keys = 
+                        filter (not o ! o #2 o T.find nodes o #1) succ_keys
+		    fun desc1 (k,b) = map (I ## (fn x => (k,b)::x)) (desc k)
+                    val desc' = concat (rev (map desc1 new_succ_keys))
+                in (key,[])::desc'
+                end;
+        in desc key
+        end;
+        
+        
+    fun topological_ordering(dag as DAG {nodes,forwards,...}) =
+        let val _ = clean_flags dag
+            fun desc key =
+                let val (_,flag) = T.find nodes key
+                    val _ = (flag := true)
+                    val succ_keys = map #1 (T.find forwards key)
+                    val new_succ_keys = 
+                        filter (not o ! o #2 o T.find nodes) succ_keys
+                    val desc' = 
+                        concat (rev (map desc new_succ_keys))
+                in key::desc'
+                end;
+        in concat (rev (map desc (initial_nodes dag)))
+        end;
+        
+    fun is_descendant_of(dag as DAG {nodes,forwards,...}) x y =
+        let val _ = clean_flags dag
+            fun desc key =
+                sameKey (key,x) 
+                orelse 
+                let val (_,flag) = T.find nodes key
+                    val _ = (flag := true)
+                    val succ_keys = map #1 (T.find forwards key)
+                    val new_succ_keys = 
+                        filter (not o ! o #2 o T.find nodes) succ_keys
+                in exists desc new_succ_keys
+                end
+        in (not (sameKey (x,y))) andalso desc y
+        end;
+
+
+
+    fun back_closure(dag as DAG {nodes,backwards,...},key) =
+        let val _ = clean_flags dag
+            fun desc key =
+                let val (_,flag) = T.find nodes key
+                    val _ = (flag := true)
+                    val succ_keys = map #1 (T.find backwards key)
+                    val new_succ_keys = 
+                        filter (not o ! o #2 o T.find nodes) succ_keys
+                    val desc' =  concat (rev (map desc new_succ_keys))
+                in key::desc'
+                end;
+        in desc key
+        end;
+        
+    fun is_ancestor_of(dag as DAG {nodes,backwards,...}) x y =
+        let val _ = clean_flags dag
+            fun desc key =
+                sameKey (key,x) 
+                orelse 
+                let val (_,flag) = T.find nodes key
+                    val _ = (flag := true)
+                    val succ_keys = map #1 (T.find backwards key)
+                    val new_succ_keys = 
+                        filter (not o ! o #2 o T.find nodes) succ_keys
+                in exists desc new_succ_keys
+                end
+        in (not (sameKey (x,y))) andalso desc y
+        end;
+
+    fun ancestors (dag,key) = op_remove sameKey key (back_closure (dag,key));
+    fun descendants (dag,key) = op_remove sameKey key (forw_closure (dag,key));
+        
+
+    fun connect(dag as DAG {nodes,forwards,backwards},(key1,key2,data)) =
+        let val forw = T.find forwards key1
+            val back = T.find backwards key2
+        in if (sameKey (key1,key2) 
+               orelse is_ancestor_of dag key2 key1)
+               then raise CONNECTION_CYCLE (CYCLE [key1, key2])
+           else (T.insert forwards (key1,(op_add_assoc sameKey (key2,data) forw));
+                 T.insert backwards (key2,(op_add_assoc sameKey (key1,data) back)))
+        end;
+        
+    fun disconnect(DAG {nodes,forwards,backwards}, (key1,key2)) =
+        let val forw = T.find forwards key1
+            val back = T.find backwards key2
+            val forw' = op_remove (fn (k,(k2,_)) => sameKey (k,k2)) key2 forw
+            val back' = op_remove (fn (k,(k2,_)) => sameKey (k,k2)) key1 back
+            val _ = T.insert forwards (key1,forw')
+            val _ = T.insert backwards (key2,back')
+        in ()
+        end;
+    fun remove_node(dag as DAG {nodes,forwards,backwards}, key) =
+        let val forw = T.find forwards key
+            val back = T.find backwards key
+            val _ = app (fn (key',_) => disconnect (dag,(key,key'))) forw
+            val _ = app (fn (key',_) => disconnect (dag,(key',key))) back
+            val _ = T.remove forwards key
+            val _ = T.remove backwards key
+            val _ = T.remove nodes key
+        in ()
+        end; 
+
+    (* incremental transitive closure *)
+    fun connect_and_close f (dag as DAG {nodes,forwards,...},(key1,key2,data)) =
+        let val _ = connect(dag,(key1,key2,data))
+	    val back_from_key1 = back_closure (dag,key1)
+	    fun close1 key = 
+		let val forw_from_key = forw_closure_with_paths (dag,key)
+		    fun connect1 (k,[]) = ()
+		      | connect1 (k,l) = 
+			if edge_exists (dag,(key,k)) then ()
+			else connect(dag,(key,k,end_itlist f (map snd l)))
+		in app connect1 forw_from_key
+		end
+	in app close1 back_from_key1
+	end;
+	
+end;
+
+
+(*
+ structure NodeKey = struct
+            type node_key = string
+            val hashVal = Lib.hash_string
+            val sameKey = (op =) : (string * string) -> bool
+        end;
+
+structure StringDag = HASH_DAG(NodeKey);
+    
+open StringDag;
+    
+
+infix += -=;
+    
+fun conn x = connect_and_close (curry (op ^)) x;
+val op += = add_node;
+val op -= = remove_node;
+
+A - B - C
+
+val x = (mk_dag(): (int,string) dag);
+    x += ("A",1);
+    x += ("B",2);
+    conn(x,("A","B","AB"));
+    x += ("C",2);
+    conn(x,("B","C","BC"));
+    edges x;
+    
+val x = (mk_dag(): (int,string) dag);
+    x += ("B",1);
+    x += ("C",2);
+    conn(x,("B","C","BC"));
+    x += ("A",2);
+    conn(x,("A","B","AB"));
+    edges x;
+    
+
+  A
+ / \
+B   C
+ \ /
+  D
+
+val x = (mk_dag(): (int,string) dag);
+    x += ("A",1);
+    x += ("B",2);
+    x += ("C",2);
+    x += ("D",2);
+    connect(x,("A","B","AB"));
+    connect(x,("A","C","AC"));
+    connect(x,("C","D","CD"));
+    connect(x,("B","D","BD"));
+    descendants(x,"A");
+    forw_closure_with_paths(x,"A");
+
+A   B
+ \ /
+  C
+ / \
+D   E
+
+val x = (mk_dag(): (int,string) dag);
+    x += ("A",1);
+    x += ("B",2);
+    x += ("C",2);
+    x += ("D",2);
+    x += ("E",2);
+    connect(x,("A","C","AC"));
+    connect(x,("B","C","BC"));
+    connect(x,("C","D","CD"));
+    connect(x,("C","E","CE"));
+    descendants(x,"A");
+    forw_closure_with_paths(x,"A");
+
+val x = (mk_dag(): (int,string) dag);
+    x += ("A",1);
+    x += ("B",2);
+    x += ("C",2);
+    x += ("D",2);
+    x += ("E",2);
+    
+    conn(x,("A","C","AC"));
+    conn(x,("B","C","BC"));
+    edges x;
+    
+    conn(x,("C","D","CD"));
+    conn(x,("C","E","CE"));
+    descendants(x,"A");
+    forw_closure_with_paths(x,"A");
+
+
+A - B
+C - D
+C - A
+
+fun conn x = connect_and_close (curry (op ^)) x;
+
+val x = (mk_dag(): (unit,string) dag);
+    x += ("A",());
+    x += ("B",());
+    x += ("C",());
+    x += ("D",());
+    
+    conn(x,("A","B","AB"));
+    conn(x,("C","D","CD"));
+    conn(x,("C","A","CA"));
+    edges x;
+    
+
+*)
+@

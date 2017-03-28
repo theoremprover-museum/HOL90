@@ -1,0 +1,94 @@
+head	1.1;
+access;
+symbols
+	HOL97:1.1.0.2;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	97.06.11.18.15.11;	author kxs;	state dead;
+branches
+	1.1.2.1;
+next	;
+
+1.1.2.1
+date	97.06.11.18.15.13;	author kxs;	state Exp;
+branches;
+next	1.1.2.2;
+
+1.1.2.2
+date	97.07.15.13.34.57;	author kxs;	state dead;
+branches;
+next	1.1.2.3;
+
+1.1.2.3
+date	97.07.15.13.35.39;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@file architecture was initially added on branch HOL97.
+@
+text
+@@
+
+
+1.1.2.1
+log
+@Added "architecture", a script for finding out the system HOL is being built
+on. Deleted various sed scripts for munging the output of ML-Yacc; they are
+no longer needed.
+@
+text
+@a0 27
+#!/bin/sh
+#
+# Determine architecture and OS
+#
+case `uname -s` in
+     HP-UX) ARCH=hppa;;
+     SunOS) ARCH=`arch`
+            case `uname -r` in
+                 4*) case $ARCH in
+                          sun4) ARCH=sparc-sunos;;
+                          *) ;;
+                     esac;;
+                 5*) case $ARCH in
+                          sun4) ARCH="sparc-solaris";;
+                          i?86*) ARCH="x86-solaris";;
+                          *) ;;
+                     esac;;
+                 *) ;;
+            esac;;
+     Linux) ARCH=`arch`
+            case $ARCH in
+                 i?86*) ARCH="x86-linux";;
+                 *) ;;
+            esac;;
+     *) ARCH=`arch`;;
+esac
+echo $ARCH
+@
+
+
+1.1.2.2
+log
+@This is just temporary, as I am wrestling with CVS!
+@
+text
+@@
+
+
+1.1.2.3
+log
+@There! I got CVS to allow me to re-add architecture. Stupid system.
+@
+text
+@@

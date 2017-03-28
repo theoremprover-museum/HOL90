@@ -1,0 +1,102 @@
+head	1.1;
+branch	1.1.1;
+access;
+symbols
+	HOL97:1.1.1.1.0.6
+	bpHOL97:1.1.1.1
+	hol90_9_alpha:1.1.1.1
+	hol90_pre8_for_multiple_compilers:1.1.1.1.0.4
+	hol90_pre8_after_donalds_separate_compilation_changes:1.1.1.1
+	hol90_8_after_merging_Konrad_Elsa:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	95.10.16.13.35.51;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.35.51;	author rjb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@\DOC new_type_definition
+
+\TYPE {new_type_definition : {{name :string, pred :term, inhab_thm}} -> thm}
+
+\SYNOPSIS
+Defines a new type constant or type operator.
+
+\DESCRIBE
+The ML function {new_type_definition} implements the primitive HOL rule of
+definition for introducing new type constants or type operators into the logic.
+If {"t"} is a term of type {ty->bool} containing {n} distinct type variables,
+then evaluating:
+{
+   new_type_definition{{name = "op", pred = "t", inhab_thm = |- ?x. t x}}
+}
+\noindent results in {op} being declared as a new {n}-ary type operator in the
+current theory and returned by the call to {new_type_definition}. This new type
+operator is characterized by a definitional axiom of the form:
+{
+   |- ?rep:('a,...,'n)op->ty. TYPE_DEFINITION t rep
+}
+\noindent which is stored as a definition in the current theory segment
+under the automatically-generated name {`op_TY_DEF`}. The constant
+{TYPE_DEFINITION} in this axiomatic characterization of {op} is defined by:
+{
+   |- TYPE_DEFINITION (P:'a->bool) (rep:'b->'a) =
+         (!x' x''. (rep x' = rep x'') ==> (x' = x'')) /\
+         (!x. P x = (?x'. x = rep x'))
+}
+\noindent Thus {|- ?rep. TYPE_DEFINITION P rep} asserts that there is a
+bijection between the newly defined type {('a,...,'n)op} and the set of values
+of type {ty} that satisfy {P}.
+
+\FAILURE
+Executing {new_type_definition{{name="op",pred="t",inhab_thm=th}}} fails if 
+{op} is already the name of a type or type operator in the current theory, if
+{"t"} does not have a type of the form {ty->bool} or {th} is not an 
+assumption-free theorem of the form {|- ?x. t x}, if there already exists a
+constant definition, constant specification, type definition or axiom named
+{op_TY_DEF} in the current theory segment, or if HOL is not in draft mode.
+
+\SEEALSO
+define_new_type_bijections, prove_abs_fn_one_one, prove_abs_fn_onto,
+prove_rep_fn_one_one, prove_rep_fn_onto.
+
+\ENDDOC
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

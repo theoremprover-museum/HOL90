@@ -1,0 +1,103 @@
+head	1.1;
+branch	1.1.1;
+access;
+symbols
+	HOL97:1.1.1.1.0.6
+	bpHOL97:1.1.1.1
+	hol90_9_alpha:1.1.1.1
+	hol90_pre8_for_multiple_compilers:1.1.1.1.0.4
+	hol90_pre8_after_donalds_separate_compilation_changes:1.1.1.1
+	hol90_8_after_merging_Konrad_Elsa:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	95.10.16.13.31.30;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.31.30;	author rjb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@\DOC FORALL_ARITH_CONV
+
+\TYPE {FORALL_ARITH_CONV : conv}
+
+\SYNOPSIS
+Partial decision procedure for non-existential Presburger natural arithmetic.
+
+\LIBRARY arith
+
+\DESCRIBE
+{FORALL_ARITH_CONV} is a partial decision procedure for formulae of Presburger
+natural arithmetic which are in prenex normal form and have all variables
+either free or universally quantified. Presburger natural arithmetic is the
+subset of arithmetic formulae made up from natural number constants, numeric
+variables, addition, multiplication by a constant, the relations {<}, {<=},
+{=}, {>=}, {>} and the logical connectives {~}, {/\}, {\/}, {==>},
+{=} (if-and-only-if), {!} (`forall') and {?} (`there exists'). Products of two
+expressions which both contain variables are not included in the subset, but
+the function {SUC} which is not normally included in a specification of
+Presburger arithmetic is allowed in this HOL implementation.
+
+Given a formula in the specified subset, the function attempts to prove that
+it is equal to {T} (true). The procedure only works if the formula would also
+be true of the non-negative rationals; it cannot prove formulae whose truth
+depends on the integral properties of the natural numbers.
+
+\FAILURE
+The function can fail in two ways. It fails if the argument term is not a
+formula in the specified subset, and it also fails if it is unable to prove
+the formula. The failure strings are different in each case.
+
+\EXAMPLE
+{
+#FORALL_ARITH_CONV "m < SUC m";;
+|- m < (SUC m) = T
+
+#FORALL_ARITH_CONV "!m n p q. m <= p /\ n <= q ==> (m + n) <= (p + q)";;
+|- (!m n p q. m <= p /\ n <= q ==> (m + n) <= (p + q)) = T
+
+#FORALL_ARITH_CONV "!m n. ~(SUC (2 * m) = 2 * n)";;
+evaluation failed     FORALL_ARITH_CONV -- cannot prove formula
+}
+\SEEALSO
+NEGATE_CONV, EXISTS_ARITH_CONV, ARITH_CONV, ARITH_FORM_NORM_CONV,
+DISJ_INEQS_FALSE_CONV.
+
+\ENDDOC
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

@@ -1,0 +1,444 @@
+head	1.4;
+access;
+symbols
+	HOL97:1.3.0.4
+	bpHOL97:1.3
+	hol90_9_alpha:1.3
+	hol90_pre8_for_multiple_compilers:1.3.0.2
+	hol90_pre8_after_donalds_separate_compilation_changes:1.3
+	hol90_8_after_merging_Konrad_Elsa:1.3
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.4
+date	95.12.18.11.34.49;	author drs1004;	state Exp;
+branches;
+next	1.3;
+
+1.3
+date	95.10.18.16.37.03;	author drs1004;	state Exp;
+branches
+	1.3.4.1;
+next	1.2;
+
+1.2
+date	95.10.17.17.07.12;	author drs1004;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	95.10.16.13.29.54;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.29.54;	author rjb;	state Exp;
+branches
+	1.1.1.1.2.1;
+next	;
+
+1.1.1.1.2.1
+date	95.10.17.18.42.54;	author drs1004;	state Exp;
+branches;
+next	;
+
+1.3.4.1
+date	97.06.11.17.24.17;	author kxs;	state Exp;
+branches;
+next	1.3.4.2;
+
+1.3.4.2
+date	97.07.11.15.05.32;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.4
+log
+@Preterm and other changes, see 7.changes
+@
+text
+@(* ===================================================================== *)
+(* FILE          : match.sml                                             *)
+(* DESCRIPTION   : Implements first order matching for types and terms.  *)
+(*                                                                       *)
+(* AUTHOR        : Konrad Slind, University of Calgary                   *)
+(* DATE          : August 26, 1991                                       *)
+(* ===================================================================== *)
+
+
+functor MATCH (structure Term : Private_term_sig) : Match_sig =
+struct
+structure Term = Term;
+open Term;
+open Term.Type;
+open Lib;
+
+infix 5 |->
+
+
+fun MATCH_TYPE_ERR s = Exception.ERR "Match" ("match_type",s);
+fun MATCH_TERM_ERR s = Exception.ERR "Match" ("match_term",s);
+    
+
+fun lookup i = Lib.subst_assoc (fn x => x = i);
+
+fun type_reduce (v as Utv _) ty S = 
+      (case (lookup v S)
+         of NONE => (v |-> ty)::S
+          | (SOME residue) => 
+               if (residue = ty) then S else MATCH_TYPE_ERR "no match")
+  | type_reduce (pat as Tyapp{Tyop = f, Args = args1})
+                (ob as  Tyapp{Tyop = g, Args = args2}) S = 
+      if (f=g)
+      then Lib.rev_itlist2 type_reduce args1 args2 S
+      else MATCH_TYPE_ERR "no match"
+  | type_reduce _  _  _ = MATCH_TYPE_ERR "no match";
+
+fun already_seen v tm theta =
+   case (lookup v theta)
+     of NONE => false
+      | (SOME tm') => if (aconv tm' tm) then true
+		      else MATCH_TERM_ERR "no match";
+
+local
+fun free (Bv i) n = i<n
+  | free (Comb{Rator,Rand}) n = free Rator n andalso free Rand n
+  | free (Abs{Body,...}) n = free Body (n+1)
+  | free _ _ = true
+in
+fun is_free tm = free tm 0
+end;
+
+fun term_reduce (v as Fv{Ty,...}) tm (tm_theta,ty_theta) =
+        if (is_free tm)
+        then (if (already_seen v tm tm_theta)
+              then tm_theta
+              else (v |-> tm)::tm_theta ,
+              type_reduce Ty (type_of tm) ty_theta)
+        else MATCH_TERM_ERR "no match"
+  | term_reduce (Const{Name = s1, Ty = ty1}) 
+                (Const{Name = s2, Ty = ty2}) (tm_theta,ty_theta) =
+        if (s1=s2)
+        then (tm_theta,type_reduce ty1 ty2 ty_theta)
+        else MATCH_TERM_ERR "no match"
+  | term_reduce (Comb{Rator = M1, Rand = M2})
+                (Comb{Rator = N1, Rand = N2}) S = 
+        term_reduce M2 N2 (term_reduce M1 N1 S)
+  | term_reduce (Abs{Bvar = Fv{Ty = ty1,...}, Body = M})
+                (Abs{Bvar = Fv{Ty = ty2,...}, Body = N}) (tm_theta,ty_theta) =
+        term_reduce M N (tm_theta,type_reduce ty1 ty2 ty_theta)
+  | term_reduce (Bv i) (Bv j) S = 
+        if (i=j) then S else MATCH_TERM_ERR "no match"
+  | term_reduce _ _ _ = MATCH_TERM_ERR "strange term";
+
+
+fun remove_ids S =
+   rev_itlist (fn (r as {redex,residue}) => fn S =>
+                 if (redex=residue) then S else (r::S))
+              S [];
+
+fun match_type pat ob = remove_ids(type_reduce pat ob []);
+
+fun match_term pat ob = 
+   let val (tm_subst,ty_subst) = term_reduce pat ob ([],[])
+   in ( rev_itlist(fn {redex,residue} => fn S =>
+                    let val redex' = inst ty_subst redex
+                    in if (redex'=residue) then S else (redex' |-> residue)::S
+                    end) tm_subst [], 
+        remove_ids ty_subst )
+   end;
+
+end; (* MATCH *)
+@
+
+
+1.3
+log
+@Check in after merging in Konrad's changes made after
+the release of hol90.7.  This involved creating a side branch
+in which to check in Konrad's changes, then merging in that
+side branch into the main development (which contains changes
+made by Elsa Gunter).
+
+Some other small modification have been made to the source code,
+as I begun to try to make this version into a working version:
+	- hol90 will now be compiled in an environment were no
+structures can be considered opn.  This means many structures
+now need "open Lib" and other such commands at their head.
+This has not yet been completed, but has been begun.
+	- "rotl" and "rotr" have been added to Lib, something
+which I just did impulsively.   Documentation files
+have also been added in help/90.
+@
+text
+@d10 1
+a10 2
+functor MATCH ((* structure Lib : Lib_sig *)
+	       structure Term : Term_sig) : Match_sig =
+d20 3
+a22 6
+val MATCH_TYPE_ERR = Exception.HOL_ERR{origin_structure = "Match",
+				       origin_function = "match_type",
+				       message = ""};
+val MATCH_TERM_ERR = Exception.HOL_ERR{origin_structure = "Match",
+				      origin_function = "match_term",
+				      message = ""};
+a23 1
+
+d30 1
+a30 3
+               if (residue = ty) then S else raise MATCH_TYPE_ERR)
+  | type_reduce (Tyc c1) (Tyc c2) S = 
+      if (c1=c2) then S else raise MATCH_TYPE_ERR
+d35 2
+a36 2
+      else raise MATCH_TYPE_ERR
+  | type_reduce _  _  _ = raise MATCH_TYPE_ERR;
+d41 2
+a42 1
+      | (SOME tm') => (aconv tm' tm) orelse (raise MATCH_TERM_ERR);
+d59 1
+a59 1
+        else raise MATCH_TERM_ERR
+d64 1
+a64 1
+        else raise MATCH_TERM_ERR
+d72 2
+a73 2
+        if (i=j) then S else raise MATCH_TERM_ERR
+  | term_reduce _ _ _ = raise MATCH_TERM_ERR;
+@
+
+
+1.3.4.1
+log
+@Removed files are parse files and portability files that have
+effectively been moved elsewhere.
+
+Modified files are up to date for ML 109.26.
+@
+text
+@d10 2
+a11 1
+functor MATCH (structure Term : Term_sig) : Match_sig =
+@
+
+
+1.3.4.2
+log
+@Massive minor changes to close HOL up so as to make it CM-friendly and
+some changes to accomodate SML'97.
+@
+text
+@d13 3
+d17 1
+a17 2
+open Exception Lib Term;
+open Type;
+a18 1
+infix 5 |->
+d20 6
+a26 6
+val MTY_ERR = HOL_ERR{origin_structure = "Match",
+                      origin_function = "match_type",
+                              message = ""};
+val MTM_ERR = HOL_ERR{origin_structure = "Match",
+                      origin_function = "match_term",
+                              message = ""};
+d31 6
+a36 4
+     (case (lookup v S)
+       of NONE => (v |-> ty)::S
+        | (SOME residue) => if (residue=ty) then S else raise MTY_ERR)
+  | type_reduce (Tyc c1) (Tyc c2) S = if (c1=c2) then S else raise MTY_ERR
+d39 4
+a42 3
+      if (f=g) then Lib.rev_itlist2 type_reduce args1 args2 S
+      else raise MTY_ERR
+  | type_reduce _  _  _ = raise MTY_ERR;
+d44 1
+a44 1
+fun seen v tm theta =
+d46 2
+a47 2
+     of NONE     => false
+      | SOME tm' => aconv tm' tm orelse raise MTM_ERR;
+d49 5
+a53 4
+local fun free (Bv i) n = i<n
+        | free (Comb{Rator,Rand}) n = free Rator n andalso free Rand n
+        | free (Abs{Body,...}) n = free Body (n+1)
+        | free _ _ = true
+d58 21
+a78 15
+fun tm_reduce (v as Fv{Ty,...}) tm (tm_theta,ty_theta) =
+     if (is_free tm)
+      then (if (seen v tm tm_theta) then tm_theta else (v |-> tm)::tm_theta, 
+            type_reduce Ty (type_of tm) ty_theta)
+       else raise MTM_ERR
+  | tm_reduce (Const{Name=s1, Ty=ty1}) 
+              (Const{Name=s2, Ty=ty2}) (tm_theta,ty_theta) =
+     if (s1=s2) then (tm_theta,type_reduce ty1 ty2 ty_theta) else raise MTM_ERR
+  | tm_reduce (Comb{Rator=M1, Rand=M2})
+              (Comb{Rator=N1, Rand=N2}) S = tm_reduce M2 N2 (tm_reduce M1 N1 S)
+  | tm_reduce (Abs{Bvar=Fv{Ty=ty1,...}, Body=M})
+              (Abs{Bvar=Fv{Ty=ty2,...}, Body=N}) (tm_theta,ty_theta) =
+        tm_reduce M N (tm_theta,type_reduce ty1 ty2 ty_theta)
+  | tm_reduce (Bv i) (Bv j) S = if (i=j) then S else raise MTM_ERR
+  | tm_reduce _ _ _ = raise MTM_ERR;
+d89 1
+a89 1
+   let val (tm_subst,ty_subst) = tm_reduce pat ob ([],[])
+@
+
+
+1.2
+log
+@Keeping you up to date:
+
+I'm about to do a checkin of elsa's modifications to the hol90.7
+sources to create her hol90.pre8.  To recap what I've done:
+	- I checked out hol90 (in /usr/groups/hol/drs1004/hol90)
+		cvs co hol90
+	  (Well, to be honest, I only checked out those
+	  parts of hol90 I knew I'd be changing, e.g. not the
+	  Manual, and only parts of the library.  Checking out the
+	  entire source takes a while, mainly due to the enormous number
+	  of help files.  The limiting factor is files/second, which
+         runs at around 5 when CVS is working on nfs over a network, not
+         KB/second, which you might at first think it would be).
+
+	- By doing a recursive diff between Elsa's source and the
+	hol90.7 source I found all the changes Elsa had made to
+	source files.  I copied relevant files from Elsa's source
+	into my checked out version.  The only new files were
+		- the sml_system files in src/0
+		- some make scripts in src/.
+	Changed files were in:
+		src/{0,1,2,3}
+		library/arith/src/thm_convs.sml
+		library/list/src/list_conv1.sml
+		library/num/src/num_lib.sml
+		library/prog_logic/src/halts_logic.sml
+		library/prog_logic/src/translation.sml
+		library/prog_logic/theories/src/mk_halts.sml
+		library/real/theories/src/Make
+		library/real/theories/src/equiv.sml
+		library/real/theories/src/seq.sml
+		library/reduce/src/arithconv.sml
+		library/string/src/string_conv.sml
+		library/unity/theories/src/aux_definitions.sml
+		library/word/theories/src/*
+
+	- I will now commit these changes, with this email as the log message.
+		cvs commit
+
+	- Tomorrow I will get this version compiling
+	with NJSML 108 (I will probably add
+	the files to enable the NJSML compilation manager to make
+	this easier), then check those changes in.  I think it's
+	good to get things in a working state.
+@
+text
+@d16 1
+a17 1
+val |-> = Lib.|->
+d63 1
+a63 2
+              else (v |-> tm)::tm_theta
+              ,
+d83 1
+a83 1
+   Lib.rev_itlist (fn (r as {redex,residue}) => fn S =>
+d91 5
+a95 9
+   in
+   ( Lib.rev_itlist (fn {redex,residue} => fn S =>
+                   let val redex' = inst ty_subst redex
+                   in 
+                   if (redex'=residue) then S else (redex' |-> residue)::S
+                   end)                tm_subst []
+     , 
+     remove_ids ty_subst
+   )
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d10 2
+a11 1
+functor MATCH (Term : Term_sig) : Match_sig =
+d17 2
+a18 6
+val MATCH_TYPE_ERR = HOL_ERR{origin_structure = "Match",
+			     origin_function = "match_type",
+			     message = ""};
+val MATCH_TERM_ERR = HOL_ERR{origin_structure = "Match",
+			     origin_function = "match_term",
+			     message = ""};
+d20 9
+d41 1
+a41 1
+      then rev_itlist2 type_reduce args1 args2 S
+d84 1
+a84 1
+   rev_itlist (fn (r as {redex,residue}) => fn S =>
+d93 1
+a93 1
+   ( rev_itlist (fn {redex,residue} => fn S =>
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@
+
+
+1.1.1.1.2.1
+log
+@Konrad's bug fixes up to start of serious
+hol90.8 devel;opment.  Checked into branch revision for
+later merging with trunk (elsa's work).  See
+doc/7.chages for a full description of what's been done.
+@
+text
+@d57 2
+a58 1
+              else (v |-> tm)::tm_theta ,
+d77 4
+a80 2
+fun remove_ids S = rev_itlist (fn (r as {redex,residue}) => fn S =>
+                                  if (redex=residue) then S else (r::S)) S [];
+d86 9
+a94 5
+   in ( rev_itlist(fn {redex,residue} => fn S =>
+                    let val redex' = inst ty_subst redex
+                    in if (redex'=residue) then S else (redex' |-> residue)::S
+                    end) tm_subst [], 
+        remove_ids ty_subst )
+@

@@ -1,0 +1,98 @@
+head	1.1;
+branch	1.1.1;
+access;
+symbols
+	HOL97:1.1.1.1.0.6
+	bpHOL97:1.1.1.1
+	hol90_9_alpha:1.1.1.1
+	hol90_pre8_for_multiple_compilers:1.1.1.1.0.4
+	hol90_pre8_after_donalds_separate_compilation_changes:1.1.1.1
+	hol90_8_after_merging_Konrad_Elsa:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	95.10.16.13.34.20;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.34.20;	author rjb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@\DOC SPECL
+
+\TYPE {SPECL : (term list -> thm -> thm)}
+
+\SYNOPSIS
+Specializes zero or more variables in the conclusion of a theorem.
+
+\KEYWORDS
+rule.
+
+\DESCRIBE
+When applied to a term list {[u1;...;un]} and a theorem
+{A |- !x1...xn. t}, the inference rule {SPECL} returns the theorem
+{A |- t[u1/x1]...[un/xn]}, where the substitutions are made
+sequentially left-to-right in the same way as for {SPEC}, with the same
+sort of alpha-conversions applied to {t} if necessary to ensure that no
+variables which are free in {ui} become bound after substitution.
+{
+       A |- !x1...xn. t
+   --------------------------  SPECL "[u1;...;un]"
+     A |- t[u1/x1]...[un/xn]
+}
+\noindent It is permissible for the term-list to be empty, in which case
+the application of {SPECL} has no effect.
+
+\FAILURE
+Fails unless each of the terms is of the same as that of the 
+appropriate quantified variable in the original theorem.
+
+\EXAMPLE
+The following is a specialization of a theorem from theory {arithmetic}.
+{
+   #let t = theorem `arithmetic` `LESS_EQ_LESS_EQ_MONO`;;
+   t = |- !m n p q. m <= p /\ n <= q ==> (m + n) <= (p + q)
+
+   #SPECL ["1"; "2"; "3"; "4"] t;;
+   |- 1 <= 3 /\ 2 <= 4 ==> (1 + 2) <= (3 + 4)
+}
+\SEEALSO
+GEN, GENL, GEN_ALL, GEN_TAC, SPEC, SPEC_ALL, SPEC_TAC.
+
+\ENDDOC
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

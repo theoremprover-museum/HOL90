@@ -1,0 +1,48 @@
+\DOC CLOSE_WIN
+
+\TYPE {CLOSE_WIN : (win_stack -> win_stack)}
+
+\SYNOPSIS
+Pop the top window from the stack and transform the parent window.
+
+\LIBRARY window
+
+\DESCRIBE
+{CLOSE_WIN} removes the top window from a window stack and uses the
+theorem in that window to transform the parent window. {CLOSE_WIN} is
+used to close subwindows opened by the {OPEN_WIN}, {OPEN_CONTEXT} and
+{ESTABLISH} commands.
+
+\FAILURE
+{CLOSE_WIN} will fail if the stack is empty or is only one window
+deep. Other possible failures depend on the command used to open the
+window.
+
+\EXAMPLE
+{
+   - BEGIN_STACK "example" (--`($<==) (A /\ (B /\ F))`--) [] [];
+   
+   <== * A /\ B /\ F
+   val it = () : unit
+   - DO (OPEN_WIN [RAND]);
+   
+       ! A
+   <== * B /\ F
+   val it = () : unit
+   - DO (REWRITE_WIN []);
+   
+       ! A
+   <== * F
+   val it = () : unit
+   - DO CLOSE_WIN;
+   
+   <== * A /\ F
+   val it = () : unit
+   - END_STACK "example";
+   val it = () : unit
+}
+
+\SEEALSO
+OPEN_WIN, OPEN_CONTEXT, ESTABLISH
+
+\ENDDOC

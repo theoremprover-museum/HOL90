@@ -1,0 +1,462 @@
+<TITLE>Theory: dijkstra</TITLE>
+<H1>Theory: dijkstra</H1>
+<H1>Parents</H1>
+    <UL>
+    <LI><A HREF = "halts_thms.html"><STRONG>halts_thms</STRONG></A>
+    </UL>
+
+
+<HR>
+<H1>Type constants</H1>
+    <UL>
+    
+    </UL>
+
+
+<HR>
+<H1>Term constants</H1>
+    <UL>
+    <LI><STRONG>DET</STRONG><EM>:((string -> num) # (string -> num) ->
+                                 bool) -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>WEAKER</STRONG><EM>:('a -> bool) -> ('a -> bool) -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>WEAKEST</STRONG><EM>:(('a -> bool) -> bool) -> 'a -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>WP</STRONG><EM>:((string -> num) # (string -> num) -> bool) #
+                                ((string -> num) -> bool) ->
+                                (string -> num) -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>WLP</STRONG><EM>:((string -> num) # (string -> num) -> bool) #
+                                 ((string -> num) -> bool) ->
+                                 (string -> num) -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>WP1</STRONG><EM>:((string -> num) # (string -> num) -> bool) #
+                                 ((string -> num) -> bool) ->
+                                 (string -> num) -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>WLP1</STRONG><EM>:((string -> num) # (string -> num) ->
+                                  bool) # ((string -> num) -> bool) ->
+                                  (string -> num) -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>ITER</STRONG><EM>:num ->
+                                  ((string -> num) -> bool) #
+                                  ((string -> num) # (string -> num) ->
+                                  bool) ->
+                                  (string -> num) # (string -> num) ->
+                                  bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>ITER_WP</STRONG><EM>:num -> ((string -> num) -> bool) ->
+                                     ((string -> num) # (string -> num) ->
+                                     bool) -> ((string -> num) -> bool) ->
+                                     (string -> num) -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>ITER_WLP</STRONG><EM>:num -> ((string -> num) -> bool) ->
+                                      ((string -> num) # (string -> num) ->
+                                      bool) -> ((string -> num) -> bool) ->
+                                      (string -> num) -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    </UL>
+
+
+<HR>
+<H1>Axioms</H1>
+<DL>
+
+</DL>
+
+
+<HR>
+<H1>Definitions</H1>
+<DL>
+<DT><STRONG>DET</STRONG>
+<DD>
+<PRE>
+|- !c. DET c = (!s s' s''. c (s,s') /\ c (s,s'') ==> (s' = s''))
+</PRE>
+
+<DT><STRONG>WEAKER</STRONG>
+<DD>
+<PRE>
+|- !p' p. WEAKER p' p = (!s. p s ==> p' s)
+</PRE>
+
+<DT><STRONG>WEAKEST</STRONG>
+<DD>
+<PRE>
+|- !P. WEAKEST P = (@p. P p /\ (!p'. P p' ==> WEAKER p p'))
+</PRE>
+
+<DT><STRONG>WP</STRONG>
+<DD>
+<PRE>
+|- !c q. WP (c,q) = WEAKEST (\p. T_SPEC (p,c,q))
+</PRE>
+
+<DT><STRONG>WLP</STRONG>
+<DD>
+<PRE>
+|- !c q. WLP (c,q) = WEAKEST (\p. MK_SPEC (p,c,q))
+</PRE>
+
+<DT><STRONG>WP1</STRONG>
+<DD>
+<PRE>
+|- !c q s. WP1 (c,q) s = (?s'. c (s,s')) /\ (!s'. c (s,s') ==> q s')
+</PRE>
+
+<DT><STRONG>WLP1</STRONG>
+<DD>
+<PRE>
+|- !c q s. WLP1 (c,q) s = (!s'. c (s,s') ==> q s')
+</PRE>
+
+<DT><STRONG>ITER</STRONG>
+<DD>
+<PRE>
+|- (ITER 0 = (\(b,c) (s,s'). ~(b s) /\ (s = s'))) /\
+   (!n. ITER (SUC n) = (\(b,c) (s,s'). b s /\ MK_SEQ (c,ITER n (b,c)) (s,s')))
+</PRE>
+
+<DT><STRONG>ITER_WP</STRONG>
+<DD>
+<PRE>
+|- (!b c p s. ITER_WP 0 b c p s = ~(b s) /\ p s) /\
+   (!n b c p s. ITER_WP (SUC n) b c p s = b s /\ WP (c,ITER_WP n b c p) s)
+</PRE>
+
+<DT><STRONG>ITER_WLP</STRONG>
+<DD>
+<PRE>
+|- (!b c p s. ITER_WLP 0 b c p s = ~(b s) ==> p s) /\
+   (!n b c p s. ITER_WLP (SUC n) b c p s = b s ==> WLP (c,ITER_WLP n b c p) s)
+</PRE>
+
+</DL>
+
+
+<HR>
+<H1>Theorems</H1>
+<DL>
+<DT><STRONG>WEAKER_ANTISYM</STRONG>
+<DD>
+<PRE>
+|- !p1 p2. WEAKER p1 p2 /\ WEAKER p2 p1 ==> (p1 = p2)
+</PRE>
+
+<DT><STRONG>WEAKEST_UNIQUE_LEMMA</STRONG>
+<DD>
+<PRE>
+|- !P p1 p2.
+     (P p1 /\ (!p'. P p' ==> WEAKER p1 p')) /\
+     P p2 /\
+     (!p'. P p' ==> WEAKER p2 p') ==>
+     (p1 = p2)
+</PRE>
+
+<DT><STRONG>WEAKEST_UNIQUE</STRONG>
+<DD>
+<PRE>
+|- !P p. P p /\ (!p'. P p' ==> WEAKER p p') ==> (p = WEAKEST P)
+</PRE>
+
+<DT><STRONG>WP1_T_SPEC</STRONG>
+<DD>
+<PRE>
+|- !c q. T_SPEC (WP1 (c,q),c,q)
+</PRE>
+
+<DT><STRONG>WLP1_MK_SPEC</STRONG>
+<DD>
+<PRE>
+|- !c q. MK_SPEC (WLP1 (c,q),c,q)
+</PRE>
+
+<DT><STRONG>WP1_WEAKEST</STRONG>
+<DD>
+<PRE>
+|- !p c q. T_SPEC (p,c,q) ==> WEAKER (WP1 (c,q)) p
+</PRE>
+
+<DT><STRONG>WLP1_WEAKEST</STRONG>
+<DD>
+<PRE>
+|- !p c q. MK_SPEC (p,c,q) ==> WEAKER (WLP1 (c,q)) p
+</PRE>
+
+<DT><STRONG>WP_WP1</STRONG>
+<DD>
+<PRE>
+|- !c q. WP (c,q) = WP1 (c,q)
+</PRE>
+
+<DT><STRONG>WLP_WLP1</STRONG>
+<DD>
+<PRE>
+|- !c q. WLP (c,q) = WLP1 (c,q)
+</PRE>
+
+<DT><STRONG>WP_THM</STRONG>
+<DD>
+<PRE>
+|- !c q. WP (c,q) = (\s. (?s'. c (s,s')) /\ (!s'. c (s,s') ==> q s'))
+</PRE>
+
+<DT><STRONG>WLP_THM</STRONG>
+<DD>
+<PRE>
+|- !c q. WLP (c,q) = (\s. !s'. c (s,s') ==> q s')
+</PRE>
+
+<DT><STRONG>WP_T_SPEC</STRONG>
+<DD>
+<PRE>
+|- !c q. (?s. WP (c,q) s) ==> T_SPEC (WP (c,q),c,q)
+</PRE>
+
+<DT><STRONG>WLP_MK_SPEC</STRONG>
+<DD>
+<PRE>
+|- !c q. (?s. WLP (c,q) s) ==> MK_SPEC (WLP (c,q),c,q)
+</PRE>
+
+<DT><STRONG>WP_WEAKEST</STRONG>
+<DD>
+<PRE>
+|- !p c q. T_SPEC (p,c,q) ==> WEAKER (WP (c,q)) p
+</PRE>
+
+<DT><STRONG>WLP_WEAKEST</STRONG>
+<DD>
+<PRE>
+|- !p c q. MK_SPEC (p,c,q) ==> WEAKER (WLP (c,q)) p
+</PRE>
+
+<DT><STRONG>T_SPEC_WP</STRONG>
+<DD>
+<PRE>
+|- !p c q. T_SPEC (p,c,q) = (!s. p s ==> WP (c,q) s)
+</PRE>
+
+<DT><STRONG>MK_SPEC_WLP</STRONG>
+<DD>
+<PRE>
+|- !p c q. MK_SPEC (p,c,q) = (!s. p s ==> WLP (c,q) s)
+</PRE>
+
+<DT><STRONG>WP_PROP1</STRONG>
+<DD>
+<PRE>
+|- !c. WP (c,(\s. F)) = (\s. F)
+</PRE>
+
+<DT><STRONG>WLP_PROP1</STRONG>
+<DD>
+<PRE>
+|- !c. WLP (c,(\s. F)) = (\s. ~(?s'. c (s,s')))
+</PRE>
+
+<DT><STRONG>WP_PROP2</STRONG>
+<DD>
+<PRE>
+|- !p q c. (!s. p s ==> q s) ==> (!s. WP (c,p) s ==> WP (c,q) s)
+</PRE>
+
+<DT><STRONG>WLP_PROP2</STRONG>
+<DD>
+<PRE>
+|- !p q c. (!s. p s ==> q s) ==> (!s. WLP (c,p) s ==> WLP (c,q) s)
+</PRE>
+
+<DT><STRONG>WP_PROP3</STRONG>
+<DD>
+<PRE>
+|- !p q c s. WP (c,p) s /\ WP (c,q) s = WP (c,(\s. p s /\ q s)) s
+</PRE>
+
+<DT><STRONG>WLP_PROP3</STRONG>
+<DD>
+<PRE>
+|- !p q c s. WLP (c,p) s /\ WLP (c,q) s = WLP (c,(\s. p s /\ q s)) s
+</PRE>
+
+<DT><STRONG>WP_PROP4</STRONG>
+<DD>
+<PRE>
+|- !p q c s. WP (c,p) s \/ WP (c,q) s ==> WP (c,(\s. p s \/ q s)) s
+</PRE>
+
+<DT><STRONG>WLP_PROP4</STRONG>
+<DD>
+<PRE>
+|- !p q c s. WLP (c,p) s \/ WLP (c,q) s ==> WLP (c,(\s. p s \/ q s)) s
+</PRE>
+
+<DT><STRONG>WP_PROP4'</STRONG>
+<DD>
+<PRE>
+|- !p q c.
+     DET c ==> (!s. WP (c,p) s \/ WP (c,q) s = WP (c,(\s. p s \/ q s)) s)
+</PRE>
+
+<DT><STRONG>WLP_PROP4'</STRONG>
+<DD>
+<PRE>
+|- !p q c.
+     DET c ==> (!s. WLP (c,p) s \/ WLP (c,q) s = WLP (c,(\s. p s \/ q s)) s)
+</PRE>
+
+<DT><STRONG>SKIP_WP</STRONG>
+<DD>
+<PRE>
+|- !p. WP (MK_SKIP,p) = p
+</PRE>
+
+<DT><STRONG>SKIP_WLP</STRONG>
+<DD>
+<PRE>
+|- !p. WLP (MK_SKIP,p) = p
+</PRE>
+
+<DT><STRONG>ABORT_WP</STRONG>
+<DD>
+<PRE>
+|- !p. WP (MK_ABORT,p) = (\s. F)
+</PRE>
+
+<DT><STRONG>ABORT_WLP</STRONG>
+<DD>
+<PRE>
+|- !p. WLP (MK_ABORT,p) = (\s. T)
+</PRE>
+
+<DT><STRONG>ASSIGN_WP</STRONG>
+<DD>
+<PRE>
+|- !x f p. WP (MK_ASSIGN (x,f),p) = (\s. p (BND x (f s) s))
+</PRE>
+
+<DT><STRONG>ASSIGN_WLP</STRONG>
+<DD>
+<PRE>
+|- !x f p. WLP (MK_ASSIGN (x,f),p) = (\s. p (BND x (f s) s))
+</PRE>
+
+<DT><STRONG>SEQ_WP</STRONG>
+<DD>
+<PRE>
+|- !c c' p. DET c ==> (!s. WP (MK_SEQ (c,c'),p) s = WP (c,WP (c',p)) s)
+</PRE>
+
+<DT><STRONG>SEQ_WLP</STRONG>
+<DD>
+<PRE>
+|- !c c' p s. WLP (MK_SEQ (c,c'),p) s = WLP (c,WLP (c',p)) s
+</PRE>
+
+<DT><STRONG>IF1_WP</STRONG>
+<DD>
+<PRE>
+|- !c b p s. WP (MK_IF1 (b,c),p) s = ((b s) => (WP (c,p) s) | (p s))
+</PRE>
+
+<DT><STRONG>IF1_WLP</STRONG>
+<DD>
+<PRE>
+|- !c b p s. WLP (MK_IF1 (b,c),p) s = ((b s) => (WLP (c,p) s) | (p s))
+</PRE>
+
+<DT><STRONG>IF2_WP</STRONG>
+<DD>
+<PRE>
+|- !c c' p s.
+     WP (MK_IF2 (b,c,c'),p) s = ((b s) => (WP (c,p) s) | (WP (c',p) s))
+</PRE>
+
+<DT><STRONG>IF2_WLP</STRONG>
+<DD>
+<PRE>
+|- !c c' p s.
+     WLP (MK_IF2 (b,c,c'),p) s = ((b s) => (WLP (c,p) s) | (WLP (c',p) s))
+</PRE>
+
+<DT><STRONG>ITER_CLAUSES</STRONG>
+<DD>
+<PRE>
+|- (ITER 0 (b,c) (s,s') = ~(b s) /\ (s = s')) /\
+   (ITER (SUC n) (b,c) (s,s') = b s /\ MK_SEQ (c,ITER n (b,c)) (s,s'))
+</PRE>
+
+<DT><STRONG>WHILE_ITER1</STRONG>
+<DD>
+<PRE>
+|- MK_WHILE (b,c) (s,s') ==> (?n. ITER n (b,c) (s,s'))
+</PRE>
+
+<DT><STRONG>WHILE_ITER2</STRONG>
+<DD>
+<PRE>
+|- !n s s'. ITER n (b,c) (s,s') ==> MK_WHILE (b,c) (s,s')
+</PRE>
+
+<DT><STRONG>WHILE_ITER</STRONG>
+<DD>
+<PRE>
+|- MK_WHILE (b,c) (s,s') = (?n. ITER n (b,c) (s,s'))
+</PRE>
+
+<DT><STRONG>ITER_UNIQUE</STRONG>
+<DD>
+<PRE>
+|- DET c ==>
+   (!n s s'.
+     ITER n (b,c) (s,s') ==> (!n' s''. ITER n' (b,c) (s,s'') ==> (n = n')))
+</PRE>
+
+<DT><STRONG>DET_ITER</STRONG>
+<DD>
+<PRE>
+|- DET c ==> (!n. DET (ITER n (b,c)))
+</PRE>
+
+<DT><STRONG>WP_ITER</STRONG>
+<DD>
+<PRE>
+|- DET c ==> (!n s. WP (ITER n (b,c),p) s = ITER_WP n b c p s)
+</PRE>
+
+<DT><STRONG>WHILE_WP</STRONG>
+<DD>
+<PRE>
+|- !c. DET c ==> (!b p s. WP (MK_WHILE (b,c),p) s = (?n. ITER_WP n b c p s))
+</PRE>
+
+<DT><STRONG>FINITE_WHILE_WP_0</STRONG>
+<DD>
+<PRE>
+|- WP (MK_FINITE_WHILE 0 (b,c),p) s = F
+</PRE>
+
+<DT><STRONG>FINITE_WHILE_WP_SUC</STRONG>
+<DD>
+<PRE>
+|- WP (MK_FINITE_WHILE (SUC n) (b,c),p) s =
+   ((b s) => (WP (MK_SEQ (c,MK_FINITE_WHILE n (b,c)),p) s) | (p s))
+</PRE>
+
+<DT><STRONG>WLP_ITER</STRONG>
+<DD>
+<PRE>
+|- !n s. WLP (ITER n (b,c),p) s = ITER_WLP n b c p s
+</PRE>
+
+<DT><STRONG>WHILE_WLP</STRONG>
+<DD>
+<PRE>
+|- !c b p s. WLP (MK_WHILE (b,c),p) s = (!n. ITER_WLP n b c p s)
+</PRE>
+
+</DL>
+
+
+<HR>

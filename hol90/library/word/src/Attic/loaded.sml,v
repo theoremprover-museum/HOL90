@@ -1,0 +1,67 @@
+head	1.1;
+access;
+symbols
+	HOL97:1.1.0.2;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	97.07.15.13.14.28;	author kxs;	state dead;
+branches
+	1.1.2.1;
+next	;
+
+1.1.2.1
+date	97.07.15.13.14.29;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@file loaded.sml was initially added on branch HOL97.
+@
+text
+@@
+
+
+1.1.2.1
+log
+@The word library now loads under CM. The entrypoint is the structure
+wordLib.
+@
+text
+@a0 27
+(*---------------------------------------------------------------------------
+ * This ensures that the "word" theory is loaded before the other 
+ * structures in this library are evaluated.
+ *---------------------------------------------------------------------------*)
+structure wordTheoryLoaded =
+struct
+
+  (*--------------------------------------------------------------------------
+   * We need to manipulate the library theory path as well, so that
+   * "res_quan" and "List" theories are found by load_theory.
+   *-------------------------------------------------------------------------*)
+  
+  val _ = Lib.cons_path (!Globals.HOLdir^"library/res_quan/theories/"
+                                        ^SysParams.theory_file_type^"/")
+                        Globals.theory_path;
+
+
+
+  val _ = Lib.cons_path (!Globals.HOLdir^"library/list/theories/"
+                                        ^SysParams.theory_file_type^"/")
+                        Globals.theory_path;
+
+
+
+  val _ = Lib.try (CoreHol.Theory.loadLibThry "word") "word"
+
+end;
+@

@@ -1,0 +1,88 @@
+head	1.1;
+access;
+symbols
+	HOL97:1.1.0.4
+	bpHOL97:1.1
+	hol90_9_alpha:1.1
+	hol90_pre8_for_multiple_compilers:1.1.0.2
+	hol90_pre8_after_donalds_separate_compilation_changes:1.1;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	95.10.31.14.00.56;	author drs1004;	state Exp;
+branches
+	1.1.4.1;
+next	;
+
+1.1.4.1
+date	97.07.11.16.37.24;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@First phase of hol90.8 development.  hol90 now compiles using NJSML-CM
+108.5, with separate compilation of libraries.  System dependencies
+have been isolated in the makefiles and "portable.sml".
+
+This involved a large number of enhancments to the source files,
+most of which are documented in the 7.changes file (or will be shortly).
+See also the correpsonding email corrspondence between RJB, KLS, TFM,
+JRH and DRS that happened during this development.
+@
+text
+@(* ===================================================================== *)
+(* FILE          : ld_exists.sml                                         *)
+(* DESCRIPTION   : Existential portion of bool theory as a structure.    *)
+(*                                                                       *)
+(* AUTHOR        : Donald Syme, University of Cambridge                  *)
+(* DATE          : October 1995                                          *)
+(* ===================================================================== *)
+
+
+structure Exists : Exists_sig =
+struct
+
+open Min; (* create dependency on "min" theory *)
+structure Thm = Thm;
+open Theory;
+open Lib;
+
+val _ = if (current_theory() <> "") andalso
+           (mem "bool" (current_theory() :: ancestry "-"))
+        then () 
+	else load_theory "bool";
+
+val EXISTS_DEF = 
+     definition "bool" "EXISTS_DEF" handle e => Exception.Raise e;
+
+
+end; (* MK_EXISTS *)
+
+@
+
+
+1.1.4.1
+log
+@Minor changes to accomodate requirements of CM.
+@
+text
+@d13 1
+a13 2
+open CoreHol;
+open Min;        (* create dependency on "min" theory *)
+d16 1
+d19 1
+a19 1
+           (Lib.mem "bool" (current_theory() :: ancestry "-"))
+d23 3
+a25 1
+val EXISTS_DEF = Lib.try (definition "bool") "EXISTS_DEF";
+@

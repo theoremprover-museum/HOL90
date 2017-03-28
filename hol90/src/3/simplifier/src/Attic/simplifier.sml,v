@@ -1,0 +1,553 @@
+head	1.2;
+access;
+symbols;
+locks; strict;
+comment	@# @;
+
+
+1.2
+date	96.01.04.14.15.11;	author drs1004;	state dead;
+branches;
+next	1.1;
+
+1.1
+date	95.12.18.11.39.41;	author drs1004;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.2
+log
+@Added simplifier components, added drule files, added MK_ABS_CONV, better error messages
+@
+text
+@(* ===================================================================== 
+ * FILE          : simplifer.sml 
+ * DESCRIPTION   : A programmable, contextual, conditional simplifier for hol90
+ *                                                                       
+ * AUTHOR        : Donald Syme
+ *                 Based loosely on original HOL rewriting by 
+ *                 Larry Paulson et al,
+ *                 and not-so-loosely on the Isabelle simplifier.
+ * ===================================================================== *)
+
+
+(* =====================================================================
+ * The Simplifier
+ *
+ * Simplification is traversal/reduction under equality.  This
+ * is mainly about rewriting and applying conversions.
+ * =====================================================================*)
+
+
+signature Simplifier_sig =
+sig
+
+   (* ---------------------------------------------------------------------
+    * type simpset
+    *
+    * A Simpset contains:
+    *    - a collection of rewrite rules
+    *    - a collection of equational conversions
+    *    - a traversal strategy for applying them
+    * 
+    * The traversal strategy may include other actions, especially
+    * decision procedures, which can work cooperatively with 
+    * rewriting during simplification.
+    *
+    * REWRITE RULES
+    *
+    * Simpsets are foremost a collection of rewrite theorems stored
+    * efficiently in a termnet.  These are made into conversions
+    * by using COND_REWR_CONV.
+    *
+    * CONVERSIONS IN SIMPSETS
+    *
+    * Simpsets can contain arbitrary user conversions, as well as
+    * rewrites and contextual-rewrites.  These conversions should
+    * be thought of as infinite families of rewrites.
+    * Conversions are keyed by term patterns (implemented 
+    * using termnets).  Thus a conversion
+    * won't even be called if the target term doesn't match 
+    * (in the termnet sense of matching) its key.  This acts
+    * as an important optimization/filter.  If a conversions can't be
+    * efficiently keyed, you should think about making it a decision
+    * procedure (which has lower priority).
+    *
+    * ---------------------------------------------------------------------*)
+    
+
+  type convdata 
+  val mk_convdata : {name:string, 
+                     key: (Term.term list * Term.term) option, 
+                     trace: int, 
+                     conv: (Term.term -> Thm.thm) -> Abbrev.conv} -> convdata;
+
+   (* ---------------------------------------------------------------------
+    * Basic operations on simpsets
+    *
+    * ---------------------------------------------------------------------*)
+    
+  type simpset
+
+  val empty_ss: simpset
+  val merge_ss: simpset -> simpset -> simpset
+  val addrewrs: Thm.thm list -> simpset -> simpset
+  val addconvs: convdata list -> simpset -> simpset
+  val setmkrewr: (Thm.thm -> Thm.thm list) -> simpset -> simpset
+  val dest_ss: simpset -> {
+                convdata:convdata list, 
+                mkrewrs:Thm.thm -> Thm.thm list, 
+                rewrs:Thm.thm list, 
+                travset:Traverse.travset}
+  (* easy to use infix version of addrewrs *)
+  val ++ : simpset * Thm.thm list -> simpset;
+      
+
+   (* ---------------------------------------------------------------------
+    * Simpset actions which modify the underlying traversal behaviour.
+    * ---------------------------------------------------------------------*)
+    
+  val addcongs: Thm.thm list -> simpset -> simpset
+  val adddproc: Traverse.reducer -> simpset -> simpset
+  val extend_ts: (Traverse.travset -> Traverse.travset) -> simpset
+                           -> simpset
+
+   (* ---------------------------------------------------------------------
+    * SIMP_CONV : simpset -> conv
+    * 
+    * SIMP_CONV makes a simplification conversion from the given simpset.  The 
+    * conversion uses a top-depth strategy for rewriting.  It sets both
+    * the solver and the depther to be SIMP_CONV itself.  SIMP_QCONV is
+    * a version of this which raises UNCHANGED if no change occurs.
+    * The action of SIMP_QCONV is as follows:
+    *           ....
+    *
+    * FAILURE CONDITIONS
+    *
+    * SIMP_CONV never fails, though it may diverge.  Beware of
+    * divergence when trying to solve conditions to conditional rewrites.
+    * ---------------------------------------------------------------------*)
+   
+   val SIMP_CONV : simpset -> Abbrev.conv
+   val SIMP_QCONV : simpset -> Abbrev.conv
+   
+   (* ---------------------------------------------------------------------
+    * SIMP_TAC : simpset -> tactic
+    * ASM_SIMP_TAC : simpset -> tactic
+    * FULL_SIMP_TAC : simpset -> tactic
+    * 
+    * SIMP_TAC makes a simplification tactic from the given simpset.  The 
+    * tactic uses a top-depth strategy for rewriting, and will be recursively
+    * reapplied when a simplification step makes a change to a term.
+    * This is done in the same way as similar to TOP_DEPTH_CONV.
+    *
+    * ASM_SIMP_TAC draws extra rewrites (conditional and unconditional)
+    * from the assumption list.  These are also added to the context that will be
+    * passed to conversions.
+    *
+    * FULL_SIMP_TAC simplifies the assumptions one by one, before
+    * simplifying the goal.  The assumptions are simplified in the order
+    * that they are found in the assumption list, and the simplification
+    * of each assumption is used when simplifying the next assumption.
+    *
+    * FAILURE CONDITIONS
+    *
+    * These tactics never fail, though they may diverge.
+    * ---------------------------------------------------------------------*)
+   
+   val SIMP_TAC : simpset -> Abbrev.tactic
+   val ASM_SIMP_TAC : simpset -> Abbrev.tactic
+   val FULL_SIMP_TAC : simpset -> Abbrev.tactic
+   
+   (* ---------------------------------------------------------------------
+    * SIMP_RULE : simpset -> tactic
+    * ASM_SIMP_RULE : simpset -> tactic
+    * 
+    * Make a simplification tactic from the given simpset.  The 
+    * tactic uses a top-depth strategy for rewriting.
+    *
+    * FAILURE CONDITIONS
+    *
+    * These tactics never fail, though they may diverge.
+    * ---------------------------------------------------------------------*)
+
+   val SIMP_RULE : simpset -> Thm.thm -> Thm.thm
+   val ASM_SIMP_RULE : simpset -> Thm.thm -> Thm.thm
+
+   (* ---------------------------------------------------------------------
+    * Simpset pretty printing
+    * ---------------------------------------------------------------------*)
+
+   val pp_simpset : Portable.PrettyPrint.ppstream -> simpset -> unit
+end;
+
+
+structure Simplifier : Simplifier_sig =
+struct
+
+   structure BvarNet = BvarNet;
+
+   open Core;
+      infix |>;
+   open Psyntax;
+   open Imp;
+   open Trace;
+   open Cond_rewr;
+   open Traverse;
+   open Congprocs;
+
+   val ERR = Exception.ERR "Simplifier";
+       
+
+   (* ---------------------------------------------------------------------
+    * simpsets and basic operations on them
+    *
+    * One termnet is stored for each priority level.  Termnets contains
+    * conversions and nothing else.
+    * ---------------------------------------------------------------------*)
+
+
+   type convdata = {name: string,
+                    key: (term list * term) option,
+                    trace: int,
+                    conv: (term -> thm) -> conv};
+   val mk_convdata = I:convdata -> convdata;
+   val dest_convdata = I;
+
+   type net = ((term -> thm) -> conv) BvarNet.net;
+   datatype simpset = SS of {
+            rewrs: thm list,
+            convdata: convdata list,
+            mkrewrs: thm -> thm list,
+            initial_net : net,
+(*            solver: {ss:simpset,ctxt: net} -> term -> thm, *)
+            travset: travset
+     };
+   
+   (* ---------------------------------------------------------------------
+    * dest_ss
+    * ---------------------------------------------------------------------*)
+
+   fun dest_ss(SS {rewrs,convdata,mkrewrs,travset,...}) = 
+        {rewrs=rewrs,convdata=convdata,mkrewrs=mkrewrs,travset=travset};
+
+   (* ---------------------------------------------------------------------
+    * empty_ss
+    * ---------------------------------------------------------------------*)
+
+   val equality = #const (const_decl "=");
+   
+   val empty_ss = SS{
+        rewrs= [],
+        mkrewrs=(fn thm => [thm]),
+        convdata= [],
+        initial_net=BvarNet.empty_net,
+(*         solver=SIMP_PROVE_IN_CONTEXT, *)
+        travset=empty_ts 
+                |> addrelation (RELATION{TRANS=TRANS,REFL=REFL,relname="="})
+                |> addcongproc {
+                      name="equality congruences",
+                      proc=EQ_CONGPROC,
+                      relation=equality
+                   }
+     };
+
+   (* ---------------------------------------------------------------------
+    * setmkrewr
+    *
+    * Does not remake the rewrite set, so it only effects rewrites
+    * added after this point.
+    * ---------------------------------------------------------------------*)
+
+   fun setmkrewr mkrewrs (SS ssdata) = SS {
+        mkrewrs=mkrewrs,
+        rewrs = #rewrs ssdata,
+        initial_net = #initial_net ssdata,
+        convdata = #convdata ssdata,
+        (* solver  = # solver ssdata, *)
+        travset = #travset ssdata
+       };
+
+   
+   (* ---------------------------------------------------------------------
+    * gen_addqconvs
+    *
+    * Add conversions to the initial context net.
+    *
+    * USER_CONV wraps a bit of tracing around a user conversion.
+    * ---------------------------------------------------------------------*)
+
+
+   fun USER_CONV {name,key,trace=trace_level,conv} =
+   let val trace_string1 = "trying "^name^" on"
+       val trace_string2 = name^" ineffectual"
+       val trace_string3 = name^" failed"
+       val trace_level_plus = trace_level+1
+   in fn solver => fn tm =>
+          (trace_tm(trace_level_plus,trace_string1,tm);
+           trace_production(trace_level,tm,name,conv solver tm)
+           handle UNCHANGED => (trace (trace_level_plus,trace_string2); 
+                                raise UNCHANGED)
+                | e => (trace (trace_level_plus,trace_string3); raise e))
+   end;
+
+   val any = (--`x:'a`--);
+   fun option_cases f e (SOME x) = f x | option_cases f e NONE = e;
+   fun net_add_conv (data as {name,key,trace,conv}:convdata) =
+         BvarNet.enter (option_cases #1 [] key,
+                        option_cases #2 any key,
+                        USER_CONV data);
+
+   fun net_add_convs net convs =
+       itlist net_add_conv convs net;
+
+
+   fun gen_addconvs newconvs (SS ssdata) = SS { 
+         mkrewrs = #mkrewrs ssdata,
+         rewrs = #rewrs ssdata,
+         initial_net=net_add_convs (#initial_net ssdata) newconvs,
+         convdata = #convdata ssdata,
+         (* solver  = # solver ssdata, *)
+         travset = #travset ssdata
+     }
+
+    
+   (* ---------------------------------------------------------------------
+    * addconvs
+    *
+    * - Merge convs by name field.
+    * - Add new conversions to the initial context net using gen_addqconvs.
+    * ---------------------------------------------------------------------*)
+
+   fun subtract_conv_lists (l1:convdata list) (l2:convdata list) = 
+       filter (fn cd1 => all (fn cd2 => #name cd1 <> #name cd2) l2) l1;
+
+   fun addconvs newconvdata (SS ssdata) = 
+     let val newconvdata' = subtract_conv_lists newconvdata (#convdata ssdata)
+         val new_initial_net = net_add_convs (#initial_net ssdata) newconvdata'
+         val new_convdata = (#convdata ssdata)@@newconvdata'
+     in
+      SS{mkrewrs = #mkrewrs ssdata,
+         rewrs = #rewrs ssdata,
+         initial_net=new_initial_net,
+         convdata = new_convdata,
+         (* solver  = # solver, *)
+         travset = #travset ssdata
+      }
+     end;
+
+   (* ---------------------------------------------------------------------
+    * addrewrs
+    *
+    * ---------------------------------------------------------------------*)
+
+   fun mk_rewr_convdata th = 
+        {name="<rewrite>",
+         key=SOME (free_varsl (hyp th), lhs(#2 (strip_imp(concl th)))),
+         trace=2,
+         conv=COND_REWR_CONV th};
+
+   fun addrewrs rews (SS ssdata) = 
+     let val rews' = flatten (map (#mkrewrs ssdata) rews)
+         val newconvdata = map mk_rewr_convdata rews'
+         val new_initial_net = net_add_convs (#initial_net ssdata) newconvdata
+     in
+      SS{mkrewrs = #mkrewrs ssdata,
+         rewrs=union rews' (#rewrs ssdata),
+         initial_net=new_initial_net,
+         convdata = #convdata ssdata,
+         travset = #travset ssdata}
+     end;
+
+     infix ++;
+     
+     fun ss ++ rw = ss |> addrewrs rw;
+
+   (* ---------------------------------------------------------------------
+    * extend_ts
+    *
+    * ---------------------------------------------------------------------*)
+
+   fun extend_ts f (SS ssdata) = SS {
+         mkrewrs = #mkrewrs ssdata,
+         rewrs = #rewrs ssdata,
+         initial_net = #initial_net ssdata,
+         convdata = #convdata ssdata,
+         travset=f (#travset ssdata)
+      };
+
+   fun adddproc p ss = ss |> extend_ts (Traverse.adddproc p);
+   fun addcongs [] ss = ss 
+     | addcongs (h::t) ss = addcongs t (ss |> extend_ts (Traverse.addcongrule h));
+
+   (* ---------------------------------------------------------------------
+    * merge_ss
+    * 
+    * ---------------------------------------------------------------------*)
+
+   fun merge_ss (SS ss2) ss1 =
+     ss1 
+     |> addconvs (#convdata ss2)
+     |> addrewrs (#rewrs ss2)
+     |> extend_ts (merge_ts (#travset ss2));
+
+ 
+   (* ---------------------------------------------------------------------
+    * SIMP_QCONV : simpset -> conv
+    *
+    * SIMP_QCONV is based on TRAVERSE
+    * ---------------------------------------------------------------------*)
+
+   val equality = #const (const_decl "=");
+
+   fun FIRST_QCONV [] tm = ERR("FIRST_QCONV","no conversion applied")
+    | FIRST_QCONV (c::rst) tm = 
+       ((c tm) handle UNCHANGED => (raise UNCHANGED) | _ => FIRST_QCONV rst tm
+   );
+
+   fun travset_for_ss (ss as SS{mkrewrs,travset,initial_net,...}) =
+      let fun addcontext (CONVNET net,thms) = 
+                 CONVNET (net_add_convs net (map mk_rewr_convdata 
+                                 (flatten (map mkrewrs thms))));
+          fun apply {solver,context as CONVNET net} tm =
+                 FIRST_QCONV (map (fn conv => conv solver)
+                                  (BvarNet.lookup tm net)) tm;
+          val rewriter = {addcontext=addcontext,
+                          relation=equality,
+                          name="rewrites",
+                          initial=CONVNET initial_net,
+                          apply=apply}
+      in travset |> addrewriter rewriter
+      end;
+ 
+   fun SIMP_QCONV (ss as (SS ssdata)) =
+      TRAVERSE (travset_for_ss ss, equality) [];
+
+   val SIMP_CONV = QCONV o SIMP_QCONV
+   fun SIMP_PROVE ss tm = EQT_ELIM (SIMP_QCONV ss tm);
+
+
+   (* ---------------------------------------------------------------------
+    * simp_tac_thm is a theorem which justifies the use of equality 
+    * traversal/reduction as the basis for a tactic.  Nb. It's logical
+    * content is the same as CONV_TAC.
+    *
+    * simp_rule_thm is a theorem which justifies the use of equality 
+    * traversal/reduction as the basis for a rule.  Nb. It's logical
+    * content is the same as CONV_RULE.
+    * ---------------------------------------------------------------------*)
+
+   val simp_tac_thm = prove(--`(A = A') ==> (A' ==> A)`--, 
+                        DISCH_THEN SUBST1_TAC THEN DISCH_THEN ACCEPT_TAC);
+
+   val simp_rule_thm = prove(--`(A = A') ==> (A ==> A')`--, 
+                        DISCH_THEN SUBST1_TAC THEN DISCH_THEN ACCEPT_TAC);
+
+   (* ---------------------------------------------------------------------
+    * SIMP_TAC : simpset -> tactic
+    * ASM_SIMP_TAC : simpset -> tactic
+    * FULL_SIMP_TAC : simpset -> tactic
+    * 
+    * FAILURE CONDITIONS
+    *
+    * These tactics never fail, though they may diverge.
+    * ---------------------------------------------------------------------*)
+   
+   fun SIMP_TAC ss =
+     TRAVERSE_TAC {
+           rule=simp_tac_thm,
+           finder=I,
+           travset=travset_for_ss ss,
+           relation=equality
+     } THEN TRY (ACCEPT_TAC TRUTH);
+
+   fun ASM_SIMP_TAC ss =
+     ASM_TRAVERSE_TAC {
+           rule=simp_tac_thm,
+           finder=I,
+           travset=travset_for_ss ss,
+           relation=equality
+     } THEN TRY (ACCEPT_TAC TRUTH);
+
+   fun FULL_SIMP_TAC ss =
+     FULL_TRAVERSE_TAC {
+           rule=simp_tac_thm,
+           finder=I,
+           travset=travset_for_ss ss,
+           relation=equality
+     } THEN TRY (ACCEPT_TAC TRUTH);
+
+   fun SIMP_RULE ss =
+     TRAVERSE_RULE {
+           rule=simp_rule_thm,
+           finder=I,
+           travset=travset_for_ss ss,
+           relation=equality
+     };
+
+   fun ASM_SIMP_RULE ss =
+     ASM_TRAVERSE_RULE {
+           rule=simp_rule_thm,
+           finder=I,
+           travset=travset_for_ss ss,
+           relation=equality
+     };
+
+   fun FULL_SIMP_RULE ss =
+     FULL_TRAVERSE_RULE {
+           rule=simp_rule_thm,
+           finder=I,
+           travset=travset_for_ss ss,
+           relation=equality
+     };
+
+   (* ---------------------------------------------------------------------
+    * Pretty printer for Simpsets
+    * ---------------------------------------------------------------------*)
+
+ open PP
+
+ fun pp_simpset ppstrm (SS{rewrs,convdata,travset,...}) =
+    let val {add_string,add_break,begin_block,end_block,add_newline,...} = 
+               with_ppstream ppstrm
+        val pp_thm = pp_thm ppstrm
+        val pp_term = pp_term ppstrm
+        val how_many_rewrs = length rewrs
+        val how_many_convs = length convdata
+    in begin_block PP.CONSISTENT 0;
+       add_string("Number of rewrite rules = "^Lib.int_to_string how_many_rewrs);
+       add_newline();
+       add_string("Conversions:");
+       add_newline();
+       if (how_many_convs = 0)
+       then (add_string "<no conversions>")
+       else ( begin_block PP.INCONSISTENT 0;
+              pr_list (fn x => add_string (#name x)) 
+                      (fn () => add_string",")
+                      (fn () => add_break(1,0))
+                      convdata;
+              end_block());
+       add_newline();
+       add_string("Number of conversions = "^Lib.int_to_string how_many_convs);
+       add_newline();
+       pp_travset ppstrm travset;
+       end_block()
+     end;
+end;
+
+
+
+@
+
+
+1.1
+log
+@Preterm and other changes, see 7.changes
+@
+text
+@@

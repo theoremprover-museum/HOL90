@@ -1,0 +1,268 @@
+head	1.3;
+access;
+symbols
+	HOL97:1.3.0.4
+	bpHOL97:1.3
+	hol90_9_alpha:1.3
+	hol90_pre8_for_multiple_compilers:1.3.0.2
+	hol90_pre8_after_donalds_separate_compilation_changes:1.2
+	hol90_8_after_merging_Konrad_Elsa:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.3
+date	95.11.16.16.53.05;	author rjb;	state Exp;
+branches
+	1.3.4.1;
+next	1.2;
+
+1.2
+date	95.10.31.14.01.39;	author drs1004;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	95.10.16.13.31.32;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.31.32;	author rjb;	state Exp;
+branches;
+next	;
+
+1.3.4.1
+date	97.07.11.19.28.33;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.3
+log
+@Support for the predecessor function, PRE, has been added to the arith
+library. It is eliminated in the pre-processing phase along with natural
+number subtraction. The modifications are due to Kim Dam Petersen of
+Tele Danmark Research.
+
+R.J.Boulton, 16th November 1995.
+@
+text
+@(*****************************************************************************)
+(* FILE          : exists_arith.sml                                          *)
+(* DESCRIPTION   : Procedure for proving purely existential prenex           *)
+(*                 Presburger arithmetic formulae.                           *)
+(*                                                                           *)
+(* READS FILES   : The "reduce" library                                      *)
+(* WRITES FILES  : <none>                                                    *)
+(*                                                                           *)
+(* AUTHOR        : R.J.Boulton, University of Cambridge                      *)
+(* DATE          : 25th June 1992                                            *)
+(*                                                                           *)
+(* TRANSLATOR    : R.J.Boulton, University of Cambridge                      *)
+(* DATE          : 16th February 1993                                        *)
+(*                                                                           *)
+(* LAST MODIFIED : R.J.Boulton                                               *)
+(* DATE          : 16th November 1995                                        *)
+(*****************************************************************************)
+
+structure Exists_arith : Exists_arith_sig =
+struct
+
+open Core; (* open up all of the HOL 0/1 Core - could be replaced by more *)
+           (* explicit opens to avoid endless recompilation of libraries  *)
+           (* during system development                                   *)
+
+fun failwith function = raise HOL_ERR{origin_structure = "Exists_arith",
+                                      origin_function = function,
+                                      message = ""};
+
+open Rsyntax;
+open Arith_cons;
+open Term_coeffs;
+open Qconv;
+open Norm_arith;
+open Norm_ineqs;
+open Sol_ranges;
+open Arithconv; (* from the "reduce" library *)
+open Boolconv; (* from the "reduce" library *)
+
+(*---------------------------------------------------------------------------*)
+(* NUM_REDUCE_CONV : conv                                                    *)
+(*---------------------------------------------------------------------------*)
+
+fun NUM_REDUCE_CONV tm =
+   if (is_suc tm) then ((RAND_CONV NUM_REDUCE_CONV) THENC SUC_CONV) tm
+   else if (is_plus tm) then ((ARGS_CONV NUM_REDUCE_CONV) THENC ADD_CONV) tm
+   else if (is_mult tm) then ((ARGS_CONV NUM_REDUCE_CONV) THENC MUL_CONV) tm
+   else ALL_CONV tm;
+
+(*---------------------------------------------------------------------------*)
+(* INEQ_REDUCE_CONV : conv                                                   *)
+(*---------------------------------------------------------------------------*)
+
+fun INEQ_REDUCE_CONV tm =
+   if (is_eq tm) then ((ARGS_CONV NUM_REDUCE_CONV) THENC NEQ_CONV) tm
+   else if (is_leq tm) then ((ARGS_CONV NUM_REDUCE_CONV) THENC LE_CONV) tm
+   else if (is_less tm) then ((ARGS_CONV NUM_REDUCE_CONV) THENC LT_CONV) tm
+   else if (is_geq tm) then ((ARGS_CONV NUM_REDUCE_CONV) THENC GE_CONV) tm
+   else if (is_great tm) then ((ARGS_CONV NUM_REDUCE_CONV) THENC GT_CONV) tm
+   else ALL_CONV tm;
+
+(*---------------------------------------------------------------------------*)
+(* BOOL_REDUCE_CONV : conv                                                   *)
+(*---------------------------------------------------------------------------*)
+
+fun BOOL_REDUCE_CONV tm =
+   if (is_num_reln tm) then INEQ_REDUCE_CONV tm
+   else if (is_neg tm) then ((RAND_CONV BOOL_REDUCE_CONV) THENC NOT_CONV) tm
+   else if (is_conj tm) then ((ARGS_CONV BOOL_REDUCE_CONV) THENC AND_CONV) tm
+   else if (is_disj tm) then ((ARGS_CONV BOOL_REDUCE_CONV) THENC OR_CONV) tm
+   else if (is_imp tm) then ((ARGS_CONV BOOL_REDUCE_CONV) THENC IMP_CONV) tm
+   else if (is_eq tm) then ((ARGS_CONV BOOL_REDUCE_CONV) THENC BEQ_CONV) tm
+   else INEQ_REDUCE_CONV tm;
+
+(*---------------------------------------------------------------------------*)
+(* WITNESS : (string * int) list -> conv                                     *)
+(*                                                                           *)
+(* This function proves an existentially quantified arithmetic formula given *)
+(* a witness for the formula in the form of a variable-name/value binding.   *)
+(*---------------------------------------------------------------------------*)
+
+fun WITNESS binding tm =
+ (let val {Bvar,Body} = dest_exists tm
+      val num = term_of_int (assoc (#Name (dest_var Bvar)) binding
+                             handle _ => 0)
+  in  EXISTS (tm,num)
+         (WITNESS binding (subst [{residue = num,redex = Bvar}] Body))
+  end
+ ) handle _ => EQT_ELIM (RULE_OF_CONV BOOL_REDUCE_CONV tm);
+
+(*---------------------------------------------------------------------------*)
+(* witness : term list -> (string * int) list                                *)
+(*                                                                           *)
+(* Function to find a witness for a formula from the disjuncts of a          *)
+(* normalised version.                                                       *)
+(*---------------------------------------------------------------------------*)
+
+fun witness tml =
+   if (null tml)
+   then failwith "witness"
+   else Shostak (coeffs_of_leq_set (hd tml)) handle _ => (witness (tl tml));
+
+(*---------------------------------------------------------------------------*)
+(* EXISTS_ARITH_CONV : conv                                                  *)
+(*                                                                           *)
+(* Proof procedure for non-universal Presburger natural arithmetic           *)
+(* (+, * by a constant, numeric constants, numeric variables, <, <=, =, >=,  *)
+(* >, ~, /\, \/, ==>, = (iff), ? (when in prenex normal form).               *)
+(* Expects formula in prenex normal form.                                    *)
+(* Subtraction, PRE and conditionals must have been eliminated.              *)
+(* SUC is allowed.                                                           *)
+(* Boolean variables and constants are not allowed.                          *)
+(*                                                                           *)
+(* The procedure is not complete.                                            *)
+(*---------------------------------------------------------------------------*)
+
+fun EXISTS_ARITH_CONV tm =
+ (reset_multiplication_theorems ();
+  let val th = RULE_OF_CONV ARITH_FORM_NORM_CONV
+                  (snd (strip_exists (assert (null o free_vars) tm)))
+               handle (HOL_ERR _) =>
+               raise HOL_ERR{origin_structure = "Exists_arith",
+                             origin_function = "EXISTS_ARITH_CONV",
+                             message = "formula not in the allowed subset"}
+  in  (let val binding = witness (strip_disj (rhs (concl th)))
+       in  EQT_INTRO (WITNESS binding tm)
+       end
+      ) handle (HOL_ERR _) =>
+        raise HOL_ERR{origin_structure = "Exists_arith",
+                      origin_function = "EXISTS_ARITH_CONV",
+                      message = "cannot prove formula"}
+  end
+ );
+
+end
+@
+
+
+1.3.4.1
+log
+@Changes to accomodate CM, and also the differences between  SML'90 and SML'97.
+@
+text
+@d22 8
+d33 1
+a33 1
+open Qconv; infix THENC;
+a36 1
+open reduceLib;
+a38 12
+open Drule;
+open CoreHol.Term;
+open CoreHol.Dsyntax;
+open CoreHol.Thm;
+open Lib;
+open Exception;
+
+
+fun failwith function = raise HOL_ERR{origin_structure = "Exists_arith",
+                                      origin_function = function,
+                                      message = ""};
+
+@
+
+
+1.2
+log
+@First phase of hol90.8 development.  hol90 now compiles using NJSML-CM
+108.5, with separate compilation of libraries.  System dependencies
+have been isolated in the makefiles and "portable.sml".
+
+This involved a large number of enhancments to the source files,
+most of which are documented in the 7.changes file (or will be shortly).
+See also the correpsonding email corrspondence between RJB, KLS, TFM,
+JRH and DRS that happened during this development.
+@
+text
+@d16 1
+a16 1
+(* DATE          : 16th February 1993                                        *)
+d110 1
+a110 1
+(* Subtraction and conditionals must have been eliminated.                   *)
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d22 4
+d37 2
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

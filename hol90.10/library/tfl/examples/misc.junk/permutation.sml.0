@@ -1,0 +1,153 @@
+cons_path "../" theory_path;
+new_theory"permutation";
+new_parent"kls_list";
+
+val NNF_CONV =
+   let val DE_MORGAN = REWRITE_CONV
+                        [Q.TAUT_CONV`~(x==>y) = (x /\ ~y)`,
+                         Q.TAUT_CONV`~x \/ y = (x ==> y)`,DE_MORGAN_THM]
+       val QUANT_CONV = NOT_EXISTS_CONV ORELSEC NOT_FORALL_CONV
+   in REDEPTH_CONV (QUANT_CONV ORELSEC CHANGED_CONV DE_MORGAN)
+   end;
+
+
+(*----------------------------------------------------------------------------
+ * Higher order logic gives a nice definition of permutation.  This may
+ * also be used as a definition of equality for finite multisets, were they
+ * implemented by lists.
+ *---------------------------------------------------------------------------*)
+val permutation_def = 
+Q.new_definition
+ ("permutation_def",
+  `permutation L1 L2 =
+      !x:'a. LENGTH(filter ($= x) L1) = LENGTH(filter ($= x) L2)`);
+
+
+(*---------------------------------------------------------------------------
+ *                   THEOREMS ABOUT PERMUTATIONS 
+ *---------------------------------------------------------------------------*)
+map add_theory_to_sml["list", "kls_list"];
+val LIST_INDUCT_TAC = INDUCT_THEN (theorem "list" "list_INDUCT") ASSUME_TAC;
+val _ = Implicit.add_rws [permutation_def];
+val transitive_def = definition"TC" "transitive_def";
+
+val permutation_refl = 
+Q.store_thm
+("permutation_refl",
+    `!L:'a list. permutation L L`,
+    RW_TAC[]);
+
+
+val permutation_transitive =  
+Q.store_thm
+("permutation_transitive",
+  `transitive (permutation:'a list -> 'a list -> bool)`,
+ RW_TAC[transitive_def]);
+
+
+val permutation_sym = 
+Q.store_thm
+("permutation_sym",
+  `!l1 (l2:'a list). permutation l1 l2 = permutation l2 l1`,
+RW_TAC[] THEN REPEAT GEN_TAC THEN EQ_TAC THEN RW_TAC[]);
+
+
+(* Also useful *)
+val permutation_nil = Q.prove
+  `!L:'a list. (permutation L [] = (L=[])) /\ 
+               (permutation [] L = (L=[]))`
+  (GEN_TAC 
+      THEN STRUCT_CASES_TAC (Q.SPEC`L` list_CASES') 
+      THEN RW_TAC[permutation_def,filter_def,LENGTH]
+       THEN CONV_TAC NNF_CONV THEN CONJ_TAC 
+ THEN Q.EXISTS_TAC`h` THEN RW_TAC [LENGTH]);
+
+val cons_permutation = 
+Q.store_thm
+("cons_permutation",
+`!(x:'a) L M N. permutation L (APPEND M N) 
+                ==> permutation (x::L) (APPEND M (x::N))`,
+REPEAT GEN_TAC 
+ THEN RW_TAC[filter_def] 
+ THEN DISCH_TAC THEN GEN_TAC 
+ THEN COND_CASES_TAC 
+ THEN ASM_RW_TAC[LENGTH,filter_append_distrib,length_append_distrib,filter_def]
+ THEN CONV_TAC ARITH_CONV);
+
+
+val permutation_cong = 
+Q.store_thm
+("permutation_cong",
+`!(L1:'a list) L2 L3 L4. 
+     permutation L1 L3 /\ 
+     permutation L2 L4
+     ==> permutation (APPEND L1 L2) (APPEND L3 L4)`,
+REPEAT GEN_TAC
+ THEN RW_TAC[filter_append_distrib,length_append_distrib]);
+
+
+val append_permutation_sym = 
+Q.store_thm
+("append_permutation_sym",
+`!(A:'a list) B C. 
+      permutation (APPEND A B) C ==> permutation (APPEND B A) C`,
+RW_TAC[permutation_def] 
+ THEN REPEAT GEN_TAC 
+ THEN DISCH_THEN (fn th => RW_TAC[GSYM th]) 
+ THEN RW_TAC[filter_append_distrib,length_append_distrib] 
+ THEN CONV_TAC ARITH_CONV);
+
+
+val permutation_split = 
+Q.store_thm
+("permutation_split",
+`!(L:'a list). permutation L (APPEND (filter P L) (filter (~ o P) L))`,
+RW_TAC[filter_append_distrib] 
+ THEN ONCE_RW_TAC[filters_commute] 
+ THEN RW_TAC[GSYM length_append_filter]);
+
+
+(*---------------------------------------------------------------------------
+ * Unused lemmas about permutations
+ *
+ * val papp1 = Q.prove`!(h:'a) A B C. 
+ *                      permutation (APPEND (h::A) (APPEND B C)) 
+ *                                  (APPEND A (APPEND (h::B) C))`
+ * (RW_TAC[APPEND] THEN REPEAT GEN_TAC 
+ *   THEN MATCH_MP_TAC cons_permutation 
+ *   THEN RW_TAC[permutation_refl]);
+ * 
+ * 
+ * val papp2 = Q.prove
+ * `!(h:'a) A B C. permutation (APPEND (h::A) (APPEND B C)) 
+ *                             (APPEND A (APPEND B (h::C)))`
+ * (RW_TAC[APPEND] THEN REPEAT GEN_TAC 
+ *   THEN RW_TAC[APPEND_ASSOC]
+ *   THEN MATCH_MP_TAC cons_permutation
+ *   THEN RW_TAC[permutation_refl]);
+ * 
+ * 
+ * val papp3 = Q.prove
+ * `!(h:'a) A B C L. permutation (APPEND (h::A) (APPEND B C)) L 
+ *                    =
+ *                    permutation (APPEND A (APPEND (h::B) C)) L`
+ * (REPEAT GEN_TAC THEN EQ_TAC THEN DISCH_TAC THEN 
+ *   MATCH_MP_TAC (ONCE_RW_RULE[transitive_def] permutation_transitive) THEN
+ *   POP_ASSUM (fn th => EXISTS_TAC(rand(rator(concl th))) THEN RW_TAC[th])
+ *   THENL[ONCE_RW_TAC[permutation_sym],ALL_TAC] THEN MATCH_ACCEPT_TAC papp1);
+ * 
+ * 
+ * val papp4 = Q.prove
+ * `!(h:'a) A B C L. permutation (APPEND (h::A) (APPEND B C)) L 
+ *                    =
+ *                    permutation (APPEND A (APPEND B (h::C))) L`
+ * (REPEAT GEN_TAC THEN EQ_TAC THEN DISCH_TAC THEN 
+ *  MATCH_MP_TAC (ONCE_RW_RULE[transitive_def] permutation_transitive) THEN
+ *   POP_ASSUM (fn th => EXISTS_TAC(rand(rator(concl th))) THEN RW_TAC[th])
+ *   THENL[ONCE_RW_TAC[permutation_sym],ALL_TAC] THEN MATCH_ACCEPT_TAC papp2);
+ *
+ *
+ *---------------------------------------------------------------------------*)
+
+export_theory();
+html_theory"-";

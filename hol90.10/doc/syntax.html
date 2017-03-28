@@ -1,0 +1,676 @@
+<TITLE>The Syntax of HOL Expressions</TITLE>
+
+<H1><A NAME = "Beginning">The Syntax of HOL Expressions</A></H1>
+
+The basic language of the HOL logic is that of a typed lambda
+calculus. This simple syntax is augmented with many constructs that make
+expressions easier to input and to read. In the following, we discuss
+various aspects of the syntax of terms: how to directly construct them
+as well as how to parse and prettyprint them.
+
+    <UL>
+    <LI><A HREF = "#The lexical structure of types and terms">
+                   The lexical structure of types and terms</A>
+    <LI><A HREF = "#Absyn">Functions for manipulating types and terms</A>
+    <LI><A HREF = "#QAQ">Parsing and Quotation and Antiquotation</A>
+    <LI> <A HREF = "#Grammar">The grammar for terms</A>
+    <LI> <A HREF = "#Expansions">Some expansions performed in parsing</A>
+    <LI> <A HREF = "#Precedence">Precedence</A>
+    <LI> <A HREF = "#How terms are parsed">How terms are parsed</A>
+
+    <LI><A HREF = "#Types">The grammar for types</A>
+    <LI><A HREF = "#Type specs">
+         The grammar for <KBD>define_type</KBD> specifications</A>
+
+    <LI><A HREF = "#Special cases">Special cases in parsing</A>
+    <LI><A HREF = "pp.html">Prettyprinting HOL expressions</A>
+    </UL>
+
+<P>
+<A HREF = "manual.html#Table of Contents">User Manual Table of Contents</A>
+<HR>
+
+
+<H2><A NAME = "The lexical structure of types and terms">
+              The lexical structure of types and terms</A></H2>
+<UL>
+<LI> Type variables are like SML type variables:
+<PRE>
+    :* -> **
+</PRE>
+
+from hol88 would be
+<PRE>
+    :'a -> 'b
+</PRE>
+in hol90. Type constructors can be any identifier, <EM>i.e.</EM>, 
+an alphabetic character followed by any number of alphanumeric characters.
+
+<LI>
+
+The lexical structure for term identifiers is also much like that for
+SML: identifiers can be alphanumeric or symbolic. Variables must be 
+alphanumeric. A symbolic identifier is any concatenation of the characters 
+in the following list
+<PRE>
+    explode "#?+*/\\=<>&%@!,:;_|~-";
+</PRE>
+
+with the exception of the keywords
+<PRE>
+    ["\\", ";", "=>", "|", ":" ]
+</PRE>
+
+<LI>
+Any alphanumeric can be a constant except the keywords
+<PRE>
+    [ "let", "in", "and", "of" ].
+</PRE>
+
+<LI>
+There are also two infinite families of constants: numbers and strings
+(if you have loaded the string library). Numbers are exactly the same as
+in hol88, while strings are much like SML strings.
+<P>
+
+<LI>
+The separator for enumerated lists and sets is ";", for example
+<PRE>
+    --`[1;2;3]`--
+</PRE>
+gives a three element list of type `:num list`.
+</UL>
+
+<P>
+<A HREF = "#Beginning">Beginning of HOL syntax</A>
+<BR>
+<A HREF = "manual.html#Table of Contents">User Manual Table of Contents</A>
+<HR>
+
+
+<H2><A NAME = "Absyn">Functions for manipulating types and terms</A></H2>
+
+hol90 supports a large number of primitive and derived functions for
+building and manipulating types and terms. These are originally defined
+in the modules
+
+<A HREF = "manual.html#Type"><KBD>Type</KBD></A>,
+
+<A HREF = "manual.html#Term"><KBD>Term</KBD></A>, and
+
+<A HREF = "manual.html#Dsyntax"><KBD>Dsyntax</KBD></A> 
+
+(which stands for "Derived syntax"). By and large, these functions have
+<EM>record</EM> types. Some users have asked that these functions be
+given <EM>tuple</EM> types, as in hol88. To meet these requests, we have
+gathered up all the built in term manipulation functions that have
+record types into two structures:
+
+<A HREF = "manual.html#Psyntax"><KBD>Psyntax</KBD></A>
+and 
+<A HREF = "manual.html#Rsyntax"><KBD>Rsyntax</KBD></A>. 
+
+These structures are variants of each other, featuring identical functions
+with different types. The functions found in <KBD>Rsyntax</KBD> have 
+record types, while those found in
+<KBD>Psyntax</KBD> have tuple or curried types, as in hol88. The functions in
+<KBD>Rsyntax</KBD> are initially in the pervasive environment. For example the
+function "dest_abs" in the initial hol90 environment has type
+<PRE>
+    term -> {Bvar: term, Body :term}
+</PRE>
+
+Both paired and record versions may be intermixed through use of long
+identifiers. Typically, a user will do either
+<PRE>
+    open Psyntax;
+</PRE>
+or
+<PRE>
+    open Rsyntax;
+</PRE>
+
+and work in whatever environment they find most comfortable.  Those who
+write packages for general purpose use will need to bear this in mind
+and, <EM>e.g.</EM>, ensure that their package does not make assumptions
+about whether <KBD>Psyntax</KBD> or <KBD>Rsyntax</KBD> is open.
+
+
+<P>
+<A HREF = "#Beginning">Beginning of HOL syntax</A>
+<BR>
+<A HREF = "manual.html#Table of Contents">User Manual Table of Contents</A>
+<HR>
+
+<H2><A NAME = "QAQ">Parsing and Quotation and Antiquotation</A></H2>
+
+It is a bit tedious just to construct terms and types by direct
+construction. To alleviate this, HOL systems come with parsers for the
+type and term languages. These parsers come in various flavours, but all
+are found in the <A HREF = "manual.html#Parse"><KBD>Parse</KBD>
+structure</A>.  One important type of input to a parser is
+quotations. <EM>Quotation</EM>, and its sibling <EM>antiquotation</EM>,
+are features appearing in the original LCF system that have been ported
+to SML/NJ. A quotation is delimited by backquote marks, for example
+
+<PRE>
+    `A /\ B`
+</PRE>
+
+In SML/NJ, quotations correspond to arbitrary object language
+expressions and hence they are a more general notion than in LCF and
+hol88, where a quotation can only be either a type or term. There can be
+quotations from many different object languages in the same SML/NJ
+session. A consequence of this is that quotations must be parsed
+explicitly, instead of implicitly, as in hol88. For example, the above 
+quotation could be parsed as:
+<PRE>
+    Parse.term_parser `A /\ B`
+</PRE>
+or, since the function "--" is a bit of syntactic sugaring for term_parser
+(suggested by Richard Boulton of Cambridge University), as
+<PRE>
+    --`A /\ B`--
+</PRE>
+
+Similarly, types could be parsed as 
+<PRE>
+    Parse.type_parser `:(bool -> 'a) -> ('a # 'b) list`
+</PRE>
+or as
+<PRE>
+    ==`:(bool -> 'a) -> ('a # 'b) list`==
+</PRE>
+
+One nicety of the system is that the hol90 prettyprinter will 
+automatically surround a term or type with syntax that will re-parse it:
+<PRE>
+    - Parse.term_parser `X \/ Y`;
+    val it = (--`X \/ Y`--) : term
+</PRE>
+
+This can be modified by altering the variables
+<PRE>
+      Globals.type_pp_prefix     (* initially "(--"  *)
+      Globals.type_pp_suffix     (* initially "--)"  *)
+      Globals.term_pp_prefix     (* initially "(=="  *)
+      Globals.term_pp_suffix     (* initially "==)"  *)
+</PRE>
+<P>
+
+<H2>Antiquotation</H2>
+
+For terms, antiquotes are much the same as in hol88. So 
+<PRE>
+    val tm = --`A /\ B`--;
+    val tm' = --`C /\ ^tm`--;
+</PRE>
+
+gives the same result as parsing 
+<PRE>
+    val tm' = --`C /\ A /\ B`--
+</PRE>
+
+For types, it is necessary to use a somewhat more devious approach: if you are
+going to use a type as an antiquotation, you must wrap the constructor
+<KBD>ty_antiq</KBD> around it:
+<PRE>
+    val ty = ty_antiq(==`:('a -> 'b) -> 'a list -> 'b list`==)
+    val tm = --`(MAP:^ty) f`--;
+</PRE>
+
+In hol90, type antiquotations are needed to get the effect of type
+abbreviations in hol88.
+
+<P>
+<A HREF = "#Beginning">Beginning of HOL syntax</A>
+<BR>
+<A HREF = "manual.html#Table of Contents">User Manual Table of Contents</A>
+<HR>
+
+<H2><A NAME = "Grammar">The grammar for terms</A></H2>
+
+<PRE>
+TERM    :: SUFFIX 
+         | APP_EXP SUFFIX 
+         | APP_EXP <STRONG>=&gt;</STRONG> TERM <STRONG>|</STRONG> TERM   (* conditional expression *)
+         | APP_EXP
+APP_EXP :: APP_EXP AEXP <STRONG>:</STRONG> TYPE       (* constrained application *)
+         | APP_EXP AEXP
+         | AEXP <STRONG>:</STRONG> TYPE               (* constrained atomic term *)
+         | AEXP 
+AEXP    :: identifier
+         | symbolic_identifier
+         | <STRONG>^</STRONG>&lt;ML-expression&gt;  (* Antiquote *)
+         | <STRONG>"</STRONG>string<STRONG>"</STRONG>  (* string literal; only with theory of strings *)
+         | <STRONG>(</STRONG> TERM <STRONG>)</STRONG>
+         | <STRONG>[</STRONG> LIST <STRONG>]</STRONG>
+         | <STRONG>{</STRONG> LIST <STRONG>}</STRONG>        (* when a set theory is loaded *)
+         | <STRONG>{</STRONG> TERM <STRONG>|</STRONG> TERM <STRONG>}</STRONG> (* when a set theory is loaded *)
+SUFFIX  :: binder BV_LIST <STRONG>::</STRONG> TERM <STRONG>.</STRONG> TERM (* restricted binder *)
+         | binder BV_LIST <STRONG>.</STRONG> TERM 
+         | <STRONG>let</STRONG> BLIST <STRONG>in</STRONG> TERM 
+BV_LIST :: BV BV_LIST 
+         | BV
+BV      :: <STRONG>(</STRONG> BV <STRONG>)</STRONG>
+         | identifier
+         | <STRONG>^</STRONG> &lt;ML-expression&gt;  (* Antiquote *)
+         | BV <STRONG>:</STRONG> TYPE 
+         | <STRONG>(</STRONG> BV <STRONG>,</STRONG> VSTRUCT <STRONG>)</STRONG>
+VSTRUCT :: BV
+         | BV <STRONG>,</STRONG> VSTRUCT
+BLIST   :: BV_LIST <STRONG>=</STRONG> TERM 
+         | BV_LIST <STRONG>=</STRONG> TERM <STRONG>and</STRONG> BLIST
+LIST    :: (* nothing, interpreted as the empty list *)
+         | TERM
+         | TERM <STRONG>;</STRONG> LIST
+</PRE>
+
+<P>
+<A HREF = "#Beginning">Beginning of HOL syntax</A>
+<BR>
+<A HREF = "manual.html#Table of Contents">User Manual Table of Contents</A>
+<HR>
+
+<H2><A NAME = "Expansions">Some expansions performed in parsing</A></H2>
+
+<H3>Lambda Abstractions and Binders</H3>
+<PRE>
+   &lt;binder&gt; x. tm --->  &lt;binder&gt;(\x. tm)
+
+   \(x,y). tm ---> UNCURRY(\x y. tm)
+
+   &lt;binder&gt; (x,y). tm --> &lt;binder&gt;(UNCURRY(\x y. tm))
+</PRE>
+
+<H3><STRONG>let</STRONG> terms</H3>
+
+<PRE>
+    let x = 1 in tm  --> LET(\x.tm) 1
+
+    let x = 1 
+    in let y = x + 1 
+       in y+2  --> LET(\x. LET(\y. y+2)(x+1)) 1
+
+    let x = 1 
+    and y = 2 
+    in x+y     --> LET (LET (\x y. x+y) 1) 2
+</PRE>
+
+
+<H3>Set abstractions</H3>
+
+A set abstraction <KBD>{tm | p}</KBD> is parsed into 
+<PRE>
+    GSPEC (\vtuple. (tm,p))
+</PRE>
+where <KBD>vtuple</KBD> is the tuple made from the intersection of the free
+variables in <KBD>tm</KBD> and <KBD>p</KBD>. 
+
+<P>
+<A HREF = "#Beginning">Beginning of HOL syntax</A>
+<BR>
+<A HREF = "manual.html#Table of Contents">User Manual Table of Contents</A>
+<HR>
+
+<H2><A NAME = "Precedence">Precedence</A></H2>
+
+Infixes in hol90 have precedence, and associate to the right, e.g.,
+if "op" is an infix, then
+<PRE>
+    A op B op C 
+</PRE>
+
+parses to the same term as
+<PRE>
+    A op (B op C). 
+</PRE>
+
+Functions that introduce constants into the system have systematically
+been upgraded to include the parsing status of the constant. For
+example,
+<PRE>
+  val new_infix : {Name:string,  Ty:hol_type, Prec:int} -> unit
+
+  val new_specification 
+     :{name:string, sat_thm:thm,
+       consts:{const_name:string, fixity:fixity} list}
+      -> thm
+
+  val new_recursive_definition 
+     :{def:term, fixity:fixity, 
+       name:string, rec_axiom:thm} -> thm
+
+  val define_type
+     : {fixities:fixity list, name:string, 
+        type_spec:term frag list} -> thm
+
+</PRE>
+where <KBD>fixity</KBD> is described by the following datatype:
+<PRE>
+    datatype fixity = Prefix | Binder | Infix of int
+</PRE>
+
+To give constant <EM>c1</EM> a higher precedence than constant <EM>c2</EM>, 
+give it a higher number. The current precedences are
+<PRE>
+          $,  ---> 50
+          $=  ---> 100
+        $==>  ---> 200
+         $\/  ---> 300
+         $/\  ---> 400
+      $>, $<  ---> 450
+    $>=, $<=  ---> 450
+      $+, $-  ---> 500
+    $*, $DIV  ---> 600
+        $MOD  ---> 650
+        $EXP  ---> 700
+        $o    ---> 800
+</PRE>
+For the library "sets", the precedences are
+<PRE>
+         $IN  ---> 450
+     $SUBSET  ---> 450
+    $PSUBSET  ---> 450
+      $UNION  ---> 500
+       $DIFF  ---> 500
+     $INSERT  ---> 500
+     $DELETE  ---> 500
+      $INTER  ---> 600
+</PRE>
+The hol90 prettyprinter also uses precedence to eliminate as many
+brackets as possible. 
+
+<P>
+<A HREF = "#Beginning">Beginning of HOL syntax</A>
+<BR>
+<A HREF = "manual.html#Table of Contents">User Manual Table of Contents</A>
+<HR>
+
+<H2><A NAME = "How terms are parsed">How terms are parsed</A></H2>
+
+The information in this section is probably too detailed to include in a
+user manual; it is included anyway, for those intrepid users who want to
+know a bit more detail.  Terms are currently parsed in 4 passes. The
+first pass leaves us with a structure where everything is associated to
+the left, conforming to the fact that application associates to the left
+and is highest in the precedence pecking order. The second pass sorts
+out the precedences of the user-defined infixes. This leaves us in the
+type of preterms.
+
+<P>
+
+The third pass is type inference. Type inference is by a variant of
+Milner's algorithm W; unification of types is done by Robinson's
+side-effecting unification algorithm. The declaration of hol_type allows
+two kinds of type variables: user and system. A user-given type variable
+is treated as a type constant during unification: it would be
+frustrating to constrain a term to have a certain type, only to have
+that type change by unification. A system type variable is modifiable by
+unification, but may not persist after the end of parsing.
+<P>
+The last pass removes dollarsigns from atom names and checks that all
+type variables are constrained. This pass maps from preterms to terms.
+
+<H3>How precedence is enforced (gory detail)</H3>
+
+As already explained, the first pass of parsing has left us with a
+structure where everything is associated to the left, conforming to the
+fact that application associates to the left and is highest in the
+precedence pecking order.  For us, all infixes associate to the right,
+with differing precedences.  (The only exception to this is negation
+(<STRONG>~</STRONG>), a prefix operator.)
+<P>
+So we have the following <KBD>preterm</KBD> structure:
+<PRE>
+    (...((<VAR>X</VAR> <VAR>f</VAR>) <VAR>arg</VAR>))
+</PRE>
+
+Since we have not "flipped" infixes to be prefixes yet, if the above
+expression is an infixed expression, <VAR>f</VAR> will be an infix
+constant, with (naively) <VAR>X</VAR> as its left arm and <VAR>arg</VAR>
+as its right arm. If we have an "infix chain", i.e., <VAR>X</VAR> is
+itself of the form <KBD>(...((<VAR>X'</VAR> <VAR>g)</VAR>
+<VAR>arg'</VAR>))</KBD>, with <VAR>g</VAR> infix, then we have a tug-o-war
+between <VAR>f</VAR> and <VAR>g</VAR> for <VAR>arg'</VAR>. There are two
+cases, based on the precedences of <VAR>f</VAR> and <VAR>g</VAR>:
+
+<OL>
+
+<LI>
+ The precedence of <VAR>g</VAR> is strictly larger than <VAR>f</VAR>.
+Then <VAR>arg'</VAR> forms the right arm of <VAR>g</VAR>. The left arm
+of <VAR>g</VAR> is a suffix of <VAR>X'</VAR>. Then <KBD>((<VAR>g</VAR>
+<VAR>left_arm</VAR>) <VAR>arg'</VAR>)</KBD> becomes the left arm to
+<VAR>f</VAR>: 
+<PRE>
+  ((<VAR>f</VAR> ((<VAR>g</VAR> <VAR>left_arm</VAR>) <VAR>arg'</VAR>)) <VAR>arg</VAR>)
+</PRE>
+
+<LI> Otherwise. <VAR>arg'</VAR> goes into <KBD>((<VAR>f</VAR>
+<VAR>arg'</VAR>) <VAR>arg</VAR>)</KBD>, which forms the right arm for
+<VAR>g</VAR>.
+
+</OL>
+
+We have glossed a bit, since at the time of looking at an infix, it is
+not possible to know what its left arm will be, so we put the infix and
+its right arm on a stack. We then move to the left in the term. Assume
+the next template is that of an infix: we have the two cases above. In
+case 1, we already have <KBD><<VAR>f</VAR>,<VAR>arg</VAR>></KBD> on the
+stack; we push <KBD><<VAR>g</VAR>,<VAR>arg'</VAR>></KBD> on top of that and
+continue. In case 2, we pop <KBD><<VAR>f</VAR>,<VAR>arg</VAR>></KBD> off
+the stack and make <KBD><<VAR>g</VAR>,((<VAR>f</VAR> <VAR>arg'</VAR>)
+<VAR>arg</VAR>)></KBD>. We continue popping the stack and making values
+until we empty the stack or we encounter a
+<KBD><<VAR>h</VAR>,<VAR>tm</VAR>></KBD> pair on the stack with a
+precedence strictly less than <VAR>g</VAR>.
+
+<P>
+
+How does this terminate? When we run into a situation that doesn't meet
+the <KBD>(...((<VAR>X</VAR> <VAR>f</VAR>) <VAR>arg</VAR>))</KBD>
+template. In that case, we unwind the stack by using a "dummy infix"
+with binding value less than anything on the stack.
+
+<P>
+
+<H4>Example</H4>
+
+Suppose that we have declared infixes <STRONG>&</STRONG>,
+<STRONG>+</STRONG>, <STRONG>=</STRONG>, and <STRONG>?</STRONG>, with
+the relative precedences being (<KBD><STRONG>&</STRONG> >
+<STRONG>+</STRONG></KBD>), (<KBD><STRONG>+</STRONG> >
+<STRONG>?</STRONG></KBD>), and (<KBD><STRONG>?</STRONG> >
+<STRONG>=</STRONG></KBD>).  Our example is
+
+<PRE>
+    A & B + C & D = A ? B + C ? D
+</PRE>
+
+Since there are no nested applications, we can treat this as a string.
+Put <KBD><?,D></KBD> on the stack, the lookahead (LA) is
+<KBD>+C</KBD>. Since <KBD>+ > ?</KBD>, we push <KBD><+,C></KBD> onto the
+stack and the algorithm traces as follows:
+<PRE>
+
+     LA            stack
+     -------------------
+     +C            <?,D>
+
+     ?B            <+,C>
+                   <?,D>
+
+                   <?,((+ B) C)>
+                   <?,D>
+
+     =A            <?,((? ((+ B) C)) D)>
+
+     &D            <=,((? A) ((? ((+ B) C)) D))>
+
+     +C            <&,D>
+                   <=,((? A) ((? ((+ B) C)) D))>
+
+     &B            <+,((& C) D)>
+                   <=,((? A) ((? ((+ B) C)) D))>
+
+      A            <&,B>
+                   <+,((& C) D)>
+                   <=,((? A) ((? ((+ B) C)) D))>
+</PRE>
+
+Now unwind, by filling in all left hand sides on the stack.
+<PRE>
+    1. ((& A) B)
+    2. ((+ ((& A) B)) ((& C) D))
+    3. ((= ((+ ((& A) B)) ((& C) D)))
+        ((? A) ((? ((+ B) C)) D)))
+</PRE>
+If we pretty printed the result, we would get
+<PRE>
+    (A & B) + (C & D) = A ? ((B + C) ? D)
+</PRE>
+
+<P>
+<A HREF = "#Beginning">Beginning of HOL syntax</A>
+<BR>
+<A HREF = "manual.html#Table of Contents">User Manual Table of Contents</A>
+<HR>
+
+<H2><A NAME = "Types">The grammar for types</A></H2>
+
+<PRE>
+TYPE    :: TYPE <STRONG>-&gt</STRONG> TYPE 
+         | TYPE <STRONG>+</STRONG> TYPE
+         | TYPE <STRONG>#</STRONG> TYPE
+         | APP_TY
+
+APP_TY  :: TY_ARG identifier
+         | BASIC 
+
+TY_ARG  :: TY_ARG identifier
+         | BTY_ARG
+
+BTY_ARG :: <STRONG>(</STRONG> TYPE <STRONG>,</STRONG> TY_LIST <STRONG>)</STRONG>
+         | BASIC
+
+TY_LIST :: TYPE <STRONG>,</STRONG> TY_LIST
+         | TYPE 
+
+BASIC   :: type_variable
+         | identifier      (* Type constant *)
+         | <STRONG>^</STRONG> &lt;ML-expression&gt;      (* Antiquoted type *)
+         | <STRONG>(</STRONG> TYPE <STRONG>)</STRONG>
+</PRE>
+
+<P>
+<A HREF = "#Beginning">Beginning of HOL syntax</A>
+<BR>
+<A HREF = "manual.html#Table of Contents">User Manual Table of Contents</A>
+<HR>
+
+<H2><A NAME = "Type specs">
+    The grammar for <KBD>define_type</KBD> specifications</A></H2>
+
+<PRE>
+TYPE_SPEC :: ident <STRONG>=</STRONG> CLAUSES 
+
+CLAUSES :: CLAUSE
+         | CLAUSE <STRONG>|</STRONG> CLAUSES
+
+CLAUSE  :: ""  (* definition of the empty string in the string library *)
+         | CONSTRUCTOR
+         | CONSTRUCTOR <STRONG>of</STRONG> TYPE 
+         | CONSTRUCTOR <STRONG>of</STRONG> TYPE <STRONG>=&gt;</STRONG> CURRIED_TYPE
+
+CURRIED_TYPE :: TYPE 
+              | TYPE <STRONG>=&gt;</STRONG> CURRIED_TYPE
+
+CONSTRUCTOR :: identifier 
+             | symbolic_identifier
+</PRE>
+
+<P>
+<A HREF = "#Beginning">Beginning of HOL syntax</A>
+<BR>
+<A HREF = "manual.html#Table of Contents">User Manual Table of Contents</A>
+<HR>
+
+<H2><A NAME = "Special cases">Special cases in parsing</A></H2>
+
+<UL>
+<LI>
+The inclusion of ":" in the "symbolics" means that some constraints may
+need to be separated by white space. For example
+<PRE>
+    $=:bool->bool->bool
+</PRE>
+
+will be broken up by the lexer as
+<PRE>
+    $=: bool -> bool -> bool
+</PRE>
+
+and parsed as an application of the symbolic identifier "$=:" to
+the term argument list ["bool", "->", "bool", "->", "bool"]. But
+<PRE>
+    $= :bool->bool->bool
+</PRE>
+
+is OK, being parsed as the symbolic identifier "=" constrained by a
+type. 
+<P>
+
+<LI>
+
+Another special case is that of <KBD>~</KBD>, which is used for
+negation. It is the only prefix parsed identifier in the system. For
+example, the usual parsing of <KBD>`A B C`</KBD> is equivalent to
+<KBD>`(A B) C`</KBD>, since application is viewed as an invisible left
+associative infix operator with the top binding power. However, parsing
+<KBD>`~ ~ A`</KBD> is equivalent to parsing <KBD>`~ (~
+A)`</KBD>. Furthermore, the tilde is really in a lexical class of its
+own, since it "breaks up" symbolic identifiers it's with (including
+itself): for example, if we take <KBD>_|_</KBD> as an existing symbolic
+constant, then <KBD>`~~_|_`</KBD> is equivalent to <KBD>`~(~( _|_
+))`</KBD>. There is a "lexical shenanigan" that one can play to add
+identifiers with tilde as symbolic identifiers: add the lexeme of
+interest to the list referenced by the variable
+<KBD>Globals.tilde_symbols</KBD>. For example,
+
+<PRE>
+    Globals.tilde_symbols := ["~*"];
+    new_infix{Name = "~*", 
+              Ty   = `:bool -> bool -> bool`, 
+              Prec = 450}
+</PRE>
+
+allows <KBD>`A ~* B`</KBD> to parse happily. Adding a "tilde"d symbolic
+identifier to the <KBD>tilde_symbols</KBD> suppresses the special nature
+of tilde in the symbolic identifier.
+
+<LI>
+A difference in the parsing of hol88 and hol90 is how type
+constraints work with infixes. In hol88 
+<PRE>
+    <VAR>term</VAR> <VAR>infix</VAR> <VAR>term</VAR> <STRONG>:</STRONG> <VAR>hol_type</VAR>
+</PRE>
+gets bracketed thus:
+<PRE>
+    <VAR>term</VAR> <VAR>infix</VAR> <STRONG>(</STRONG><VAR>term</VAR> <STRONG>:</STRONG> <VAR>hol_type</VAR><STRONG>)</STRONG>
+</PRE>
+whereas in hol90, it is equivalent to the following parse:
+<PRE>
+    <STRONG>(</STRONG><VAR>term</VAR> <VAR>infix</VAR> <VAR>term</VAR><STRONG>)</STRONG> <STRONG>:</STRONG> <VAR>hol_type</VAR>
+</PRE>
+
+</UL>
+
+
+<HR>
+<A HREF = "#Beginning">Beginning of HOL syntax</A>
+<BR>
+<A HREF = "manual.html#Table of Contents">User Manual Table of Contents</A>
+<BR>
+<A HREF="http://www.cl.cam.ac.uk/users/kxs/">Konrad Slind</A>,
+kxs@cl.cam.ac.uk<P>

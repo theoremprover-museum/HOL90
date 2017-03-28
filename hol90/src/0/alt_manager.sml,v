@@ -1,0 +1,104 @@
+head	1.1;
+access;
+symbols;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	96.02.08.00.30.20;	author drs1004;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@New theory mechanism, by Donald Syme, and many other enhancements.
+@
+text
+@
+
+
+(* Advanced session management for hol90 
+
+
+
+Plain SML mode:
+
+Switching context switches:
+   - set of available term and type constants
+   - set of available theorems
+   - current macros
+   - current type table
+   - current string map
+   - current 
+
+
+IDE mode:
+   - "compile" command on a theory file creates an initial empty context
+for that file.  This is incremented by various commands.
+
+
+
+
+Commands:
+    new_context : string -> unit
+    save : unit -> unit             (* saves all contexts *)
+    import : string -> unit         (* adds externals of one context to current working context *)
+    lemma : string * term -> unit   (* records lemma to prove *)
+    theorem : string * term -> unit (* records lemma to prove *)
+    hol_infix : int -> string -> unit
+    hol_prefix : int -> string -> unit
+    recursive_definition : term -> unit
+    definition : term -> unit
+    subtype : string -> unit
+    datatype : string -> unit
+    assume : term -> unit
+    axiom : term -> unit
+    prove : string -> tactic -> unit (* quote theorem name *)
+    derive : string -> thm -> unit (* fwd proof *)
+    THM : string -> theorem  (* to access theorems *)
+    
+
+
+    
+datatype CONTEXT of {imports : string list,
+		     fixities : (string * fixity) list,
+		     typetable : typetable,
+		     type_macros : type_macros,
+		     term_macros : term_macros,
+		     term_map : term_map,
+		     type_map : type_map,
+		     lemmas : (string * term * thm option) list,
+		     theorems : (string * term * thm option) list,
+		     string
+
+
+
+
+
+"Save" (of a context) should enable quick reload of everything 
+into a blank HOL session, with the exception of user code (which
+gets reinterpreted - OK).
+
+An "open file" is a theory file or ML script file.  
+
+
+Typical workspace specification:
+
+Development X is
+    mk_Syntax.sml
+    mk_Semantics.sml
+    evaluator.sml
+    mk_Proof1.sml
+
+evaluator.sml uses mk_Semantics.sml.
+mk_Proof1.sml uses evaluator.sml
+*)
+
+
+@

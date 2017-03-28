@@ -1,0 +1,449 @@
+head	1.6;
+access;
+symbols
+	HOL97:1.4.0.4
+	bpHOL97:1.4
+	hol90_9_alpha:1.4
+	hol90_pre8_for_multiple_compilers:1.4.0.2
+	hol90_pre8_after_donalds_separate_compilation_changes:1.3
+	hol90_8_after_merging_Konrad_Elsa:1.3
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.6
+date	96.02.08.00.32.39;	author drs1004;	state dead;
+branches;
+next	1.5;
+
+1.5
+date	96.01.04.13.46.01;	author drs1004;	state Exp;
+branches;
+next	1.4;
+
+1.4
+date	95.11.15.13.24.54;	author rjb;	state Exp;
+branches;
+next	1.3;
+
+1.3
+date	95.10.18.16.37.21;	author drs1004;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	95.10.17.17.07.45;	author drs1004;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	95.10.16.13.30.01;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.30.01;	author rjb;	state Exp;
+branches
+	1.1.1.1.2.1;
+next	;
+
+1.1.1.1.2.1
+date	95.10.17.18.43.14;	author drs1004;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.6
+log
+@New theory mechanism, by Donald Syme, and many other enhancements.
+@
+text
+@(* ===================================================================== *)
+(* FILE          : type_def.sml                                          *)
+(* DESCRIPTION   : Implements the principle of type definition. Ported   *)
+(*                 from hol88.                                           *)
+(*                                                                       *)
+(* AUTHOR        : (c) Mike Gordon, University of Cambridge              *)
+(* TRANSLATOR    : Konrad Slind, University of Calgary                   *)
+(* DATE          : September 11, 1991                                    *)
+(* ===================================================================== *)
+
+
+functor TYPE_DEF (structure Theory : Theory_sig
+                  structure Dsyntax : Dsyntax_sig
+                  sharing 
+                    Theory.Thm.Term = Dsyntax.Term) : Type_def_sig =
+struct
+structure Theory = Theory;
+open Theory;
+open Thm;
+open Term;
+open Dsyntax;
+   infix 3 -->
+open Lib;
+
+
+(* ===================================================================== *)
+(* new_type_definition: define a new logical type.                       *)
+(*                                                                       *)
+(* USAGE: new_type_definition(name, pred, thm)  (DRAFT MODE ONLY)        *)
+(*                                                                       *)
+(* ARGUMENTS: name --- a string giving the name of the new type or       *)
+(*                     type operator that is to be defined.              *)
+(*                                                                       *)
+(*            pred --- a term denoting a predicate which is to           *)
+(*                     define a subset of an existing type (ty say)      *)
+(*                     that is to represent the new type.  The type      *)
+(*                     of pred must be "ty -> bool" and pred must        *)
+(*                     must contain no free variables.                   *)
+(*                                                                       *)
+(*            thm  --- a theorem asserting the existence of some         *)
+(*                     object of type ty that satisfies pred.  The       *)
+(*                     theorem must be of the form "|- ?x. pred x" for   *)
+(*                     some variable x. The theorem must have no         *)
+(*                     assumptions.                                      *)
+(*                                                                       *)
+(* SIDE EFFECTS: 1) Introduces a new type (type operator) with the       *)
+(*                  given name. The arity of the new type operator       *)
+(*                  is the same as the number of type variables in the   *)
+(*                  predicate pred. Fails if name is already the name of *)
+(*                  an existing type.                                    *)
+(*                                                                       *)
+(*               2) Asserts an axiom stating that there is an isomorphism*)
+(*                  from the new type to the subset of ty defined by the *)
+(*                  predicate pred.  The name of this axiom will be      *)
+(*                  form `name_TY_DEF`.  If an axiom (or definition)     *)
+(*                  with this name already exists, then the call fails.  *)
+(*                                                                       *)
+(*                  The form of the axiom asserted will be as follows:   *)
+(*                                                                       *)
+(*                     new_type_definition(`ty`, "P", |- ?x. P x)        *)
+(*                                                                       *)
+(*                  yields the axiom:                                    *)
+(*                                                                       *)
+(*                     ty_TY_DEF = |- ?rep. TYPE_DEFINITION P rep        *)
+(*                                                                       *)
+(*                  I.e. there is a function rep from the new type to    *)
+(*                  the representing type ty that is one to one and onto *)
+(*                  the subset defined by P.                             *)
+(*                                                                       *)
+(* RETURNS: the axiom as a theorem.                                      *)
+(*                                                                       *)
+(* ===================================================================== *)
+
+fun ERR s = Exception.ERR "Type_def" ("new_type_definition",s);
+
+
+fun new_type_definition {name,pred,inhab_thm} =
+   let val generated_name = name^"_TY_DEF"
+   in
+     if (not(Theory.draft_mode()))
+     then (ERR "not in draft mode")
+     else if not(null(Term.free_vars pred)) 
+     then ERR "subset predicate must be a closed term"
+     else if (not (is_fun_ty(Term.type_of pred)))
+     then ERR "pred has the wrong type - it must be a function"
+     else if (#ran (dest_fun_ty(Term.type_of pred)) <> bool_ty)
+     then ERR "pred has the wrong type - its range must be :bool"
+     else if not(null(hyp inhab_thm)) 
+     then ERR "existence theorem must have no assumptions"
+     else if not((pred = rator(#Body(dest_exists(concl inhab_thm))))
+                        handle _ => false)
+     then ERR "existence theorem must match subset predicate"
+     else let val {Args = [ty,_],...} = Type.dest_type(type_of pred) 
+	      and evar = #Bvar(dest_exists(concl inhab_thm))
+	      val tyvarsl = Term.type_vars_in_term pred 
+	      val recd = {Name = name, Arity = length tyvarsl}
+	      fun mk_def_thm () =
+		  let val newty  = Type.mk_type{Tyop = name,Args = tyvarsl}
+		      val repty  = newty --> ty
+		      val rep    = Term.mk_primed_var{Name="rep", Ty=repty}
+		      val TYDEF_ty = (ty-->bool_ty) --> (repty-->bool_ty)
+		      val TYDEF = mk_const{Name = "TYPE_DEFINITION",
+					   Ty = TYDEF_ty}
+		      val bd = mk_exists{Bvar=rep, 
+					 Body=list_mk_comb(TYDEF,[pred,rep])}
+		  in 
+		      mk_definition_thm([],bd)
+		  end
+			   
+	  in
+	      Theory.store_definition (generated_name, [recd], [], mk_def_thm)
+	  end
+   end
+
+end; (* TYPE_DEF *)
+@
+
+
+1.5
+log
+@Fixed types, pretypes, fixities, parsing.
+@
+text
+@@
+
+
+1.4
+log
+@The HOL90 sources have been changed to allow for the use of different
+Standard ML compilers (possibly simultaneously).
+
+ * Many files in "src/0" changed to make them more portable across different
+   ML compilers. Various additions have been made to the Portable structure
+   and files changed to access identifiers in the Portable structure rather
+   than from the global environment. Worthy of special note are:
+
+   - The pointer equality used in "src/0/term.sml" has been made into a
+     function in the Portable structure.
+
+   - The ML-Lex and ML-Yacc files for the various parsers have been changed
+     to access the Portable structure. Both the source files and the SML
+     produced from them have been changed but I have not verified that the
+     source files would reproduce the new SML versions if ML-Lex and ML-Yacc
+     were to be rerun on them. The changes involve some hacks that exploit the
+     way ML-Lex and ML-Yacc work. See the sources for details.
+
+R.J.Boulton, 15th November 1995.
+@
+text
+@d12 1
+a12 2
+functor TYPE_DEF ((* structure Lib : Lib_sig *)
+		  structure Theory : Theory_sig
+d22 2
+d25 1
+a71 2
+(* IMPLEMENTATION NOTE: the dml'ed ML function is_axiom here tests if an *)
+(* axiom, OR definition is already in the current theory.                *)
+d74 3
+a76 23
+fun TYPE_DEF_ERR s =
+    Exception.HOL_ERR{origin_structure = "Type_def",
+		      origin_function = "new_type_definition",
+		      message = s};
+
+infix 3 -->
+fun (X --> Y) = Type.mk_type{Tyop = "fun", Args = [X,Y]};
+
+local
+fun is_axiom str = 
+   case (Lib.assoc1 str (Theory.axioms (Theory.current_theory())))
+     of NONE => false
+      | (SOME _) => true
+fun is_definition str = 
+   case (Lib.assoc1 str (Theory.definitions (Theory.current_theory())))
+     of NONE => false
+      | (SOME _) => true
+fun is_type str = 
+   let fun f ([]:{Name:string,Arity: int} list) = false
+         | f ({Name,...}::rst) = (str = Name) orelse f rst
+   in f (Theory.types (Theory.current_theory()))
+   end
+in
+a78 1
+       val bool = Type.mk_type{Tyop="bool",Args=[]}
+d81 10
+a90 15
+     then raise(TYPE_DEF_ERR "not in draft mode")
+     else if ((is_axiom generated_name) orelse (is_definition generated_name))
+          then raise TYPE_DEF_ERR
+                      ("\""^generated_name^"\" already an axiom or definition")
+          else if not(Portable.List.null(Term.free_vars pred)) 
+               then raise TYPE_DEF_ERR "subset predicate must be a closed term"
+               else if (not (case (Type.dest_type(Term.type_of pred))
+                                of {Tyop="fun",Args=[_,ty]} => (ty=bool)
+                                 | _ => false))
+                    then raise TYPE_DEF_ERR
+                               "subset predicate has the wrong type"
+                    else 
+            if not(Portable.List.null(hyp inhab_thm)) 
+            then raise TYPE_DEF_ERR"existence theorem must have no assumptions"
+            else if not((pred = rator(#Body(dest_exists(concl inhab_thm))))
+d92 21
+a112 22
+                 then raise TYPE_DEF_ERR
+                                "existence theorem must match subset predicate"
+                 else if (is_type name) 
+                      then raise TYPE_DEF_ERR
+                       (name^" is already the name of a type or type operator")
+            else let val {Args = [ty,_],...} = Type.dest_type(type_of pred) 
+                     and evar = #Bvar(dest_exists(concl inhab_thm))
+                     val tyvarsl = Term.type_vars_in_term pred 
+                 in
+                   Theory.new_type
+		      {Name = name, Arity = Portable.List.length tyvarsl};
+                   let val newty  = Type.mk_type{Tyop = name,Args = tyvarsl}
+                       val repty  = newty --> ty
+                       val rep    = Term.mk_primed_var{Name="rep", Ty=repty}
+                       val TYDEF = mk_const{Name = "TYPE_DEFINITION",
+                                           Ty = (ty-->bool) --> (repty-->bool)}
+                       val ax = mk_exists{Bvar=rep, 
+                                          Body=list_mk_comb(TYDEF,[pred,rep])}
+                   in 
+                   Theory.store_definition (generated_name, ax)
+                   end
+                 end
+a113 1
+end;
+@
+
+
+1.3
+log
+@Check in after merging in Konrad's changes made after
+the release of hol90.7.  This involved creating a side branch
+in which to check in Konrad's changes, then merging in that
+side branch into the main development (which contains changes
+made by Elsa Gunter).
+
+Some other small modification have been made to the source code,
+as I begun to try to make this version into a working version:
+	- hol90 will now be compiled in an environment were no
+structures can be considered opn.  This means many structures
+now need "open Lib" and other such commands at their head.
+This has not yet been completed, but has been begun.
+	- "rotl" and "rotr" have been added to Lib, something
+which I just did impulsively.   Documentation files
+have also been added in help/90.
+@
+text
+@d106 1
+a106 1
+          else if not(null(Term.free_vars pred)) 
+d114 1
+a114 1
+            if not(null(hyp inhab_thm)) 
+d127 2
+a128 1
+                   Theory.new_type{Name = name, Arity = length tyvarsl};
+@
+
+
+1.2
+log
+@Keeping you up to date:
+
+I'm about to do a checkin of elsa's modifications to the hol90.7
+sources to create her hol90.pre8.  To recap what I've done:
+	- I checked out hol90 (in /usr/groups/hol/drs1004/hol90)
+		cvs co hol90
+	  (Well, to be honest, I only checked out those
+	  parts of hol90 I knew I'd be changing, e.g. not the
+	  Manual, and only parts of the library.  Checking out the
+	  entire source takes a while, mainly due to the enormous number
+	  of help files.  The limiting factor is files/second, which
+         runs at around 5 when CVS is working on nfs over a network, not
+         KB/second, which you might at first think it would be).
+
+	- By doing a recursive diff between Elsa's source and the
+	hol90.7 source I found all the changes Elsa had made to
+	source files.  I copied relevant files from Elsa's source
+	into my checked out version.  The only new files were
+		- the sml_system files in src/0
+		- some make scripts in src/.
+	Changed files were in:
+		src/{0,1,2,3}
+		library/arith/src/thm_convs.sml
+		library/list/src/list_conv1.sml
+		library/num/src/num_lib.sml
+		library/prog_logic/src/halts_logic.sml
+		library/prog_logic/src/translation.sml
+		library/prog_logic/theories/src/mk_halts.sml
+		library/real/theories/src/Make
+		library/real/theories/src/equiv.sml
+		library/real/theories/src/seq.sml
+		library/reduce/src/arithconv.sml
+		library/string/src/string_conv.sml
+		library/unity/theories/src/aux_definitions.sml
+		library/word/theories/src/*
+
+	- I will now commit these changes, with this email as the log message.
+		cvs commit
+
+	- Tomorrow I will get this version compiling
+	with NJSML 108 (I will probably add
+	the files to enable the NJSML compilation manager to make
+	this easier), then check those changes in.  I think it's
+	good to get things in a working state.
+@
+text
+@a90 1
+
+d94 1
+a94 3
+
+   in
+   f (Theory.types (Theory.current_theory()))
+d133 2
+a134 4
+                       val ax = mk_exists
+                          {Bvar = rep, 
+                           Body = mk_comb{Rator=mk_comb{Rator=TYDEF,Rand=pred},
+                                          Rand = rep}}
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d12 2
+a13 1
+functor TYPE_DEF (structure Theory : Theory_sig
+d74 4
+a77 3
+fun TYPE_DEF_ERR s = HOL_ERR{origin_structure = "Type_def",
+			     origin_function = "new_type_definition",
+			     message = s};
+d84 1
+a84 1
+   case (assoc1 str (Theory.axioms (Theory.current_theory())))
+d88 1
+a88 1
+   case (assoc1 str (Theory.definitions (Theory.current_theory())))
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@
+
+
+1.1.1.1.2.1
+log
+@Konrad's bug fixes up to start of serious
+hol90.8 devel;opment.  Checked into branch revision for
+later merging with trunk (elsa's work).  See
+doc/7.chages for a full description of what's been done.
+@
+text
+@d89 1
+d93 3
+a95 1
+   in f (Theory.types (Theory.current_theory()))
+d134 4
+a137 2
+                       val ax = mk_exists{Bvar=rep, 
+                                          Body=list_mk_comb(TYDEF,[pred,rep])}
+@

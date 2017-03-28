@@ -1,0 +1,379 @@
+head	1.5;
+access;
+symbols
+	HOL97:1.2.2.1.0.2
+	bpHOL97:1.2.2.1
+	hol90_9_alpha:1.2.2.1
+	hol90_pre8_for_multiple_compilers:1.2.0.2
+	hol90_pre8_after_donalds_separate_compilation_changes:1.2
+	hol90_8_after_merging_Konrad_Elsa:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.5
+date	96.02.08.00.35.44;	author drs1004;	state Exp;
+branches;
+next	1.4;
+
+1.4
+date	96.01.04.13.48.43;	author drs1004;	state Exp;
+branches;
+next	1.3;
+
+1.3
+date	95.12.18.11.36.30;	author drs1004;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	95.10.31.15.05.11;	author drs1004;	state Exp;
+branches
+	1.2.2.1;
+next	1.1;
+
+1.1
+date	95.10.16.13.30.16;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.30.16;	author rjb;	state Exp;
+branches;
+next	;
+
+1.2.2.1
+date	96.06.25.15.47.09;	author rjb;	state Exp;
+branches
+	1.2.2.1.2.1;
+next	;
+
+1.2.2.1.2.1
+date	97.06.11.17.50.22;	author kxs;	state Exp;
+branches;
+next	1.2.2.1.2.2;
+
+1.2.2.1.2.2
+date	97.07.11.15.16.00;	author kxs;	state Exp;
+branches;
+next	1.2.2.1.2.3;
+
+1.2.2.1.2.3
+date	97.10.05.21.10.59;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.5
+log
+@New theory mechanism, code reorganisation and other enhancements by Don Syme.
+@
+text
+@(*========================================================================
+ * $Id: hol1.sml,v 1.4 1996/01/04 13:48:43 drs1004 Exp $
+ *
+ * FILE: hol1.sml
+ * AUTHOR: Donald Syme
+ *
+ * This file contains meta-meta-level things that happen at the end of
+ * level 1 of the HOL system.  Meta-meta-level things that affect the
+ * ML environment and which usually can't be separately compiled by a
+ * separate compilation facility like CM.) .  In particular this includes:
+ *	- Installs pretty printers
+ *	- Opening structures at the top level
+ *	- Declaring type abbreviations
+ * 	- Deleting structures/signatures/functors for garbage collecting.
+ *=======================================================================*)
+
+(*-----------------------------------------------------------------------
+ * Install the pretty printers for:
+ *	rewrites
+ *---------------------------------------------------------------------- *)
+
+(* val _ = Portable.PrettyPrint.install_pp 
+             ["Rewrite","rewrites"] Rewrite.pp_rewrites; *)
+
+(*-----------------------------------------------------------------------
+ * Open the structures at the top level and declare the appropriate infixes
+ * at the top level.
+ *---------------------------------------------------------------------- *)
+
+    open Boolean
+
+    open Prim_rec Induction Type_def_support Resolve 
+    open Rules Theorems Tactic Thm_cont
+    open Plain_rewrite Ho_match Ho_rewrite
+    open Tactical
+    open Conv
+    open Drule Quant_convs;
+	
+    open AC;
+    open Trace;
+
+  infix THEN_TCL 
+  infix ORELSE_TCL
+  infix THEN
+  infix THENL
+  infix ORELSE
+  infix THENC
+  infix ORELSEC
+
+open Manager1;
+
+(*-----------------------------------------------------------------------
+ * Wipe out functors and signatures for GC.
+ *---------------------------------------------------------------------- *)
+
+signature EMPTY = sig end;
+signature Drule1_sig = EMPTY;
+signature Drule2_sig = EMPTY;
+signature Drule3_sig = EMPTY;
+signature Drule_sig = EMPTY;
+signature Induct_then_sig = EMPTY;
+signature Prim_rec_sig = EMPTY;
+signature Resolve_sig = EMPTY;
+signature Rewrite_sig = EMPTY;
+signature Tactic_sig = EMPTY;
+signature Tactical_sig = EMPTY;
+signature Taut_thms_sig = EMPTY;
+signature Thm_cont_sig = EMPTY;
+signature Type_def_support_sig = EMPTY;
+
+
+structure EMPTY = struct end
+structure Drule1 = EMPTY;
+structure Drule2 = EMPTY;
+structure Drule3 = EMPTY;
+@
+
+
+1.4
+log
+@Added simplifier components, added drule files, added MK_ABS_CONV, better error messages
+@
+text
+@d2 1
+a2 1
+ * $Id: hol1.sml,v 1.3 1995/12/18 11:36:30 drs1004 Exp $
+d22 2
+a23 2
+val _ = Portable.PrettyPrint.install_pp 
+             ["Rewrite","rewrites"] Rewrite.pp_rewrites;
+d30 1
+a30 1
+open Core;
+d32 10
+d50 1
+d70 6
+@
+
+
+1.3
+log
+@Preterm and other changes, see 7.changes
+@
+text
+@d2 1
+a2 1
+ * $Id: hol1.sml,v 1.2 1995/10/31 15:05:11 drs1004 Exp $
+d30 2
+a31 7
+open Prim_rec
+open Induct_then
+open Type_def_support
+open Resolve
+open Taut_thms
+open Tactic
+open Thm_cont
+a33 2
+open Rewrite
+open Tactical
+a36 1
+open Conv
+a38 6
+open Drule
+
+
+open Boolean
+open Exists
+open Min
+@
+
+
+1.2
+log
+@First phase of hol90.8 development.  hol90 now compiles using NJSML-CM
+108.5, with separate compilation of libraries.  System dependencies
+have been isolated in the makefiles and "portable.sml".
+
+This involved a large number of enhancments to the source files,
+most of which are documented in the 7.changes file (or will be shortly).
+See also the correpsonding email corrspondence between RJB, KLS, TFM,
+JRH and DRS that happened during this development.
+@
+text
+@d2 1
+a2 1
+ * $Id$
+a29 1
+open Save_hol
+a48 28
+open Term_io
+   open Parse
+   open Hol_pp
+
+(*open Base_logic*)
+   open Boolean
+   open Exists
+   open Min
+
+   open Const_def
+   open Type_def
+   open Const_spec
+
+   open Install
+   open Add_to_sml
+   open Library
+   open Theory
+   open Thm
+   open Net
+   open Dsyntax
+   open Match
+   open Term
+   open Type
+
+open Lib
+  infix 3 ##
+open Exception
+open Globals;
+d50 3
+a53 4
+
+
+
+
+@
+
+
+1.2.2.1
+log
+@The core of hol90.9.alpha now builds successfully with SML/NJ 109,
+SML/NJ 108.5 (using CM), SML/NJ 0.93, and Poly/ML 3.0.
+I have not yet tried rebuilding the theory files.
+@
+text
+@d2 1
+a2 1
+ * $Id: hol1.sml,v 1.2 1995/10/31 15:05:11 drs1004 Exp $
+d23 1
+a23 1
+             ["Rewrite","rewrites"] "Rewrite.pp_rewrites" Rewrite.pp_rewrites;
+@
+
+
+1.2.2.1.2.1
+log
+@Various updates have been made in order to build on top of SML/NJ 109.26.
+@
+text
+@d2 1
+a2 1
+ * $Id: hol1.sml,v 1.2.2.1 1996/06/25 15:47:09 rjb Exp $
+d50 1
+@
+
+
+1.2.2.1.2.2
+log
+@Minor changes to make HOL CM-friendly.
+@
+text
+@d2 1
+a2 1
+ * $Id: hol1.sml,v 1.2.2.1.2.1 1997/06/11 17:50:22 kxs Exp $
+d29 1
+a29 1
+open CoreHol
+d54 1
+a54 1
+   open boolThry
+d77 5
+@
+
+
+1.2.2.1.2.3
+log
+@I don't know what changed here ...
+@
+text
+@d2 1
+a2 1
+ * $Id: hol1.sml,v 1.2.2.1.2.2 1997/07/11 15:16:00 kxs Exp $
+d67 2
+a68 2
+(*   open Net *)
+  open Dsyntax 
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d1 28
+a28 19
+structure Hol1 = 
+struct
+structure Globals = Globals
+structure Exception = Exception
+structure Lib = Lib
+structure Base_logic = Base_logic
+structure Term_io = Term_io
+structure Drule = Drule
+structure Conv = Conv
+structure Tactical = Tactical
+structure Rewrite = Rewrite
+structure Thm_cont = Thm_cont
+structure Tactic = Tactic
+structure Taut_thms = Taut_thms
+structure Resolve = Resolve
+structure Type_def_support = Type_def_support
+structure Induct_then = Induct_then
+structure Prim_rec = Prim_rec
+end;
+a29 2
+open Hol1
+
+d54 2
+a55 2
+open Base_logic
+   open Bool
+a73 1
+open Save_hol
+d78 25
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

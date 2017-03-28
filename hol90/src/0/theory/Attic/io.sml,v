@@ -1,0 +1,355 @@
+head	1.7;
+access;
+symbols
+	HOL97:1.4.0.4
+	bpHOL97:1.4
+	hol90_9_alpha:1.4
+	hol90_pre8_for_multiple_compilers:1.4.0.2
+	last_edition:1.6
+	hol90_pre8_after_donalds_separate_compilation_changes:1.3
+	hol90_8_after_merging_Konrad_Elsa:1.2
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.7
+date	96.02.08.00.24.01;	author drs1004;	state dead;
+branches;
+next	1.6;
+
+1.6
+date	96.01.04.22.07.03;	author drs1004;	state Exp;
+branches;
+next	1.5;
+
+1.5
+date	96.01.04.14.07.37;	author drs1004;	state Exp;
+branches;
+next	1.4;
+
+1.4
+date	95.11.15.13.30.57;	author rjb;	state Exp;
+branches
+	1.4.4.1;
+next	1.3;
+
+1.3
+date	95.10.31.15.06.29;	author drs1004;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	95.10.18.16.37.54;	author drs1004;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	95.10.16.13.30.11;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.30.11;	author rjb;	state Exp;
+branches
+	1.1.1.1.2.1;
+next	;
+
+1.1.1.1.2.1
+date	95.10.18.10.09.12;	author drs1004;	state Exp;
+branches;
+next	;
+
+1.4.4.1
+date	97.06.11.17.26.10;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.7
+log
+@New theory mechanism, by Donald Syme
+@
+text
+@(* Reading and writing theories from and to disk. Replace only this module,
+   Disk_io, and Regime if you want a different arrangement of theories on 
+   disk. In the current design, a theory X is represented by 2 binary 
+   files: X.holsig and X.thms. If you only want to change the representation 
+   of a theory component, e.g., from binary to ascii, all you have to do 
+   is change Disk_io.
+*)
+functor THEORY_IO(structure Disk_io : Disk_io_sig
+                  structure File : File_sig) : Theory_io_sig =
+struct
+open Lib;
+open Exception;
+structure Theory_data = Disk_io.Regime.Theory_data;
+
+val ERR = Exception.ERR "Theory_io";
+val WRAP_ERR = Exception.WRAP_ERR "Theory_io";
+    
+type hol_sig = Disk_io.Regime.hol_sig;
+type hol_thms = Disk_io.Regime.hol_thms;
+
+val hol_sig_suffix = ".holsig";
+val thms_suffix = ".thms";
+
+val theory_to_hol_sig = Disk_io.Regime.theory_to_hol_sig
+val dest_hol_sig = Disk_io.Regime.dest_hol_sig;
+val mk_theory = Disk_io.Regime.mk_theory_from_parts
+
+
+val get_hol_sig_by_name = File.get_file_by_name{reader = Disk_io.read_hol_sig,
+                                                suffix = hol_sig_suffix};
+
+val get_hol_sig_by_uid = File.get_file_by_key
+                               {reader = Disk_io.read_hol_sig,
+                                suffix = hol_sig_suffix,
+                                eq = Theory_data.theory_id_eq,
+                                key_of = #thid o Disk_io.Regime.dest_hol_sig,
+                                name_of = Theory_data.theory_id_name};
+
+(* When one calls this, one needs to have the constants of the theory already 
+   in the symbol table, since a mild form of parsing is done.
+*)
+val get_thms = File.get_file_by_key
+                     {reader = Disk_io.read_hol_thms,
+                      suffix = thms_suffix,
+                      eq = Theory_data.theory_id_eq,
+                      key_of = #thid o Disk_io.Regime.dest_hol_thms,
+                      name_of = Theory_data.theory_id_name};
+
+
+local
+fun open_theory_outstreams path name = 
+   let val out1 = open_out (path^name^hol_sig_suffix)
+   in
+       let val out2 = open_out (path^name^thms_suffix)
+       in
+       (out1,out2)
+       end
+       handle e => (close_out out1;
+		    WRAP_ERR("open_theory_outstreams",e))
+   end
+   handle e => WRAP_ERR("open_theory_outstreams",e)
+in
+fun put_theory_to_disk thry =
+   let val name = (Theory_data.theory_id_name o Theory_data.theory_id) thry
+       val outfile_prefix = Portable.List.hd(!Globals.theory_path)
+       val (outstrm1,outstrm2) = open_theory_outstreams outfile_prefix name
+       val (hsig,thms) = Disk_io.Regime.split_theory thry
+   in
+     Disk_io.write_hol_sig (outstrm1, hsig);
+     Disk_io.write_hol_thms(outstrm2, thms);
+     close_out outstrm1;
+     close_out outstrm2
+   end
+   handle e => WRAP_ERR("put_theory_to_disk",e)
+end;
+
+
+(*
+** fun theory_exists path s = 
+**   (get_thms path (#thid(dest_hol_sig(get_hol_sig_by_name path s)));
+**    true)
+**   handle e => false;
+*)
+
+end; (* THEORY_IO *)
+@
+
+
+1.6
+log
+@NJML 108.19 changes
+@
+text
+@@
+
+
+1.5
+log
+@Added simplifier components, added drule files, added MK_ABS_CONV, better error messages
+@
+text
+@d58 2
+a59 2
+       handle (Io s) => (close_out out1;
+                         ERR("open_theory_outstreams",s))
+d61 1
+a61 1
+   handle (Io s) => ERR("open_theory_outstreams",s)
+@
+
+
+1.4
+log
+@The HOL90 sources have been changed to allow for the use of different
+Standard ML compilers (possibly simultaneously).
+
+ * Many files in "src/0" changed to make them more portable across different
+   ML compilers. Various additions have been made to the Portable structure
+   and files changed to access identifiers in the Portable structure rather
+   than from the global environment. Worthy of special note are:
+
+   - The pointer equality used in "src/0/term.sml" has been made into a
+     function in the Portable structure.
+
+   - The ML-Lex and ML-Yacc files for the various parsers have been changed
+     to access the Portable structure. Both the source files and the SML
+     produced from them have been changed but I have not verified that the
+     source files would reproduce the new SML versions if ML-Lex and ML-Yacc
+     were to be rerun on them. The changes involve some hacks that exploit the
+     way ML-Lex and ML-Yacc work. See the sources for details.
+
+R.J.Boulton, 15th November 1995.
+@
+text
+@d15 3
+a17 5
+fun THEORY_IO_ERR{function,message} =
+    Exception.HOL_ERR{origin_structure = "Theory_io",
+		      origin_function = function,
+		      message = message}
+
+d59 1
+a59 2
+                         raise THEORY_IO_ERR{function="open_theory_outstreams",
+                                             message = s})
+d61 1
+a61 2
+   handle (Io s) => raise THEORY_IO_ERR{function = "open_theory_outstreams",
+                                        message = s}
+d74 1
+a74 5
+   handle (HOL_ERR{origin_structure,origin_function,message})
+        => raise THEORY_IO_ERR{function = "put_theory_to_disk",
+                               message ="Error when writing theory to disk:\n"
+                            ^origin_structure^"."^origin_function^": "^message}
+        | e => raise e
+@
+
+
+1.4.4.1
+log
+@Removed files are parse files and portability files that have
+effectively been moved elsewhere.
+
+Modified files are up to date for ML 109.26.
+@
+text
+@d54 1
+a54 1
+   let val out1 = Portable.open_out (path^name^hol_sig_suffix)
+d56 10
+a65 7
+       let val out2 = Portable.open_out (path^name^thms_suffix)
+       in (out1,out2) end 
+       handle (Portable.Io s) 
+       => (Portable.close_out out1;
+           raise THEORY_IO_ERR{function="open_theory_outstreams", message=s})
+   end handle (Portable.Io s) 
+   => raise THEORY_IO_ERR{function = "open_theory_outstreams", message=s}
+d75 2
+a76 2
+     Portable.close_out outstrm1;
+     Portable.close_out outstrm2
+@
+
+
+1.3
+log
+@First phase of hol90.8 development.  hol90 now compiles using NJSML-CM
+108.5, with separate compilation of libraries.  System dependencies
+have been isolated in the makefiles and "portable.sml".
+
+This involved a large number of enhancments to the source files,
+most of which are documented in the 7.changes file (or will be shortly).
+See also the correpsonding email corrspondence between RJB, KLS, TFM,
+JRH and DRS that happened during this development.
+@
+text
+@d69 1
+a69 1
+       val outfile_prefix = hd(!Globals.theory_path)
+@
+
+
+1.2
+log
+@Check in after merging in Konrad's changes made after
+the release of hol90.7.  This involved creating a side branch
+in which to check in Konrad's changes, then merging in that
+side branch into the main development (which contains changes
+made by Elsa Gunter).
+
+Some other small modification have been made to the source code,
+as I begun to try to make this version into a working version:
+	- hol90 will now be compiled in an environment were no
+structures can be considered opn.  This means many structures
+now need "open Lib" and other such commands at their head.
+This has not yet been completed, but has been begun.
+	- "rotl" and "rotr" have been added to Lib, something
+which I just did impulsively.   Documentation files
+have also been added in help/90.
+@
+text
+@d11 2
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d14 3
+a16 3
+      HOL_ERR{origin_structure = "Theory_io",
+	      origin_function = function,
+	      message = message}
+d76 5
+a80 2
+   handle _ => raise THEORY_IO_ERR{function = "put_theory_to_disk",
+			          message ="error when writing theory to disk"}
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@
+
+
+1.1.1.1.2.1
+log
+@	Konrad's bug fixes and further development to hol90.7 after it's release.
+	Checked n on a side branch for later merging with the main trunk
+	(Elsa's revisions).  See doc/7.changes for details.
+@
+text
+@d76 2
+a77 5
+   handle (HOL_ERR{origin_structure,origin_function,message})
+        => raise THEORY_IO_ERR{function = "put_theory_to_disk",
+                               message ="Error when writing theory to disk:\n"
+                            ^origin_structure^"."^origin_function^": "^message}
+        | e => raise e
+@

@@ -1,0 +1,242 @@
+<TITLE>Theory: WF</TITLE>
+<H1>Theory: WF</H1>
+<H1>Parents</H1>
+    <UL>
+    <LI><A HREF = "TC.html"><STRONG>TC</STRONG></A>
+    </UL>
+
+
+<HR>
+<H1>Types</H1>
+    <UL>
+    
+    </UL>
+
+
+<HR>
+<H1>Constants</H1>
+    <UL>
+    <LI><STRONG>wellfounded</STRONG><EM>:('a -> 'a -> bool) -> bool</EM>
+    <LI><STRONG>WF</STRONG><EM>:('a -> 'a -> bool) -> bool</EM>
+    <LI><STRONG>inv_image</STRONG><EM>:('b -> 'b -> bool) -> ('a -> 'b) ->
+                                       'a -> 'a -> bool</EM>
+    <LI><STRONG>X</STRONG><EM>:('a -> 'a -> bool) -> ('b -> 'b -> bool) ->
+                               'a # 'b -> 'a # 'b -> bool</EM>
+    <LI><STRONG>RPROD</STRONG><EM>:('a -> 'a -> bool) -> ('b -> 'b -> bool) ->
+                                   'a # 'b -> 'a # 'b -> bool</EM>
+    <LI><STRONG>Empty</STRONG><EM>:'a -> 'a -> bool</EM>
+    <LI><STRONG>measure</STRONG><EM>:('a -> num) -> 'a -> 'a -> bool</EM>
+    <LI><STRONG>%</STRONG><EM>:('a -> 'b) -> ('a -> 'a -> bool) # 'a -> 'a ->
+                               'b</EM>
+    <LI><STRONG>approx</STRONG><EM>:('a -> 'a -> bool) ->
+                                    (('a -> 'b) -> 'a -> 'b) -> 'a ->
+                                    ('a -> 'b) -> bool</EM>
+    <LI><STRONG>the_fun</STRONG><EM>:('a -> 'a -> bool) ->
+                                     (('a -> 'b) -> 'a -> 'b) -> 'a -> 'a ->
+                                     'b</EM>
+    <LI><STRONG>WFREC</STRONG><EM>:('a -> 'a -> bool) ->
+                                   (('a -> 'b) -> 'a -> 'b) -> 'a -> 'b</EM>
+    <LI><STRONG>PAIR_CASE</STRONG><EM>:('a -> 'b -> 'c) -> 'a # 'b -> 'c</EM>
+    </UL>
+
+<H1>Infixes</H1>
+    <UL>
+    <LI><STRONG>X{</STRONG>fixity = 450<STRONG>}</STRONG>
+    <LI><STRONG>%{</STRONG>fixity = 25<STRONG>}</STRONG>
+    </UL>
+
+
+<HR>
+<H1>Axioms</H1>
+<DL>
+
+</DL>
+
+
+<HR>
+<H1>Definitions</H1>
+<DL>
+<DT><STRONG>wellfounded_def</STRONG>
+<DD>
+<PRE>
+|- !R. wellfounded R = ~(?f. !n. R (f (n + 1)) (f n))
+</PRE>
+
+<DT><STRONG>WF_DEF</STRONG>
+<DD>
+<PRE>
+|- !R. WF R = (!B. (?w. B w) ==> (?min. B min /\ (!b. R b min ==> ~(B b))))
+</PRE>
+
+<DT><STRONG>inv_image_def</STRONG>
+<DD>
+<PRE>
+|- !R f. inv_image R f = (\x y. R (f x) (f y))
+</PRE>
+
+<DT><STRONG>X_DEF</STRONG>
+<DD>
+<PRE>
+|- !R1 R2. R1 X R2 = (\(s,t) (u,v). R1 s u \/ (s = u) /\ R2 t v)
+</PRE>
+
+<DT><STRONG>RPROD_DEF</STRONG>
+<DD>
+<PRE>
+|- !R1 R2. RPROD R1 R2 = (\(s,t) (u,v). R1 s u /\ R2 t v)
+</PRE>
+
+<DT><STRONG>Empty_def</STRONG>
+<DD>
+<PRE>
+|- !x y. Empty x y = F
+</PRE>
+
+<DT><STRONG>measure_def</STRONG>
+<DD>
+<PRE>
+|- measure = inv_image $<
+</PRE>
+
+<DT><STRONG>RESTRICT_DEF</STRONG>
+<DD>
+<PRE>
+|- !f R x. (f % R,x) = (\y. (R y x) => (f y) | (@v. T))
+</PRE>
+
+<DT><STRONG>approx_def</STRONG>
+<DD>
+<PRE>
+|- !R M x f. approx R M x f = f = ((\y. M (f % R,y) y) % R,x)
+</PRE>
+
+<DT><STRONG>the_fun_def</STRONG>
+<DD>
+<PRE>
+|- !R M x. the_fun R M x = (@f. approx R M x f)
+</PRE>
+
+<DT><STRONG>WFREC_DEF</STRONG>
+<DD>
+<PRE>
+|- !R M. WFREC R M = (\x. M (the_fun (TC R) (\f v. M (f % R,v) v) x % R,x) x)
+</PRE>
+
+<DT><STRONG>PAIR_CASE_DEF</STRONG>
+<DD>
+<PRE>
+|- !f x y. PAIR_CASE f (x,y) = f x y
+</PRE>
+
+</DL>
+
+
+<HR>
+<H1>Theorems</H1>
+<DL>
+<DT><STRONG>WF_IFF_WELLFOUNDED</STRONG>
+<DD>
+<PRE>
+|- !R. WF R = wellfounded R
+</PRE>
+
+<DT><STRONG>WF_POLY</STRONG>
+<DD>
+<PRE>
+|- !R. WF R ==> (?min. !b. ~(R b min))
+</PRE>
+
+<DT><STRONG>WF_INDUCTION_THM</STRONG>
+<DD>
+<PRE>
+|- !R. WF R ==> (!P. (!x. (!y. R y x ==> P y) ==> P x) ==> (!x. P x))
+</PRE>
+
+<DT><STRONG>WF_SUBSET</STRONG>
+<DD>
+<PRE>
+|- !R P. WF R /\ (!x y. P x y ==> R x y) ==> WF P
+</PRE>
+
+<DT><STRONG>WF_TC</STRONG>
+<DD>
+<PRE>
+|- !R. WF R ==> WF (TC R)
+</PRE>
+
+<DT><STRONG>WF_inv_image</STRONG>
+<DD>
+<PRE>
+|- !R f. WF R ==> WF (inv_image R f)
+</PRE>
+
+<DT><STRONG>WF_X</STRONG>
+<DD>
+<PRE>
+|- !R Q. WF R /\ WF Q ==> WF (R X Q)
+</PRE>
+
+<DT><STRONG>WF_RPROD</STRONG>
+<DD>
+<PRE>
+|- !R Q. WF R /\ WF Q ==> WF (RPROD R Q)
+</PRE>
+
+<DT><STRONG>WF_Empty</STRONG>
+<DD>
+<PRE>
+|- WF Empty
+</PRE>
+
+<DT><STRONG>WF_PRED</STRONG>
+<DD>
+<PRE>
+|- WF (\x y. y = SUC x)
+</PRE>
+
+<DT><STRONG>WF_LESS</STRONG>
+<DD>
+<PRE>
+|- WF $<
+</PRE>
+
+<DT><STRONG>WF_measure</STRONG>
+<DD>
+<PRE>
+|- !m. WF (measure m)
+</PRE>
+
+<DT><STRONG>WF_LIST_PRED</STRONG>
+<DD>
+<PRE>
+|- WF (\L1 L2. ?h. L2 = CONS h L1)
+</PRE>
+
+<DT><STRONG>RESTRICT_LEMMA</STRONG>
+<DD>
+<PRE>
+|- !f R y z. R y z ==> ((f % R,z) y = f y)
+</PRE>
+
+<DT><STRONG>WFREC_THM</STRONG>
+<DD>
+<PRE>
+|- !R M. WF R ==> (!x. WFREC R M x = M (WFREC R M % R,x) x)
+</PRE>
+
+<DT><STRONG>WFREC_COROLLARY</STRONG>
+<DD>
+<PRE>
+|- !M R f. (f = WFREC R M) ==> WF R ==> (!x. f x = M (f % R,x) x)
+</PRE>
+
+<DT><STRONG>WF_RECURSION_THM</STRONG>
+<DD>
+<PRE>
+|- !R. WF R ==> (!M. ?!f. !x. f x = M (f % R,x) x)
+</PRE>
+
+</DL>
+
+
+<HR>

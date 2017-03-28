@@ -1,0 +1,178 @@
+head	1.1;
+branch	1.1.1;
+access;
+symbols
+	HOL97:1.1.1.1.4.2.0.2
+	bpHOL97:1.1.1.1.4.2
+	hol90_9_alpha:1.1.1.1.4.2
+	hol90_pre8_for_multiple_compilers:1.1.1.1.0.4
+	hol90_pre8_after_donalds_separate_compilation_changes:1.1.1.1
+	hol90_8_after_merging_Konrad_Elsa:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	95.10.16.13.32.23;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.32.23;	author rjb;	state Exp;
+branches
+	1.1.1.1.4.1;
+next	;
+
+1.1.1.1.4.1
+date	96.08.23.10.08.12;	author rjb;	state Exp;
+branches;
+next	1.1.1.1.4.2;
+
+1.1.1.1.4.2
+date	96.09.03.15.53.13;	author rjb;	state Exp;
+branches
+	1.1.1.1.4.2.2.1;
+next	;
+
+1.1.1.1.4.2.2.1
+date	97.06.11.18.35.27;	author kxs;	state Exp;
+branches;
+next	1.1.1.1.4.2.2.2;
+
+1.1.1.1.4.2.2.2
+date	97.06.27.16.20.44;	author mn200;	state Exp;
+branches;
+next	1.1.1.1.4.2.2.3;
+
+1.1.1.1.4.2.2.3
+date	97.07.14.17.39.09;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@#!/bin/sh
+
+(cd theories/src; Make $1)
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@
+
+
+1.1.1.1.4.1
+log
+@Now uses full hol command including options. Exits on failure.
+@
+text
+@d3 1
+a3 13
+#Old version: (cd theories/src; Make $*)
+pre_load='use "useful.sml"; use "equiv.sml";'
+cd theories/src
+echo $pre_load 'use_and_exit print_HOL_ERR "hrat.sml";'     | $* &&
+echo $pre_load 'use_and_exit print_HOL_ERR "hreal.sml";'    | $* &&
+echo $pre_load 'use_and_exit print_HOL_ERR "realax.sml";'   | $* &&
+echo $pre_load 'use_and_exit print_HOL_ERR "real.sml";'     | $* &&
+echo $pre_load 'use_and_exit print_HOL_ERR "topology.sml";' | $* &&
+echo $pre_load 'use_and_exit print_HOL_ERR "nets.sml";'     | $* &&
+echo $pre_load 'use_and_exit print_HOL_ERR "seq.sml";'      | $* &&
+echo $pre_load 'use_and_exit print_HOL_ERR "lim.sml";'      | $* &&
+echo $pre_load 'use_and_exit print_HOL_ERR "powser.sml";'   | $* &&
+echo $pre_load 'use_and_exit print_HOL_ERR "transc.sml";'   | $*
+@
+
+
+1.1.1.1.4.2
+log
+@Modified library make file to create the target directory for the theory files
+if it does not already exist.
+@
+text
+@a2 3
+if test -z "$THEORY_TYPE"; then THEORY_TYPE=ascii; fi
+
+mkdir theories/$THEORY_TYPE 2>/dev/null || true
+@
+
+
+1.1.1.1.4.2.2.1
+log
+@Changes to accomodate move to SML/NJ 109.26.
+@
+text
+@d7 12
+a18 19
+(cd theories/src; Make $*)
+
+# The following doesn't work. For it to work, the ML process would have to 
+# exit on encountering an error (such as an unbound variable). Since the ML
+# interface is a read-eval-print loop, this doesn't happen.
+
+#pre_load='Portable.use_and_exit print_HOL_ERR "useful.sml";\
+#	  Portable.use_and_exit print_HOL_ERR "equiv.sml";'
+#cd theories/src
+#echo $pre_load 'Portable.use_and_exit print_HOL_ERR "hrat.sml";'     | $* &&
+#echo $pre_load 'Portable.use_and_exit print_HOL_ERR "hreal.sml";'    | $* &&
+#echo $pre_load 'Portable.use_and_exit print_HOL_ERR "realax.sml";'   | $* &&
+#echo $pre_load 'Portable.use_and_exit print_HOL_ERR "real.sml";'     | $* &&
+#echo $pre_load 'Portable.use_and_exit print_HOL_ERR "topology.sml";' | $* &&
+#echo $pre_load 'Portable.use_and_exit print_HOL_ERR "nets.sml";'     | $* &&
+#echo $pre_load 'Portable.use_and_exit print_HOL_ERR "seq.sml";'      | $* &&
+#echo $pre_load 'Portable.use_and_exit print_HOL_ERR "lim.sml";'      | $* &&
+#echo $pre_load 'Portable.use_and_exit print_HOL_ERR "powser.sml";'   | $* &&
+#echo $pre_load 'Portable.use_and_exit print_HOL_ERR "transc.sml";'   | $*
+@
+
+
+1.1.1.1.4.2.2.2
+log
+@Modified make_real to remove assumption that . is in one's PATH.
+@
+text
+@d7 1
+a7 1
+(cd theories/src; ./Make $*)
+d9 1
+a9 1
+# The following doesn't work. For it to work, the ML process would have to
+@
+
+
+1.1.1.1.4.2.2.3
+log
+@The real library now loads under CM.
+@
+text
+@a6 1
+
+d9 1
+a9 1
+# The following doesn't work. For it to work, the ML process would have to 
+@

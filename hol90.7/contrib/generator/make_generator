@@ -1,0 +1,26 @@
+#!/bin/sh
+
+#
+# Build theory
+#
+
+echo 'cd "theories/ascii";use "../src/mk_apply_f_until_finished.sml";'\
+     | $1 
+
+#
+# Declare library
+#
+
+echo 'new_library'\
+     '{name    = "generator",'\
+     'doc      = "A generator for formal compilers by R. Reetz\n    !Requires the SML/NJ library (Version2) in order to load!",'\
+     'path     = (!HOLdir)^"contrib/generator/",'\
+     'parents  = [find_library "mutrec",find_library "taut"],'\
+     'theories = ["apply_f_until_finished"],'\
+     'code     = ["multiple_rec_spec.sig","multiple_rec_spec.sml",
+                  "generator.sig","generator.sml"],'\
+     'help     = [],'\
+     'loaded   = "fn () => ()"};'\
+     | $1
+
+mv generator.hol_lib ../desc

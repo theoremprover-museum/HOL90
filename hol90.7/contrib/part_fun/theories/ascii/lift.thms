@@ -1,0 +1,116 @@
+thid = (lift, 784895149, 298359)
+axioms = []
+definitions =
+[((lower_DEF),
+  [],
+  `((! :('a -> bool) -> bool) (\(x :'a). (((= :'a -> 'a -> bool)
+   ((lower :'a lift -> 'a) ((lift :'a -> 'a lift) $0))) $0)))`),
+ ((is_defined_DEF),
+  [],
+  `((! :('a lift -> bool) -> bool) (\(x :'a lift).
+   (((= :bool -> bool -> bool) ((is_defined :'a lift -> bool) $0))
+   ((? :('a -> bool) -> bool) (\(y :'a).
+   (((= :'a lift -> 'a lift -> bool) $1) ((lift :'a -> 'a lift)
+   $0)))))))`),
+ ((undefined_DEF),
+  [],
+  `(((= :'a lift -> 'a lift -> bool) (undefined :'a lift))
+   ((lift_ABS :'a + one -> 'a lift) ((INR :one -> 'a + one) one)))`),
+ ((lift_DEF),
+  [],
+  `((! :('a -> bool) -> bool) (\(x :'a).
+   (((= :'a lift -> 'a lift -> bool) ((lift :'a -> 'a lift) $0))
+   ((lift_ABS :'a + one -> 'a lift) ((INL :'a -> 'a + one) $0)))))`),
+ ((lift_REP_ABS_DEF),
+  [],
+  `((/\ ((! :('a lift -> bool) -> bool) (\(a :'a lift).
+   (((= :'a lift -> 'a lift -> bool) ((lift_ABS :'a + one -> 'a lift)
+   ((lift_REP :'a lift -> 'a + one) $0))) $0))))
+   ((! :('a + one -> bool) -> bool) (\(r :'a + one).
+   (((= :bool -> bool -> bool) ((\(x :'a + one). T) $0))
+   (((= :'a + one -> 'a + one -> bool)
+   ((lift_REP :'a lift -> 'a + one) ((lift_ABS :'a + one -> 'a lift)
+   $0))) $0)))))`),
+ ((lift_TY_DEF),
+  [],
+  `((? :(('a lift -> 'a + one) -> bool) -> bool)
+   (\(rep :'a lift -> 'a + one).
+   (((TYPE_DEFINITION :('a + one -> bool) -> ('a lift -> 'a + one) ->
+                       bool) (\(x :'a + one). T)) $0)))`)]
+theorems =
+[((lower_ONE_ONE),
+  [],
+  `((! :('a lift -> bool) -> bool) (\(x :'a lift).
+   ((! :('a lift -> bool) -> bool) (\(y :'a lift). ((==> ((/\
+   ((is_defined :'a lift -> bool) $1)) ((is_defined :'a lift -> bool)
+   $0))) (((= :bool -> bool -> bool) (((= :'a -> 'a -> bool)
+   ((lower :'a lift -> 'a) $1)) ((lower :'a lift -> 'a) $0)))
+   (((= :'a lift -> 'a lift -> bool) $1) $0)))))))`),
+ ((lift_lower_THM),
+  [],
+  `((! :('a lift -> bool) -> bool) (\(y :'a lift).
+   (((= :bool -> bool -> bool) (((= :'a lift -> 'a lift -> bool)
+   ((lift :'a -> 'a lift) ((lower :'a lift -> 'a) $0))) $0))
+   ((is_defined :'a lift -> bool) $0))))`),
+ ((is_defined_is_not_undefined),
+  [],
+  `((! :('a lift -> bool) -> bool) (\(x :'a lift).
+   (((= :bool -> bool -> bool) ((is_defined :'a lift -> bool) $0)) (~
+   (((= :'a lift -> 'a lift -> bool) $0) (undefined :'a lift))))))`),
+ ((is_defined_lemma),
+  [],
+  `((/\ ((! :('a -> bool) -> bool) (\(x :'a).
+   ((is_defined :'a lift -> bool) ((lift :'a -> 'a lift) $0))))) (~
+   ((is_defined :'a lift -> bool) (undefined :'a lift))))`),
+ ((exists_not_undefined_THM),
+  [],
+  `((! :('a lift -> bool) -> bool) (\(y :'a lift).
+   (((= :bool -> bool -> bool) ((? :('a -> bool) -> bool) (\(x :'a).
+   (((= :'a lift -> 'a lift -> bool) $1) ((lift :'a -> 'a lift)
+   $0))))) (~ (((= :'a lift -> 'a lift -> bool) $0)
+   (undefined :'a lift))))))`),
+ ((undefined_not_exists_THM),
+  [],
+  `((! :('a lift -> bool) -> bool) (\(y :'a lift).
+   (((= :bool -> bool -> bool) (((= :'a lift -> 'a lift -> bool) $0)
+   (undefined :'a lift))) (~ ((? :('a -> bool) -> bool) (\(x :'a).
+   (((= :'a lift -> 'a lift -> bool) $1) ((lift :'a -> 'a lift)
+   $0))))))))`),
+ ((undef_not_lift),
+  [],
+  `((! :('a -> bool) -> bool) (\(x :'a). (~
+   (((= :'a lift -> 'a lift -> bool) (undefined :'a lift))
+   ((lift :'a -> 'a lift) $0)))))`),
+ ((lift_Axiom),
+  [],
+  `((! :(('a -> 'b) -> bool) -> bool) (\(f :'a -> 'b).
+   ((! :('b -> bool) -> bool) (\(e :'b).
+   ((?! :(('a lift -> 'b) -> bool) -> bool) (\(fn :'a lift -> 'b).
+   ((/\ ((! :('a -> bool) -> bool) (\(x :'a). (((= :'b -> 'b -> bool)
+   ($1 ((lift :'a -> 'a lift) $0))) ($3 $0)))))
+   (((= :'b -> 'b -> bool) ($0 (undefined :'a lift))) $1))))))))`),
+ ((lift_constructors_distinct),
+  [],
+  `((! :('a -> bool) -> bool) (\(x :'a). (~
+   (((= :'a lift -> 'a lift -> bool) ((lift :'a -> 'a lift) $0))
+   (undefined :'a lift)))))`),
+ ((lift_ONE_ONE),
+  [],
+  `((! :('a -> bool) -> bool) (\(x :'a). ((! :('a -> bool) -> bool)
+   (\(x' :'a). (((= :bool -> bool -> bool)
+   (((= :'a lift -> 'a lift -> bool) ((lift :'a -> 'a lift) $1))
+   ((lift :'a -> 'a lift) $0))) (((= :'a -> 'a -> bool) $1)
+   $0))))))`),
+ ((lift_INDUCTION),
+  [],
+  `((! :(('a lift -> bool) -> bool) -> bool) (\(P :'a lift -> bool).
+   ((==> ((/\ ((! :('a -> bool) -> bool) (\(x :'a). ($1
+   ((lift :'a -> 'a lift) $0))))) ($0 (undefined :'a lift))))
+   ((! :('a lift -> bool) -> bool) (\(l :'a lift). ($1 $0))))))`),
+ ((lift_CASES),
+  [],
+  `((! :('a lift -> bool) -> bool) (\(l :'a lift). ((\/
+   ((? :('a -> bool) -> bool) (\(x :'a).
+   (((= :'a lift -> 'a lift -> bool) $1) ((lift :'a -> 'a lift)
+   $0))))) (((= :'a lift -> 'a lift -> bool) $0)
+   (undefined :'a lift)))))`)]

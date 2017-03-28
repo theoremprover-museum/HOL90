@@ -1,0 +1,146 @@
+head	1.2;
+access;
+symbols;
+locks; strict;
+comment	@# @;
+
+
+1.2
+date	96.02.08.00.30.53;	author drs1004;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	96.01.04.13.45.14;	author drs1004;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.2
+log
+@New theory mechanism, by Donald Syme, and many other enhancements.
+@
+text
+@
+
+functor FIXITY(structure Term : Public_term_sig) : Fixity_sig =
+struct
+
+    open Lib;
+
+    val ERR = Exception.ERR "Fixity";
+	
+  datatype fixity = Infix of int | Prefix | Binder;
+(*-------------------------------------------------------------------
+ * Fixities table.
+ *
+ * Support for arbitrary fixities specified in preterms
+ * These take priority over term fixities.
+ *------------------------------------------------------------------*)
+fun is_dollared s = Portable.String.sub (s,0) = #"$" handle _ => false;
+
+val fixities_ref = ref ([("\\",Binder)]: (string * fixity) list);
+fun fixities () = (!fixities_ref);
+
+fun set_fixities f = (fixities_ref := f)
+	
+fun fixity n = if (is_dollared n) then Prefix else assoc n (fixities()) 
+    handle _ => Prefix;
+
+fun is_binder x = 
+    case (fixity x) of 
+	 Binder => true 
+       | _ => false;
+fun is_infix Name =
+    case fixity Name of 
+	  Infix _ => true 
+	| _ => false;
+	 
+fun precedence Name =
+    case fixity Name of 
+	(Infix x) => x 
+      | _ => 0;
+	    
+	 
+
+(*--------------------------------------------------------------------------
+ * For restricted binders. Adding a pair "(B,R)" to this list, if "B" is the 
+ * name of a binder, and "R" is the name of a constant will enable parsing 
+ * of terms with the form 
+ *
+ *     B <varstruct list>::<restr>. M
+ *------------------------------------------------------------------------*)
+
+val restricted_binders = ref [("!","RES_FORALL"),
+			      ("?","RES_EXISTS"),
+			      ("@@","RES_SELECT"),
+			      ("\\","RES_ABSTRACT")];
+    
+
+fun binder_restrictions() = !restricted_binders
+fun set_binder_restrictions r = restricted_binders := r;
+    
+
+
+end;
+
+@
+
+
+1.1
+log
+@Fixed types, pretypes, fixities, parsing.
+@
+text
+@d21 3
+a23 8
+fun hol_infix f n = 
+   (fixities_ref := add_assoc (n,Infix f) (fixities()))
+fun hol_binder n = 
+    (fixities_ref := add_assoc (n,Binder) (fixities()))
+fun hol_prefix n = 
+    (fixities_ref := add_assoc (n,Prefix) (fixities()))
+fun hol_nonfix n = 
+    (fixities_ref := remove_assoc n (fixities()))
+d26 1
+a26 1
+(* Used in hol_lex. Could possibly be done through make_atom. *)
+d51 5
+a55 5
+val basic_binders = ["!","?","@@","\\"]
+val basic_restrictions = 
+  zip basic_binders
+  ["RES_FORALL","RES_EXISTS","RES_SELECT","RES_ABSTRACT"]
+val restricted_binders = ref basic_restrictions
+d58 2
+a59 25
+fun associate_restriction(p as(binder_str,const_name)) = 
+   case (assoc1 binder_str (!restricted_binders))
+     of NONE =>
+         if (is_binder binder_str)
+         then if (can Term.const_decl const_name)
+              then restricted_binders := p::(!restricted_binders)
+              else ERR("restrict_binder",
+                 quote const_name^" is not the name of a constant")
+         else ERR("restrict_binder",
+                   quote binder_str^" is not the name of a binder")
+
+      | (SOME _) => ERR("restrict_binder",
+            "Binder "^quote binder_str^" is already restricted")
+
+fun delete_restriction binder =
+   if (mem binder basic_binders)
+   then ERR("delete_restriction",
+            quote binder^" cannot have its restriction deleted")
+   else 
+   restricted_binders :=
+     set_diff (!restricted_binders)
+                  [(binder,assoc binder(!restricted_binders))]
+                  handle NOT_FOUND
+                  => ERR("delete_restriction",
+                             quote binder^" is not restricted")
+@

@@ -1,0 +1,101 @@
+thid = (sum, 783973483, 455876)
+axioms = []
+definitions =
+[((OUTR),
+  [],
+  `((! :('b -> bool) -> bool) (\(x :'b). (((= :'b -> 'b -> bool)
+   ((OUTR :'a + 'b -> 'b) ((INR :'b -> 'a + 'b) $0))) $0)))`),
+ ((OUTL),
+  [],
+  `((! :('a -> bool) -> bool) (\(x :'a). (((= :'a -> 'a -> bool)
+   ((OUTL :'a + 'b -> 'a) ((INL :'a -> 'a + 'b) $0))) $0)))`),
+ ((ISR),
+  [],
+  `((/\ ((! :('b -> bool) -> bool) (\(x :'b). ((ISR :'a + 'b -> bool)
+   ((INR :'b -> 'a + 'b) $0))))) ((! :('a -> bool) -> bool) (\(y :'a).
+   (~ ((ISR :'a + 'b -> bool) ((INL :'a -> 'a + 'b) $0))))))`),
+ ((ISL),
+  [],
+  `((/\ ((! :('a -> bool) -> bool) (\(x :'a). ((ISL :'a + 'b -> bool)
+   ((INL :'a -> 'a + 'b) $0))))) ((! :('b -> bool) -> bool) (\(y :'b).
+   (~ ((ISL :'a + 'b -> bool) ((INR :'b -> 'a + 'b) $0))))))`),
+ ((INR_DEF),
+  [],
+  `((! :('b -> bool) -> bool) (\(e :'b).
+   (((= :'a + 'b -> 'a + 'b -> bool) ((INR :'b -> 'a + 'b) $0))
+   ((ABS_sum :(bool -> 'a -> 'b -> bool) -> 'a + 'b) (\(b :bool).
+   (\(x :'a). (\(y :'b). ((/\ (((= :'b -> 'b -> bool) $0) $3)) (~
+   $2)))))))))`),
+ ((INL_DEF),
+  [],
+  `((! :('a -> bool) -> bool) (\(e :'a).
+   (((= :'a + 'b -> 'a + 'b -> bool) ((INL :'a -> 'a + 'b) $0))
+   ((ABS_sum :(bool -> 'a -> 'b -> bool) -> 'a + 'b) (\(b :bool).
+   (\(x :'a). (\(y :'b). ((/\ (((= :'a -> 'a -> bool) $1) $3))
+   $2))))))))`),
+ ((sum_ISO_DEF),
+  [],
+  `((/\ ((! :('a + 'b -> bool) -> bool) (\(a :'a + 'b).
+   (((= :'a + 'b -> 'a + 'b -> bool)
+   ((ABS_sum :(bool -> 'a -> 'b -> bool) -> 'a + 'b)
+   ((REP_sum :'a + 'b -> bool -> 'a -> 'b -> bool) $0))) $0))))
+   ((! :((bool -> 'a -> 'b -> bool) -> bool) -> bool)
+   (\(r :bool -> 'a -> 'b -> bool). (((= :bool -> bool -> bool)
+   ((IS_SUM_REP :(bool -> 'a -> 'b -> bool) -> bool) $0))
+   (((= :(bool -> 'a -> 'b -> bool) -> (bool -> 'a -> 'b -> bool) ->
+         bool) ((REP_sum :'a + 'b -> bool -> 'a -> 'b -> bool)
+   ((ABS_sum :(bool -> 'a -> 'b -> bool) -> 'a + 'b) $0))) $0)))))`),
+ ((sum_TY_DEF),
+  [],
+  `((? :(('a + 'b -> bool -> 'a -> 'b -> bool) -> bool) -> bool)
+   (\(rep :'a + 'b -> bool -> 'a -> 'b -> bool).
+   (((TYPE_DEFINITION :((bool -> 'a -> 'b -> bool) -> bool) ->
+                       ('a + 'b -> bool -> 'a -> 'b -> bool) -> bool)
+   (IS_SUM_REP :(bool -> 'a -> 'b -> bool) -> bool)) $0)))`),
+ ((IS_SUM_REP),
+  [],
+  `((! :((bool -> 'a -> 'b -> bool) -> bool) -> bool)
+   (\(f :bool -> 'a -> 'b -> bool). (((= :bool -> bool -> bool)
+   ((IS_SUM_REP :(bool -> 'a -> 'b -> bool) -> bool) $0))
+   ((? :('a -> bool) -> bool) (\(v1 :'a). ((? :('b -> bool) -> bool)
+   (\(v2 :'b). ((\/
+   (((= :(bool -> 'a -> 'b -> bool) -> (bool -> 'a -> 'b -> bool) ->
+         bool) $2) (\(b :bool). (\(x :'a). (\(y :'b). ((/\
+   (((= :'a -> 'a -> bool) $1) $4)) $2))))))
+   (((= :(bool -> 'a -> 'b -> bool) -> (bool -> 'a -> 'b -> bool) ->
+         bool) $2) (\(b :bool). (\(x :'a). (\(y :'b). ((/\
+   (((= :'b -> 'b -> bool) $0) $3)) (~ $2))))))))))))))`)]
+theorems =
+[((INR),
+  [],
+  `((! :('a + 'b -> bool) -> bool) (\(x :'a + 'b). ((==>
+   ((ISR :'a + 'b -> bool) $0)) (((= :'a + 'b -> 'a + 'b -> bool)
+   ((INR :'b -> 'a + 'b) ((OUTR :'a + 'b -> 'b) $0))) $0))))`),
+ ((INL),
+  [],
+  `((! :('a + 'b -> bool) -> bool) (\(x :'a + 'b). ((==>
+   ((ISL :'a + 'b -> bool) $0)) (((= :'a + 'b -> 'a + 'b -> bool)
+   ((INL :'a -> 'a + 'b) ((OUTL :'a + 'b -> 'a) $0))) $0))))`),
+ ((ISL_OR_ISR),
+  [],
+  `((! :('a + 'b -> bool) -> bool) (\(x :'a + 'b). ((\/
+   ((ISL :'a + 'b -> bool) $0)) ((ISR :'a + 'b -> bool) $0))))`),
+ ((sum_Axiom),
+  [],
+  `((! :(('a -> 'c) -> bool) -> bool) (\(f :'a -> 'c).
+   ((! :(('b -> 'c) -> bool) -> bool) (\(g :'b -> 'c).
+   ((?! :(('a + 'b -> 'c) -> bool) -> bool) (\(h :'a + 'b -> 'c). ((/\
+   ((! :('a -> bool) -> bool) (\(x :'a). (((= :'c -> 'c -> bool) ($1
+   ((INL :'a -> 'a + 'b) $0))) ($3 $0))))) ((! :('b -> bool) -> bool)
+   (\(x :'b). (((= :'c -> 'c -> bool) ($1 ((INR :'b -> 'a + 'b) $0)))
+   ($2 $0)))))))))))`),
+ ((sum_axiom),
+  [],
+  `((! :(('a -> 'c) -> bool) -> bool) (\(f :'a -> 'c).
+   ((! :(('b -> 'c) -> bool) -> bool) (\(g :'b -> 'c).
+   ((?! :(('a + 'b -> 'c) -> bool) -> bool) (\(h :'a + 'b -> 'c). ((/\
+   (((= :('a -> 'c) -> ('a -> 'c) -> bool)
+   (((o :('a + 'b -> 'c) -> ('a -> 'a + 'b) -> 'a -> 'c) $0)
+   (INL :'a -> 'a + 'b))) $2)) (((= :('b -> 'c) -> ('b -> 'c) -> bool)
+   (((o :('a + 'b -> 'c) -> ('b -> 'a + 'b) -> 'b -> 'c) $0)
+   (INR :'b -> 'a + 'b))) $1))))))))`)]

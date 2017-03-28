@@ -1,0 +1,113 @@
+head	1.1;
+access;
+symbols
+	HOL97:1.1.2.1.0.2
+	bpHOL97:1.1.2.1
+	hol90_9_alpha:1.1.2.1
+	hol90_pre8_for_multiple_compilers:1.1.0.2;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	96.08.23.09.14.06;	author rjb;	state dead;
+branches
+	1.1.2.1;
+next	;
+
+1.1.2.1
+date	96.08.23.09.14.07;	author rjb;	state Exp;
+branches
+	1.1.2.1.2.1;
+next	;
+
+1.1.2.1.2.1
+date	97.07.11.19.38.16;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@file prop.sml was initially added on branch hol90_pre8_for_multiple_compilers.
+@
+text
+@@
+
+
+1.1.2.1
+log
+@Initial version.
+@
+text
+@a0 54
+(****************************************************************************)
+(* FILE          : prop.sml                                                 *)
+(* DESCRIPTION   : Decision procedure for propositional formulas.           *)
+(*                                                                          *)
+(* AUTHOR        : R.J.Boulton, University of Cambridge                     *)
+(* DATE          : 24th March 1995                                          *)
+(*                                                                          *)
+(* LAST MODIFIED : R.J.Boulton                                              *)
+(* DATE          : 16th August 1996                                         *)
+(****************************************************************************)
+
+structure DecideProp =
+struct
+
+local
+
+open DecisionSupport;
+
+val unops = ["~"]
+and binops = ["/\\","\\/","==>"];
+
+fun prop_discrim tm =
+   let val (f,args) = strip_comb tm
+   in  case (length args)
+       of 0 => if ((is_var tm) andalso (type_of tm = bool)) orelse
+                  (is_T tm) orelse (is_F tm)
+               then (fn _ => tm,[])
+               else Decide.failwith "prop_discrim"
+        | 1 => if (is_const f) andalso
+                  (member (#Name (Rsyntax.dest_const f)) unops)
+               then (fn args' => list_mk_comb (f,args'),args)
+               else Decide.failwith "prop_discrim"
+        | 2 => if (is_const f) andalso
+                  (member (#Name (Rsyntax.dest_const f)) binops)
+               then (fn args' => list_mk_comb (f,args'),args)
+               else Decide.failwith "prop_discrim"
+        | _ => Decide.failwith "prop_discrim"
+   end;
+
+in
+
+val prop_proc =
+   {Name = "prop",
+    Description = "Propositional tautologies",
+    Author = "Richard J. Boulton",
+    Discriminator = prop_discrim,
+    Normalizer = DecisionConv.ALL_CONV,
+    Procedure =
+       Decide.make_incremental_procedure LazyRules.CONJ
+          (LazyThm.mk_proved_pre_thm o Decide.NEGATE_CONV Taut.TAUT_CONV)};
+
+end;
+
+end; (* DecideProp *)
+@
+
+
+1.1.2.1.2.1
+log
+@Making the library CM friendly.
+@
+text
+@d17 1
+a17 1
+open CoreHol.Term CoreHol.Dsyntax DecisionSupport;
+@

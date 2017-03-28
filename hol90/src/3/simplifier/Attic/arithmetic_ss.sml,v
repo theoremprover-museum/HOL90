@@ -1,0 +1,160 @@
+head	1.2;
+access;
+symbols;
+locks; strict;
+comment	@# @;
+
+
+1.2
+date	96.02.08.00.48.46;	author drs1004;	state dead;
+branches;
+next	1.1;
+
+1.1
+date	96.01.04.14.14.13;	author drs1004;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.2
+log
+@New theory mechanism, code reorganisation and other enhancements by Don Syme.
+@
+text
+@
+(* =====================================================================
+ * Simpset for "arithmetic" theory
+ *
+ * =====================================================================*)
+
+signature Arithmetic_ss_sig =
+sig
+	structure Simplifier : Simplifier_sig
+
+	val ARITHMETIC_ss : Simplifier.simpset
+	val arithmetic_ss : Simplifier.simpset
+
+	val AC_ARITHMETIC_ss : Simplifier.simpset
+	val ac_arithmetic_ss : Simplifier.simpset
+end;
+
+
+structure Arithmetic_ss : Arithmetic_ss_sig =
+struct 
+  structure Simplifier = Simplifier;
+  open Core;
+    infix |>;
+  open Simplifier;
+  infix ++
+  open Pure_ss;
+  open Bool_ss;
+  open HOL; (* create dependency on theory "HOL" *)
+
+(* ---------------------------------------------------------------------
+ * ARITHMETIC_ss
+ *
+ * This could be made *really sweet* with JRH's numeral representations.
+ * At the moment it's really just a fairly adhoc set of theorems.
+ *
+ * There is a question as to whether we rewrite "SUC" to "+ 1".  I
+ * do this in arith_ss, at which point there is decent support for
+ * addition.
+ * --------------------------------------------------------------------*)
+
+
+val ARITHMETIC_ss =
+   pure_ss
+   ++ (map (theorem "num")
+           ["NOT_SUC"])
+   ++ (map (theorem "prim_rec")
+       ["INV_SUC_EQ",
+	"LESS_0",
+        "LESS_REFL",
+        "NOT_LESS_0",
+        "PRE",
+        "SUC_ID"])
+   ++ (map (definition "arithmetic") 
+           ["ADD",
+            "EVEN",
+            "EXP",
+            "FACT",
+            "MULT",
+	    "ODD"
+            ])
+   ++ (map (theorem "arithmetic") 
+           ["ADD_CLAUSES", 
+            "ADD_EQ_0",
+            "ADD_INV_0_EQ", 
+            "ADD_SUB",
+            "EQ_MONO_ADD_EQ",
+            "EVEN_DOUBLE",
+            "EXP_ADD",
+            "LEFT_ADD_DISTRIB",
+            "LEFT_SUB_DISTRIB",
+            "LESS_EQ_0",
+            "LESS_EQ_MONO",
+            "LESS_EQ_REFL",
+            "MULT_CLAUSES",
+            "RIGHT_ADD_DISTRIB",
+            "RIGHT_SUB_DISTRIB",
+            "SUB_0", 
+            "SUB_ADD",
+	    "SUB_EQUAL_0",
+            "SUB_LESS_EQ",
+            "SUB_MONO_EQ",
+            "SUC_NOT",
+	    "ZERO_DIV"
+            ])
+
+val arithmetic_ss = merge_ss [bool_ss, ARITHMETIC_ss];
+
+(* ---------------------------------------------------------------------
+ * ac_arithmetic_ss
+ *
+ * AC normalization of "+", "*" and "-".
+ *
+ * The aim of subtraction normalization of natural numbers
+ * is to collect all the "plus" terms on the left, 
+ * and all the minus terms on the right,
+ * as in:
+ *          (3 + x + y) - (4 + y + z)
+ * Nb. One just has to hope that there will be sufficient context
+ * to prove the appropriate "<=" side conditions.
+ * The combination of these theorems does this:
+ *    SUB_SUB |- c <= b ==> (a - b - c = (a + c) - b) : thm
+ *    SUB_RIGHT_SUB |- (m - n) - p = m - (n + p) : thm
+ * --------------------------------------------------------------------*)
+
+(* these are utterly trivial to prove : try it using ARITH_CONV 
+   and check if you like *)
+
+val AC_ARITHMETIC_ss =
+      pure_ss 
+      |> addac (theorem "arithmetic" "ADD_ASSOC", 
+		theorem "arithmetic" "ADD_SYM")
+      |> addac (theorem "arithmetic" "MULT_ASSOC", 
+		theorem "arithmetic" "MULT_SYM")
+      ++ [
+        theorem "arithmetic" "SUB_RIGHT_SUB",
+	theorem "arithmetic" "SUB_SUB"
+      ];
+val ac_arithmetic_ss = merge_ss [arithmetic_ss, AC_ARITHMETIC_ss];
+                       
+end; 
+
+
+
+
+@
+
+
+1.1
+log
+@Added simplifier components, added drule files, added MK_ABS_CONV, better error messages
+@
+text
+@@

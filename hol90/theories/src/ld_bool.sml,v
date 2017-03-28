@@ -1,0 +1,163 @@
+head	1.2;
+access;
+symbols
+	HOL97:1.1.0.4
+	bpHOL97:1.1
+	hol90_9_alpha:1.1
+	hol90_pre8_for_multiple_compilers:1.1.0.2
+	hol90_pre8_after_donalds_separate_compilation_changes:1.1;
+locks; strict;
+comment	@# @;
+
+
+1.2
+date	96.01.04.22.07.27;	author drs1004;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	95.10.31.14.00.53;	author drs1004;	state Exp;
+branches
+	1.1.4.1;
+next	;
+
+1.1.4.1
+date	97.07.11.16.37.23;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.2
+log
+@NJML 108.19 changes
+@
+text
+@(* ===================================================================== *)
+(* FILE          : ld_bool.sml                                           *)
+(* DESCRIPTION   : The "bool" theory as a structure accessing the disk   *)
+(*                 representation.                                       *)
+(*                                                                       *)
+(* AUTHOR        : Donald Syme                                           *)
+(* DATE          : October 1995                                          *)
+(* ===================================================================== *)
+
+
+(*----------------------------------------------------------------------
+ * Note: This loads the theory bool as a structure.
+ * The idea is that this file could be generated automatically
+ * when the theory is created.
+ *---------------------------------------------------------------------*)
+
+structure Boolean : Boolean_sig =
+struct
+
+structure Thm = Thm;
+
+open Min; (* Create dependency on "min" theory *)
+open Theory;
+open Lib;
+open Exception;
+
+val _ = if (current_theory() <> "") andalso
+           (mem "bool" (current_theory() :: ancestry "-"))
+        then () 
+	else load_theory "bool";
+
+
+fun def n = definition "bool" n handle e => Raise e;
+fun ax n = axiom "bool" n handle e => Raise e;
+
+val EXISTS_DEF = def "EXISTS_DEF"
+val T_DEF = def "TRUTH"
+val FORALL_DEF = def "FORALL_DEF"
+val AND_DEF = def "AND_DEF"
+val OR_DEF = def "OR_DEF"
+val F_DEF = def "F_DEF"
+val NOT_DEF = def "NOT_DEF"
+val EXISTS_UNIQUE_DEF = def "EXISTS_UNIQUE_DEF"
+val LET_DEF = def "LET_DEF"
+val COND_DEF = def "COND_DEF"
+val ONE_ONE_DEF = def "ONE_ONE_DEF"
+val ONTO_DEF = def "ONTO_DEF"
+val TYPE_DEFINITION = def "TYPE_DEFINITION"
+val BOOL_CASES_AX = ax "BOOL_CASES_AX"
+val IMP_ANTISYM_AX = ax "IMP_ANTISYM_AX"
+val ETA_AX = ax "ETA_AX"
+val SELECT_AX = ax "SELECT_AX"
+val INFINITY_AX = ax "INFINITY_AX"
+
+end; (* MK_BOOL *)
+
+
+
+@
+
+
+1.1
+log
+@First phase of hol90.8 development.  hol90 now compiles using NJSML-CM
+108.5, with separate compilation of libraries.  System dependencies
+have been isolated in the makefiles and "portable.sml".
+
+This involved a large number of enhancments to the source files,
+most of which are documented in the 7.changes file (or will be shortly).
+See also the correpsonding email corrspondence between RJB, KLS, TFM,
+JRH and DRS that happened during this development.
+@
+text
+@a22 1
+open Exists; (* Create dependency on exists portion of "bool" theory *)
+d36 1
+@
+
+
+1.1.4.1
+log
+@Minor changes to accomodate requirements of CM.
+@
+text
+@d12 3
+a14 2
+ * Note: This loads the theory bool as a structure. The idea is that this
+ * file could be generated automatically when the theory is created.
+d17 1
+a17 1
+structure boolThry : boolThrySig =
+d20 4
+a23 3
+open CoreHol;
+structure Min = Min;    (* Create dependency on "min" theory *)
+structure Exists = Exists; (* Create dependency on "exists" definition *)
+a32 2
+fun def n = Lib.try (definition "bool") n;
+fun ax n = Lib.try (axiom "bool") n;
+d34 4
+a37 1
+val T_DEF      = def "TRUTH"
+d39 4
+a42 4
+val AND_DEF    = def "AND_DEF"
+val OR_DEF     = def "OR_DEF"
+val F_DEF      = def "F_DEF"
+val NOT_DEF    = def "NOT_DEF"
+d44 2
+a45 2
+val LET_DEF     = def "LET_DEF"
+val COND_DEF    = def "COND_DEF"
+d47 1
+a47 1
+val ONTO_DEF    = def "ONTO_DEF"
+d49 8
+a57 5
+val BOOL_CASES_AX   = ax "BOOL_CASES_AX"
+val IMP_ANTISYM_AX  = ax "IMP_ANTISYM_AX"
+val ETA_AX          = ax "ETA_AX"
+val SELECT_AX       = ax "SELECT_AX"
+val INFINITY_AX     = ax "INFINITY_AX"
+a58 1
+end; (* MK_BOOL *)
+@

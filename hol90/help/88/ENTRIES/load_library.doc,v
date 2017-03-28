@@ -1,0 +1,118 @@
+head	1.1;
+branch	1.1.1;
+access;
+symbols
+	HOL97:1.1.1.1.0.6
+	bpHOL97:1.1.1.1
+	hol90_9_alpha:1.1.1.1
+	hol90_pre8_for_multiple_compilers:1.1.1.1.0.4
+	hol90_pre8_after_donalds_separate_compilation_changes:1.1.1.1
+	hol90_8_after_merging_Konrad_Elsa:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	95.10.16.13.35.02;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.35.02;	author rjb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@\DOC load_library
+
+\TYPE {load_library : (string -> void)}
+
+\SYNOPSIS
+Load a library.
+
+\DESCRIBE
+The function {load_library} can either be used to load an entire library or to
+load only a part of a library. Loading an entire library called `{name}' is
+done by evaluating 
+{
+   load_library `name`;;
+}
+\noindent This will attempt to load the library called {name} unless it is
+already loaded, in which case a message is printed. The loading of a library
+{name} is done by searching for the library's load file `{name/name.ml}' using
+the internal library search path and then loading this file.  For example, if
+the library search path contains the pathnames to a local library and to the
+system library:
+{
+   [`~/lib/`; `/usr/lib/hol/Library/`]
+}
+\noindent then {load_library} will load the ML file
+{
+   ~/lib/name/name.ml
+} 
+\noindent if this exists in the local library.  Otherwise, the file
+{
+   /usr/lib/hol/Library/name/name.ml
+}
+\noindent will be loaded from the system library.
+
+A named part of a library is loaded by evaluating:
+{
+   load_library `name:partname`;;
+}
+\noindent where {name} is the name of the library, and {partname} is the name
+of a segment of this library.  In this case, {load_library} searches along the
+library search path for the load file {name/partname.ml}.  Note that this can
+be used to load an arbitrary ML file from the library. Users should not,
+however, rely on this feature, but should access libraries only in the ways the
+officially supported and documented in library manuals.
+
+The results of evaluation during the loading of a library are displayed if the
+flag {print_lib} is {true}.  Otherwise, the results of evaluation are not
+printed but abbreviated by a series of dots, each of which represents the
+evaluation of one ML phrase.
+
+\FAILURE
+Fails if the library load file cannot be found or if the ML code being loaded
+itself fails for any reason.
+
+\COMMENTS
+More detail about the organization of libraries, in particular how to create
+your own, can be found in DESCRIPTION, which also gives a list of all the
+libraries currently in the standard HOL distribution.
+
+\SEEALSO
+libraries, library_pathname, library_search_path, set_library_search_path.
+
+\ENDDOC
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

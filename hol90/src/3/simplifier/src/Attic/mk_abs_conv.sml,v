@@ -1,0 +1,58 @@
+head	1.2;
+access;
+symbols;
+locks; strict;
+comment	@# @;
+
+
+1.2
+date	96.01.04.14.15.00;	author drs1004;	state dead;
+branches;
+next	1.1;
+
+1.1
+date	95.12.18.11.39.29;	author drs1004;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.2
+log
+@Added simplifier components, added drule files, added MK_ABS_CONV, better error messages
+@
+text
+@
+signature Mk_abs_conv_sig = sig
+  val MK_ABS_CONV : Term.term -> Abbrev.conv
+end;
+
+structure Mk_abs_conv : Mk_abs_conv_sig = struct
+
+  open Core;
+ open Psyntax;
+
+  fun MK_ABS_CONV var term = 
+    if (is_comb term andalso rand term = var)
+    then REFL term
+    else 
+       let 
+         val rhs = mk_abs(var,term)
+         val newrhs = mk_comb(rhs,var)
+         val eqn = mk_eq(term,newrhs)
+       in
+         prove(eqn, CONV_TAC (RAND_CONV BETA_CONV) THEN REFL_TAC)
+       end;
+end;
+@
+
+
+1.1
+log
+@Preterm and other changes, see 7.changes
+@
+text
+@@

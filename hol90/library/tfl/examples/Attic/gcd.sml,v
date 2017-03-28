@@ -1,0 +1,99 @@
+head	1.1;
+access;
+symbols
+	HOL97:1.1.2.2.0.2
+	bpHOL97:1.1.2.2
+	hol90_9_alpha:1.1.2.2
+	TFL_1:1.1.2.1
+	hol90_pre8_for_multiple_compilers:1.1.0.2;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	96.06.29.15.08.15;	author rjb;	state dead;
+branches
+	1.1.2.1;
+next	;
+
+1.1.2.1
+date	96.06.29.15.08.16;	author rjb;	state Exp;
+branches;
+next	1.1.2.2;
+
+1.1.2.2
+date	96.08.05.15.40.39;	author rjb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@file gcd.sml was initially added on branch hol90_pre8_for_multiple_compilers.
+@
+text
+@@
+
+
+1.1.2.1
+log
+@TFL version 1 for HOL: A well-founded recursive function definition package.
+@
+text
+@a0 39
+new_theory"gcd";
+
+(*---------------------------------------------------------------------------
+ * The definition of GCD.
+ *---------------------------------------------------------------------------*)
+val {induction,rules,...} = Rfunction `measure (prod_case $+)`
+  `(gcd (0,y) = y) /\
+   (gcd (SUC x, 0) = SUC x) /\
+   (gcd (SUC x, SUC y) = ((y<=x) => gcd(x-y, SUC y) | gcd(SUC x, y-x)))`;
+
+
+(*---------------------------------------------------------------------------
+ * Termination has automatically been proved.
+ *---------------------------------------------------------------------------*)
+val gcd_eqns = save_thm("gcd_eqns", rules);
+val gcd_induction = save_thm("gcd_induction", induction);
+
+
+save_thm("calculation",Q.prove`gcd (24,9) = 3`
+ (CONV_TAC (REPEATC(CHANGED_CONV
+   (REDEPTH_CONV num_CONV THENC RW_CONV[gcd_eqns] THENC REDUCE_CONV)))));
+
+
+val SUB_EQUAL_0 = theorem"arithmetic" "SUB_EQUAL_0";
+val num_CASES = theorem"arithmetic" "num_CASES";
+val LEQ_ANTISYM = theorem"arithmetic" "LESS_EQUAL_ANTISYM";
+
+val gcd_commutes = Q.store_thm("gcd_commutes",
+`!x y. gcd(x,y) = gcd(y,x)`,
+PROGRAM_TAC{induction=gcd_induction, rules=gcd_eqns}
+  THEN ASM_RW_TAC[] 
+  THENL
+  [ STRUCT_CASES_TAC(Q.SPEC`y` num_CASES) THEN RW_TAC[gcd_eqns],
+    IMP_RES_THEN (IMP_RES_THEN SUBST1_TAC) LEQ_ANTISYM THEN REFL_TAC,
+    IMP_RES_TAC (EQT_ELIM(ARITH_CONV(Term`~(y<=x) ==> ~(x<=y) ==> F`)))]);
+
+html_theory"-";
+
+
+@
+
+
+1.1.2.2
+log
+@Updated to TFL release 4.
+@
+text
+@d9 1
+a9 2
+   (gcd (SUC x, SUC y) = ((y<=x) => gcd(x-y, SUC y) 
+                                 |  gcd(SUC x, y-x)))`;
+@

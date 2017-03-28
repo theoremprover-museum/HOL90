@@ -1,0 +1,141 @@
+head	1.2;
+access;
+symbols
+	HOL97:1.1.1.1.0.6
+	bpHOL97:1.1.1.1
+	hol90_9_alpha:1.1.1.1
+	hol90_pre8_for_multiple_compilers:1.1.1.1.0.4
+	last_edition:1.1.1.1
+	hol90_pre8_after_donalds_separate_compilation_changes:1.1.1.1
+	hol90_8_after_merging_Konrad_Elsa:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.2
+date	96.02.08.00.26.10;	author drs1004;	state dead;
+branches;
+next	1.1;
+
+1.1
+date	95.10.16.13.30.14;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.30.14;	author rjb;	state Exp;
+branches
+	1.1.1.1.6.1;
+next	;
+
+1.1.1.1.6.1
+date	97.06.11.17.26.21;	author kxs;	state dead;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.2
+log
+@New theory mechanism, by Donald Syme
+@
+text
+@datatype lexresult = lbrace | rbrace
+    | lbracket | rbracket
+    | lparen | rparen
+    | eq
+    | comma
+    | lib_id
+    | doc
+    | path
+    | parents
+    | theories
+    | code
+    | help
+    | loaded
+    | id of string
+    | num of string
+    | string_constant of string
+    | EOF ;
+
+val error = fn x => output(std_out,x^"\n");
+val eof = fn () => EOF;
+val string_list = ref ([]:string list);
+%%
+%structure test_lex
+%s STRING;
+ws = [\ \t \010 \012];
+num = [0-9]+;
+id = ([A-Za-z0-9_'\.\/-]+);
+%%
+<INITIAL>\n => (lex());
+<INITIAL>{ws}+ => (lex());
+<INITIAL>"\"" => ( YYBEGIN STRING; string_list := []; lex());
+<INITIAL>"{" => (lbrace);
+<INITIAL>"}" => (rbrace);
+<INITIAL>"[" => (lbracket);
+<INITIAL>"]" => (rbracket);
+<INITIAL>"(" => (lparen);
+<INITIAL>")" => (rparen);
+<INITIAL>"=" => (eq);
+<INITIAL>"," => (comma);
+<INITIAL>"lib_id" => (lib_id);
+<INITIAL>"doc" => (doc);
+<INITIAL>"path" => (path);
+<INITIAL>"parents" => (parents);
+<INITIAL>"code" => (code);
+<INITIAL>"theories" => (theories);
+<INITIAL>"help" => (help);
+<INITIAL>"loaded" => (loaded);
+<INITIAL>{num} => (num(yytext));
+<INITIAL>{id} => (id(yytext));
+<INITIAL>. => (error "catchall ERROR"; lex());
+
+<STRING>"\n" => (string_list :=  yytext::(!string_list); lex());
+<STRING>"\\\"" =>(string_list := "\""::(!string_list); lex());
+<STRING>"\"" => (YYBEGIN INITIAL; 
+                 string_constant(implode(rev(!string_list))));
+<STRING>. => (string_list :=  yytext::(!string_list); lex());
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@
+
+
+1.1.1.1.6.1
+log
+@Removed files are parse files and portability files that have
+effectively been moved elsewhere.
+
+Modified files are up to date for ML 109.26.
+@
+text
+@@

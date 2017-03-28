@@ -1,0 +1,86 @@
+(* File: Modules/HOFML/notes *)
+
+Overall:
+-------
+
+I broke out the ids and descs that are common to both ModML and HOFML,
+together with their evaluation rules and mv them into the parent theory
+Module/Common/common_ModML.{holsig,thms}.
+
+I moved two semantic functions used in calculating interfaces,
+vars_from_varenv and cut_varenv, back to Core/Plain_Core.
+
+Notes on Grammar:
+----------------
+
+I changed the name of the class strdec to moddec.  This is intended to
+reflect the fact that it encompases both structures and functors.
+
+I added an OPENmoddec_h to moddec_h.  OPENmoddec_h generates a full
+environment, whereas OPENdec generates a core environment, i.e. one
+that has been stripped of all functor components.
+
+Question: Why do we not have functordescs?  That is why can't we go
+functor funid (strid:sigexp):sigexp' and funid'(strid':sigexp''):sigexp'''?
+
+
+
+Notes on semantic ojects:
+------------------------
+
+I redefined the type funclos_h to have two clauses, BASICfunclos_h and
+CONSTRAINfunclos_h, as in the original module definition.  This allows
+Rule 187 to be left as stated in the book.
+
+
+Notes on sementic functions:
+---------------------------
+
+I changed all the addition functions to take their arguments in the order
+they do in the book.  This required adding auxiliary functions when
+define_mutual_functions was used.  Several of the addition functions were
+used incorrectly; they had been define to update from the left but then
+were used as if they updated from the right (as in the book). Thus regaurdless
+of the names of the add functions, all addfunctions take their oldest argument
+first.  Thus it's add_env_h_to_basis_h b e.
+(* This really needs to be done properly with patial functions and updates *)
+
+If we have two kinds of functor closures, then we need to be able to extract
+an interface from a structure expression in order to be able to define what
+it is to extract an interface from a BASICfunclos_h functor closure.
+Therefore, all the stuff for extracting interfaces from syntax has to go
+before the definition of Inter_h.
+
+There were several mistakes in the interface extraction functions, including
+obvious typos.  In Inter_moddec_h (aka Inter_strdec_h), the clause for
+SEQmoddec_h was wrong.  You were returning only the part of the interface
+derived from the last moddec in the sequence.  I believe that the LOCALdec 
+clause for Inter_dec is wrong.  When gathering variables together from a
+declaration, local variables can play any role.  In fact, the only place
+where the interface basis can play any role is with open.
+
+I added a clause for OPENmoddec_h to Inter_moddec.  It is the same as
+the clause for OPENdec in Inter_dec.
+
+I needed to make Inter_h mutually recursive with Inter_basis_h, because
+Inter_funclos_h on BASICfunclos_h needs to call Inter_basis_h. 
+
+
+
+
+Notes on the evaulation rules:
+-----------------------------
+In Rules 180 and 181, we need to go from lifted values to regular values
+by finding a nonemptylist of values which when lifted give us the lifted
+values.  If we start with the lifted values, some of them may be undefined,
+and when lower will yield some unspecified (and undesirable) regular values.
+
+
+I changed Rule 162 to reflect the two different kinds of functor closures.
+
+I added a version of Rule 132 to eval_moddec_h for OPENmoddec_h.
+
+I removed Rule 193 from eval_topdec_c because it is already subsumed
+by Rule 191, since functor and structure declarations have been
+merged.
+

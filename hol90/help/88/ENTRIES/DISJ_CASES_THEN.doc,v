@@ -1,0 +1,118 @@
+head	1.1;
+branch	1.1.1;
+access;
+symbols
+	HOL97:1.1.1.1.0.6
+	bpHOL97:1.1.1.1
+	hol90_9_alpha:1.1.1.1
+	hol90_pre8_for_multiple_compilers:1.1.1.1.0.4
+	hol90_pre8_after_donalds_separate_compilation_changes:1.1.1.1
+	hol90_8_after_merging_Konrad_Elsa:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	95.10.16.13.33.51;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.33.51;	author rjb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@\DOC DISJ_CASES_THEN
+
+\TYPE {DISJ_CASES_THEN : thm_tactical}
+
+\SYNOPSIS
+Applies a theorem-tactic to each disjunct of a disjunctive theorem.
+
+\KEYWORDS
+theorem-tactic, disjunction, cases.
+
+\DESCRIBE
+If the theorem-tactic {f:thm->tactic} applied to either
+{ASSUME}d disjunct produces results as follows when applied to a goal
+{(A ?- t)}:
+{
+    A ?- t                                A ?- t
+   =========  f (u |- u)      and        =========  f (v |- v)
+    A ?- t1                               A ?- t2
+}
+\noindent then applying {DISJ_CASES_THEN f (|- u \/ v)}
+to the goal {(A ?- t)} produces two subgoals.
+{
+           A ?- t
+   ======================  DISJ_CASES_THEN f (|- u \/ v)
+    A ?- t1      A ?- t2
+}
+\FAILURE
+Fails if the theorem is not a disjunction.  An invalid tactic is
+produced if the theorem has any hypothesis which is not
+alpha-convertible to an assumption of the goal.
+
+\EXAMPLE
+Given the theorem
+{
+   th = |- (m = 0) \/ (?n. m = SUC n)
+}
+\noindent and a goal of the form {?- (PRE m = m) = (m = 0)},
+applying the tactic
+{
+   DISJ_CASES_THEN ASSUME_TAC th
+}
+\noindent produces two subgoals, each with one disjunct as an added
+assumption:
+{
+   ?n. m = SUC n ?- (PRE m = m) = (m = 0)
+
+   m = 0 ?- (PRE m = m) = (m = 0)
+}
+\USES
+Building cases tactics. For example, {DISJ_CASES_TAC} could be defined by:
+{
+   let DISJ_CASES_TAC = DISJ_CASES_THEN ASSUME_TAC
+}
+\COMMENTS
+Use {DISJ_CASES_THEN2} to apply different tactic generating functions
+to each case.
+
+\SEEALSO
+STRIP_THM_THEN, CHOOSE_THEN, CONJUNCTS_THEN, CONJUNCTS_THEN2,
+DISJ_CASES_TAC, DISJ_CASES_THEN2, DISJ_CASES_THENL.
+
+\ENDDOC
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

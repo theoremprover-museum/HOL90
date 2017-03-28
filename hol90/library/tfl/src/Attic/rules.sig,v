@@ -1,0 +1,165 @@
+head	1.1;
+access;
+symbols
+	HOL97:1.1.2.2.0.2
+	bpHOL97:1.1.2.2
+	hol90_9_alpha:1.1.2.2
+	TFL_1:1.1.2.1
+	hol90_pre8_for_multiple_compilers:1.1.0.2;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	96.06.29.15.11.11;	author rjb;	state dead;
+branches
+	1.1.2.1;
+next	;
+
+1.1.2.1
+date	96.06.29.15.11.12;	author rjb;	state Exp;
+branches;
+next	1.1.2.2;
+
+1.1.2.2
+date	96.08.05.15.41.59;	author rjb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@file rules.sig was initially added on branch hol90_pre8_for_multiple_compilers.
+@
+text
+@@
+
+
+1.1.2.1
+log
+@TFL version 1 for HOL: A well-founded recursive function definition package.
+@
+text
+@a0 60
+signature Rules_sig =
+sig
+  structure USyntax : USyntax_sig
+  type Thm
+  type Tactic
+
+  val dest_thm : Thm -> USyntax.Preterm list * USyntax.Preterm
+
+  (* Inference rules *)
+  val REFL      :USyntax.Term -> Thm
+  val ASSUME    :USyntax.Term -> Thm
+  val MP        :Thm -> Thm -> Thm
+  val MATCH_MP  :Thm -> Thm -> Thm
+  val CONJUNCT1 :Thm -> Thm
+  val CONJUNCT2 :Thm -> Thm
+  val CONJUNCTS :Thm -> Thm list
+  val DISCH     :USyntax.Term -> Thm -> Thm
+  val UNDISCH   :Thm  -> Thm
+  val INST_TYPE :USyntax.Type USyntax.Utils.binding list -> Thm -> Thm
+  val SPEC      :USyntax.Term -> Thm -> Thm
+  val ISPEC     :USyntax.Term -> Thm -> Thm
+  val ISPECL    :USyntax.Term list -> Thm -> Thm
+  val GEN       :USyntax.Term -> Thm -> Thm
+  val GENL      :USyntax.Term list -> Thm -> Thm
+  val BETA_RULE :Thm -> Thm
+  val LIST_CONJ :Thm list -> Thm
+
+  val SYM : Thm -> Thm
+  val DISCH_ALL : Thm -> Thm
+  val FILTER_DISCH_ALL : (USyntax.Preterm -> bool) -> Thm -> Thm
+  val SPEC_ALL  : Thm -> Thm
+  val GEN_ALL   : Thm -> Thm
+  val IMP_TRANS : Thm -> Thm -> Thm
+  val PROVE_HYP : Thm -> Thm -> Thm
+
+  val CHOOSE : USyntax.Term * Thm -> Thm -> Thm
+  val EXISTS : USyntax.Term * USyntax.Term -> Thm -> Thm
+  val EXISTL : USyntax.Term list -> Thm -> Thm
+  val IT_EXISTS : USyntax.Term USyntax.Utils.binding list -> Thm -> Thm
+
+  val EVEN_ORS : Thm list -> Thm list
+  val DISJ_CASESL : Thm -> Thm list -> Thm
+
+  val SUBS : Thm list -> Thm -> Thm
+  val simplify : Thm list -> Thm -> Thm
+  val simpl_conv : Thm list -> USyntax.Term -> Thm
+
+(* For debugging my isabelle solver in the conditional rewriter *)
+(*
+  val thm_ref : Thm list ref
+  val mss_ref : meta_simpset list ref
+  val tracing :bool ref
+*)
+  val CONTEXT_REWRITE_RULE : USyntax.Preterm * USyntax.Preterm
+                             -> {thms:Thm list,congs: Thm list, th:Thm} 
+                             -> Thm * USyntax.Preterm list
+  val RIGHT_ASSOC : Thm -> Thm 
+
+  val prove : USyntax.Term * Tactic -> Thm
+end;
+@
+
+
+1.1.2.2
+log
+@Updated to TFL release 4.
+@
+text
+@d3 1
+a3 4
+(*  structure USyntax : USyntax_sig *)
+  type Type
+  type Preterm
+  type Term
+a5 1
+  type 'a binding
+d7 1
+a7 1
+  val dest_thm : Thm -> Preterm list * Preterm
+d10 2
+a11 2
+  val REFL      :Term -> Thm
+  val ASSUME    :Term -> Thm
+d17 1
+a17 1
+  val DISCH     :Term -> Thm -> Thm
+d19 6
+a24 6
+  val INST_TYPE :Type binding list -> Thm -> Thm
+  val SPEC      :Term -> Thm -> Thm
+  val ISPEC     :Term -> Thm -> Thm
+  val ISPECL    :Term list -> Thm -> Thm
+  val GEN       :Term -> Thm -> Thm
+  val GENL      :Term list -> Thm -> Thm
+d30 1
+a30 1
+  val FILTER_DISCH_ALL : (Preterm -> bool) -> Thm -> Thm
+d36 4
+a39 4
+  val CHOOSE : Term * Thm -> Thm -> Thm
+  val EXISTS : Term * Term -> Thm -> Thm
+  val EXISTL : Term list -> Thm -> Thm
+  val IT_EXISTS : Term binding list -> Thm -> Thm
+d46 1
+a46 1
+  val simpl_conv : Thm list -> Term -> Thm
+a49 1
+  val term_ref : Preterm list ref
+d54 1
+a54 1
+  val CONTEXT_REWRITE_RULE : Preterm * Preterm
+d56 1
+a56 1
+                             -> Thm * Preterm list
+d59 1
+a59 1
+  val prove : Term * Tactic -> Thm
+@

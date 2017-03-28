@@ -1,0 +1,63 @@
+head	1.1;
+access;
+symbols;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	95.12.18.11.35.17;	author drs1004;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@Preterm and other changes, see 7.changes
+@
+text
+@(*  Title: 	sequence
+    ID:         sequence.ML,v 1.3 1994/11/21 10:33:23 lcp Exp
+    Author: 	Lawrence C Paulson, Cambridge University Computer Laboratory
+    Copyright   1988  University of Cambridge
+
+Unbounded sequences implemented by closures.
+
+RECOMPUTES if sequence is re-inspected.
+
+Memoing, using polymorphic refs, was found to be slower!  (More GCs)
+
+Modified by Donald Syme, November 1995, for inclusion in HOL.
+
+*)
+
+
+signature Sequence_sig = sig
+  type 'a seq
+  val append	: 'a seq * 'a seq -> 'a seq
+  val chop	: int * 'a seq -> 'a list * 'a seq
+  val cons	: 'a * 'a seq -> 'a seq
+  val filters	: ('a -> bool) -> 'a seq -> 'a seq
+  val flats	: 'a seq seq -> 'a seq
+  val hd	: 'a seq -> 'a
+  val interleave: 'a seq * 'a seq -> 'a seq
+  val its_right	: ('a * 'b seq -> 'b seq) -> 'a seq * 'b seq -> 'b seq
+  val list_of_s	: 'a seq -> 'a list
+  val mapp	: ('a -> 'b) -> 'a seq -> 'b seq -> 'b seq
+  val maps	: ('a -> 'b) -> 'a seq -> 'b seq
+  val mapfilters :  ('a -> 'b) -> 'a seq -> 'b seq
+  val null	: 'a seq
+  val prints	: (int -> 'a -> unit) -> int -> 'a seq -> unit
+  val pull	: 'a seq -> ('a * 'a seq) option
+  val s_of_list	: 'a list -> 'a seq
+  val seqof	: (unit -> ('a * 'a seq) option) -> 'a seq
+  val single	: 'a -> 'a seq
+  val tl	: 'a seq -> 'a seq
+end;
+
+
+@

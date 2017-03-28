@@ -1,0 +1,258 @@
+
+
+          HHH                 LL
+          HHH                  LL
+          HHH                   LL
+          HHH                    LL
+          HHH          OOOO       LL
+          HHHHHHH     OO  OO       LL
+          HHHHHHH     OO  OO       LLL
+          HHH          OOOO        LLLL
+          HHH                     LL  LL
+          HHH                    LL    LL
+          HHH                   LL      LL
+          HHH                  LL        LL90.7
+
+Created on Tue Nov 15 10:19:01 GMT 1994
+using: Standard ML of New Jersey, Version 0.93, February 15, 1993
+
+
+val it = () : unit
+val it = () : unit
+- [opening csp_syntax.sml]
+
+Declaring theory "csp_syntax".
+
+Theory "CSP_base" already consistent with disk, hence not exported.
+val it = () : unit
+val it = () : unit
+val event = (--`(ty_antiq((==`:string`==)))`--) : term
+val trace = (--`(ty_antiq((==`:string list`==)))`--) : term
+val alphabet = (--`(ty_antiq((==`:string set`==)))`--) : term
+val environment = (--`(ty_antiq((==`:string -> string + process`==)))`--)
+  : term
+val Event =
+  |- !f0 f1. ?!fn. (!s. fn (econst s) = f0 s) /\ (!s. fn (evar s) = f1 s) : thm
+val Event_INDUCT = |- !P. (!s. P (econst s)) /\ (!s. P (evar s)) ==> (!E. P E)
+  : thm
+val Event_ONE_ONE =
+  |- (!s s'. (econst s = econst s') = s = s') /\
+     (!s s'. (evar s = evar s') = s = s') : thm
+val Event_DISTINCT = |- !s' s. ~(econst s = evar s') : thm
+val ES = |- (!s E. ES (econst s) E = s) /\ (!s E. ES (evar s) E = OUTL (E s))
+  : thm
+val CSP =
+  |- !f0 f1 f2 f3 f4 f5 f6 f7 f8.
+       ?!fn.
+         (!s. fn (stop s) = f0 s) /\
+         (!s. fn (run s) = f1 s) /\
+         (!s. fn (var s) = f2 s) /\
+         (!E C. fn (pref E C) = f3 (fn C) E C) /\
+         (!s0 s1 C. fn (Choice s0 s1 C) = f4 (fn C) s0 s1 C) /\
+         (!C1 C2. fn (par C1 C2) = f5 (fn C1) (fn C2) C1 C2) /\
+         (!C l'. fn (after C l') = f6 (fn C) l' C) /\
+         (!s0 s1 C. fn (mu s0 s1 C) = f7 (fn C) s0 s1 C) /\
+         (!E0 E1 C1 C2. fn (cond E0 E1 C1 C2) = f8 (fn C1) (fn C2) E0 E1 C1 C2)
+  : thm
+val Bnd = |- !s exp env. Bnd s exp env = (\s'. (s' = s) => exp | (env s)) : thm
+val TS =
+  |- (!A E. TS (stop A) E = STOP A) /\
+     (!A E. TS (run A) E = RUN A) /\
+     (!s E. TS (var s) E = OUTR (E s)) /\
+     (!a P E. TS (pref a P) E = ES a E --> TS P E) /\
+     (!s A P E. TS (Choice s A P) E = choice A (\x. TS P (Bnd s (INL x) E))) /\
+     (!P Q E. TS (par P Q) E = TS P E PAR TS Q E) /\
+     (!P tr E. TS (after P tr) E = TS P E / tr) /\
+     (!s A P E. TS (mu s A P) E = MU A (\x. TS P (Bnd s (INR x) E))) /\
+     (!e1 e2 P Q E.
+       TS (cond e1 e2 P Q) E = ((ES e1 E = ES e2 E) => (TS P E) | (TS Q E)))
+  : thm
+val CSP_INDUCT =
+  |- !P.
+       (!s. P (stop s)) /\
+       (!s. P (run s)) /\
+       (!s. P (var s)) /\
+       (!C. P C ==> (!E. P (pref E C))) /\
+       (!C. P C ==> (!s0 s1. P (Choice s0 s1 C))) /\
+       (!C1 C2. P C1 /\ P C2 ==> P (par C1 C2)) /\
+       (!C. P C ==> (!l'. P (after C l'))) /\
+       (!C. P C ==> (!s0 s1. P (mu s0 s1 C))) /\
+       (!C1 C2. P C1 /\ P C2 ==> (!E0 E1. P (cond E0 E1 C1 C2))) ==>
+       (!C. P C) : thm
+
+Theory "csp_syntax" exported.
+val it = () : unit
+val it = () : unit
+Theory: csp_syntax
+
+Parents:
+    process
+    CSP_base
+
+Type constants:
+    Event 0
+    CSP 0
+
+Term constants:
+    REP_Event (Prefix)   :Event -> (string + string) ltree
+    ABS_Event (Prefix)   :(string + string) ltree -> Event
+    econst (Prefix)   :string -> Event
+    evar (Prefix)   :string -> Event
+    ES (Prefix)   :Event -> (string -> string + process) -> string
+    REP_CSP (Prefix)
+    :CSP ->
+     (string set + string set + string + Event + string # string set + one +
+     string list + string # string set + Event # Event) ltree
+    ABS_CSP (Prefix)
+    :(string set + string set + string + Event + string # string set + one +
+     string list + string # string set + Event # Event) ltree -> CSP
+    stop (Prefix)   :string set -> CSP
+    run (Prefix)   :string set -> CSP
+    var (Prefix)   :string -> CSP
+    pref (Prefix)   :Event -> CSP -> CSP
+    Choice (Prefix)   :string -> string set -> CSP -> CSP
+    par (Prefix)   :CSP -> CSP -> CSP
+    after (Prefix)   :CSP -> string list -> CSP
+    mu (Prefix)   :string -> string set -> CSP -> CSP
+    cond (Prefix)   :Event -> Event -> CSP -> CSP -> CSP
+    Bnd (Prefix)
+    :string -> string + process -> (string -> string + process) -> string ->
+     string + process
+    TS (Prefix)   :CSP -> (string -> string + process) -> process
+
+Axioms:
+    
+
+Definitions:
+    Event_TY_DEF
+    |- ?rep.
+         TYPE_DEFINITION
+           (TRP
+             (\v tl.
+               (?s. v = INL s) /\ (LENGTH tl = 0) \/
+               (?s. v = INR s) /\ (LENGTH tl = 0)))
+           rep
+    Event_ISO_DEF
+    |- (!a. ABS_Event (REP_Event a) = a) /\
+       (!r.
+         TRP
+           (\v tl.
+             (?s. v = INL s) /\ (LENGTH tl = 0) \/
+             (?s. v = INR s) /\ (LENGTH tl = 0))
+           r =
+         REP_Event (ABS_Event r) =
+         r)
+    econst_DEF |- !s. econst s = ABS_Event (Node (INL s) [])
+    evar_DEF |- !s. evar s = ABS_Event (Node (INR s) [])
+    ES |- (!s E. ES (econst s) E = s) /\ (!s E. ES (evar s) E = OUTL (E s))
+    CSP_TY_DEF
+    |- ?rep.
+         TYPE_DEFINITION
+           (TRP
+             (\v tl.
+               (?s. v = INL s) /\ (LENGTH tl = 0) \/
+               (?s. v = INR (INL s)) /\ (LENGTH tl = 0) \/
+               (?s. v = INR (INR (INL s))) /\ (LENGTH tl = 0) \/
+               (?E. v = INR (INR (INR (INL E)))) /\ (LENGTH tl = SUC 0) \/
+               (?s0 s1. v = INR (INR (INR (INR (INL (s0,s1)))))) /\
+               (LENGTH tl = SUC 0) \/
+               (v = INR (INR (INR (INR (INR (INL one)))))) /\
+               (LENGTH tl = SUC (SUC 0)) \/
+               (?l. v = INR (INR (INR (INR (INR (INR (INL l))))))) /\
+               (LENGTH tl = SUC 0) \/
+               (?s0 s1.
+                 v = INR (INR (INR (INR (INR (INR (INR (INL (s0,s1))))))))) /\
+               (LENGTH tl = SUC 0) \/
+               (?E0 E1.
+                 v = INR (INR (INR (INR (INR (INR (INR (INR (E0,E1))))))))) /\
+               (LENGTH tl = SUC (SUC 0))))
+           rep
+    CSP_ISO_DEF
+    |- (!a. ABS_CSP (REP_CSP a) = a) /\
+       (!r.
+         TRP
+           (\v tl.
+             (?s. v = INL s) /\ (LENGTH tl = 0) \/
+             (?s. v = INR (INL s)) /\ (LENGTH tl = 0) \/
+             (?s. v = INR (INR (INL s))) /\ (LENGTH tl = 0) \/
+             (?E. v = INR (INR (INR (INL E)))) /\ (LENGTH tl = SUC 0) \/
+             (?s0 s1. v = INR (INR (INR (INR (INL (s0,s1)))))) /\
+             (LENGTH tl = SUC 0) \/
+             (v = INR (INR (INR (INR (INR (INL one)))))) /\
+             (LENGTH tl = SUC (SUC 0)) \/
+             (?l. v = INR (INR (INR (INR (INR (INR (INL l))))))) /\
+             (LENGTH tl = SUC 0) \/
+             (?s0 s1.
+               v = INR (INR (INR (INR (INR (INR (INR (INL (s0,s1))))))))) /\
+             (LENGTH tl = SUC 0) \/
+             (?E0 E1.
+               v = INR (INR (INR (INR (INR (INR (INR (INR (E0,E1))))))))) /\
+             (LENGTH tl = SUC (SUC 0)))
+           r =
+         REP_CSP (ABS_CSP r) =
+         r)
+    stop_DEF |- !s. stop s = ABS_CSP (Node (INL s) [])
+    run_DEF |- !s. run s = ABS_CSP (Node (INR (INL s)) [])
+    var_DEF |- !s. var s = ABS_CSP (Node (INR (INR (INL s))) [])
+    pref_DEF
+    |- !E C. pref E C = ABS_CSP (Node (INR (INR (INR (INL E)))) [REP_CSP C])
+    Choice_DEF
+    |- !s0 s1 C.
+         Choice s0 s1 C =
+         ABS_CSP (Node (INR (INR (INR (INR (INL (s0,s1)))))) [REP_CSP C])
+    par_DEF
+    |- !C1 C2.
+         par C1 C2 =
+         ABS_CSP
+           (Node (INR (INR (INR (INR (INR (INL one))))))
+             [REP_CSP C1; REP_CSP C2])
+    after_DEF
+    |- !C l'.
+         after C l' =
+         ABS_CSP
+           (Node (INR (INR (INR (INR (INR (INR (INL l'))))))) [REP_CSP C])
+    mu_DEF
+    |- !s0 s1 C.
+         mu s0 s1 C =
+         ABS_CSP
+           (Node (INR (INR (INR (INR (INR (INR (INR (INL (s0,s1)))))))))
+             [REP_CSP C])
+    cond_DEF
+    |- !E0 E1 C1 C2.
+         cond E0 E1 C1 C2 =
+         ABS_CSP
+           (Node (INR (INR (INR (INR (INR (INR (INR (INR (E0,E1)))))))))
+             [REP_CSP C1; REP_CSP C2])
+    Bnd |- !s exp env. Bnd s exp env = (\s'. (s' = s) => exp | (env s))
+    TS
+    |- (!A E. TS (stop A) E = STOP A) /\
+       (!A E. TS (run A) E = RUN A) /\
+       (!s E. TS (var s) E = OUTR (E s)) /\
+       (!a P E. TS (pref a P) E = ES a E --> TS P E) /\
+       (!s A P E.
+         TS (Choice s A P) E = choice A (\x. TS P (Bnd s (INL x) E))) /\
+       (!P Q E. TS (par P Q) E = TS P E PAR TS Q E) /\
+       (!P tr E. TS (after P tr) E = TS P E / tr) /\
+       (!s A P E. TS (mu s A P) E = MU A (\x. TS P (Bnd s (INR x) E))) /\
+       (!e1 e2 P Q E.
+         TS (cond e1 e2 P Q) E = ((ES e1 E = ES e2 E) => (TS P E) | (TS Q E)))
+
+Theorems:
+    Event
+    |- !f0 f1. ?!fn. (!s. fn (econst s) = f0 s) /\ (!s. fn (evar s) = f1 s)
+    CSP
+    |- !f0 f1 f2 f3 f4 f5 f6 f7 f8.
+         ?!fn.
+           (!s. fn (stop s) = f0 s) /\
+           (!s. fn (run s) = f1 s) /\
+           (!s. fn (var s) = f2 s) /\
+           (!E C. fn (pref E C) = f3 (fn C) E C) /\
+           (!s0 s1 C. fn (Choice s0 s1 C) = f4 (fn C) s0 s1 C) /\
+           (!C1 C2. fn (par C1 C2) = f5 (fn C1) (fn C2) C1 C2) /\
+           (!C l'. fn (after C l') = f6 (fn C) l' C) /\
+           (!s0 s1 C. fn (mu s0 s1 C) = f7 (fn C) s0 s1 C) /\
+           (!E0 E1 C1 C2.
+             fn (cond E0 E1 C1 C2) = f8 (fn C1) (fn C2) E0 E1 C1 C2)
+
+Theory "csp_syntax" is consistent with disk.
+val it = () : unit

@@ -1,0 +1,102 @@
+head	1.1;
+branch	1.1.1;
+access;
+symbols
+	HOL97:1.1.1.1.0.6
+	bpHOL97:1.1.1.1
+	hol90_9_alpha:1.1.1.1
+	hol90_pre8_for_multiple_compilers:1.1.1.1.0.4
+	hol90_pre8_after_donalds_separate_compilation_changes:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	95.10.16.13.30.44;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.30.44;	author rjb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@\DOC inst_type
+
+\TYPE {Compat.inst_type : (hol_type * hol_type) list -> hol_type -> hol_type}
+
+\SYNOPSIS
+Instantiates types in a type.
+
+\DESCRIBE
+If {[(t1',t1),...,(tn',tn)]} is a list of type instantiations, where {t1...tn}
+are the initial types, and {t1'...tn'} the desired instantiations, and {ty} is
+a type to instantiate, the call
+{
+   inst_type [(t1',t1),...,(tn',tn)] ty
+}
+\noindent will appropriately instantiate the type {ty}. The
+instantiations will be performed in parallel. If several of the type
+instantiations are applicable, the choice is undefined. The {t1...tn}
+need not be type variables, but those that aren't will not be
+substituted for. Neither is it necessary that any or all of the types
+{t1...tn} should in fact appear in {ty}.
+
+\FAILURE
+Never fails.
+
+\EXAMPLE
+{
+  - inst_type [((==`:bool`==),(==`:'a`==))] (==`:'a # 'b`==);
+  (==`:bool # 'b`==) : hol_type
+
+  - inst_type [((==`:num`==),(==`:'a # 'b`==)),((==`:bool`==),(==`:'a`==))] 
+              (==`:'a # 'b`==);
+  (==`:bool # 'b`==) : hol_type
+
+}
+
+\COMMENTS
+Not in hol90, since the author decided that {type_subst} was a better name.
+{inst_type} and {type_subst} have different types, but modulo that, they
+perform identically.
+
+    - type_subst;
+    val it = fn : hol_type subst -> hol_type -> hol_type
+
+\SEEALSO
+type_subst, inst, INST_TYPE.
+
+\ENDDOC
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

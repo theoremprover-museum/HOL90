@@ -1,0 +1,735 @@
+thid = (TRANSC, 942752657, 625242)
+axioms = []
+definitions =
+[((atn),
+  [],
+  `((! :(real -> bool) -> bool) (\(y :real).
+   (((= :real -> real -> bool) (atn $0)) ((@ :(real -> bool) -> real)
+   (\(x :real). ((/\ ((|<| (-- ((/ pi) (& 2)))) $0)) ((/\ ((|<| $0)
+   ((/ pi) (& 2)))) (((= :real -> real -> bool) (tan $0))
+   $1))))))))`),
+ ((acs),
+  [],
+  `((! :(real -> bool) -> bool) (\(y :real).
+   (((= :real -> real -> bool) (acs $0)) ((@ :(real -> bool) -> real)
+   (\(x :real). ((/\ ((|<=| (& 0)) $0)) ((/\ ((|<=| $0) pi))
+   (((= :real -> real -> bool) (cos $0)) $1))))))))`),
+ ((asn),
+  [],
+  `((! :(real -> bool) -> bool) (\(y :real).
+   (((= :real -> real -> bool) (asn $0)) ((@ :(real -> bool) -> real)
+   (\(x :real). ((/\ ((|<=| (-- ((/ pi) (& 2)))) $0)) ((/\ ((|<=| $0)
+   ((/ pi) (& 2)))) (((= :real -> real -> bool) (sin $0))
+   $1))))))))`),
+ ((tan),
+  [],
+  `((! :(real -> bool) -> bool) (\(x :real).
+   (((= :real -> real -> bool) (tan $0)) ((/ (sin $0)) (cos $0)))))`),
+ ((pi),
+  [],
+  `(((= :real -> real -> bool) pi) ((|*| (& 2))
+   ((@ :(real -> bool) -> real) (\(x :real). ((/\ ((|<=| (& 0)) $0))
+   ((/\ ((|<=| $0) (& 2))) (((= :real -> real -> bool) (cos $0)) (&
+   0))))))))`),
+ ((sqrt),
+  [],
+  `((! :(real -> bool) -> bool) (\(x :real).
+   (((= :real -> real -> bool) (sqrt $0)) ((root 2) $0))))`),
+ ((root),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num).
+   ((! :(real -> bool) -> bool) (\(x :real).
+   (((= :real -> real -> bool) ((root $1) $0))
+   ((@ :(real -> bool) -> real) (\(u :real). ((/\ ((==> ((|<| (& 0))
+   $1)) ((|<| (& 0)) $0))) (((= :real -> real -> bool) ((pow $0) $2))
+   $1)))))))))`),
+ ((ln),
+  [],
+  `((! :(real -> bool) -> bool) (\(x :real).
+   (((= :real -> real -> bool) (ln $0)) ((@ :(real -> bool) -> real)
+   (\(u :real). (((= :real -> real -> bool) (exp $0)) $1))))))`),
+ ((cos),
+  [],
+  `((! :(real -> bool) -> bool) (\(x :real).
+   (((= :real -> real -> bool) (cos $0)) (suminf (\(n :num). ((|*|
+   ((\(n :num). ((((COND :bool -> real -> real -> real) (EVEN $0)) ((/
+   ((pow (-- (& 1))) ((DIV $0) 2))) (& (FACT $0)))) (& 0))) $0)) ((pow
+   $1) $0)))))))`),
+ ((sin),
+  [],
+  `((! :(real -> bool) -> bool) (\(x :real).
+   (((= :real -> real -> bool) (sin $0)) (suminf (\(n :num). ((|*|
+   ((\(n :num). ((((COND :bool -> real -> real -> real) (EVEN $0)) (&
+   0)) ((/ ((pow (-- (& 1))) ((DIV ((- $0) 1)) 2))) (& (FACT $0)))))
+   $0)) ((pow $1) $0)))))))`),
+ ((exp),
+  [],
+  `((! :(real -> bool) -> bool) (\(x :real).
+   (((= :real -> real -> bool) (exp $0)) (suminf (\(n :num). ((|*|
+   ((\(n :num). (inv (& (FACT $0)))) $0)) ((pow $1) $0)))))))`)]
+theorems =
+[((DIFF_ATN),
+  [],
+  `((! :(real -> bool) -> bool) (\(x :real). (((diffl atn) (inv ((|+|
+   (& 1)) ((pow $0) 2)))) $0)))`),
+ ((DIFF_ACS),
+  [],
+  `((! :(real -> bool) -> bool) (\(x :real). ((==> ((/\ ((|<| (-- (&
+   1))) $0)) ((|<| $0) (& 1)))) (((diffl acs) (-- (inv (sqrt ((|-| (&
+   1)) ((pow $0) 2)))))) $0))))`),
+ ((DIFF_ACS_LEMMA),
+  [],
+  `((! :(real -> bool) -> bool) (\(x :real). ((==> ((/\ ((|<| (-- (&
+   1))) $0)) ((|<| $0) (& 1)))) (((diffl acs) (inv (-- (sin (acs
+   $0))))) $0))))`),
+ ((DIFF_ASN),
+  [],
+  `((! :(real -> bool) -> bool) (\(x :real). ((==> ((/\ ((|<| (-- (&
+   1))) $0)) ((|<| $0) (& 1)))) (((diffl asn) (inv (sqrt ((|-| (& 1))
+   ((pow $0) 2))))) $0))))`),
+ ((DIFF_ASN_LEMMA),
+  [],
+  `((! :(real -> bool) -> bool) (\(x :real). ((==> ((/\ ((|<| (-- (&
+   1))) $0)) ((|<| $0) (& 1)))) (((diffl asn) (inv (cos (asn $0))))
+   $0))))`),
+ ((DIFF_LN),
+  [],
+  `((! :(real -> bool) -> bool) (\(x :real). ((==> ((|<| (& 0)) $0))
+   (((diffl ln) (inv $0)) $0))))`),
+ ((SIN_ACS_NZ),
+  [],
+  `((! :(real -> bool) -> bool) (\(x :real). ((==> ((/\ ((|<| (-- (&
+   1))) $0)) ((|<| $0) (& 1)))) (~ (((= :real -> real -> bool) (sin
+   (acs $0))) (& 0))))))`),
+ ((COS_ASN_NZ),
+  [],
+  `((! :(real -> bool) -> bool) (\(x :real). ((==> ((/\ ((|<| (-- (&
+   1))) $0)) ((|<| $0) (& 1)))) (~ (((= :real -> real -> bool) (cos
+   (asn $0))) (& 0))))))`),
+ ((COS_ATN_NZ),
+  [],
+  `((! :(real -> bool) -> bool) (\(x :real). (~
+   (((= :real -> real -> bool) (cos (atn $0))) (& 0)))))`),
+ ((COS_SIN_SQ),
+  [],
+  `((! :(real -> bool) -> bool) (\(x :real). ((==> ((/\ ((|<=| (-- ((/
+   pi) (& 2)))) $0)) ((|<=| $0) ((/ pi) (& 2)))))
+   (((= :real -> real -> bool) (cos $0)) (sqrt ((|-| (& 1)) ((pow (sin
+   $0)) 2)))))))`),
+ ((SIN_COS_SQ),
+  [],
+  `((! :(real -> bool) -> bool) (\(x :real). ((==> ((/\ ((|<=| (& 0))
+   $0)) ((|<=| $0) pi))) (((= :real -> real -> bool) (sin $0)) (sqrt
+   ((|-| (& 1)) ((pow (cos $0)) 2)))))))`),
+ ((TAN_SEC),
+  [],
+  `((! :(real -> bool) -> bool) (\(x :real). ((==> (~
+   (((= :real -> real -> bool) (cos $0)) (& 0))))
+   (((= :real -> real -> bool) ((|+| (& 1)) ((pow (tan $0)) 2))) ((pow
+   (inv (cos $0))) 2)))))`),
+ ((TAN_ATN),
+  [],
+  `((! :(real -> bool) -> bool) (\(x :real). ((==> ((/\ ((|<| (-- ((/
+   pi) (& 2)))) $0)) ((|<| $0) ((/ pi) (& 2)))))
+   (((= :real -> real -> bool) (atn (tan $0))) $0))))`),
+ ((ATN_BOUNDS),
+  [],
+  `((! :(real -> bool) -> bool) (\(y :real). ((/\ ((|<| (-- ((/ pi) (&
+   2)))) (atn $0))) ((|<| (atn $0)) ((/ pi) (& 2))))))`),
+ ((ATN_TAN),
+  [],
+  `((! :(real -> bool) -> bool) (\(y :real).
+   (((= :real -> real -> bool) (tan (atn $0))) $0)))`),
+ ((ATN),
+  [],
+  `((! :(real -> bool) -> bool) (\(y :real). ((/\ ((|<| (-- ((/ pi) (&
+   2)))) (atn $0))) ((/\ ((|<| (atn $0)) ((/ pi) (& 2))))
+   (((= :real -> real -> bool) (tan (atn $0))) $0)))))`),
+ ((COS_ACS),
+  [],
+  `((! :(real -> bool) -> bool) (\(x :real). ((==> ((/\ ((|<=| (& 0))
+   $0)) ((|<=| $0) pi))) (((= :real -> real -> bool) (acs (cos $0)))
+   $0))))`),
+ ((ACS_BOUNDS_LT),
+  [],
+  `((! :(real -> bool) -> bool) (\(y :real). ((==> ((/\ ((|<| (-- (&
+   1))) $0)) ((|<| $0) (& 1)))) ((/\ ((|<| (& 0)) (acs $0))) ((|<|
+   (acs $0)) pi)))))`),
+ ((ACS_BOUNDS),
+  [],
+  `((! :(real -> bool) -> bool) (\(y :real). ((==> ((/\ ((|<=| (-- (&
+   1))) $0)) ((|<=| $0) (& 1)))) ((/\ ((|<=| (& 0)) (acs $0))) ((|<=|
+   (acs $0)) pi)))))`),
+ ((ACS_COS),
+  [],
+  `((! :(real -> bool) -> bool) (\(y :real). ((==> ((/\ ((|<=| (-- (&
+   1))) $0)) ((|<=| $0) (& 1)))) (((= :real -> real -> bool) (cos (acs
+   $0))) $0))))`),
+ ((ACS),
+  [],
+  `((! :(real -> bool) -> bool) (\(y :real). ((==> ((/\ ((|<=| (-- (&
+   1))) $0)) ((|<=| $0) (& 1)))) ((/\ ((|<=| (& 0)) (acs $0))) ((/\
+   ((|<=| (acs $0)) pi)) (((= :real -> real -> bool) (cos (acs $0)))
+   $0))))))`),
+ ((SIN_ASN),
+  [],
+  `((! :(real -> bool) -> bool) (\(x :real). ((==> ((/\ ((|<=| (-- ((/
+   pi) (& 2)))) $0)) ((|<=| $0) ((/ pi) (& 2)))))
+   (((= :real -> real -> bool) (asn (sin $0))) $0))))`),
+ ((ASN_BOUNDS_LT),
+  [],
+  `((! :(real -> bool) -> bool) (\(y :real). ((==> ((/\ ((|<| (-- (&
+   1))) $0)) ((|<| $0) (& 1)))) ((/\ ((|<| (-- ((/ pi) (& 2)))) (asn
+   $0))) ((|<| (asn $0)) ((/ pi) (& 2)))))))`),
+ ((ASN_BOUNDS),
+  [],
+  `((! :(real -> bool) -> bool) (\(y :real). ((==> ((/\ ((|<=| (-- (&
+   1))) $0)) ((|<=| $0) (& 1)))) ((/\ ((|<=| (-- ((/ pi) (& 2)))) (asn
+   $0))) ((|<=| (asn $0)) ((/ pi) (& 2)))))))`),
+ ((ASN_SIN),
+  [],
+  `((! :(real -> bool) -> bool) (\(y :real). ((==> ((/\ ((|<=| (-- (&
+   1))) $0)) ((|<=| $0) (& 1)))) (((= :real -> real -> bool) (sin (asn
+   $0))) $0))))`),
+ ((ASN),
+  [],
+  `((! :(real -> bool) -> bool) (\(y :real). ((==> ((/\ ((|<=| (-- (&
+   1))) $0)) ((|<=| $0) (& 1)))) ((/\ ((|<=| (-- ((/ pi) (& 2)))) (asn
+   $0))) ((/\ ((|<=| (asn $0)) ((/ pi) (& 2))))
+   (((= :real -> real -> bool) (sin (asn $0))) $0))))))`),
+ ((TAN_TOTAL),
+  [],
+  `((! :(real -> bool) -> bool) (\(y :real).
+   ((?! :(real -> bool) -> bool) (\(x :real). ((/\ ((|<| (-- ((/ pi)
+   (& 2)))) $0)) ((/\ ((|<| $0) ((/ pi) (& 2))))
+   (((= :real -> real -> bool) (tan $0)) $1)))))))`),
+ ((TAN_TOTAL_POS),
+  [],
+  `((! :(real -> bool) -> bool) (\(y :real). ((==> ((|<=| (& 0)) $0))
+   ((? :(real -> bool) -> bool) (\(x :real). ((/\ ((|<=| (& 0)) $0))
+   ((/\ ((|<| $0) ((/ pi) (& 2)))) (((= :real -> real -> bool) (tan
+   $0)) $1))))))))`),
+ ((TAN_TOTAL_LEMMA),
+  [],
+  `((! :(real -> bool) -> bool) (\(y :real). ((==> ((|<| (& 0)) $0))
+   ((? :(real -> bool) -> bool) (\(x :real). ((/\ ((|<| (& 0)) $0))
+   ((/\ ((|<| $0) ((/ pi) (& 2)))) ((|<| $1) (tan $0)))))))))`),
+ ((DIFF_TAN),
+  [],
+  `((! :(real -> bool) -> bool) (\(x :real). ((==> (~
+   (((= :real -> real -> bool) (cos $0)) (& 0)))) (((diffl tan) (inv
+   ((pow (cos $0)) 2))) $0))))`),
+ ((TAN_POS_PI2),
+  [],
+  `((! :(real -> bool) -> bool) (\(x :real). ((==> ((/\ ((|<| (& 0))
+   $0)) ((|<| $0) ((/ pi) (& 2))))) ((|<| (& 0)) (tan $0)))))`),
+ ((TAN_DOUBLE),
+  [],
+  `((! :(real -> bool) -> bool) (\(x :real). ((==> ((/\ (~
+   (((= :real -> real -> bool) (cos $0)) (& 0)))) (~
+   (((= :real -> real -> bool) (cos ((|*| (& 2)) $0))) (& 0)))))
+   (((= :real -> real -> bool) (tan ((|*| (& 2)) $0))) ((/ ((|*| (&
+   2)) (tan $0))) ((|-| (& 1)) ((pow (tan $0)) 2)))))))`),
+ ((TAN_ADD),
+  [],
+  `((! :(real -> bool) -> bool) (\(x :real).
+   ((! :(real -> bool) -> bool) (\(y :real). ((==> ((/\ (~
+   (((= :real -> real -> bool) (cos $1)) (& 0)))) ((/\ (~
+   (((= :real -> real -> bool) (cos $0)) (& 0)))) (~
+   (((= :real -> real -> bool) (cos ((|+| $1) $0))) (& 0))))))
+   (((= :real -> real -> bool) (tan ((|+| $1) $0))) ((/ ((|+| (tan
+   $1)) (tan $0))) ((|-| (& 1)) ((|*| (tan $1)) (tan $0))))))))))`),
+ ((TAN_PERIODIC),
+  [],
+  `((! :(real -> bool) -> bool) (\(x :real).
+   (((= :real -> real -> bool) (tan ((|+| $0) ((|*| (& 2)) pi)))) (tan
+   $0))))`),
+ ((TAN_NEG),
+  [],
+  `((! :(real -> bool) -> bool) (\(x :real).
+   (((= :real -> real -> bool) (tan (-- $0))) (-- (tan $0)))))`),
+ ((TAN_NPI),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num). (((= :real -> real -> bool)
+   (tan ((|*| (& $0)) pi))) (& 0))))`),
+ ((TAN_PI), [], `(((= :real -> real -> bool) (tan pi)) (& 0))`),
+ ((TAN_0), [], `(((= :real -> real -> bool) (tan (& 0))) (& 0))`),
+ ((SIN_ZERO),
+  [],
+  `((! :(real -> bool) -> bool) (\(x :real).
+   (((= :bool -> bool -> bool) (((= :real -> real -> bool) (sin $0))
+   (& 0))) ((\/ ((? :(num -> bool) -> bool) (\(n :num). ((/\ (EVEN
+   $0)) (((= :real -> real -> bool) $1) ((|*| (& $0)) ((/ pi) (&
+   2)))))))) ((? :(num -> bool) -> bool) (\(n :num). ((/\ (EVEN $0))
+   (((= :real -> real -> bool) $1) (-- ((|*| (& $0)) ((/ pi) (&
+   2))))))))))))`),
+ ((COS_ZERO),
+  [],
+  `((! :(real -> bool) -> bool) (\(x :real).
+   (((= :bool -> bool -> bool) (((= :real -> real -> bool) (cos $0))
+   (& 0))) ((\/ ((? :(num -> bool) -> bool) (\(n :num). ((/\ (~ (EVEN
+   $0))) (((= :real -> real -> bool) $1) ((|*| (& $0)) ((/ pi) (&
+   2)))))))) ((? :(num -> bool) -> bool) (\(n :num). ((/\ (~ (EVEN
+   $0))) (((= :real -> real -> bool) $1) (-- ((|*| (& $0)) ((/ pi) (&
+   2))))))))))))`),
+ ((SIN_ZERO_LEMMA),
+  [],
+  `((! :(real -> bool) -> bool) (\(x :real). ((==> ((/\ ((|<=| (& 0))
+   $0)) (((= :real -> real -> bool) (sin $0)) (& 0))))
+   ((? :(num -> bool) -> bool) (\(n :num). ((/\ (EVEN $0))
+   (((= :real -> real -> bool) $1) ((|*| (& $0)) ((/ pi) (&
+   2))))))))))`),
+ ((COS_ZERO_LEMMA),
+  [],
+  `((! :(real -> bool) -> bool) (\(x :real). ((==> ((/\ ((|<=| (& 0))
+   $0)) (((= :real -> real -> bool) (cos $0)) (& 0))))
+   ((? :(num -> bool) -> bool) (\(n :num). ((/\ (~ (EVEN $0)))
+   (((= :real -> real -> bool) $1) ((|*| (& $0)) ((/ pi) (&
+   2))))))))))`),
+ ((SIN_TOTAL),
+  [],
+  `((! :(real -> bool) -> bool) (\(y :real). ((==> ((/\ ((|<=| (-- (&
+   1))) $0)) ((|<=| $0) (& 1)))) ((?! :(real -> bool) -> bool)
+   (\(x :real). ((/\ ((|<=| (-- ((/ pi) (& 2)))) $0)) ((/\ ((|<=| $0)
+   ((/ pi) (& 2)))) (((= :real -> real -> bool) (sin $0))
+   $1))))))))`),
+ ((COS_TOTAL),
+  [],
+  `((! :(real -> bool) -> bool) (\(y :real). ((==> ((/\ ((|<=| (-- (&
+   1))) $0)) ((|<=| $0) (& 1)))) ((?! :(real -> bool) -> bool)
+   (\(x :real). ((/\ ((|<=| (& 0)) $0)) ((/\ ((|<=| $0) pi))
+   (((= :real -> real -> bool) (cos $0)) $1))))))))`),
+ ((SIN_POS_PI_LE),
+  [],
+  `((! :(real -> bool) -> bool) (\(x :real). ((==> ((/\ ((|<=| (& 0))
+   $0)) ((|<=| $0) pi))) ((|<=| (& 0)) (sin $0)))))`),
+ ((SIN_POS_PI2_LE),
+  [],
+  `((! :(real -> bool) -> bool) (\(x :real). ((==> ((/\ ((|<=| (& 0))
+   $0)) ((|<=| $0) ((/ pi) (& 2))))) ((|<=| (& 0)) (sin $0)))))`),
+ ((COS_POS_PI_LE),
+  [],
+  `((! :(real -> bool) -> bool) (\(x :real). ((==> ((/\ ((|<=| (-- ((/
+   pi) (& 2)))) $0)) ((|<=| $0) ((/ pi) (& 2))))) ((|<=| (& 0)) (cos
+   $0)))))`),
+ ((COS_POS_PI2_LE),
+  [],
+  `((! :(real -> bool) -> bool) (\(x :real). ((==> ((/\ ((|<=| (& 0))
+   $0)) ((|<=| $0) ((/ pi) (& 2))))) ((|<=| (& 0)) (cos $0)))))`),
+ ((SIN_POS_PI),
+  [],
+  `((! :(real -> bool) -> bool) (\(x :real). ((==> ((/\ ((|<| (& 0))
+   $0)) ((|<| $0) pi))) ((|<| (& 0)) (sin $0)))))`),
+ ((COS_POS_PI),
+  [],
+  `((! :(real -> bool) -> bool) (\(x :real). ((==> ((/\ ((|<| (-- ((/
+   pi) (& 2)))) $0)) ((|<| $0) ((/ pi) (& 2))))) ((|<| (& 0)) (cos
+   $0)))))`),
+ ((COS_POS_PI2),
+  [],
+  `((! :(real -> bool) -> bool) (\(x :real). ((==> ((/\ ((|<| (& 0))
+   $0)) ((|<| $0) ((/ pi) (& 2))))) ((|<| (& 0)) (cos $0)))))`),
+ ((SIN_POS_PI2),
+  [],
+  `((! :(real -> bool) -> bool) (\(x :real). ((==> ((/\ ((|<| (& 0))
+   $0)) ((|<| $0) ((/ pi) (& 2))))) ((|<| (& 0)) (sin $0)))))`),
+ ((SIN_NPI),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num). (((= :real -> real -> bool)
+   (sin ((|*| (& $0)) pi))) (& 0))))`),
+ ((COS_NPI),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num). (((= :real -> real -> bool)
+   (cos ((|*| (& $0)) pi))) ((pow (-- (& 1))) $0))))`),
+ ((COS_PERIODIC),
+  [],
+  `((! :(real -> bool) -> bool) (\(x :real).
+   (((= :real -> real -> bool) (cos ((|+| $0) ((|*| (& 2)) pi)))) (cos
+   $0))))`),
+ ((SIN_PERIODIC),
+  [],
+  `((! :(real -> bool) -> bool) (\(x :real).
+   (((= :real -> real -> bool) (sin ((|+| $0) ((|*| (& 2)) pi)))) (sin
+   $0))))`),
+ ((COS_PERIODIC_PI),
+  [],
+  `((! :(real -> bool) -> bool) (\(x :real).
+   (((= :real -> real -> bool) (cos ((|+| $0) pi))) (-- (cos
+   $0)))))`),
+ ((SIN_PERIODIC_PI),
+  [],
+  `((! :(real -> bool) -> bool) (\(x :real).
+   (((= :real -> real -> bool) (sin ((|+| $0) pi))) (-- (sin
+   $0)))))`),
+ ((COS_SIN),
+  [],
+  `((! :(real -> bool) -> bool) (\(x :real).
+   (((= :real -> real -> bool) (cos $0)) (sin ((|-| ((/ pi) (& 2)))
+   $0)))))`),
+ ((SIN_COS),
+  [],
+  `((! :(real -> bool) -> bool) (\(x :real).
+   (((= :real -> real -> bool) (sin $0)) (cos ((|-| ((/ pi) (& 2)))
+   $0)))))`),
+ ((SIN_PI), [], `(((= :real -> real -> bool) (sin pi)) (& 0))`),
+ ((COS_PI), [], `(((= :real -> real -> bool) (cos pi)) (-- (& 1)))`),
+ ((SIN_PI2),
+  [],
+  `(((= :real -> real -> bool) (sin ((/ pi) (& 2)))) (& 1))`),
+ ((PI_POS), [], `((|<| (& 0)) pi)`),
+ ((PI2_BOUNDS),
+  [],
+  `((/\ ((|<| (& 0)) ((/ pi) (& 2)))) ((|<| ((/ pi) (& 2))) (& 2)))`),
+ ((COS_PI2),
+  [],
+  `(((= :real -> real -> bool) (cos ((/ pi) (& 2)))) (& 0))`),
+ ((PI2),
+  [],
+  `(((= :real -> real -> bool) ((/ pi) (& 2)))
+   ((@ :(real -> bool) -> real) (\(x :real). ((/\ ((|<=| (& 0)) $0))
+   ((/\ ((|<=| $0) (& 2))) (((= :real -> real -> bool) (cos $0)) (&
+   0)))))))`),
+ ((COS_ISZERO),
+  [],
+  `((?! :(real -> bool) -> bool) (\(x :real). ((/\ ((|<=| (& 0)) $0))
+   ((/\ ((|<=| $0) (& 2))) (((= :real -> real -> bool) (cos $0)) (&
+   0))))))`),
+ ((COS_2), [], `((|<| (cos (& 2))) (& 0))`),
+ ((COS_PAIRED),
+  [],
+  `((! :(real -> bool) -> bool) (\(x :real). ((sums (\(n :num). ((|*|
+   ((/ ((pow (-- (& 1))) $0)) (& (FACT ((* 2) $0))))) ((pow $1) ((* 2)
+   $0))))) (cos $0))))`),
+ ((SIN_POS),
+  [],
+  `((! :(real -> bool) -> bool) (\(x :real). ((==> ((/\ ((|<| (& 0))
+   $0)) ((|<| $0) (& 2)))) ((|<| (& 0)) (sin $0)))))`),
+ ((SIN_PAIRED),
+  [],
+  `((! :(real -> bool) -> bool) (\(x :real). ((sums (\(n :num). ((|*|
+   ((/ ((pow (-- (& 1))) $0)) (& (FACT ((+ ((* 2) $0)) 1))))) ((pow
+   $1) ((+ ((* 2) $0)) 1))))) (sin $0))))`),
+ ((COS_DOUBLE),
+  [],
+  `((! :(real -> bool) -> bool) (\(x :real).
+   (((= :real -> real -> bool) (cos ((|*| (& 2)) $0))) ((|-| ((pow
+   (cos $0)) 2)) ((pow (sin $0)) 2)))))`),
+ ((SIN_DOUBLE),
+  [],
+  `((! :(real -> bool) -> bool) (\(x :real).
+   (((= :real -> real -> bool) (sin ((|*| (& 2)) $0))) ((|*| (& 2))
+   ((|*| (sin $0)) (cos $0))))))`),
+ ((COS_NEG),
+  [],
+  `((! :(real -> bool) -> bool) (\(x :real).
+   (((= :real -> real -> bool) (cos (-- $0))) (cos $0))))`),
+ ((SIN_NEG),
+  [],
+  `((! :(real -> bool) -> bool) (\(x :real).
+   (((= :real -> real -> bool) (sin (-- $0))) (-- (sin $0)))))`),
+ ((COS_ADD),
+  [],
+  `((! :(real -> bool) -> bool) (\(x :real).
+   ((! :(real -> bool) -> bool) (\(y :real).
+   (((= :real -> real -> bool) (cos ((|+| $1) $0))) ((|-| ((|*| (cos
+   $1)) (cos $0))) ((|*| (sin $1)) (sin $0))))))))`),
+ ((SIN_ADD),
+  [],
+  `((! :(real -> bool) -> bool) (\(x :real).
+   ((! :(real -> bool) -> bool) (\(y :real).
+   (((= :real -> real -> bool) (sin ((|+| $1) $0))) ((|+| ((|*| (sin
+   $1)) (cos $0))) ((|*| (cos $1)) (sin $0))))))))`),
+ ((SIN_COS_NEG),
+  [],
+  `((! :(real -> bool) -> bool) (\(x :real).
+   (((= :real -> real -> bool) ((|+| ((pow ((|+| (sin (-- $0))) (sin
+   $0))) 2)) ((pow ((|-| (cos (-- $0))) (cos $0))) 2))) (& 0))))`),
+ ((SIN_COS_ADD),
+  [],
+  `((! :(real -> bool) -> bool) (\(x :real).
+   ((! :(real -> bool) -> bool) (\(y :real).
+   (((= :real -> real -> bool) ((|+| ((pow ((|-| (sin ((|+| $1) $0)))
+   ((|+| ((|*| (sin $1)) (cos $0))) ((|*| (cos $1)) (sin $0))))) 2))
+   ((pow ((|-| (cos ((|+| $1) $0))) ((|-| ((|*| (cos $1)) (cos $0)))
+   ((|*| (sin $1)) (sin $0))))) 2))) (& 0))))))`),
+ ((COS_BOUNDS),
+  [],
+  `((! :(real -> bool) -> bool) (\(x :real). ((/\ ((|<=| (-- (& 1)))
+   (cos $0))) ((|<=| (cos $0)) (& 1)))))`),
+ ((COS_BOUND),
+  [],
+  `((! :(real -> bool) -> bool) (\(x :real). ((|<=| (abs (cos $0))) (&
+   1))))`),
+ ((SIN_BOUNDS),
+  [],
+  `((! :(real -> bool) -> bool) (\(x :real). ((/\ ((|<=| (-- (& 1)))
+   (sin $0))) ((|<=| (sin $0)) (& 1)))))`),
+ ((SIN_BOUND),
+  [],
+  `((! :(real -> bool) -> bool) (\(x :real). ((|<=| (abs (sin $0))) (&
+   1))))`),
+ ((SIN_CIRCLE),
+  [],
+  `((! :(real -> bool) -> bool) (\(x :real).
+   (((= :real -> real -> bool) ((|+| ((pow (sin $0)) 2)) ((pow (cos
+   $0)) 2))) (& 1))))`),
+ ((COS_0), [], `(((= :real -> real -> bool) (cos (& 0))) (& 1))`),
+ ((SIN_0), [], `(((= :real -> real -> bool) (sin (& 0))) (& 0))`),
+ ((SQRT_EQ),
+  [],
+  `((! :(real -> bool) -> bool) (\(x :real).
+   ((! :(real -> bool) -> bool) (\(y :real). ((==> ((/\
+   (((= :real -> real -> bool) ((pow $1) 2)) $0)) ((|<=| (& 0)) $1)))
+   (((= :real -> real -> bool) $1) (sqrt $0)))))))`),
+ ((POW_ROOT_POS),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num).
+   ((! :(real -> bool) -> bool) (\(x :real). ((==> ((|<=| (& 0)) $0))
+   (((= :real -> real -> bool) ((root (SUC $1)) ((pow $0) (SUC $1))))
+   $0))))))`),
+ ((SQRT_POW2),
+  [],
+  `((! :(real -> bool) -> bool) (\(x :real).
+   (((= :bool -> bool -> bool) (((= :real -> real -> bool) ((pow (sqrt
+   $0)) 2)) $0)) ((|<=| (& 0)) $0))))`),
+ ((SQRT_1), [], `(((= :real -> real -> bool) (sqrt (& 1))) (& 1))`),
+ ((SQRT_0), [], `(((= :real -> real -> bool) (sqrt (& 0))) (& 0))`),
+ ((ROOT_POW_POS),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num).
+   ((! :(real -> bool) -> bool) (\(x :real). ((==> ((|<=| (& 0)) $0))
+   (((= :real -> real -> bool) ((pow ((root (SUC $1)) $0)) (SUC $1)))
+   $0))))))`),
+ ((ROOT_1),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num). (((= :real -> real -> bool)
+   ((root (SUC $0)) (& 1))) (& 1))))`),
+ ((ROOT_POS),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num).
+   ((! :(real -> bool) -> bool) (\(x :real). ((==> ((|<=| (& 0)) $0))
+   ((|<=| (& 0)) ((root (SUC $1)) $0)))))))`),
+ ((ROOT_POS_LT),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num).
+   ((! :(real -> bool) -> bool) (\(x :real). ((==> ((|<| (& 0)) $0))
+   ((|<| (& 0)) ((root (SUC $1)) $0)))))))`),
+ ((ROOT_0),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num). (((= :real -> real -> bool)
+   ((root (SUC $0)) (& 0))) (& 0))))`),
+ ((ROOT_LN),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num).
+   ((! :(real -> bool) -> bool) (\(x :real). ((==> ((|<| (& 0)) $0))
+   (((= :real -> real -> bool) ((root (SUC $1)) $0)) (exp ((/ (ln $0))
+   (& (SUC $1))))))))))`),
+ ((ROOT_LT_LEMMA),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num).
+   ((! :(real -> bool) -> bool) (\(x :real). ((==> ((|<| (& 0)) $0))
+   (((= :real -> real -> bool) ((pow (exp ((/ (ln $0)) (& (SUC $1)))))
+   (SUC $1))) $0))))))`),
+ ((LN_LT_X),
+  [],
+  `((! :(real -> bool) -> bool) (\(x :real). ((==> ((|<| (& 0)) $0))
+   ((|<| (ln $0)) $0))))`),
+ ((LN_POW),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num).
+   ((! :(real -> bool) -> bool) (\(x :real). ((==> ((|<| (& 0)) $0))
+   (((= :real -> real -> bool) (ln ((pow $0) $1))) ((|*| (& $1)) (ln
+   $0))))))))`),
+ ((LN_MONO_LE),
+  [],
+  `((! :(real -> bool) -> bool) (\(x :real).
+   ((! :(real -> bool) -> bool) (\(y :real). ((==> ((/\ ((|<| (& 0))
+   $1)) ((|<| (& 0)) $0))) (((= :bool -> bool -> bool) ((|<=| (ln $1))
+   (ln $0))) ((|<=| $1) $0)))))))`),
+ ((LN_MONO_LT),
+  [],
+  `((! :(real -> bool) -> bool) (\(x :real).
+   ((! :(real -> bool) -> bool) (\(y :real). ((==> ((/\ ((|<| (& 0))
+   $1)) ((|<| (& 0)) $0))) (((= :bool -> bool -> bool) ((|<| (ln $1))
+   (ln $0))) ((|<| $1) $0)))))))`),
+ ((LN_DIV),
+  [],
+  `((! :(real -> bool) -> bool) (\(x :real).
+   ((! :(real -> bool) -> bool) (\(y :real). ((==> ((/\ ((|<| (& 0))
+   $1)) ((|<| (& 0)) $0))) (((= :real -> real -> bool) (ln ((/ $1)
+   $0))) ((|-| (ln $1)) (ln $0))))))))`),
+ ((LN_INV),
+  [],
+  `((! :(real -> bool) -> bool) (\(x :real). ((==> ((|<| (& 0)) $0))
+   (((= :real -> real -> bool) (ln (inv $0))) (-- (ln $0))))))`),
+ ((LN_1), [], `(((= :real -> real -> bool) (ln (& 1))) (& 0))`),
+ ((LN_INJ),
+  [],
+  `((! :(real -> bool) -> bool) (\(x :real).
+   ((! :(real -> bool) -> bool) (\(y :real). ((==> ((/\ ((|<| (& 0))
+   $1)) ((|<| (& 0)) $0))) (((= :bool -> bool -> bool)
+   (((= :real -> real -> bool) (ln $1)) (ln $0)))
+   (((= :real -> real -> bool) $1) $0)))))))`),
+ ((LN_MUL),
+  [],
+  `((! :(real -> bool) -> bool) (\(x :real).
+   ((! :(real -> bool) -> bool) (\(y :real). ((==> ((/\ ((|<| (& 0))
+   $1)) ((|<| (& 0)) $0))) (((= :real -> real -> bool) (ln ((|*| $1)
+   $0))) ((|+| (ln $1)) (ln $0))))))))`),
+ ((EXP_LN),
+  [],
+  `((! :(real -> bool) -> bool) (\(x :real).
+   (((= :bool -> bool -> bool) (((= :real -> real -> bool) (exp (ln
+   $0))) $0)) ((|<| (& 0)) $0))))`),
+ ((LN_EXP),
+  [],
+  `((! :(real -> bool) -> bool) (\(x :real).
+   (((= :real -> real -> bool) (ln (exp $0))) $0)))`),
+ ((EXP_TOTAL),
+  [],
+  `((! :(real -> bool) -> bool) (\(y :real). ((==> ((|<| (& 0)) $0))
+   ((? :(real -> bool) -> bool) (\(x :real).
+   (((= :real -> real -> bool) (exp $0)) $1))))))`),
+ ((EXP_TOTAL_LEMMA),
+  [],
+  `((! :(real -> bool) -> bool) (\(y :real). ((==> ((|<=| (& 1)) $0))
+   ((? :(real -> bool) -> bool) (\(x :real). ((/\ ((|<=| (& 0)) $0))
+   ((/\ ((|<=| $0) ((|-| $1) (& 1)))) (((= :real -> real -> bool) (exp
+   $0)) $1))))))))`),
+ ((EXP_INJ),
+  [],
+  `((! :(real -> bool) -> bool) (\(x :real).
+   ((! :(real -> bool) -> bool) (\(y :real).
+   (((= :bool -> bool -> bool) (((= :real -> real -> bool) (exp $1))
+   (exp $0))) (((= :real -> real -> bool) $1) $0))))))`),
+ ((EXP_MONO_LE),
+  [],
+  `((! :(real -> bool) -> bool) (\(x :real).
+   ((! :(real -> bool) -> bool) (\(y :real).
+   (((= :bool -> bool -> bool) ((|<=| (exp $1)) (exp $0))) ((|<=| $1)
+   $0))))))`),
+ ((EXP_MONO_LT),
+  [],
+  `((! :(real -> bool) -> bool) (\(x :real).
+   ((! :(real -> bool) -> bool) (\(y :real).
+   (((= :bool -> bool -> bool) ((|<| (exp $1)) (exp $0))) ((|<| $1)
+   $0))))))`),
+ ((EXP_MONO_IMP),
+  [],
+  `((! :(real -> bool) -> bool) (\(x :real).
+   ((! :(real -> bool) -> bool) (\(y :real). ((==> ((|<| $1) $0))
+   ((|<| (exp $1)) (exp $0)))))))`),
+ ((EXP_SUB),
+  [],
+  `((! :(real -> bool) -> bool) (\(x :real).
+   ((! :(real -> bool) -> bool) (\(y :real).
+   (((= :real -> real -> bool) (exp ((|-| $1) $0))) ((/ (exp $1)) (exp
+   $0)))))))`),
+ ((EXP_N),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num).
+   ((! :(real -> bool) -> bool) (\(x :real).
+   (((= :real -> real -> bool) (exp ((|*| (& $1)) $0))) ((pow (exp
+   $0)) $1))))))`),
+ ((EXP_POS_LT),
+  [],
+  `((! :(real -> bool) -> bool) (\(x :real). ((|<| (& 0)) (exp
+   $0))))`),
+ ((EXP_NZ),
+  [],
+  `((! :(real -> bool) -> bool) (\(x :real). (~
+   (((= :real -> real -> bool) (exp $0)) (& 0)))))`),
+ ((EXP_POS_LE),
+  [],
+  `((! :(real -> bool) -> bool) (\(x :real). ((|<=| (& 0)) (exp
+   $0))))`),
+ ((EXP_ADD),
+  [],
+  `((! :(real -> bool) -> bool) (\(x :real).
+   ((! :(real -> bool) -> bool) (\(y :real).
+   (((= :real -> real -> bool) (exp ((|+| $1) $0))) ((|*| (exp $1))
+   (exp $0)))))))`),
+ ((EXP_NEG),
+  [],
+  `((! :(real -> bool) -> bool) (\(x :real).
+   (((= :real -> real -> bool) (exp (-- $0))) (inv (exp $0)))))`),
+ ((EXP_NEG_MUL2),
+  [],
+  `((! :(real -> bool) -> bool) (\(x :real).
+   (((= :real -> real -> bool) ((|*| (exp (-- $0))) (exp $0))) (&
+   1))))`),
+ ((EXP_NEG_MUL),
+  [],
+  `((! :(real -> bool) -> bool) (\(x :real).
+   (((= :real -> real -> bool) ((|*| (exp $0)) (exp (-- $0)))) (&
+   1))))`),
+ ((EXP_ADD_MUL),
+  [],
+  `((! :(real -> bool) -> bool) (\(x :real).
+   ((! :(real -> bool) -> bool) (\(y :real).
+   (((= :real -> real -> bool) ((|*| (exp ((|+| $1) $0))) (exp (--
+   $1)))) (exp $0))))))`),
+ ((EXP_LT_1),
+  [],
+  `((! :(real -> bool) -> bool) (\(x :real). ((==> ((|<| (& 0)) $0))
+   ((|<| (& 1)) (exp $0)))))`),
+ ((EXP_LE_X),
+  [],
+  `((! :(real -> bool) -> bool) (\(x :real). ((==> ((|<=| (& 0)) $0))
+   ((|<=| ((|+| (& 1)) $0)) (exp $0)))))`),
+ ((EXP_0), [], `(((= :real -> real -> bool) (exp (& 0))) (& 1))`),
+ ((DIFF_COS),
+  [],
+  `((! :(real -> bool) -> bool) (\(x :real). (((diffl cos) (-- (sin
+   $0))) $0)))`),
+ ((DIFF_SIN),
+  [],
+  `((! :(real -> bool) -> bool) (\(x :real). (((diffl sin) (cos $0))
+   $0)))`),
+ ((DIFF_EXP),
+  [],
+  `((! :(real -> bool) -> bool) (\(x :real). (((diffl exp) (exp $0))
+   $0)))`),
+ ((SIN_NEGLEMMA),
+  [],
+  `((! :(real -> bool) -> bool) (\(x :real).
+   (((= :real -> real -> bool) (-- (sin $0))) (suminf (\(n :num). (--
+   ((|*| ((\(n :num). ((((COND :bool -> real -> real -> real) (EVEN
+   $0)) (& 0)) ((/ ((pow (-- (& 1))) ((DIV ((- $0) 1)) 2))) (& (FACT
+   $0))))) $0)) ((pow $1) $0))))))))`),
+ ((COS_FDIFF),
+  [],
+  `(((= :(num -> real) -> (num -> real) -> bool) (diffs (\(n :num).
+   ((((COND :bool -> real -> real -> real) (EVEN $0)) ((/ ((pow (-- (&
+   1))) ((DIV $0) 2))) (& (FACT $0)))) (& 0))))) (\(n :num). (--
+   ((\(n :num). ((((COND :bool -> real -> real -> real) (EVEN $0)) (&
+   0)) ((/ ((pow (-- (& 1))) ((DIV ((- $0) 1)) 2))) (& (FACT $0)))))
+   $0))))`),
+ ((SIN_FDIFF),
+  [],
+  `(((= :(num -> real) -> (num -> real) -> bool) (diffs (\(n :num).
+   ((((COND :bool -> real -> real -> real) (EVEN $0)) (& 0)) ((/ ((pow
+   (-- (& 1))) ((DIV ((- $0) 1)) 2))) (& (FACT $0))))))) (\(n :num).
+   ((((COND :bool -> real -> real -> real) (EVEN $0)) ((/ ((pow (-- (&
+   1))) ((DIV $0) 2))) (& (FACT $0)))) (& 0))))`),
+ ((EXP_FDIFF),
+  [],
+  `(((= :(num -> real) -> (num -> real) -> bool) (diffs (\(n :num).
+   (inv (& (FACT $0)))))) (\(n :num). (inv (& (FACT $0)))))`),
+ ((COS_CONVERGES),
+  [],
+  `((! :(real -> bool) -> bool) (\(x :real). ((sums (\(n :num). ((|*|
+   ((\(n :num). ((((COND :bool -> real -> real -> real) (EVEN $0)) ((/
+   ((pow (-- (& 1))) ((DIV $0) 2))) (& (FACT $0)))) (& 0))) $0)) ((pow
+   $1) $0)))) (cos $0))))`),
+ ((SIN_CONVERGES),
+  [],
+  `((! :(real -> bool) -> bool) (\(x :real). ((sums (\(n :num). ((|*|
+   ((\(n :num). ((((COND :bool -> real -> real -> real) (EVEN $0)) (&
+   0)) ((/ ((pow (-- (& 1))) ((DIV ((- $0) 1)) 2))) (& (FACT $0)))))
+   $0)) ((pow $1) $0)))) (sin $0))))`),
+ ((EXP_CONVERGES),
+  [],
+  `((! :(real -> bool) -> bool) (\(x :real). ((sums (\(n :num). ((|*|
+   ((\(n :num). (inv (& (FACT $0)))) $0)) ((pow $1) $0)))) (exp
+   $0))))`)]

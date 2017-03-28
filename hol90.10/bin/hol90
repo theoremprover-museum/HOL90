@@ -1,0 +1,135 @@
+#!/bin/sh
+holdir=/usr/groups/hol/hol90.10
+version=10
+sml=njsml.1xx
+# Script for executing hol90.
+# Parameters are added before these comments by the Makefile.
+#
+# usage: hol90 [-ml <sml>] [-h <heapsize>] [-u <exec>]
+#
+# (where <sml>     = njsml.1xx, njsml.93, polyml, etc.
+#       <heapsize> = size of heap in Kbytes for Poly/ML (default 10000)
+#       <exec>     = path to a user's executable/heap/database)
+#
+# e.g. hol90 -ml njsml.1xx -u /my/hol/heap
+
+# Default parameters
+#
+hol=hol90
+heapsize=10000
+exec=""
+arch=`$holdir/tools/architecture`
+
+# Process the command-line options
+#
+while test "$#" != "0"
+do
+   opt=$1
+   shift
+   arg=$1
+   if test "$#" != "0"
+   then shift
+   else opt=""
+   fi
+   case $opt in
+   -ml)
+      sml=$arg
+      ;;
+   -h)
+      heapsize=$arg
+      ;;
+   -u)
+      exec=$arg
+      ;;
+   *)
+      echo 'usage: hol90 [-ml <sml>] [-h <heapsize>] [-u <exec>]'
+      echo '(where <sml> = njsml.1xx, njsml.93, polyml, etc.'
+      echo ' <heapsize> = size of heap in Kbytes for Poly/ML (default 10000)'
+      echo " <exec> = path to a user's executable/heap/database)"
+      exit 1
+   esac
+done
+
+# The name of the SML implementation
+#
+case $sml in
+     njsml.1xx*) smlname="Standard ML of New Jersey, Version 1xx";;
+     njsml.93) smlname="Standard ML of New Jersey, Version 0.93";;
+     njsml*) smlname="Standard ML of New Jersey";;
+     polyml*) smlname="Poly/ML";;
+     mosml*) smlname="Moscow ML";;
+     mlworks*) smlname="MLWorks";;
+     *) smlname="\`$sml'";;
+esac
+
+# Error text
+#
+if [ -z "$exec" ]
+then error="hol90.$version\
+ is not built for the \`$arch' architecture with $smlname"
+else error="$exec not found or cannot be used with this configuration"
+fi
+
+# Execute HOL90
+#
+success="exit 0"
+failure="kill -KILL $$"   # Forces the filter process to die and returns error
+#
+case $sml in
+njsml.93)
+   if [ -z "$exec" ]
+   then exec=$holdir/bin/$sml/$hol.$arch
+   fi
+   if [ -x $exec ]
+   then
+#      Force filter to ignore SIGINT (control-C)
+      (trap "" 2;\
+       $holdir/bin/quote-filter.$arch 2>/dev/null) |\
+      if $exec
+      then $success
+      else $failure
+      fi
+   else
+      echo $error
+   fi;;
+njsml*)
+   if [ -z "$exec" ]
+   then heap=$holdir/bin/$sml/.heap/$hol.$arch
+#   else heap=$exec
+   else heap=$exec.$arch
+   fi
+   if [ -r $heap ]
+   then
+#      Force filter to ignore SIGINT (control-C)
+      (trap "" 2;\
+       $holdir/bin/quote-filter.$arch 2>/dev/null) |\
+      if $holdir/bin/$sml/sml @SMLload=$heap @SMLdebug=/dev/null
+      then $success
+      else $failure
+      fi
+   else
+      echo $error
+   fi;;
+polyml*)
+   if [ -z "$exec" ]
+   then database=$holdir/bin/$sml/$hol\_dbase.$arch; readonly="-r"
+   else database=$exec; readonly=""
+   fi
+   if [ -r $database ]
+   then
+#      Force filter to ignore SIGINT (control-C)
+      (trap "" 2;\
+#      Issue a carriage return to get PolyML prompt
+       echo;\
+       $holdir/bin/quote-filter.$arch 2>/dev/null) |\
+      if $holdir/bin/$sml/sml.$arch -noDisplay -h $heapsize $readonly $database
+      then $success
+      else $failure
+      fi
+   else
+      echo $error
+   fi;;
+mosml*) echo $error;;
+mlworks*) echo $error;;
+*) echo $error;;
+esac

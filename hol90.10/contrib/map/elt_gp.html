@@ -1,0 +1,197 @@
+<TITLE>Theory: elt_gp</TITLE>
+<H1>Theory: elt_gp</H1>
+<H1>Parents</H1>
+    <UL>
+    <LI><A HREF = "HOL.html"><STRONG>HOL</STRONG></A>
+    </UL>
+
+
+<HR>
+<H1>Type constants</H1>
+    <UL>
+    
+    </UL>
+
+
+<HR>
+<H1>Term constants</H1>
+    <UL>
+    <LI><STRONG>GROUP</STRONG><EM>:('a -> bool) # ('a -> 'a -> 'a) ->
+                                   bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>ID</STRONG><EM>:('a -> bool) # ('a -> 'a -> 'a) -> 'a</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>INV</STRONG><EM>:('a -> bool) # ('a -> 'a -> 'a) -> 'a ->
+                                 'a</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    </UL>
+
+
+<HR>
+<H1>Axioms</H1>
+<DL>
+
+</DL>
+
+
+<HR>
+<H1>Definitions</H1>
+<DL>
+<DT><STRONG>GROUP_DEF</STRONG>
+<DD>
+<PRE>
+|- !G prod.
+     GROUP (G,prod) =
+     (!x y. G x /\ G y ==> G (prod x y)) /\
+     (!x y z.
+       G x /\ G y /\ G z ==> (prod (prod x y) z = prod x (prod y z))) /\
+     (?e.
+       G e /\
+       (!x. G x ==> (prod e x = x)) /\
+       (!x. G x ==> (?y. G y /\ (prod y x = e))))
+</PRE>
+
+<DT><STRONG>ID_DEF</STRONG>
+<DD>
+<PRE>
+|- !G prod.
+     ID (G,prod) =
+     (@e.
+       G e /\
+       (!x. G x ==> (prod e x = x)) /\
+       (!x. G x ==> (?y. G y /\ (prod y x = e))))
+</PRE>
+
+<DT><STRONG>INV_DEF</STRONG>
+<DD>
+<PRE>
+|- !G prod x. INV (G,prod) x = (@y. G y /\ (prod y x = ID (G,prod)))
+</PRE>
+
+</DL>
+
+
+<HR>
+<H1>Theorems</H1>
+<DL>
+<DT><STRONG>CLOSURE</STRONG>
+<DD>
+<PRE>
+|- GROUP (G,prod) ==> (!x y. G x /\ G y ==> G (prod x y))
+</PRE>
+
+<DT><STRONG>GROUP_ASSOC</STRONG>
+<DD>
+<PRE>
+|- GROUP (G,prod) ==>
+   (!x y z. G x /\ G y /\ G z ==> (prod (prod x y) z = prod x (prod y z)))
+</PRE>
+
+<DT><STRONG>ID_LEMMA</STRONG>
+<DD>
+<PRE>
+|- GROUP (G,prod) ==>
+   G (ID (G,prod)) /\
+   (!x. G x ==> (prod (ID (G,prod)) x = x)) /\
+   (!x. G x ==> (prod x (ID (G,prod)) = x)) /\
+   (!x. G x ==> (?y. G y /\ (prod y x = ID (G,prod))))
+</PRE>
+
+<DT><STRONG>INV_CLOSURE</STRONG>
+<DD>
+<PRE>
+|- GROUP (G,prod) ==> (!x. G x ==> G (INV (G,prod) x))
+</PRE>
+
+<DT><STRONG>LEFT_RIGHT_INV</STRONG>
+<DD>
+<PRE>
+|- GROUP (G,prod) ==>
+   (!x y.
+     G x /\ G y ==> (prod y x = ID (G,prod)) ==> (prod x y = ID (G,prod)))
+</PRE>
+
+<DT><STRONG>INV_LEMMA</STRONG>
+<DD>
+<PRE>
+|- GROUP (G,prod) ==>
+   (!x.
+     G x ==>
+     (prod (INV (G,prod) x) x = ID (G,prod)) /\
+     (prod x (INV (G,prod) x) = ID (G,prod)))
+</PRE>
+
+<DT><STRONG>LEFT_CANCELLATION</STRONG>
+<DD>
+<PRE>
+|- GROUP (G,prod) ==>
+   (!x y z. G x /\ G y /\ G z ==> (prod x y = prod x z) ==> (y = z))
+</PRE>
+
+<DT><STRONG>RIGHT_CANCELLATION</STRONG>
+<DD>
+<PRE>
+|- GROUP (G,prod) ==>
+   (!x y z. G x /\ G y /\ G z ==> (prod y x = prod z x) ==> (y = z))
+</PRE>
+
+<DT><STRONG>RIGHT_ONE_ONE_ONTO</STRONG>
+<DD>
+<PRE>
+|- GROUP (G,prod) ==>
+   (!x y.
+     G x /\ G y ==>
+     (?z. G z /\ (prod x z = y) /\ (!u. G u /\ (prod x u = y) ==> (u = z))))
+</PRE>
+
+<DT><STRONG>LEFT_ONE_ONE_ONTO</STRONG>
+<DD>
+<PRE>
+|- GROUP (G,prod) ==>
+   (!x y.
+     G x /\ G y ==>
+     (?z. G z /\ (prod z x = y) /\ (!u. G u /\ (prod u x = y) ==> (u = z))))
+</PRE>
+
+<DT><STRONG>UNIQUE_ID</STRONG>
+<DD>
+<PRE>
+|- GROUP (G,prod) ==>
+   (!e.
+     G e /\ ((?x. G x /\ (prod e x = x)) \/ (?x. G x /\ (prod x e = x))) ==>
+     (e = ID (G,prod)))
+</PRE>
+
+<DT><STRONG>UNIQUE_INV</STRONG>
+<DD>
+<PRE>
+|- GROUP (G,prod) ==>
+   (!x.
+     G x ==> (!u. G u /\ (prod u x = ID (G,prod)) ==> (u = INV (G,prod) x)))
+</PRE>
+
+<DT><STRONG>INV_ID_LEMMA</STRONG>
+<DD>
+<PRE>
+|- GROUP (G,prod) ==> (INV (G,prod) (ID (G,prod)) = ID (G,prod))
+</PRE>
+
+<DT><STRONG>INV_INV_LEMMA</STRONG>
+<DD>
+<PRE>
+|- GROUP (G,prod) ==> (!x. G x ==> (INV (G,prod) (INV (G,prod) x) = x))
+</PRE>
+
+<DT><STRONG>DIST_INV_LEMMA</STRONG>
+<DD>
+<PRE>
+|- GROUP (G,prod) ==>
+   (!x y.
+     G x /\ G y ==>
+     (prod (INV (G,prod) x) (INV (G,prod) y) = INV (G,prod) (prod y x)))
+</PRE>
+
+</DL>
+
+
+<HR>

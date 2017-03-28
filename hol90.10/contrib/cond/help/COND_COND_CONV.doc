@@ -1,0 +1,33 @@
+\DOC COND_COND_CONV
+
+\TYPE {COND_COND_CONV : conv}
+
+\SYNOPSIS
+reduces conditional of a conditional with the same condition.
+
+\LIBRARY cond
+
+\DESCRIBE
+reduces conditional of a conditional with the same condition.
+
+{
+ |- A => (A => x|y)|z     |- A => (~A => x|y)|z
+======================   =========================
+ |- A => x|z              |- A => y|z
+}
+
+\EXAMPLE
+
+{
+- COND_COND_CONV
+  (--`A => (A => 5|6)|7`--);
+val it = |- (A => (A => 5 | 6) | 7) = (A => 5 | 7) : thm
+- COND_COND_CONV
+  (--`A => (~A => 5|6)|7`--);
+val it = |- (A => ((~A) => 5 | 6) | 7) = (A => 6 | 7) : thm
+}
+
+\SEEALSO
+COND_COND_RULE COND_COND_TAC
+
+\ENDDOC

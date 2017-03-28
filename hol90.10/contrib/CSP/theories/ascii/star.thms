@@ -1,0 +1,68 @@
+thid = (star, 784032784, 128156)
+axioms = []
+definitions =
+[((STAR),
+  [],
+  `((! :('a set -> bool) -> bool) (\(A :'a set).
+   (((= :'a list set -> 'a list set -> bool)
+   ((STAR :'a set -> 'a list set) $0))
+   ((GSPEC :('a list -> 'a list # bool) -> 'a list set)
+   (\(s :'a list). (((, :'a list -> bool -> 'a list # bool) $0)
+   (((= :'a list -> 'a list -> bool)
+   (((RESTRICT :'a list -> 'a set -> 'a list) $0) $1)) $0)))))))`)]
+theorems =
+[((SUBSET_STAR),
+  [],
+  `((! :('a set -> bool) -> bool) (\(A :'a set).
+   ((! :('a set -> bool) -> bool) (\(B :'a set). ((==>
+   (((SUBSET :'a set -> 'a set -> bool) $1) $0))
+   (((SUBSET :'a list set -> 'a list set -> bool)
+   ((STAR :'a set -> 'a list set) $1)) ((STAR :'a set -> 'a list set)
+   $0)))))))`),
+ ((STAR_INDUCT),
+  [],
+  `((! :('a set -> bool) -> bool) (\(A :'a set).
+   (((= :'a list set -> 'a list set -> bool)
+   ((STAR :'a set -> 'a list set) $0))
+   ((GSPEC :('a list -> 'a list # bool) -> 'a list set)
+   (\(t :'a list). (((, :'a list -> bool -> 'a list # bool) $0) ((\/
+   (((= :'a list -> 'a list -> bool) $0) (NIL :'a list))) ((/\
+   (((IN :'a -> 'a set -> bool) ((HD :'a list -> 'a) $0)) $1))
+   (((IN :'a list -> 'a list set -> bool) ((TL :'a list -> 'a list)
+   $0)) ((STAR :'a set -> 'a list set) $1))))))))))`),
+ ((APPEND_STAR),
+  [],
+  `((! :('a list -> bool) -> bool) (\(s :'a list).
+   ((! :('a list -> bool) -> bool) (\(t :'a list).
+   ((! :('a set -> bool) -> bool) (\(A :'a set).
+   (((= :bool -> bool -> bool) (((IN :'a list -> 'a list set -> bool)
+   (((APPEND :'a list -> 'a list -> 'a list) $2) $1))
+   ((STAR :'a set -> 'a list set) $0))) ((/\
+   (((IN :'a list -> 'a list set -> bool) $2)
+   ((STAR :'a set -> 'a list set) $0)))
+   (((IN :'a list -> 'a list set -> bool) $1)
+   ((STAR :'a set -> 'a list set) $0))))))))))`),
+ ((CONS_STAR),
+  [],
+  `((! :('a -> bool) -> bool) (\(a :'a).
+   ((! :('a list -> bool) -> bool) (\(t :'a list).
+   ((! :('a set -> bool) -> bool) (\(A :'a set).
+   (((= :bool -> bool -> bool) (((IN :'a list -> 'a list set -> bool)
+   (((CONS :'a -> 'a list -> 'a list) $2) $1))
+   ((STAR :'a set -> 'a list set) $0))) ((/\
+   (((IN :'a -> 'a set -> bool) $2) $0))
+   (((IN :'a list -> 'a list set -> bool) $1)
+   ((STAR :'a set -> 'a list set) $0))))))))))`),
+ ((SINGLE_STAR),
+  [],
+  `((! :('a -> bool) -> bool) (\(x :'a).
+   ((! :('a set -> bool) -> bool) (\(A :'a set).
+   (((= :bool -> bool -> bool) (((IN :'a list -> 'a list set -> bool)
+   (((CONS :'a -> 'a list -> 'a list) $1) (NIL :'a list)))
+   ((STAR :'a set -> 'a list set) $0))) (((IN :'a -> 'a set -> bool)
+   $1) $0))))))`),
+ ((NIL_IN_STAR),
+  [],
+  `((! :('a set -> bool) -> bool) (\(A :'a set).
+   (((IN :'a list -> 'a list set -> bool) (NIL :'a list))
+   ((STAR :'a set -> 'a list set) $0))))`)]

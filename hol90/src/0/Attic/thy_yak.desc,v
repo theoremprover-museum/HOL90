@@ -1,0 +1,667 @@
+head	1.2;
+access;
+symbols
+	HOL97:1.1.1.1.0.6
+	bpHOL97:1.1.1.1
+	hol90_9_alpha:1.1.1.1
+	hol90_pre8_for_multiple_compilers:1.1.1.1.0.4
+	hol90_pre8_after_donalds_separate_compilation_changes:1.1.1.1
+	hol90_8_after_merging_Konrad_Elsa:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.2
+date	96.02.08.00.32.29;	author drs1004;	state dead;
+branches;
+next	1.1;
+
+1.1
+date	95.10.16.13.30.00;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.30.00;	author rjb;	state Exp;
+branches
+	1.1.1.1.6.1;
+next	;
+
+1.1.1.1.6.1
+date	97.06.11.17.24.53;	author kxs;	state dead;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.2
+log
+@New theory mechanism, by Donald Syme, and many other enhancements.
+@
+text
+@
+state 0:
+
+	START : . TERM 
+
+	ident	shift 6
+	db_index	shift 5
+	num	shift 4
+	lparen	shift 3
+	string_	shift 2
+
+	START	goto 47
+	TERM	goto 1
+
+	.	error
+
+
+state 1:
+
+	START : TERM .  (reduce by rule 0)
+
+
+
+	.	reduce by rule 0
+
+
+state 2:
+
+	TERM : string_ .  (reduce by rule 2)
+
+
+
+	.	reduce by rule 2
+
+
+state 3:
+
+	TERM : lparen . ident colon TYPE rparen 
+	TERM : lparen . lambda lparen ident colon TYPE rparen dot TERM rparen 
+	TERM : lparen . TERM TERM rparen 
+
+	ident	shift 9
+	lambda	shift 8
+	db_index	shift 5
+	num	shift 4
+	lparen	shift 3
+	string_	shift 2
+
+	TERM	goto 7
+
+	.	error
+
+
+state 4:
+
+	TERM : num .  (reduce by rule 3)
+
+
+
+	.	reduce by rule 3
+
+
+state 5:
+
+	TERM : db_index .  (reduce by rule 1)
+
+
+
+	.	reduce by rule 1
+
+
+state 6:
+
+	TERM : ident .  (reduce by rule 4)
+
+
+
+	.	reduce by rule 4
+
+
+state 7:
+
+	TERM : lparen TERM . TERM rparen 
+
+	ident	shift 6
+	db_index	shift 5
+	num	shift 4
+	lparen	shift 3
+	string_	shift 2
+
+	TERM	goto 10
+
+	.	error
+
+
+state 8:
+
+	TERM : lparen lambda . lparen ident colon TYPE rparen dot TERM rparen 
+
+	lparen	shift 11
+
+
+	.	error
+
+
+state 9:
+
+	TERM : ident .  (reduce by rule 4)
+	TERM : lparen ident . colon TYPE rparen 
+
+	colon	shift 12
+
+
+	.	reduce by rule 4
+
+
+state 10:
+
+	TERM : lparen TERM TERM . rparen 
+
+	rparen	shift 13
+
+
+	.	error
+
+
+state 11:
+
+	TERM : lparen lambda lparen . ident colon TYPE rparen dot TERM rparen 
+
+	ident	shift 14
+
+
+	.	error
+
+
+state 12:
+
+	TERM : lparen ident colon . TYPE rparen 
+
+	type_ident	shift 24
+	type_var_ident	shift 23
+	type_lparen	shift 22
+
+	TYPE	goto 21
+	HASH_TYPE	goto 20
+	PLUS_TYPE	goto 19
+	APP_TYPE	goto 18
+	TYPE_ARG	goto 17
+	BASIC_TYPE_ARG	goto 16
+	BASIC	goto 15
+
+	.	error
+
+
+state 13:
+
+	TERM : lparen TERM TERM rparen .  (reduce by rule 7)
+
+
+
+	.	reduce by rule 7
+
+
+state 14:
+
+	TERM : lparen lambda lparen ident . colon TYPE rparen dot TERM rparen 
+
+	colon	shift 25
+
+
+	.	error
+
+
+state 15:
+
+	APP_TYPE : BASIC .  (reduce by rule 15)
+	BASIC_TYPE_ARG : BASIC .  (reduce by rule 19)
+
+	type_ident	reduce by rule 19
+	rparen	reduce by rule 15
+	type_rparen	reduce by rule 15
+	type_comma	reduce by rule 15
+	type_right_arrow	reduce by rule 15
+	type_hash	reduce by rule 15
+	type_plus	reduce by rule 15
+
+
+	.	error
+
+
+state 16:
+
+	TYPE_ARG : BASIC_TYPE_ARG .  (reduce by rule 17)
+
+
+
+	.	reduce by rule 17
+
+
+state 17:
+
+	APP_TYPE : TYPE_ARG . type_ident 
+	TYPE_ARG : TYPE_ARG . type_ident 
+
+	type_ident	shift 26
+
+
+	.	error
+
+
+state 18:
+
+	HASH_TYPE : APP_TYPE . type_hash HASH_TYPE 
+	HASH_TYPE : APP_TYPE .  (reduce by rule 13)
+
+	type_hash	shift 27
+
+
+	.	reduce by rule 13
+
+
+state 19:
+
+	TYPE : PLUS_TYPE . type_right_arrow TYPE 
+	TYPE : PLUS_TYPE .  (reduce by rule 9)
+
+	type_right_arrow	shift 28
+
+
+	.	reduce by rule 9
+
+
+state 20:
+
+	PLUS_TYPE : HASH_TYPE . type_plus PLUS_TYPE 
+	PLUS_TYPE : HASH_TYPE .  (reduce by rule 11)
+
+	type_plus	shift 29
+
+
+	.	reduce by rule 11
+
+
+state 21:
+
+	TERM : lparen ident colon TYPE . rparen 
+
+	rparen	shift 30
+
+
+	.	error
+
+
+state 22:
+
+	BASIC_TYPE_ARG : type_lparen . TYPE type_comma TYPE_LIST type_rparen 
+	BASIC : type_lparen . TYPE type_rparen 
+
+	type_ident	shift 24
+	type_var_ident	shift 23
+	type_lparen	shift 22
+
+	TYPE	goto 31
+	HASH_TYPE	goto 20
+	PLUS_TYPE	goto 19
+	APP_TYPE	goto 18
+	TYPE_ARG	goto 17
+	BASIC_TYPE_ARG	goto 16
+	BASIC	goto 15
+
+	.	error
+
+
+state 23:
+
+	BASIC : type_var_ident .  (reduce by rule 22)
+
+
+
+	.	reduce by rule 22
+
+
+state 24:
+
+	BASIC : type_ident .  (reduce by rule 23)
+
+
+
+	.	reduce by rule 23
+
+
+state 25:
+
+	TERM : lparen lambda lparen ident colon . TYPE rparen dot TERM rparen 
+
+	type_ident	shift 24
+	type_var_ident	shift 23
+	type_lparen	shift 22
+
+	TYPE	goto 32
+	HASH_TYPE	goto 20
+	PLUS_TYPE	goto 19
+	APP_TYPE	goto 18
+	TYPE_ARG	goto 17
+	BASIC_TYPE_ARG	goto 16
+	BASIC	goto 15
+
+	.	error
+
+
+state 26:
+
+	APP_TYPE : TYPE_ARG type_ident .  (reduce by rule 14)
+	TYPE_ARG : TYPE_ARG type_ident .  (reduce by rule 16)
+
+	type_ident	reduce by rule 16
+	rparen	reduce by rule 14
+	type_rparen	reduce by rule 14
+	type_comma	reduce by rule 14
+	type_right_arrow	reduce by rule 14
+	type_hash	reduce by rule 14
+	type_plus	reduce by rule 14
+
+
+	.	error
+
+
+state 27:
+
+	HASH_TYPE : APP_TYPE type_hash . HASH_TYPE 
+
+	type_ident	shift 24
+	type_var_ident	shift 23
+	type_lparen	shift 22
+
+	HASH_TYPE	goto 33
+	APP_TYPE	goto 18
+	TYPE_ARG	goto 17
+	BASIC_TYPE_ARG	goto 16
+	BASIC	goto 15
+
+	.	error
+
+
+state 28:
+
+	TYPE : PLUS_TYPE type_right_arrow . TYPE 
+
+	type_ident	shift 24
+	type_var_ident	shift 23
+	type_lparen	shift 22
+
+	TYPE	goto 34
+	HASH_TYPE	goto 20
+	PLUS_TYPE	goto 19
+	APP_TYPE	goto 18
+	TYPE_ARG	goto 17
+	BASIC_TYPE_ARG	goto 16
+	BASIC	goto 15
+
+	.	error
+
+
+state 29:
+
+	PLUS_TYPE : HASH_TYPE type_plus . PLUS_TYPE 
+
+	type_ident	shift 24
+	type_var_ident	shift 23
+	type_lparen	shift 22
+
+	HASH_TYPE	goto 20
+	PLUS_TYPE	goto 35
+	APP_TYPE	goto 18
+	TYPE_ARG	goto 17
+	BASIC_TYPE_ARG	goto 16
+	BASIC	goto 15
+
+	.	error
+
+
+state 30:
+
+	TERM : lparen ident colon TYPE rparen .  (reduce by rule 5)
+
+
+
+	.	reduce by rule 5
+
+
+state 31:
+
+	BASIC_TYPE_ARG : type_lparen TYPE . type_comma TYPE_LIST type_rparen 
+	BASIC : type_lparen TYPE . type_rparen 
+
+	type_rparen	shift 37
+	type_comma	shift 36
+
+
+	.	error
+
+
+state 32:
+
+	TERM : lparen lambda lparen ident colon TYPE . rparen dot TERM rparen 
+
+	rparen	shift 38
+
+
+	.	error
+
+
+state 33:
+
+	HASH_TYPE : APP_TYPE type_hash HASH_TYPE .  (reduce by rule 12)
+
+
+
+	.	reduce by rule 12
+
+
+state 34:
+
+	TYPE : PLUS_TYPE type_right_arrow TYPE .  (reduce by rule 8)
+
+
+
+	.	reduce by rule 8
+
+
+state 35:
+
+	PLUS_TYPE : HASH_TYPE type_plus PLUS_TYPE .  (reduce by rule 10)
+
+
+
+	.	reduce by rule 10
+
+
+state 36:
+
+	BASIC_TYPE_ARG : type_lparen TYPE type_comma . TYPE_LIST type_rparen 
+
+	type_ident	shift 24
+	type_var_ident	shift 23
+	type_lparen	shift 22
+
+	TYPE	goto 40
+	HASH_TYPE	goto 20
+	PLUS_TYPE	goto 19
+	APP_TYPE	goto 18
+	TYPE_ARG	goto 17
+	BASIC_TYPE_ARG	goto 16
+	TYPE_LIST	goto 39
+	BASIC	goto 15
+
+	.	error
+
+
+state 37:
+
+	BASIC : type_lparen TYPE type_rparen .  (reduce by rule 24)
+
+
+
+	.	reduce by rule 24
+
+
+state 38:
+
+	TERM : lparen lambda lparen ident colon TYPE rparen . dot TERM rparen 
+
+	dot	shift 41
+
+
+	.	error
+
+
+state 39:
+
+	BASIC_TYPE_ARG : type_lparen TYPE type_comma TYPE_LIST . type_rparen 
+
+	type_rparen	shift 42
+
+
+	.	error
+
+
+state 40:
+
+	TYPE_LIST : TYPE . type_comma TYPE_LIST 
+	TYPE_LIST : TYPE .  (reduce by rule 21)
+
+	type_comma	shift 43
+
+
+	.	reduce by rule 21
+
+
+state 41:
+
+	TERM : lparen lambda lparen ident colon TYPE rparen dot . TERM rparen 
+
+	ident	shift 6
+	db_index	shift 5
+	num	shift 4
+	lparen	shift 3
+	string_	shift 2
+
+	TERM	goto 44
+
+	.	error
+
+
+state 42:
+
+	BASIC_TYPE_ARG : type_lparen TYPE type_comma TYPE_LIST type_rparen .  (reduce by rule 18)
+
+
+
+	.	reduce by rule 18
+
+
+state 43:
+
+	TYPE_LIST : TYPE type_comma . TYPE_LIST 
+
+	type_ident	shift 24
+	type_var_ident	shift 23
+	type_lparen	shift 22
+
+	TYPE	goto 40
+	HASH_TYPE	goto 20
+	PLUS_TYPE	goto 19
+	APP_TYPE	goto 18
+	TYPE_ARG	goto 17
+	BASIC_TYPE_ARG	goto 16
+	TYPE_LIST	goto 45
+	BASIC	goto 15
+
+	.	error
+
+
+state 44:
+
+	TERM : lparen lambda lparen ident colon TYPE rparen dot TERM . rparen 
+
+	rparen	shift 46
+
+
+	.	error
+
+
+state 45:
+
+	TYPE_LIST : TYPE type_comma TYPE_LIST .  (reduce by rule 20)
+
+
+
+	.	reduce by rule 20
+
+
+state 46:
+
+	TERM : lparen lambda lparen ident colon TYPE rparen dot TERM rparen .  (reduce by rule 6)
+
+
+
+	.	reduce by rule 6
+
+
+state 47:
+
+
+	EOLEX	accept
+	EOF	accept
+
+
+	.	error
+
+47 of 126 action table entries left after compaction
+60 goto table entries
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@
+
+
+1.1.1.1.6.1
+log
+@Removed files are parse files and portability files that have
+effectively been moved elsewhere.
+
+Modified files are up to date for ML 109.26.
+@
+text
+@@

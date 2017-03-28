@@ -1,0 +1,93 @@
+head	1.1;
+branch	1.1.1;
+access;
+symbols
+	HOL97:1.1.1.1.0.6
+	bpHOL97:1.1.1.1
+	hol90_9_alpha:1.1.1.1
+	hol90_pre8_for_multiple_compilers:1.1.1.1.0.4
+	hol90_pre8_after_donalds_separate_compilation_changes:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	95.10.16.13.32.10;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.32.10;	author rjb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@\DOC PSELECT_ELIM
+
+\TYPE {PSELECT_ELIM : (thm -> (term # thm) -> thm)}
+
+\KEYWORDS
+rule, epsilon.
+
+\LIBRARY pair
+
+\SYNOPSIS
+Eliminates a paired epsilon term, using deduction from a particular instance.
+
+\DESCRIBE
+{PSELECT_ELIM} expects two arguments, a theorem {th1}, and a pair
+{(p,th2):(term # thm)}.  The conclusion of {th1} must have the form {P($@@ P)},
+which asserts that the epsilon term {$@@ P} denotes some value at which
+{P} holds.  The paired variable structure {p} appears only in the assumption
+{P p} of the theorem {th2}.  The conclusion of the resulting theorem matches
+that of {th2}, and the hypotheses include the union of all hypotheses
+of the premises excepting {P p}.
+{
+    A1 |- P($@@ P)     A2 u {{P p}} |- t
+   -------------------------------------  PSELECT_ELIM th1 (p ,th2)
+              A1 u A2 |- t
+}
+\noindent where {p} is not free in {A2}. If {p} appears in the conclusion of
+{th2}, the epsilon term will NOT be eliminated, and the conclusion will be
+{t[$@@ P/p]}.
+
+\FAILURE
+Fails if the first theorem is not of the form {A1 |- P($@@ P)}, or if
+any of the variables from the variable structure {p} occur free in any
+other assumption of {th2}.
+
+\SEEALSO
+SELECT_ELIM, PCHOOSE, SELECT_AX, PSELECT_CONV, PSELECT_INTRO, PSELECT_RULE.
+
+\ENDDOC
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

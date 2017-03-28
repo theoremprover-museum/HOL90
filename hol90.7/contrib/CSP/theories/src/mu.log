@@ -1,0 +1,138 @@
+
+
+          HHH                 LL
+          HHH                  LL
+          HHH                   LL
+          HHH                    LL
+          HHH          OOOO       LL
+          HHHHHHH     OO  OO       LL
+          HHHHHHH     OO  OO       LLL
+          HHH          OOOO        LLLL
+          HHH                     LL  LL
+          HHH                    LL    LL
+          HHH                   LL      LL
+          HHH                  LL        LL90.7
+
+Created on Tue Nov 15 10:19:01 GMT 1994
+using: Standard ML of New Jersey, Version 0.93, February 15, 1993
+
+
+val it = () : unit
+val it = () : unit
+- [opening mu.sml]
+
+Declaring theory "mu".
+
+Theory "CSP_base" already consistent with disk, hence not exported.
+val it = () : unit
+val it = () : unit
+val it = [(),(),()] : unit list
+val IS_PROCESS =
+  |- !A TR.
+       IS_PROCESS (A,TR) =
+       TR SUBSET STAR A /\ [] IN TR /\ (!s t. APPEND s t IN TR ==> s IN TR)
+  : thm
+val TRACES_SND = |- !x y. IS_PROCESS (x,y) ==> (TRACES (ABS_process (x,y)) = y)
+  : thm
+val ALPHA_FST = |- !x y. IS_PROCESS (x,y) ==> (ALPHA (ABS_process (x,y)) = x)
+  : thm
+val TRACES_IN_STAR = |- !P. TRACES P SUBSET STAR (ALPHA P) : thm
+val APPEND_IN_TRACES = |- !P s t. APPEND s t IN TRACES P ==> s IN TRACES P
+  : thm
+val NIL_IN_TRACES = |- !P. [] IN TRACES P : thm
+val PROCESS_LEMMA6 = |- !r. IS_PROCESS r = REP_process (ABS_process r) = r
+  : thm
+val ALPHA_STOP = |- !x. ALPHA (STOP x) = x : thm
+val CONTINUOUS =
+  |- !fun.
+       CONTINUOUS fun =
+       (!P. CHAIN P ==> (fun (LIM_PROC P) = LIM_PROC (\n. fun (P n)))) : thm
+val LIM_PROC =
+  |- !P.
+       LIM_PROC P =
+       (@Q.
+         CHAIN P ==>
+         (Q = ABS_process (ALPHA (P 0),IT_UNION (\n. TRACES (P n))))) : thm
+val IT_UNION = |- !c. IT_UNION c = {x | ?n. x IN c n} : thm
+val ITER =
+  |- (!f x. ITER 0 f x = x) /\ (!n f x. ITER (SUC n) f x = f (ITER n f x))
+  : thm
+val IS_PROCESS_LIMIT =
+  |- !P. CHAIN P ==> IS_PROCESS (ALPHA (P 0),IT_UNION (\n. TRACES (P n))) : thm
+val LIM_PROC_THM =
+  |- !P.
+       CHAIN P ==>
+       (LIM_PROC P = ABS_process (ALPHA (P 0),IT_UNION (\n. TRACES (P n))))
+  : thm
+val it = [(),(),()] : unit list
+val event = (--`(ty_antiq((==`:string`==)))`--) : term
+val trace = (--`(ty_antiq((==`:string list`==)))`--) : term
+val alphabet = (--`(ty_antiq((==`:string set`==)))`--) : term
+val EXISTS_MU =
+  |- ?f. !A G. CONTINUOUS G ==> (f A G = LIM_PROC (\n. ITER n G (STOP A)))
+  : thm
+val MU = |- !A G. CONTINUOUS G ==> (MU A G = LIM_PROC (\n. ITER n G (STOP A)))
+  : thm
+val IS_PROCESS_MU =
+  |- !A G.
+       CHAIN (\n. ITER n G (STOP A)) ==>
+       IS_PROCESS (A,IT_UNION (\n. TRACES (ITER n G (STOP A)))) : thm
+val IS_PROCESS_MU' =
+  |- !G A.
+       CHAIN (\n. ITER n G (STOP A)) ==>
+       CONTINUOUS G ==>
+       IS_PROCESS (A,IT_UNION (\n. TRACES (ITER n G (STOP A)))) : thm
+val MU_THM =
+  |- CHAIN (\n. ITER n G (STOP A)) ==>
+     CONTINUOUS G ==>
+     (MU A G = ABS_process (A,IT_UNION (\n. TRACES (ITER n G (STOP A))))) : thm
+val ALPHA_MU =
+  |- CHAIN (\n. ITER n G (STOP A)) ==> CONTINUOUS G ==> (ALPHA (MU A G) = A)
+  : thm
+val TRACES_MU =
+  |- CHAIN (\n. ITER n G (STOP A)) ==>
+     CONTINUOUS G ==>
+     (TRACES (MU A G) = IT_UNION (\n. TRACES (ITER n G (STOP A)))) : thm
+
+Theory "mu" exported.
+val it = () : unit
+val it = () : unit
+Theory: mu
+
+Parents:
+    process_fix
+    CSP_base
+
+Type constants:
+    
+
+Term constants:
+    MU (Prefix)   :string set -> (process -> process) -> process
+
+Axioms:
+    
+
+Definitions:
+    MU |- !A G. CONTINUOUS G ==> (MU A G = LIM_PROC (\n. ITER n G (STOP A)))
+
+Theorems:
+    EXISTS_MU
+    |- ?f. !A G. CONTINUOUS G ==> (f A G = LIM_PROC (\n. ITER n G (STOP A)))
+    IS_PROCESS_MU
+    |- !A G.
+         CHAIN (\n. ITER n G (STOP A)) ==>
+         IS_PROCESS (A,IT_UNION (\n. TRACES (ITER n G (STOP A))))
+    IS_PROCESS_MU'
+    |- !G A.
+         CHAIN (\n. ITER n G (STOP A)) ==>
+         CONTINUOUS G ==>
+         IS_PROCESS (A,IT_UNION (\n. TRACES (ITER n G (STOP A))))
+    ALPHA_MU
+    |- CHAIN (\n. ITER n G (STOP A)) ==> CONTINUOUS G ==> (ALPHA (MU A G) = A)
+    TRACES_MU
+    |- CHAIN (\n. ITER n G (STOP A)) ==>
+       CONTINUOUS G ==>
+       (TRACES (MU A G) = IT_UNION (\n. TRACES (ITER n G (STOP A))))
+
+Theory "mu" is consistent with disk.
+val it = () : unit

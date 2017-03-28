@@ -1,0 +1,169 @@
+head	1.2;
+access;
+symbols
+	HOL97:1.2.0.4
+	bpHOL97:1.2
+	hol90_9_alpha:1.2
+	hol90_pre8_for_multiple_compilers:1.2.0.2
+	hol90_pre8_after_donalds_separate_compilation_changes:1.2
+	hol90_8_after_merging_Konrad_Elsa:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.2
+date	95.10.31.15.31.36;	author drs1004;	state Exp;
+branches
+	1.2.4.1;
+next	1.1;
+
+1.1
+date	95.10.16.13.31.23;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.31.23;	author rjb;	state Exp;
+branches;
+next	;
+
+1.2.4.1
+date	97.07.14.17.42.25;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.2
+log
+@Changes by DRS for separate compilation using NJSML 108.5/CM
+@
+text
+@(*===========================================================================
+== LIBRARY:     reduce (part III)                                          ==
+==                                                                         ==
+== DESCRIPTION: Global conversions, rules and tactics                      ==
+==                                                                         ==
+== AUTHOR:      John Harrison                                              ==
+==              University of Cambridge Computer Laboratory                ==
+==              New Museums Site                                           ==
+==              Pembroke Street                                            ==
+==              Cambridge CB2 3QG                                          ==
+==              England.                                                   ==
+==                                                                         ==
+==              jrh@@cl.cam.ac.uk                                           ==
+==                                                                         ==
+== DATE:        18th May 1991                                              ==
+==                                                                         ==
+== TRANSLATOR:  Kim Dam Petersen (kimdam@@tfl.dk)                           ==
+============================================================================*)
+
+functor Redconv_funct (structure Boolconv : Boolconv_sig
+		       structure Arithconv : Arithconv_sig) : Redconv_sig =
+struct
+
+open Core; (* open up all of the HOL 0/1 Core - could be replaced by more *)
+           (* explicit opens to avoid endless recompilation of libraries  *)
+           (* during system development                                   *)
+
+fun failwith function = raise HOL_ERR{origin_structure = "Redconv",
+                                      origin_function = function,
+                                      message = ""};
+
+open Rsyntax;
+open Boolconv;
+open Arithconv;
+
+(*-----------------------------------------------------------------------*)
+(* RED_CONV - Try all the conversions in the library                     *)
+(*-----------------------------------------------------------------------*)
+
+val RED_CONV =
+  let fun FAIL_CONV (s:string) (tm:term) = (failwith s) :thm
+  in
+      itlist (curry (op ORELSEC))
+         [ADD_CONV,  AND_CONV,  BEQ_CONV,  COND_CONV,
+          DIV_CONV,  EXP_CONV,   GE_CONV,    GT_CONV,
+          IMP_CONV,   LE_CONV,   LT_CONV,   MOD_CONV,
+          MUL_CONV,  NEQ_CONV,  NOT_CONV,    OR_CONV,
+          PRE_CONV,  SBC_CONV,  SUC_CONV] (FAIL_CONV "RED_CONV")
+  end;
+
+(*-----------------------------------------------------------------------*)
+(* REDUCE_CONV - Perform above reductions at any depth.                  *)
+(*-----------------------------------------------------------------------*)
+
+val REDUCE_CONV = DEPTH_CONV RED_CONV;
+
+(*-----------------------------------------------------------------------*)
+(* REDUCE_RULE and REDUCE_TAC - Inference rule and tactic versions.      *)
+(*-----------------------------------------------------------------------*)
+
+val REDUCE_RULE = CONV_RULE REDUCE_CONV;
+
+val REDUCE_TAC = CONV_TAC REDUCE_CONV;
+
+end
+@
+
+
+1.2.4.1
+log
+@The reduce library now loads under CM. The entrypoint is now the structure
+reduceLib.
+@
+text
+@d24 1
+a24 1
+(*open Core; (* open up all of the HOL 0/1 Core - could be replaced by more *)
+a26 1
+*)
+d28 3
+a30 4
+fun failwith function = raise 
+ Exception.HOL_ERR{origin_structure = "Redconv",
+                    origin_function = function,
+                            message = ""};
+d32 1
+a34 2
+open Conv;
+open Lib;
+d41 1
+a41 1
+  let fun FAIL_CONV (s:string) tm = failwith s
+d43 1
+a43 1
+      itlist (curry (Conv.ORELSEC))
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d24 4
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

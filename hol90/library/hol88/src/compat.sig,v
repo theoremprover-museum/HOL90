@@ -1,0 +1,174 @@
+head	1.2;
+access;
+symbols
+	HOL97:1.2.2.1.0.2
+	bpHOL97:1.2.2.1
+	hol90_9_alpha:1.2.2.1
+	hol90_pre8_for_multiple_compilers:1.2.0.2
+	hol90_pre8_after_donalds_separate_compilation_changes:1.2
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.2
+date	95.10.31.15.14.11;	author drs1004;	state Exp;
+branches
+	1.2.2.1;
+next	1.1;
+
+1.1
+date	95.10.16.13.30.47;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.30.47;	author rjb;	state Exp;
+branches;
+next	;
+
+1.2.2.1
+date	96.08.23.09.24.53;	author rjb;	state Exp;
+branches
+	1.2.2.1.2.1;
+next	;
+
+1.2.2.1.2.1
+date	97.06.11.18.27.22;	author kxs;	state Exp;
+branches;
+next	1.2.2.1.2.2;
+
+1.2.2.1.2.2
+date	97.07.11.19.53.07;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.2
+log
+@Changes by DRS for separate compilation using NJSML 108.5/CM
+@
+text
+@(* ===================================================================== *)
+(* FILE          : compat.sig                                            *)
+(* DESCRIPTION   : Signature for routines that provide hol88             *)
+(*                 compatibility.                                        *)
+(*                                                                       *)
+(* ===================================================================== *)
+
+
+signature Compat_sig =
+sig
+   type hol_type sharing type hol_type = Type.hol_type;
+   type term sharing type term = Term.term
+   type thm sharing type thm = Thm.thm
+   type tactic sharing type tactic = Abbrev.tactic
+   type conv sharing type conv = Abbrev.conv
+
+val setify : ''a list -> ''a list
+val find : ('a -> bool) -> 'a list -> 'a
+val match : term -> term -> (term * term) list * (hol_type * hol_type) list
+val prove_thm : string * term * tactic -> thm
+val PROVE : term * tactic -> thm
+val string_of_int : int -> string
+val int_of_string : string -> int
+val save : string -> bool
+val assoc : ''a -> (''a * 'b) list -> ''a * 'b
+val rev_assoc : ''a -> ('b * ''a) list -> 'b * ''a
+val inst_type : (hol_type * hol_type) list -> hol_type -> hol_type
+val frees : term -> term list
+val freesl : term list -> term list
+val tyvars : term -> hol_type list
+val tyvarsl : term list -> hol_type list
+val conjuncts : term -> term list
+val disjuncts : term -> term list
+val GEN_ALL : thm -> thm
+val new_axiom : (string*term) -> thm
+val new_prim_rec_definition : string * term -> thm
+val new_infix_prim_rec_definition : string * term * int -> thm
+val flat : 'a list list -> 'a list
+val forall : ('a -> bool) -> 'a list -> bool
+val ancestry : unit -> string list
+val last : 'a list -> 'a
+val butlast : 'a list -> 'a list
+val W  :('a -> 'a -> 'b) -> 'a -> 'b
+val CB :('a -> 'b) -> ('b -> 'c) -> 'a -> 'c
+val KI :'a -> 'b -> 'b
+val oo :('a * 'b -> 'c) * (('d -> 'a) * ('d -> 'b)) -> 'd -> 'c
+val Co : ('a -> 'b -> 'c) * ('d -> 'a) -> 'b -> 'd -> 'c
+val replicate :'a -> int -> 'a list
+val GEN_REWRITE_RULE : (conv -> conv) -> thm list -> thm list -> thm -> thm
+val GEN_REWRITE_TAC : (conv -> conv) -> thm list -> thm list -> tactic
+val variant : term list -> term -> term
+end;
+@
+
+
+1.2.2.1
+log
+@Made save function ML-independent.
+@
+text
+@d24 1
+a24 1
+val save : string -> unit
+@
+
+
+1.2.2.1.2.1
+log
+@Changes to accomodate move to SML/NJ 109.26.
+@
+text
+@d11 6
+d24 1
+a24 1
+val save : string -> bool
+@
+
+
+1.2.2.1.2.2
+log
+@CM upgrade.
+@
+text
+@a10 6
+ type thm 
+ type term
+ type hol_type
+ type tactic
+ type conv
+
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d11 6
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

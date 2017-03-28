@@ -1,0 +1,155 @@
+head	1.3;
+access;
+symbols
+	HOL97:1.1.0.4
+	bpHOL97:1.1
+	hol90_9_alpha:1.1
+	hol90_pre8_for_multiple_compilers:1.1.0.2
+	hol90_pre8_after_donalds_separate_compilation_changes:1.1;
+locks; strict;
+comment	@# @;
+
+
+1.3
+date	96.02.08.00.44.47;	author drs1004;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	96.01.04.14.05.55;	author drs1004;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	95.10.31.15.07.05;	author drs1004;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.3
+log
+@New theory mechanism, code reorganisation and other enhancements by Don Syme.
+@
+text
+@(*========================================================================
+ * $Id: hol2.sml,v 1.2 1996/01/04 14:05:55 drs1004 Exp $
+ *
+ * FILE: hol2.sml
+ * AUTHOR: Donald Syme
+ *
+ * This file contains meta-meta-level things that happen at the end of
+ * level 2 of the HOL system.  Meta-meta-level things that affect the
+ * ML environment and which usually can't be separately compiled by a
+ * separate compilation facility like CM.) .  In particular this includes:
+ *	- Installs pretty printers
+ *	- Opening structures at the top level
+ *	- Declaring type abbreviations
+ * 	- Deleting structures/signatures/functors for garbage collecting.
+ *=======================================================================*)
+
+(*-----------------------------------------------------------------------
+ * Install the pretty printers for:
+ *---------------------------------------------------------------------- *)
+
+val _ =   PP.install_pp ["Travrules","travrules"] Travrules.pp_travrules; 
+
+val _ =   PP.install_pp ["Simplifier","simpset"] Simplifier.pp_simpset; 
+
+(*-----------------------------------------------------------------------
+ * Open the structures at the top level and declare the appropriate infixes
+ * at the top level.
+ *---------------------------------------------------------------------- *)
+
+open Traverse;
+open Travrules;
+
+open Simplifier;
+open Pabs; 
+open Naturals;
+open Numerals;
+open Rec_type_support; 
+
+open Trace;
+open Ho_match;
+
+open Pure_ss;
+open Simpsets;
+
+open Refute;
+open TAB;
+
+open Single_point;
+open Satisfy_existentials;
+infix ++;
+    
+(*-----------------------------------------------------------------------
+ * Wipe out functors and signatures for GC.
+ *---------------------------------------------------------------------- *)
+
+signature EMPTY = sig end;
+signature Let_conv_sig = EMPTY;
+signature Num_conv_sig = EMPTY;
+signature Num_induct_sig = EMPTY;
+signature Rec_type_support_sig = EMPTY;
+
+@
+
+
+1.2
+log
+@Added simplifier components, added drule files, added MK_ABS_CONV, better error messages
+@
+text
+@d2 1
+a2 1
+ * $Id: hol2.sml,v 1.1 1995/10/31 15:07:05 drs1004 Exp $
+a21 2
+open Traverse;
+open Travrules;
+a23 2
+open Simplifier;
+infix ++;
+d30 7
+a36 3
+open Num_conv;
+open Let_conv; 
+open Num_induct;
+d43 1
+a43 1
+open Bool_ss;
+d45 2
+a46 5
+(*
+val _ =   PP.install_pp ["HashTables","table"] HashTables.pp_table; 
+open Hol_ss;
+open Arithmetic_ss;
+*)
+d48 4
+a51 2
+
+
+@
+
+
+1.1
+log
+@First phase of hol90.8 development.  hol90 now compiles using NJSML-CM
+108.5, with separate compilation of libraries.  System dependencies
+have been isolated in the makefiles and "portable.sml".
+
+This involved a large number of enhancments to the source files,
+most of which are documented in the 7.changes file (or will be shortly).
+See also the correpsonding email corrspondence between RJB, KLS, TFM,
+JRH and DRS that happened during this development.
+@
+text
+@d2 1
+a2 1
+ * $Id$
+d21 8
+d39 14
+@

@@ -1,0 +1,78 @@
+head	1.1;
+access;
+symbols
+	HOL97:1.1.0.4
+	bpHOL97:1.1
+	hol90_9_alpha:1.1
+	hol90_pre8_for_multiple_compilers:1.1.0.2;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	95.11.17.10.42.59;	author rjb;	state Exp;
+branches
+	1.1.4.1;
+next	;
+
+1.1.4.1
+date	97.07.14.17.48.29;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@Added library "retrieve", a theorem retrieval system.
+
+R.J.Boulton, 17th November 1995.
+@
+text
+@signature RETRIEVE_MATCHING =
+sig
+   datatype thmkind = Axiom | Definition | Theorem;
+   type foundthm
+
+   type thmpattern
+   val Any : thmpattern
+   val None : thmpattern
+   val Kind : thmkind -> thmpattern
+   val Thryname : RetrieveName.namepattern -> thmpattern
+   val Thmname : RetrieveName.namepattern -> thmpattern
+   val Conc : RetrieveStruct.termpattern -> thmpattern
+   val HypP : RetrieveStruct.termpattern list -> thmpattern
+   val HypF : RetrieveStruct.termpattern list -> thmpattern
+   val Side : RetrieveStruct.side_condition -> thmpattern
+   val Andalso : (thmpattern * thmpattern) -> thmpattern
+   val Orelse : (thmpattern * thmpattern) -> thmpattern
+   val Not : thmpattern -> thmpattern
+   val Where : (thmpattern * thmpattern) -> thmpattern
+   val thmmatch : thmpattern -> (thmkind * string * string * Thm.thm) -> bool
+   val thmfilter : thmpattern ->
+                   (thmkind * string * string * Thm.thm) list -> 
+                   (thmkind * string * string * Thm.thm) list
+end;
+@
+
+
+1.1.4.1
+log
+@The "retrieve" library now loads under CM. The unified entrypoint for it is
+retrieveLib.
+@
+text
+@a2 2
+ type thm
+
+d20 1
+a20 1
+   val thmmatch : thmpattern -> (thmkind * string * string * thm) -> bool
+d22 2
+a23 2
+                   (thmkind * string * string * thm) list -> 
+                   (thmkind * string * string * thm) list
+@

@@ -1,0 +1,310 @@
+The HOL90 Version 4 News.
+
+
+* Quote/Antiquote now "standard".
+
+SML/NJ versions 0.92 and higher provide quotate/antiquote and automatic
+prettyprinting as standard. Thus users no longer need to obtain a
+specially modified compiler to build hol90.
+
+These features are very helpful for those who may not even be interested
+in HOL; they allow one to input and view complex SML data types at a
+high level. There is no restriction on the number of object languages
+that can co-exist. For building large systems, these seem to be really
+helpful tools (this advertisement brought to you free of charge by their
+implementor!)
+
+
+* Attack of the killer records. 
+
+I have gone through and converted a lot of functions, including all
+those that manipulate terms, to have a record type. For example (letting
+"%" be the term parser, as one can do in hol90)
+
+    dest_abs (%`\x:bool.x+1`) = {Bvar = (%`x`), Body = (%`x+1`)}
+
+The old "paired" style of syntax has been pent up in a structure called
+"Old_syntax", which is accessible by loading the library "hol88". There
+is also a structure called "New_syntax", which, when opened will allow
+(re-)access to the new "record-ized" style. Of course, both styles may
+be intermixed through use of long identifiers. Full documentation for
+all "record-ized" functions is available through on-line help.
+
+The reason for records? Record types often give better information about
+what the arguments of a function are. Compare
+
+  Old_syntax.new_specification :string->(string*string*int) list -> thm -> thm
+
+with
+
+  New_syntax.new_specification : 
+          {name :string,
+           sat_thm : Thm.thm,
+           consts:{const_name:string, fixity:Term.fixity} list} -> Thm.thm
+
+Also, an ML type abbreviation has been introduced for substitutions (for
+those, like me, who could never keep the order straight).
+
+    type 'a subst = {redex : 'a, residue : 'a} list
+
+For example we have
+
+    val match_term : term -> term -> term subst * hol_type subst
+
+for the hol90 analogue of "match" in hol88. It should be emphasized that
+the semantics of these recordized functions have not changed in the
+least: only their types.
+
+
+
+* Datatype for fixity
+
+Functions that introduce constants into the system have systematically
+been upgraded to include the parsing status of the constant. For
+example,
+
+  val new_infix : {Name:string,  Ty:hol_type, Prec:int} -> unit
+  val new_specification : {name:string, sat_thm:thm,
+                           consts:{const_name:string, fixity:fixity} list}
+                          -> thm
+  val new_recursive_definition :{def:term, fixity:fixity, 
+                                 name:string, rec_axiom:thm} -> thm
+
+where fixity is described by the following datatype:
+
+    datatype fixity = Prefix | Binder | Infix of int
+
+Note that new_constant, new_infix, and new_binder could be collapsed
+into one function now; it might be done in the future.
+
+
+
+* New scheme for libraries.
+
+I issued a long exposition about this to the info-hol mailing list. It
+is accessible in hol90.4/doc/library.doc and online by
+
+    help "lib"
+
+Briefly, library descriptions are represented internally in the system
+and thus hol90 is able to provide much more security and functionality
+in its library interface than hol88.
+
+
+
+* Define_type modified.
+
+The syntax of type specifications has been slightly altered to look a
+bit more like SML "datatype" specifications. The type specifications are
+given as quotations now; this allows the use of antiquotation for types.
+"define_type" also allows the specification of the fixity of defined
+constructors. The following is an example from the "opsem.sml" file in
+the inductive definitions library:
+
+    (* These are type antiquotations, used in hol90 in place of type abbrevs *)
+    val state = ty_antiq(==`:string -> num`==);
+    val nexp  = ty_antiq(==`:^state -> num`==);
+    val bexp  = ty_antiq(==`:^state -> bool`==);
+
+    define_type{type_spec = `comm = skip 
+                                  | := of string # ^nexp 
+                                  | ;; of comm # comm
+                                  | if of ^bexp # comm # comm
+                                  | while of ^bexp # comm`,
+                name="comm",
+                fixities = [Prefix,Infix 400, Infix 350, Prefix, Prefix]};
+      .
+      .
+      .
+    - val it =
+      |- !e f0 f1 f2 f3.
+           ?!fn.
+             (fn skip = e) /\
+             (!s f. fn (s := f) = f0 s f) /\
+             (!c1 c2. fn (c1 ;; c2) = f1 (fn c1) (fn c2) c1 c2) /\
+             (!f c1 c2. fn (if f c1 c2) = f2 (fn c1) (fn c2) f c1 c2) /\
+             (!f c. fn (while f c) = f3 (fn c) f c) : thm
+
+I have also opened up the implementation of define_type, so that the
+"logical bit" is separate from the parsing bit. The logical bit is
+available thorugh the following function:
+
+    val dtype : {save_name:string,ty_name:string,
+                 clauses:{constructor:string, fixity : Term.fixity,
+                          arg:Parse_support.arg_atom list} list} -> thm
+
+This should help those intending to build more powerful type definition
+facilities on top of the logical bit.
+
+
+
+Theories.
+
+There have been many changes in the implementation of theories.
+
+
+* Theories have unique identifiers. 
+
+This removes the "virus" parent problem, and other problems having to do
+with the evil of paths. It also sets things up for overloading, due in
+version 5.
+
+
+* Theory files have been split into "holsig" and "thms" files. 
+
+A "holsig" file comprises the timestamp, parents, type constants, and
+term constants of a theory. A "thms" file is made up of the axioms,
+definitions, and theorems of a theory. This split was made to speed up
+operations like "new_parent", and load/extend_theory, for these
+operations only need access to the information held in the holsig files.
+In a related change, the theory graph is represented in a data
+structure, so operations like "ancestry" and "parents" are fast.
+
+
+* Theory files can now be in binary or ascii. 
+
+This gets chosen at hol90 make time. Ascii theories are compact and
+portable between architectures. Binary is not recommended: it may in
+some cases load faster (this is highly subject to the speed of your
+network and disk) but tends to be monstrously large (almost 1Meg. for
+the theory of sets!). Neither are particularly readable.
+
+
+* Safe theory operations.
+
+For experts implementing derived principles of definition, we have
+atomic theory operations, i.e., one can do a lot of work in a theory,
+find out that a mistake has been made, and "rollback" to the starting
+point. The function is
+
+    perform_atomic_theory_op : (unit -> 'a) -> 'a
+
+This function is *not* safe, as one can easily prove |- F using it, so
+it will likely disappear from the public interface; it is only external
+now so that people can experiment with it.
+
+
+Terms.
+
+There have been a couple of full rewrites to the implementation of terms
+in the system.
+
+* Side-effecting type inference.
+
+This has been implemented to replace the old, purely functional version.
+It resulted in a cleaner and faster implementation of type inference.
+
+
+* deBruijn indices are used in the term representation. 
+
+This has cleaned up and sped up the prelogic. Originally, this would
+allow mystifying (unreparsable) terms to be printed out, but now hol90.4 
+will reparse prettyprinted terms as well as possible.
+
+
+* if !show_types = true, the term that is prettyprinted will be
+reparsable.
+
+
+* Comments now possible throughout type, term, and type_spec quotations.
+  For example:
+
+     - (--`A /\ (* this is 
+     = a comment *) (B: (* here's (* another *) *) bool)`--);
+
+     val it = (--`A /\ B`--) : term
+     - 
+
+* inst now has a different type. It no longer needs a list of terms as
+its first argument: that list is only used in hol88 in the
+implementation of INST_TYPE anyway; all other uses seem to have an empty
+list. Since hol90's implementation of INST_TYPE doesn't need that list,
+we have summarily done away with it.
+
+
+
+* New! Tools directory.
+
+In hol90.4/tools, some useful system tools are kept. The following is
+the Read_me file for the directory.
+
+    This directory is for the odds and ends attached to hol90.
+
+    Contents.
+
+    doc-to-help.sed   - the hol90 "help" function uses this to format 
+                        its output. Taken from the hol88 release.
+
+    howto.yak         - a short and simple introduction to ML-Yacc
+
+    ml-conv.el        - a small set of gnu_emacs lisp functions for the 
+                        rough conversion of ML Classic to SML. Works best 
+                        on files consisting mainly of proofs. If you can 
+                        make any improvements, send them to 
+                        slind@informatik.tu-muenchen.de
+
+
+* PolyML port
+
+Mike Crawley of Abstract Hardware has ported hol90 version 3 to PolyML
+and I am hoping that the same can be done for version 4. Ports to other
+ML compilers are also in progress.
+
+
+* Differences with hol88
+
+No new libraries have been added, other than a utilities library by Elsa
+Gunter. Ports are ongoing for the UNITY library, the theory of P-omega,
+and pred_sets.
+
+The two systems are well-enough defined that one can precisely tell what
+the difference is between the two (each system has approximately 700-800
+available functions).
+
+    - val h88_extras = set_diff hol88_idents hol90_idents;
+    - val h90_extras = set_diff hol90_idents hol88_idents;
+
+    - length h88_extras;
+    val it = 286 : int
+
+    - length h90_extras;
+    val it = 239 : int
+
+
+Although there are nearly three hundred hol88 functions not in hol90, do
+not despair! Most of them are either anachronisms, and should be gotten
+rid of, or are already in the hol90 system under a different name. There
+are a few though (about 40), that something should be done with. For each
+entrypoint in hol88 that is not in hol90, I have made a one-line note.
+These are accessible online by doing
+
+    help "hol88_extras"
+
+
+* Coming Soon! Graphical user interface.
+
+Tim Griffin and Rod Moten, of Bell Labs and Cornell University
+respectively, have implemented a graphical user interface parameterized
+by an abstract notion of tactic. They have implemented a proof interface
+for hol90 in this. It gives the ability to walk around the proof tree by
+clicking the mouse, menu selection of tactics, and also direct entry of
+tactics. The software will be available in the next public release of
+SML/NJ, which when I last checked is February 1.
+
+
+* The future
+
+As one can guess from my opening metaphor, it has been a great effort to
+put out this version, so I am looking for people interested in theorem
+proving who want to collaborate on hol90 (Gruppe90 anyone?). Meanwhile,
+work continues towards the following goals:
+
+ - Assembling a decent system manual.
+
+ - Overloading and constant families.
+
+ - Mutually recursive types (E. Gunter).
+
+ - ML semantics in HOL.
+
+ - Reflection.

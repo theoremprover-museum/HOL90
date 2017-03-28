@@ -1,0 +1,42 @@
+\DOC CHAIN_COND_CASES_CONV
+
+\TYPE {CHAIN_COND_CASES_CONV : conv -> term -> conv}
+
+\SYNOPSIS
+eleminates one condition in a chain of conditionals by case distinction.
+
+\LIBRARY cond
+
+\DESCRIBE
+
+takes a conversion x_EQ_CONV, which takes terms of the form
+--`xi=xj`--, where xi and xj are constants and delivers a theorem
+|- (xi=xj)=T or |-(xi=xj)=F, takes a term c of the form
+--`x=xk`--, where x is a variable and xk is a constant, and a
+term t of the form --`x=x1 => f1|x=x2 => f2|...|x=xm => fm|fn`--
+and returns a theorem |- ((x = xk) ==> t = ... ) /\ (~(x = xk) ==> t = ...).
+
+\EXAMPLE
+
+- CHAIN_COND_CASES_CONV 
+  string_EQ_CONV
+  (--`x = "c"`--)
+  (--`(x = "a") => 1 |(x="b") => 2|(x="c") => 3|(x="d") => 4|5`--);
+val it =
+  |- ((x = "c") ==>
+      (((x = "a")
+        => 1
+        | ((x = "b") => 2 | ((x = "c") => 3 | ((x = "d") => 4 | 5)))) =
+       3)) /\
+     (~(x = "c") ==>
+      (((x = "a")
+        => 1
+        | ((x = "b") => 2 | ((x = "c") => 3 | ((x = "d") => 4 | 5)))) =
+       ((x = "a") => 1 | ((x = "b") => 2 | ((x = "d") => 4 | 5))))) : thm
+
+
+
+\SEEALSO
+CHAIN_COND_CONV
+
+\ENDDOC

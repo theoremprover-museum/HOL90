@@ -1,0 +1,4249 @@
+head	1.2;
+access;
+symbols
+	HOL97:1.2.0.4
+	bpHOL97:1.2
+	hol90_9_alpha:1.2
+	hol90_pre8_for_multiple_compilers:1.2.0.2
+	hol90_pre8_after_donalds_separate_compilation_changes:1.2
+	hol90_8_after_merging_Konrad_Elsa:1.2
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.2
+date	95.10.18.16.03.48;	author drs1004;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	95.10.16.13.36.11;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.36.11;	author rjb;	state Exp;
+branches
+	1.1.1.1.2.1;
+next	;
+
+1.1.1.1.2.1
+date	95.10.18.10.03.43;	author drs1004;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.2
+log
+@Konrad's changes since hol90.7, merged in off a side branch.
+@
+text
+@(*===========================================================================*)
+(* Easy (relatively) n=4 case of FLT                                         *)
+(*===========================================================================*)
+
+load_library_in_place reduce_lib;
+map add_theory_to_sml ["num", "prim_rec","arithmetic"];
+
+open Psyntax;
+
+
+(*---------------------------------------------------------------------------*)
+(* Some useful things that aren't built-in.                                  *)
+(*---------------------------------------------------------------------------*)
+
+
+(* Timing *)
+local open System.Timer
+      val st_tim = ref(start_timer())
+in
+ fun start_time () = st_tim := start_timer()
+ fun end_time () =
+   let val rt = check_timer (!st_tim)
+       and gt = check_timer_gc (!st_tim) in
+       "runtime: " ^ makestring rt ^ "s, gctime: " ^ makestring gt ^ "s."
+   end
+end;
+
+
+(* Tactics *)
+
+fun PURE_GEN_REWRITE_TAC F thlist =
+    Rewrite.GEN_REWRITE_TAC F Rewrite.empty_rewrites thlist;
+
+
+fun W f x = f x x;
+(* A tautology checker *)
+local fun bval w t = (type_of t = Dsyntax.bool) andalso 
+                     (can (find_term is_var) t) andalso 
+                     (free_in t w)
+in
+val TAUT_CONV =
+  C (curry prove)
+    (REPEAT GEN_TAC THEN (REPEAT o CHANGED_TAC o W)
+      (C (curry op THEN) (REWRITE_TAC[]) o BOOL_CASES_TAC o hd 
+                    o sort free_in
+                    o W(find_terms o bval) o snd))
+end;
+
+
+val LAND_CONV = RATOR_CONV o RAND_CONV;
+
+fun ANTE_RES_THEN ttac th = FIRST_ASSUM(fn t => ttac (MATCH_MP t th));
+fun IMP_RES_THEN ttac th = FIRST_ASSUM(fn t => ttac (MATCH_MP th t));
+
+(*-------------------------------------------------------------------------
+ * Fold in parsing for some proof procedures - this makes them slicker 
+ * for interactive use.
+ *-------------------------------------------------------------------------*)
+
+structure Q =
+struct
+  fun Q_ERR{func,mesg} = 
+      HOL_ERR{origin_structure = "FLT4 proof",
+              origin_function = func, message = mesg};
+  
+  val ptm = Parse.term_parser;
+
+  (* constrain parsed term to have a given type *)
+  fun ptm_with_ty qtm ty = 
+     let fun trail s = [QUOTE (s^"):"), ANTIQUOTE(ty_antiq ty), QUOTE""]
+     in ptm (case (Lib.front_n_back qtm)
+            of ([],QUOTE s) => trail ("("^s)
+             | (QUOTE s::rst, QUOTE s') => (QUOTE ("("^s)::rst) @@ trail s'
+             | _ => raise Q_ERR{func="ptm_with_ty",mesg="badly formed quote"})
+     end;
+  fun btm q = ptm_with_ty q Dsyntax.bool;
+  
+  val TAUT_CONV = TAUT_CONV o btm;
+  val store_thm = fn (s,q,t) => store_thm(s,btm q,t);
+  val new_definition = fn (s,q) => new_definition(s,btm q);
+  val new_infix_definition = fn (s,q,f) => new_infix_definition(s,btm q,f);
+  val SPEC = fn q => 
+       W(SPEC o (ptm_with_ty q o (type_of o #1 o dest_forall o concl)))
+  val SPECL = rev_itlist SPEC;
+  val SPEC_TAC = fn (q1,q2) => SPEC_TAC(ptm q1, ptm q2);
+  val EXISTS_TAC = fn q => 
+     W(EXISTS_TAC o (ptm_with_ty q o (type_of o #1 o dest_exists o snd)));
+  val X_CHOOSE_THEN = fn q => fn ttac =>
+      W(C X_CHOOSE_THEN ttac o ptm_with_ty q
+                             o (type_of o #1 o dest_exists o concl))
+  val X_CHOOSE_TAC = C X_CHOOSE_THEN ASSUME_TAC;
+  val X_GEN_TAC = fn q => 
+      W(X_GEN_TAC o ptm_with_ty q o (type_of o #1 o dest_forall o snd))
+  val UNDISCH_TAC = Tactic.UNDISCH_TAC o btm
+  val num_CONV = Num_conv.num_CONV o ptm
+  val SUBGOAL_THEN = Tactical.SUBGOAL_THEN o btm
+  val ASSUME = ASSUME o btm
+  val AP_TERM = Drule.AP_TERM  o ptm
+  val ASM_CASES_TAC = Tactic.ASM_CASES_TAC o btm
+  val AC_CONV  = fn p => AC_CONV p o ptm;
+
+end; (* structure Q *)
+
+
+
+(*---------------------------------------------------------------------------*)
+(* Enough preparation. Let get's started!                                    *)
+(*---------------------------------------------------------------------------*)
+start_time();  Thm.counting_thms true; Thm.reset_thm_count();
+
+new_theory "FERMAT";
+
+(*---------------------------------------------------------------------------*)
+(* We want to use complete induction, so package it up.                      *)
+(*---------------------------------------------------------------------------*)
+
+val COMPLETE_INDUCTION = Q.store_thm("COMPLETE_INDUCTION",
+  `!P. (!n. (!m. m < n ==> P m) ==> P n) ==> !n. P n`,
+  let val wopeta = CONV_RULE(ONCE_DEPTH_CONV ETA_CONV) WOP
+  in
+  GEN_TAC THEN CONV_TAC CONTRAPOS_CONV THEN
+  CONV_TAC(ONCE_DEPTH_CONV NOT_FORALL_CONV) THEN
+  DISCH_THEN(MP_TAC o MATCH_MP wopeta) THEN BETA_TAC THEN
+  REWRITE_TAC[NOT_IMP] THEN DISCH_THEN(Q.X_CHOOSE_TAC `n`) THEN
+  Q.EXISTS_TAC `n` THEN ASM_REWRITE_TAC[]
+  end);
+
+val COMPLETE_INDUCT_TAC =
+  W(MATCH_MP_TAC o CONV_RULE (ONCE_DEPTH_CONV BETA_CONV) o
+    C SPEC COMPLETE_INDUCTION o rand o snd);
+
+(*---------------------------------------------------------------------------*)
+(* General arithmetic lemmas.                                                *)
+(*---------------------------------------------------------------------------*)
+
+val MULT_EQ_1 = Q.store_thm("MULT_EQ_1",
+  `!x y. (x * y = 1) = (x = 1) /\ (y = 1)`,
+  REPEAT GEN_TAC THEN
+  STRUCT_CASES_TAC(Q.SPEC `x` num_CASES) THEN
+  STRUCT_CASES_TAC(Q.SPEC `y` num_CASES) THEN
+  REWRITE_TAC[MULT_CLAUSES, ADD_CLAUSES, Q.num_CONV `1`,
+              INV_SUC_EQ, SUC_NOT, ADD_EQ_0] THEN
+  EQ_TAC THEN DISCH_TAC THEN
+  ASM_REWRITE_TAC[MULT_CLAUSES]);
+
+
+val MULT_FIX = Q.store_thm("MULT_FIX",
+  `!x y. (x * y = x) = (x = 0) \/ (y = 1)`,
+  REPEAT GEN_TAC THEN
+  STRUCT_CASES_TAC(Q.SPEC `x` num_CASES) THEN
+  REWRITE_TAC[MULT_CLAUSES, NOT_SUC] THEN
+  REWRITE_TAC[SYM(el 5 (CONJUNCTS (SPEC_ALL MULT_CLAUSES)))] THEN
+  PURE_GEN_REWRITE_TAC (LAND_CONV o RAND_CONV)
+          [SYM(el 4 (CONJUNCTS(SPEC_ALL MULT_CLAUSES)))] THEN
+  MATCH_ACCEPT_TAC MULT_MONO_EQ);
+
+val LESS_EQ_MULT = Q.store_thm("LESS_EQ_MULT",
+  `!m n p q. m <= n /\ p <= q ==> (m * p) <= (n * q)`,
+  REPEAT GEN_TAC THEN
+  DISCH_THEN(STRIP_ASSUME_TAC o REWRITE_RULE[LESS_EQ_EXISTS]) THEN
+  ASM_REWRITE_TAC[LEFT_ADD_DISTRIB, RIGHT_ADD_DISTRIB,
+    GSYM ADD_ASSOC, LESS_EQ_ADD]);
+
+val LESS_MULT = Q.store_thm("LESS_MULT",
+  `!m n p q. m < n /\ p < q ==> (m * p) < (n * q)`,
+  REPEAT GEN_TAC THEN DISCH_THEN(CONJUNCTS_THEN
+   ((CHOOSE_THEN SUBST_ALL_TAC) o MATCH_MP LESS_ADD_1)) THEN
+  REWRITE_TAC[LEFT_ADD_DISTRIB, RIGHT_ADD_DISTRIB] THEN
+  REWRITE_TAC[GSYM ADD1, MULT_CLAUSES, ADD_CLAUSES, GSYM ADD_ASSOC] THEN
+  ONCE_REWRITE_TAC[GSYM (el 4 (CONJUNCTS ADD_CLAUSES))] THEN
+  MATCH_ACCEPT_TAC LESS_ADD_SUC);
+
+val MULT_LCANCEL = Q.store_thm("MULT_LCANCEL",
+  `!a b c. ~(a = 0) /\ (a * b = a * c) ==> (b = c)`,
+  REPEAT GEN_TAC THEN STRUCT_CASES_TAC(Q.SPEC `a` num_CASES) THEN
+  REWRITE_TAC[NOT_SUC, MULT_MONO_EQ]);
+
+val LESS_EQ_ANTISYM_EQ = Q.store_thm("LESS_EQ_ANTISYM_EQ",
+  `!x y. x <= y /\ y <= x = (x = y)`,
+  REPEAT GEN_TAC THEN EQ_TAC THEN REWRITE_TAC[LESS_EQUAL_ANTISYM] THEN
+  DISCH_THEN SUBST1_TAC THEN REWRITE_TAC[LESS_EQ_REFL]);
+
+(*---------------------------------------------------------------------------*)
+(* Properties of the exponential function.                                   *)
+(*---------------------------------------------------------------------------*)
+
+val EXP_0 = Q.store_thm("EXP_0",
+  `!n. 0 EXP (SUC n) = 0`,
+  REWRITE_TAC[EXP, MULT_CLAUSES]);
+
+val EXP_1 = Q.store_thm("EXP_1",
+  `!n. 1 EXP n = 1`,
+  INDUCT_TAC THEN ASM_REWRITE_TAC[MULT_CLAUSES, EXP]);
+
+val EXP_2 = Q.store_thm("EXP_2",
+  `!x. x EXP 2 = x * x`,
+  REWRITE_TAC[Q.num_CONV `2`, Q.num_CONV `1`, EXP, 
+              MULT_CLAUSES, ADD_CLAUSES]);
+
+val MULT_EXP = Q.store_thm("MULT_EXP",
+  `!n x y. (x * y) EXP n = (x EXP n) * (y EXP n)`,
+  INDUCT_TAC THEN ASM_REWRITE_TAC[EXP, MULT_CLAUSES] THEN
+  REPEAT GEN_TAC THEN CONV_TAC(AC_CONV(MULT_ASSOC,MULT_SYM)));
+
+val EXP_EQ_0 = Q.store_thm("EXP_EQ_0",
+  `!x n. (x EXP n = 0) = (x = 0) /\ ~(n = 0)`,
+  REPEAT GEN_TAC THEN EQ_TAC THENL
+   [Q.SPEC_TAC(`n:num`,`n:num`) THEN INDUCT_TAC THEN
+    REWRITE_TAC[EXP] THEN REDUCE_TAC THEN
+    REWRITE_TAC[MULT_EQ_0] THEN STRIP_TAC THEN
+    ASM_REWRITE_TAC[NOT_SUC] THEN
+    FIRST_ASSUM(IMP_RES_THEN ASSUME_TAC) THEN
+    ASM_REWRITE_TAC[],
+    STRUCT_CASES_TAC(Q.SPEC `n` num_CASES) THEN
+    REWRITE_TAC[EXP, NOT_SUC, MULT_EQ_0] THEN
+    STRIP_TAC THEN ASM_REWRITE_TAC[]]);
+
+val EXP_EQ_1 = Q.store_thm("EXP_EQ_1",
+  `!x n. (x EXP n = 1) = (x = 1) \/ (n = 0)`,
+  REPEAT GEN_TAC THEN STRUCT_CASES_TAC(Q.SPEC `n` num_CASES) THEN
+  ASM_REWRITE_TAC[EXP, NOT_SUC, MULT_EQ_1] THEN
+  EQ_TAC THEN STRIP_TAC THEN ASM_REWRITE_TAC[EXP_1]);
+
+val EXP_MONO_LEMMA = Q.store_thm("EXP_MONO_LEMMA",
+  `!n x y. x < y ==> (x EXP (SUC n)) < (y EXP (SUC n))`,
+  INDUCT_TAC THEN REWRITE_TAC[EXP, MULT_CLAUSES] THEN
+  REWRITE_TAC[GSYM EXP] THEN ONCE_REWRITE_TAC[EXP] THEN
+  REPEAT STRIP_TAC THEN MATCH_MP_TAC LESS_MULT THEN
+  ASM_REWRITE_TAC[] THEN FIRST_ASSUM MATCH_MP_TAC THEN
+  ASM_REWRITE_TAC[]);
+
+val EXP_MONO_LT = Q.store_thm("EXP_MONO_LT",
+  `!n x y. (x EXP (SUC n)) < (y EXP (SUC n)) = (x < y)`,
+  REPEAT GEN_TAC THEN EQ_TAC THEN REWRITE_TAC[EXP_MONO_LEMMA] THEN
+  CONV_TAC CONTRAPOS_CONV THEN REWRITE_TAC[NOT_LESS, LESS_OR_EQ] THEN
+  DISCH_THEN DISJ_CASES_TAC THEN ASM_REWRITE_TAC[] THEN
+  DISJ1_TAC THEN MATCH_MP_TAC EXP_MONO_LEMMA THEN ASM_REWRITE_TAC[]);
+
+val EXP_MONO_LE = Q.store_thm("EXP_MONO_LE",
+  `!x y n. (x EXP (SUC n)) <= (y EXP (SUC n)) = x <= y`,
+  REWRITE_TAC[GSYM NOT_LESS, EXP_MONO_LT]);
+
+val EXP_MONO_EQ = Q.store_thm("EXP_MONO_EQ",
+  `!x y n. (x EXP (SUC n) = y EXP (SUC n)) = (x = y)`,
+  REPEAT GEN_TAC THEN REWRITE_TAC[GSYM LESS_EQ_ANTISYM_EQ] THEN
+  REWRITE_TAC[EXP_MONO_LE]);
+
+val EXP_EXP = Q.store_thm("EXP_EXP",
+  `!x m n. (x EXP m) EXP n = x EXP (m * n)`,
+  GEN_TAC THEN GEN_TAC THEN INDUCT_TAC THEN
+  ASM_REWRITE_TAC[EXP, MULT_CLAUSES, EXP_ADD]);
+
+(*---------------------------------------------------------------------------*)
+(* More ad-hoc arithmetic lemmas unlikely to be useful elsewhere.            *)
+(*---------------------------------------------------------------------------*)
+
+val DIFF_LEMMA = Q.store_thm("DIFF_LEMMA",
+  `!a b. a < b ==> (a = 0) \/ (a + (b - a)) < (a + b)`,
+  REPEAT GEN_TAC THEN
+  DISJ_CASES_TAC(Q.SPEC `a` LESS_0_CASES) THEN ASM_REWRITE_TAC[] THEN
+  DISCH_THEN(CHOOSE_THEN SUBST1_TAC o MATCH_MP LESS_ADD_1) THEN
+  DISJ2_TAC THEN REWRITE_TAC[ONCE_REWRITE_RULE[ADD_SYM] ADD_SUB] THEN
+  PURE_GEN_REWRITE_TAC LAND_CONV [GSYM (CONJUNCT1 ADD_CLAUSES)] THEN
+  REWRITE_TAC[ADD_ASSOC] THEN
+  REPEAT(MATCH_MP_TAC LESS_MONO_ADD) THEN POP_ASSUM ACCEPT_TAC);
+
+val NOT_EVEN_EQ_ODD = Q.store_thm("NOT_EVEN_EQ_ODD",
+ `!m n. ~(2 * m = SUC(2 * n))`,
+  REWRITE_TAC[TIMES2, GSYM NOT_ODD_EQ_EVEN]);
+
+val CANCEL_TIMES2 = Q.store_thm("CANCEL_TIMES2",
+  `!x y. (2 * x = 2 * y) = (x = y)`,
+  REWRITE_TAC[Q.num_CONV `2`, MULT_MONO_EQ]);
+
+val EVEN_SQUARE = Q.store_thm("EVEN_SQUARE",
+  `!n. EVEN(n) ==> ?x. n EXP 2 = 4 * x`,
+  GEN_TAC THEN REWRITE_TAC[EVEN_EXISTS] THEN
+  DISCH_THEN(Q.X_CHOOSE_THEN `m` SUBST1_TAC) THEN
+  Q.EXISTS_TAC `m * m` THEN REWRITE_TAC[EXP_2] THEN
+  REWRITE_TAC[SYM(REDUCE_CONV (--`2 * 2`--))] THEN
+  CONV_TAC(AC_CONV(MULT_ASSOC,MULT_SYM)));
+
+val ODD_SQUARE = Q.store_thm("ODD_SQUARE",
+  `!n. ODD(n) ==> ?x. n EXP 2 = (4 * x) + 1`,
+  GEN_TAC THEN REWRITE_TAC[ODD_EXISTS] THEN
+  DISCH_THEN(Q.X_CHOOSE_THEN `m` SUBST1_TAC) THEN
+  ASM_REWRITE_TAC[EXP_2, MULT_CLAUSES, ADD_CLAUSES] THEN
+  REWRITE_TAC[GSYM ADD1, INV_SUC_EQ] THEN
+  Q.EXISTS_TAC `m * m + m` THEN
+  REWRITE_TAC(map Q.num_CONV [`4`, `3`, `2`, `1`]) THEN
+  REWRITE_TAC[ADD_CLAUSES, MULT_CLAUSES] THEN
+  REWRITE_TAC[LEFT_ADD_DISTRIB, RIGHT_ADD_DISTRIB] THEN
+  CONV_TAC(AC_CONV(ADD_ASSOC,ADD_SYM)));
+
+val DIFF_SQUARE = Q.store_thm("DIFF_SQUARE",
+  `!x y. (x EXP 2) - (y EXP 2) = (x + y) * (x - y)`,
+  REPEAT GEN_TAC THEN
+  DISJ_CASES_TAC(Q.SPECL [`x`, `y`] LESS_EQ_CASES) THENL
+   [Q.SUBGOAL_THEN `x * x <= y * y` MP_TAC THENL
+     [MATCH_MP_TAC LESS_EQ_MULT THEN ASM_REWRITE_TAC[],
+      POP_ASSUM MP_TAC THEN REWRITE_TAC[GSYM SUB_EQ_0] THEN
+      REPEAT DISCH_TAC THEN ASM_REWRITE_TAC[EXP_2, MULT_CLAUSES]],
+    POP_ASSUM(CHOOSE_THEN SUBST1_TAC o REWRITE_RULE[LESS_EQ_EXISTS]) THEN
+    REWRITE_TAC[ONCE_REWRITE_RULE[ADD_SYM] ADD_SUB] THEN
+    REWRITE_TAC[EXP_2, LEFT_ADD_DISTRIB, RIGHT_ADD_DISTRIB] THEN
+    REWRITE_TAC[GSYM ADD_ASSOC, ONCE_REWRITE_RULE[ADD_SYM] ADD_SUB] THEN
+    AP_TERM_TAC THEN PURE_GEN_REWRITE_TAC LAND_CONV [ADD_SYM] THEN
+    AP_TERM_TAC THEN MATCH_ACCEPT_TAC MULT_SYM]);
+
+val ADD_IMP_SUB = Q.store_thm("ADD_IMP_SUB",
+  `!x y z. (x + y = z) ==> (x = z - y)`,
+  REPEAT GEN_TAC THEN DISCH_THEN(SUBST1_TAC o SYM) THEN
+  REWRITE_TAC[ADD_SUB]);
+
+val ADD_SUM_DIFF = Q.store_thm("ADD_SUM_DIFF",
+  `!v w. v <= w ==> ((w + v) - (w - v) = 2 * v) /\
+                    ((w + v) + (w - v) = 2 * w)`,
+  REPEAT GEN_TAC THEN REWRITE_TAC[LESS_EQ_EXISTS] THEN
+  DISCH_THEN(CHOOSE_THEN SUBST1_TAC) THEN
+  REWRITE_TAC[ONCE_REWRITE_RULE[ADD_SYM] ADD_SUB] THEN
+  REWRITE_TAC[TIMES2, GSYM ADD_ASSOC] THEN
+  ONCE_REWRITE_TAC[ADD_SYM] THEN
+  REWRITE_TAC[ONCE_REWRITE_RULE[ADD_SYM] ADD_SUB, GSYM ADD_ASSOC]);
+
+val EXP_4 = Q.store_thm("EXP_4",
+  `!n. n EXP 4 = (n EXP 2) EXP 2`,
+  GEN_TAC THEN REWRITE_TAC[EXP_EXP] THEN
+  REDUCE_TAC THEN REFL_TAC);
+
+(*---------------------------------------------------------------------------*)
+(* Elementary theory of divisibility                                         *)
+(*---------------------------------------------------------------------------*)
+
+val divides = Q.new_infix_definition("divides",
+  `$divides a b = ?x. b = a * x`,  450);
+
+val DIVIDES_0 = Q.store_thm("DIVIDES_0",
+  `!x. x divides 0`,
+  GEN_TAC THEN REWRITE_TAC[divides] THEN
+  Q.EXISTS_TAC `0` THEN REWRITE_TAC[MULT_CLAUSES]);
+
+val DIVIDES_ZERO = Q.store_thm("DIVIDES_ZERO",
+  `!x. 0 divides x = (x = 0)`,
+  GEN_TAC THEN REWRITE_TAC[divides] THEN
+  EQ_TAC THEN STRIP_TAC THEN ASM_REWRITE_TAC[MULT_CLAUSES]);
+
+val DIVIDES_1 = Q.store_thm("DIVIDES_1",
+  `!x. 1 divides x`,
+  GEN_TAC THEN REWRITE_TAC[divides] THEN
+  Q.EXISTS_TAC `x` THEN REWRITE_TAC[MULT_CLAUSES]);
+
+val DIVIDES_ONE = Q.store_thm("DIVIDES_ONE",
+  `!x. (x divides 1) = (x = 1)`,
+  GEN_TAC THEN REWRITE_TAC[divides] THEN
+  CONV_TAC(LAND_CONV(ONCE_DEPTH_CONV SYM_CONV)) THEN
+  REWRITE_TAC[MULT_EQ_1] THEN EQ_TAC THEN STRIP_TAC THEN
+  ASM_REWRITE_TAC[] THEN Q.EXISTS_TAC `1` THEN REFL_TAC);
+
+val DIVIDES_GE = Q.store_thm("DIVIDES_GE",
+  `!a b. a divides b ==> (b = 0) \/ a <= b`,
+  REPEAT GEN_TAC THEN REWRITE_TAC[divides] THEN
+  DISCH_THEN(Q.X_CHOOSE_THEN `x` SUBST1_TAC) THEN
+  STRUCT_CASES_TAC(Q.SPEC `x` num_CASES) THEN
+  REWRITE_TAC[MULT_CLAUSES, LESS_EQ_ADD]);
+
+val DIVIDES_REFL = Q.store_thm("DIVIDES_REFL",
+  `!x. x divides x`,
+  GEN_TAC THEN REWRITE_TAC[divides] THEN
+  Q.EXISTS_TAC `1` THEN REWRITE_TAC[MULT_CLAUSES]);
+
+val DIVIDES_TRANS = Q.store_thm("DIVIDES_TRANS",
+  `!a b c. a divides b /\ b divides c ==> a divides c`,
+  REPEAT GEN_TAC THEN REWRITE_TAC[divides] THEN
+  DISCH_THEN (CONJUNCTS_THEN MP_TAC) THEN
+  REPEAT(DISCH_THEN(CHOOSE_THEN SUBST1_TAC)) THEN
+  REWRITE_TAC[GSYM MULT_ASSOC] THEN
+  W(EXISTS_TAC o rand o lhs o snd o dest_exists o snd) THEN
+  REFL_TAC);
+	
+val DIVIDES_ANTISYM = Q.store_thm("DIVIDES_ANTISYM",
+  `!x y. x divides y /\ y divides x = (x = y)`,
+  REPEAT GEN_TAC THEN EQ_TAC THENL
+   [REWRITE_TAC[divides] THEN
+    DISCH_THEN(CONJUNCTS_THEN2 MP_TAC (CHOOSE_THEN SUBST1_TAC)) THEN
+    DISCH_THEN(CHOOSE_THEN MP_TAC) THEN
+    CONV_TAC(LAND_CONV SYM_CONV) THEN
+    REWRITE_TAC[GSYM MULT_ASSOC, MULT_FIX, MULT_EQ_1] THEN
+    STRIP_TAC THEN ASM_REWRITE_TAC[],
+    DISCH_THEN SUBST1_TAC THEN REWRITE_TAC[DIVIDES_REFL]]);
+
+val DIVIDES_ADD = Q.store_thm("DIVIDES_ADD",
+  `!d a b. d divides a /\ d divides b ==> d divides (a + b)`,
+  REPEAT GEN_TAC THEN REWRITE_TAC[divides] THEN
+  DISCH_THEN(CONJUNCTS_THEN (CHOOSE_THEN SUBST1_TAC)) THEN
+  REWRITE_TAC[GSYM LEFT_ADD_DISTRIB] THEN
+  W(EXISTS_TAC o rand o lhs o snd o dest_exists o snd) THEN
+  REFL_TAC);
+
+val DIVIDES_SUB = Q.store_thm("DIVIDES_SUB",
+  `!d a b. d divides a /\ d divides b ==> d divides (a - b)`,
+  REPEAT GEN_TAC THEN REWRITE_TAC[divides] THEN
+  DISCH_THEN(CONJUNCTS_THEN (CHOOSE_THEN SUBST1_TAC)) THEN
+  REWRITE_TAC[GSYM LEFT_SUB_DISTRIB] THEN
+  W(EXISTS_TAC o rand o lhs o snd o dest_exists o snd) THEN
+  REFL_TAC);
+
+val DIVIDES_LMUL = Q.store_thm("DIVIDES_LMUL",
+  `!d a x. d divides a ==> d divides (x * a)`,
+  REPEAT GEN_TAC THEN REWRITE_TAC[divides] THEN
+  DISCH_THEN(Q.X_CHOOSE_THEN `p` SUBST1_TAC) THEN
+  Q.EXISTS_TAC `x * p` THEN
+  CONV_TAC(AC_CONV(MULT_ASSOC,MULT_SYM)));
+
+val DIVIDES_RMUL = Q.store_thm("DIVIDES_RMUL",
+  `!d a x. d divides a ==> d divides (a * x)`,
+  ONCE_REWRITE_TAC[MULT_SYM] THEN MATCH_ACCEPT_TAC DIVIDES_LMUL);
+
+val DIVIDES_ADD_REVR = Q.store_thm("DIVIDES_ADD_REVR",
+  `!d a b. d divides a /\ d divides (a + b) ==> d divides b`,
+  REPEAT GEN_TAC THEN DISCH_TAC THEN
+  SUBST1_TAC(SYM(Q.SPECL [`b`, `a`] ADD_SUB)) THEN
+  ONCE_REWRITE_TAC[ADD_SYM] THEN
+  MATCH_MP_TAC DIVIDES_SUB THEN ASM_REWRITE_TAC[]);
+
+val DIVIDES_ADD_REVL = Q.store_thm("DIVIDES_ADD_REVL",
+  `!d a b. d divides b /\ d divides (a + b) ==> d divides a`,
+  ONCE_REWRITE_TAC[ADD_SYM] THEN MATCH_ACCEPT_TAC DIVIDES_ADD_REVR);
+
+val DIVIDES_DIV = Q.store_thm("DIVIDES_DIV",
+  `!n x. 0 < n /\ (x MOD n = 0) ==> n divides x`,
+  REPEAT STRIP_TAC THEN
+  FIRST_ASSUM(MP_TAC o Q.SPEC`x:num` o MATCH_MP DIVISION) THEN
+  ASM_REWRITE_TAC[ADD_CLAUSES] THEN DISCH_TAC THEN
+  REWRITE_TAC[divides] THEN Q.EXISTS_TAC `x DIV n` THEN
+  ONCE_REWRITE_TAC[MULT_SYM] THEN FIRST_ASSUM MATCH_ACCEPT_TAC);
+
+val DIVIDES_MUL_L = Q.store_thm("DIVIDES_MUL_L",
+  `!a b c. a divides b ==> (c * a) divides (c * b)`,
+  REPEAT GEN_TAC THEN REWRITE_TAC[divides] THEN
+  DISCH_THEN(Q.X_CHOOSE_THEN `x` SUBST1_TAC) THEN
+  Q.EXISTS_TAC `x` THEN REWRITE_TAC[MULT_ASSOC]);
+
+val DIVIDES_MUL_R = Q.store_thm("DIVIDES_MUL_R",
+  `!a b c. a divides b ==> (a * c) divides (b * c)`,
+  ONCE_REWRITE_TAC[MULT_SYM] THEN MATCH_ACCEPT_TAC DIVIDES_MUL_L);
+
+val DIVIDES_LMUL2 = Q.store_thm("DIVIDES_LMUL2",
+  `!d a x. (x * d) divides a ==> d divides a`,
+  REPEAT GEN_TAC THEN REWRITE_TAC[divides] THEN
+  DISCH_THEN(Q.X_CHOOSE_THEN `y` SUBST1_TAC) THEN
+  Q.EXISTS_TAC `x * y` THEN
+  CONV_TAC(AC_CONV(MULT_ASSOC,MULT_SYM)));
+
+val DIVIDES_RMUL2 = Q.store_thm("DIVIDES_RMUL2",
+  `!d a x. (d * x) divides a ==> d divides a`,
+  ONCE_REWRITE_TAC[MULT_SYM] THEN
+  MATCH_ACCEPT_TAC DIVIDES_LMUL2);
+
+val DIVIDES_CMUL2 = Q.store_thm("DIVIDES_CMUL2",
+  `!a b c. (c * a) divides (c * b) /\ ~(c = 0) ==> a divides b`,
+  REPEAT GEN_TAC THEN REWRITE_TAC[divides] THEN
+  DISCH_THEN(CONJUNCTS_THEN2 (Q.X_CHOOSE_TAC `x`) ASSUME_TAC) THEN
+  Q.EXISTS_TAC `x` THEN MATCH_MP_TAC MULT_LCANCEL THEN
+  Q.EXISTS_TAC `c` THEN ASM_REWRITE_TAC[MULT_ASSOC]);
+
+val DIVIDES_LE = Q.store_thm("DIVIDES_LE",
+  `!m n. m divides n ==> m <= n \/ (n = 0)`,
+  REPEAT GEN_TAC THEN REWRITE_TAC[divides] THEN
+  DISCH_THEN(Q.X_CHOOSE_THEN `x` SUBST1_TAC) THEN
+  REWRITE_TAC[MULT_EQ_0] THEN
+  STRUCT_CASES_TAC(Q.SPEC `x` num_CASES) THEN
+  ASM_REWRITE_TAC[MULT_CLAUSES, LESS_EQ_ADD]);
+
+val DIVIDES_DIV_NOT = Q.store_thm("DIVIDES_DIV_NOT",
+  `!n x q r. (x = (q * n) + r) /\ 0 < r /\ r < n ==> ~(n divides x)`,
+  REPEAT GEN_TAC THEN STRIP_TAC THEN ASM_REWRITE_TAC[] THEN
+  MP_TAC(Q.SPEC `n` DIVIDES_REFL) THEN
+  DISCH_THEN(MP_TAC o Q.SPEC `q:num` o MATCH_MP DIVIDES_LMUL) THEN
+  PURE_REWRITE_TAC[Q.TAUT_CONV `a ==> ~b = a /\ b ==> F`] THEN
+  DISCH_THEN(MP_TAC o MATCH_MP DIVIDES_ADD_REVR) THEN
+  DISCH_THEN(MP_TAC o MATCH_MP DIVIDES_LE) THEN
+  ASM_REWRITE_TAC[DE_MORGAN_THM, NOT_LESS_EQUAL, GSYM LESS_EQ_0]);
+
+val DIVIDES_MUL2 = Q.store_thm("DIVIDES_MUL2",
+  `!a b c d. a divides b /\ c divides d ==> (a * c) divides (b * d)`,
+  REPEAT GEN_TAC THEN REWRITE_TAC[divides] THEN
+  DISCH_THEN(CONJUNCTS_THEN2 (Q.X_CHOOSE_TAC `x`) (Q.X_CHOOSE_TAC `y`)) THEN 
+  Q.EXISTS_TAC `x * y` THEN
+  ASM_REWRITE_TAC[] THEN
+  CONV_TAC(AC_CONV(MULT_ASSOC,MULT_SYM)));
+
+val DIVIDES_EXP = Q.store_thm("DIVIDES_EXP",
+  `!x y n. x divides y ==> (x EXP n) divides (y EXP n)`,
+  REPEAT GEN_TAC THEN REWRITE_TAC[divides] THEN
+  DISCH_THEN(Q.X_CHOOSE_THEN `d` SUBST1_TAC) THEN
+  Q.EXISTS_TAC `d EXP n` THEN MATCH_ACCEPT_TAC MULT_EXP);
+
+val DIVIDES_EXP2 = Q.store_thm("DIVIDES_EXP2",
+  `!n x y. ~(n = 0) /\ (x EXP n) divides y ==> x divides y`,
+  INDUCT_TAC THEN REWRITE_TAC[NOT_SUC] THEN
+  REPEAT GEN_TAC THEN REWRITE_TAC[EXP] THEN
+  DISCH_TAC THEN FIRST_ASSUM(UNDISCH_TAC o assert is_forall o concl) THEN
+  DISCH_THEN(MP_TAC o Q.SPECL [`x`, `y`]) THEN
+  POP_ASSUM MP_TAC THEN STRUCT_CASES_TAC(Q.SPEC `n` num_CASES) THENL
+   [REWRITE_TAC[EXP, MULT_CLAUSES],
+    DISCH_TAC THEN REWRITE_TAC[NOT_SUC] THEN
+    DISCH_THEN MATCH_MP_TAC THEN
+    MATCH_MP_TAC DIVIDES_LMUL2 THEN
+    Q.EXISTS_TAC `x` THEN ASM_REWRITE_TAC[]]);
+
+val DIVIDES_FACT = Q.store_thm("DIVIDES_FACT",
+  `!m n. 0 < m /\ m <= n ==> m divides (FACT n)`,
+  REPEAT GEN_TAC THEN REWRITE_TAC[LESS_EQ_EXISTS] THEN
+  DISCH_THEN(CONJUNCTS_THEN2 MP_TAC (Q.X_CHOOSE_THEN `d` SUBST1_TAC))
+  THEN Q.SPEC_TAC(`d:num`,`d:num`) THEN INDUCT_TAC THEN
+  REWRITE_TAC[ADD_CLAUSES, FACT] THENL
+   [Q.SPEC_TAC(`m:num`,`m:num`) THEN INDUCT_TAC THEN
+    REWRITE_TAC[FACT, DIVIDES_REFL, LESS_REFL] THEN
+    DISCH_TAC THEN MATCH_MP_TAC DIVIDES_RMUL THEN
+    MATCH_ACCEPT_TAC DIVIDES_REFL,
+    DISCH_THEN(ANTE_RES_THEN MP_TAC) THEN
+    MATCH_ACCEPT_TAC DIVIDES_LMUL]);
+
+val DIVIDES_2 = Q.store_thm("DIVIDES_2",
+  `!n. 2 divides n = EVEN(n)`,
+  REWRITE_TAC[divides, EVEN_EXISTS]);
+
+val DIVIDES_REXP = Q.store_thm("DIVIDES_REXP",
+  `!x y n. x divides y ==> x divides (y EXP (SUC n))`,
+  REWRITE_TAC[EXP, DIVIDES_RMUL]);
+
+(*---------------------------------------------------------------------------*)
+(* The Bezout theorem is a bit ugly for N, it'd be easier for Z              *)
+(*---------------------------------------------------------------------------*)
+
+val IND_EUCLID = Q.store_thm("IND_EUCLID",
+  `!P. (!a b. P a b = P b a) /\
+       (!a. P a 0) /\
+       (!a b. P a b ==> P a (a + b)) ==>
+         !a b. P a b`,
+  REPEAT STRIP_TAC THEN
+  W(fn (asl,w)=>  Q.SUBGOAL_THEN `!n a b. (a + b = n) ==> ^w` MATCH_MP_TAC)
+  THENL [ALL_TAC, Q.EXISTS_TAC `a + b` THEN REFL_TAC] THEN
+  COMPLETE_INDUCT_TAC THEN
+  REPEAT STRIP_TAC THEN REPEAT_TCL DISJ_CASES_THEN MP_TAC
+   (Q.SPECL [`a`, `b`] LESS_LESS_CASES) THENL
+   [DISCH_THEN SUBST1_TAC THEN
+    PURE_GEN_REWRITE_TAC RAND_CONV [GSYM ADD_0] THEN
+    FIRST_ASSUM MATCH_MP_TAC THEN 
+    (* ambiguity in rewriting! hol88:ASM_REWRITE_TAC[] *)
+    FIRST_ASSUM MATCH_ACCEPT_TAC,
+    ALL_TAC, ALL_TAC] THEN
+  DISCH_THEN(fn th => SUBST1_TAC(SYM(MATCH_MP SUB_ADD
+                                      (MATCH_MP LESS_IMP_LESS_OR_EQ th))) THEN
+    DISJ_CASES_THEN MP_TAC (MATCH_MP DIFF_LEMMA th)) THENL
+   [DISCH_THEN SUBST1_TAC THEN
+    FIRST_ASSUM (CONV_TAC o REWR_CONV) THEN
+    FIRST_ASSUM MATCH_ACCEPT_TAC,
+    REWRITE_TAC[Q.ASSUME `a + b = n`] THEN
+    DISCH_TAC THEN ONCE_REWRITE_TAC[ADD_SYM] THEN
+    FIRST_ASSUM MATCH_MP_TAC THEN FIRST_ASSUM(IMP_RES_THEN MATCH_MP_TAC),
+    DISCH_THEN SUBST1_TAC THEN FIRST_ASSUM MATCH_ACCEPT_TAC,
+    REWRITE_TAC[ONCE_REWRITE_RULE[ADD_SYM] (Q.ASSUME `a + b = n`)] THEN
+    DISCH_TAC THEN ONCE_REWRITE_TAC[ADD_SYM] THEN
+    FIRST_ASSUM (CONV_TAC o REWR_CONV) THEN
+    FIRST_ASSUM MATCH_MP_TAC THEN FIRST_ASSUM(IMP_RES_THEN MATCH_MP_TAC)] THEN
+  REWRITE_TAC[]);
+
+val BEZOUT_LEMMA = Q.store_thm("BEZOUT_LEMMA",
+  `!a b. (?d x y. (d divides a /\ d divides b) /\
+                  ((a * x = (b * y) + d) \/
+                   (b * x = (a * y) + d)))
+     ==> (?d x y. (d divides a /\ d divides (a + b)) /\
+                  ((a * x = ((a + b) * y) + d) \/
+                   ((a + b) * x = (a * y) + d)))`,
+  REPEAT STRIP_TAC THEN Q.EXISTS_TAC `d` THENL
+   [MAP_EVERY Q.EXISTS_TAC [`x + y`, `y`],
+    MAP_EVERY Q.EXISTS_TAC [`x`, `x + y`]] THEN
+  ASM_REWRITE_TAC[] THEN
+  (CONJ_TAC THENL [MATCH_MP_TAC DIVIDES_ADD, ALL_TAC]) THEN
+  ASM_REWRITE_TAC[LEFT_ADD_DISTRIB, RIGHT_ADD_DISTRIB] THEN
+  REWRITE_TAC[ADD_ASSOC] THEN DISJ1_TAC THEN
+  CONV_TAC(AC_CONV(ADD_ASSOC,ADD_SYM)));
+
+
+val BEZOUT_ADD = Q.store_thm("BEZOUT_ADD",
+  `!a b. ?d x y. (d divides a /\ d divides b) /\
+                 ((a * x = (b * y) + d) \/
+                  (b * x = (a * y) + d))`,
+  W(fn (asl,w) =>
+     MP_TAC(Q.SPEC `\(a:num) (b:num). ^(snd(strip_forall w))` IND_EUCLID)) THEN
+  BETA_TAC THEN DISCH_THEN MATCH_MP_TAC THEN
+  REPEAT CONJ_TAC THENL
+   [REPEAT GEN_TAC THEN REPEAT
+     (AP_TERM_TAC THEN CONV_TAC FUN_EQ_CONV THEN GEN_TAC THEN BETA_TAC) THEN
+    PURE_GEN_REWRITE_TAC (RAND_CONV o RAND_CONV) [DISJ_SYM] THEN
+    PURE_GEN_REWRITE_TAC (RAND_CONV o LAND_CONV) [CONJ_SYM] THEN REFL_TAC,
+    GEN_TAC THEN MAP_EVERY Q.EXISTS_TAC [`a`, `1`, `0`] THEN
+    REWRITE_TAC[MULT_CLAUSES, ADD_CLAUSES, DIVIDES_0, DIVIDES_REFL],
+                MATCH_ACCEPT_TAC BEZOUT_LEMMA]);
+
+val BEZOUT = Q.store_thm("BEZOUT",
+  `!a b. ?d x y. (d divides a /\ d divides b) /\
+                 (((a * x) - (b * y) = d) \/
+                  ((b * x) - (a * y) = d))`,
+  REPEAT GEN_TAC THEN REPEAT_TCL STRIP_THM_THEN ASSUME_TAC
+   (Q.SPECL [`a`, `b`] BEZOUT_ADD) THEN
+  REPEAT(W(EXISTS_TAC o fst o dest_exists o snd)) THEN
+  ASM_REWRITE_TAC[] THEN
+  ONCE_REWRITE_TAC[ADD_SYM] THEN REWRITE_TAC[ADD_SUB]);
+
+(*---------------------------------------------------------------------------*)
+(* Greatest common divisor.                                                  *)
+(*---------------------------------------------------------------------------*)
+
+val gcd = Q.new_definition("gcd",
+  `gcd(a,b) = @@d. (d divides a /\ d divides b) /\
+                  (!e. e divides a /\ e divides b ==> e divides d)`);
+
+val GCD = Q.store_thm("GCD",
+  `!a b. (gcd(a,b) divides a /\ gcd(a,b) divides b) /\
+         (!e. e divides a /\ e divides b ==> e divides gcd(a,b))`,
+  REPEAT GEN_TAC THEN REWRITE_TAC[gcd] THEN
+  CONV_TAC SELECT_CONV THEN 
+  MP_TAC(Q.SPECL [`a`, `b`] BEZOUT) THEN
+  DISCH_THEN(EVERY_TCL (map Q.X_CHOOSE_THEN [`d`, `x`, `y`]) STRIP_ASSUME_TAC)
+  THEN Q.EXISTS_TAC `d` THEN ASM_REWRITE_TAC[] THEN
+  Q.X_GEN_TAC `e` THEN STRIP_TAC THEN
+  FIRST_ASSUM(UNDISCH_TAC o assert is_eq o concl) THEN
+  DISCH_THEN(SUBST1_TAC o SYM) THEN
+  MATCH_MP_TAC DIVIDES_SUB THEN CONJ_TAC THEN
+  MATCH_MP_TAC DIVIDES_RMUL THEN
+  FIRST_ASSUM MATCH_ACCEPT_TAC);
+
+val GCD_COMMON = Q.store_thm("GCD_COMMON",
+  `!d a b. d divides a /\ d divides b = d divides gcd(a,b)`,
+  REPEAT GEN_TAC THEN EQ_TAC THEN REWRITE_TAC[GCD] THEN
+  DISCH_TAC THEN CONJ_TAC THEN MATCH_MP_TAC DIVIDES_TRANS THEN
+  Q.EXISTS_TAC `gcd(a,b)` THEN ASM_REWRITE_TAC[GCD]);
+
+val GCD_UNIQUE = Q.store_thm("GCD_UNIQUE",
+  `!d a b. (d divides a /\ d divides b) /\
+           (!e. e divides a /\ e divides b ==> e divides d) =
+           (d = gcd(a,b))`,
+  REPEAT GEN_TAC THEN EQ_TAC THEN STRIP_TAC THEN ASM_REWRITE_TAC[GCD] THEN
+  ONCE_REWRITE_TAC[GSYM DIVIDES_ANTISYM] THEN
+  ASM_REWRITE_TAC[GSYM GCD_COMMON] THEN
+  FIRST_ASSUM MATCH_MP_TAC THEN REWRITE_TAC[GCD]);
+
+val DIVIDES_GCD = Q.store_thm("DIVIDES_GCD",
+  `!a b d. d divides gcd(a,b) = d divides a /\ d divides b`,
+  REPEAT GEN_TAC THEN EQ_TAC THEN REWRITE_TAC[GCD] THEN
+  DISCH_TAC THEN CONJ_TAC THEN
+  MATCH_MP_TAC DIVIDES_TRANS THEN Q.EXISTS_TAC `gcd(a,b)` THEN
+  ASM_REWRITE_TAC[GCD]);
+
+val GCD_SYM = Q.store_thm("GCD_SYM",
+  `!a b. gcd(a,b) = gcd(b,a)`,
+  REPEAT GEN_TAC THEN REWRITE_TAC[gcd] THEN
+  AP_TERM_TAC THEN CONV_TAC FUN_EQ_CONV THEN GEN_TAC THEN BETA_TAC THEN
+  MATCH_MP_TAC(Q.TAUT_CONV `(a = b) /\ (c = d) ==> (a /\ c = b /\ d)`) THEN
+  CONJ_TAC THEN PURE_GEN_REWRITE_TAC (RAND_CONV o ONCE_DEPTH_CONV)[CONJ_SYM]
+  THEN REFL_TAC);
+
+val GCD_ASSOC = Q.store_thm("GCD_ASSOC",
+  `!a b c. gcd(a,gcd(b,c)) = gcd(gcd(a,b),c)`,
+  REPEAT GEN_TAC THEN ONCE_REWRITE_TAC[GSYM GCD_UNIQUE] THEN
+  REWRITE_TAC[DIVIDES_GCD, CONJ_ASSOC, GCD] THEN
+  CONJ_TAC THEN MATCH_MP_TAC DIVIDES_TRANS THEN
+  Q.EXISTS_TAC `gcd(b,c)` THEN ASM_REWRITE_TAC[GCD]);
+
+val BEZOUT_GCD = Q.store_thm("BEZOUT_GCD",
+  `!a b. ?x y. ((a * x) - (b * y) = gcd(a,b)) \/
+               ((b * x) - (a * y) = gcd(a,b))`,
+  REPEAT GEN_TAC THEN
+  MP_TAC(Q.SPECL [`a`, `b`] BEZOUT) THEN
+  DISCH_THEN(EVERY_TCL (map Q.X_CHOOSE_THEN [`d`, `x`, `y`])
+    (CONJUNCTS_THEN ASSUME_TAC)) THEN
+  Q.SUBGOAL_THEN `d divides gcd(a,b)` MP_TAC THENL
+   [MATCH_MP_TAC(snd(Lib.front_n_back(CONJUNCTS(SPEC_ALL GCD)))) THEN
+    ASM_REWRITE_TAC[],
+    DISCH_THEN(Q.X_CHOOSE_THEN `k` SUBST1_TAC o REWRITE_RULE[divides]) THEN
+    MAP_EVERY Q.EXISTS_TAC [`x * k`, `y * k`] THEN
+    ASM_REWRITE_TAC[GSYM RIGHT_SUB_DISTRIB, MULT_ASSOC] THEN
+    FIRST_ASSUM(DISJ_CASES_THEN SUBST1_TAC) THEN REWRITE_TAC[]]);
+
+val GCD_LMUL = Q.store_thm("GCD_LMUL",
+  `!a b c. gcd(c * a, c * b) = c * gcd(a,b)`,
+  REPEAT GEN_TAC THEN CONV_TAC SYM_CONV THEN
+  ONCE_REWRITE_TAC[GSYM GCD_UNIQUE] THEN
+  REPEAT CONJ_TAC THEN TRY(MATCH_MP_TAC DIVIDES_MUL_L) THEN
+  REWRITE_TAC[GCD] THEN REPEAT STRIP_TAC THEN
+  REPEAT_TCL STRIP_THM_THEN (SUBST1_TAC o SYM)
+   (Q.SPECL [`a`, `b`] BEZOUT_GCD) THEN
+  REWRITE_TAC[LEFT_SUB_DISTRIB, MULT_ASSOC] THEN
+  MATCH_MP_TAC DIVIDES_SUB THEN CONJ_TAC THEN
+  MATCH_MP_TAC DIVIDES_RMUL THEN ASM_REWRITE_TAC[]);
+
+val GCD_RMUL = Q.store_thm("GCD_RMUL",
+  `!a b c. gcd(a * c, b * c) = c * gcd(a,b)`,
+  REPEAT GEN_TAC THEN
+  PURE_GEN_REWRITE_TAC (LAND_CONV o ONCE_DEPTH_CONV) [MULT_SYM] THEN
+  MATCH_ACCEPT_TAC GCD_LMUL);
+
+val GCD_BEZOUT = Q.store_thm("GCD_BEZOUT",
+  `!a b d. (?x y. ((a * x) - (b * y) = d) \/ ((b * x) - (a * y) = d)) =
+           gcd(a,b) divides d`,
+  REPEAT GEN_TAC THEN EQ_TAC THENL
+   [STRIP_TAC THEN POP_ASSUM(SUBST1_TAC o SYM) THEN
+    MATCH_MP_TAC DIVIDES_SUB THEN CONJ_TAC THEN
+    MATCH_MP_TAC DIVIDES_RMUL THEN REWRITE_TAC[GCD],
+    DISCH_THEN(Q.X_CHOOSE_THEN `k` SUBST1_TAC o REWRITE_RULE[divides]) THEN
+    STRIP_ASSUME_TAC(Q.SPECL [`a`, `b`] BEZOUT_GCD) THEN
+    MAP_EVERY Q.EXISTS_TAC [`x * k`, `y * k`] THEN
+    ASM_REWRITE_TAC[GSYM RIGHT_SUB_DISTRIB, MULT_ASSOC] THEN
+    FIRST_ASSUM(DISJ_CASES_THEN SUBST1_TAC) THEN REWRITE_TAC[]]);
+
+val GCD_BEZOUT_SUM = Q.store_thm("GCD_BEZOUT_SUM",
+  `!a b d x y. ((a * x) + (b * y) = d) ==> gcd(a,b) divides d`,
+  REPEAT GEN_TAC THEN DISCH_THEN(SUBST1_TAC o SYM) THEN
+  MATCH_MP_TAC DIVIDES_ADD THEN CONJ_TAC THEN
+  MATCH_MP_TAC DIVIDES_RMUL THEN REWRITE_TAC[GCD]);
+
+val GCD_0 = Q.store_thm("GCD_0",
+  `!a. gcd(0,a) = a`,
+  GEN_TAC THEN CONV_TAC SYM_CONV THEN
+  REWRITE_TAC[GSYM GCD_UNIQUE] THEN
+  REWRITE_TAC[DIVIDES_0, DIVIDES_REFL] THEN
+  REPEAT STRIP_TAC THEN ASM_REWRITE_TAC[]);
+
+val GCD_ZERO = Q.store_thm("GCD_ZERO",
+  `!a b. (gcd(a,b) = 0) = (a = 0) /\ (b = 0)`,
+  REPEAT GEN_TAC THEN EQ_TAC THEN STRIP_TAC THEN
+  ASM_REWRITE_TAC[GCD_0] THEN
+  MP_TAC(Q.SPECL [`a`, `b`] GCD) THEN
+  ASM_REWRITE_TAC[DIVIDES_ZERO] THEN
+  STRIP_TAC THEN ASM_REWRITE_TAC[]);
+
+val GCD_REFL = Q.store_thm("GCD_REFL",
+  `!a. gcd(a,a) = a`,
+  GEN_TAC THEN CONV_TAC SYM_CONV THEN
+  ONCE_REWRITE_TAC[GSYM GCD_UNIQUE] THEN
+  REWRITE_TAC[DIVIDES_REFL]);
+
+val GCD_1 = Q.store_thm("GCD_1",
+  `!a. gcd(1,a) = 1`,
+  GEN_TAC THEN CONV_TAC SYM_CONV THEN
+  ONCE_REWRITE_TAC[GSYM GCD_UNIQUE] THEN
+  REWRITE_TAC[DIVIDES_1] THEN
+  REPEAT STRIP_TAC THEN ASM_REWRITE_TAC[]);
+
+val GCD_MULTIPLE = Q.store_thm("GCD_MULTIPLE",
+  `!a b. gcd(b,a * b) = b`,
+  REPEAT GEN_TAC THEN
+  PURE_GEN_REWRITE_TAC (LAND_CONV o RAND_CONV o LAND_CONV)
+       [SYM(el 3 (CONJUNCTS(SPEC_ALL MULT_CLAUSES)))] THEN
+  REWRITE_TAC[GCD_RMUL, GCD_1] THEN
+  REWRITE_TAC[MULT_CLAUSES]);
+
+(*---------------------------------------------------------------------------*)
+(* Coprimality                                                               *)
+(*---------------------------------------------------------------------------*)
+
+val coprime = Q.new_definition("coprime",
+  `coprime(a,b) = !d. d divides a /\ d divides b ==> (d = 1)`);
+
+val COPRIME = Q.store_thm("COPRIME",
+  `!a b. coprime(a,b) = !d. d divides a /\ d divides b = (d = 1)`,
+  REPEAT GEN_TAC THEN REWRITE_TAC[coprime] THEN
+  REPEAT(EQ_TAC ORELSE STRIP_TAC) THEN ASM_REWRITE_TAC[DIVIDES_1] THENL
+   [FIRST_ASSUM MATCH_MP_TAC,
+    FIRST_ASSUM(CONV_TAC o REWR_CONV o GSYM) THEN CONJ_TAC] THEN
+  ASM_REWRITE_TAC[]);
+
+val COPRIME_GCD = Q.store_thm("COPRIME_GCD",
+  `!a b. coprime(a,b) = (gcd(a,b) = 1)`,
+  REPEAT GEN_TAC THEN REWRITE_TAC[coprime] THEN EQ_TAC THENL
+   [DISCH_THEN MATCH_MP_TAC THEN REWRITE_TAC[GCD],
+    DISCH_TAC THEN MP_TAC(Q.SPECL [`a`, `b`] GCD) THEN
+    ASM_REWRITE_TAC[DIVIDES_ONE] THEN DISCH_THEN(fn th => REWRITE_TAC[th])]);
+
+val COPRIME_SYM = Q.store_thm("COPRIME_SYM",
+  `!a b. coprime(a,b) = coprime(b,a)`,
+  REPEAT GEN_TAC THEN REWRITE_TAC[COPRIME_GCD] THEN
+  AP_THM_TAC THEN AP_TERM_TAC THEN
+  MATCH_ACCEPT_TAC GCD_SYM);
+
+val COPRIME_BEZOUT = Q.store_thm("COPRIME_BEZOUT",
+  `!a b. coprime(a,b) = ?x y. ((a * x) - (b * y) = 1) \/
+                              ((b * x) - (a * y) = 1)`,
+  REWRITE_TAC[GCD_BEZOUT, DIVIDES_ONE, COPRIME_GCD]);
+
+val COPRIME_DIVPROD = Q.store_thm("COPRIME_DIVPROD",
+  `!d a b. d divides (a * b) /\ coprime(d,a) ==> d divides b`,
+  REPEAT GEN_TAC THEN DISCH_THEN(CONJUNCTS_THEN2 ASSUME_TAC MP_TAC) THEN
+  REWRITE_TAC[COPRIME_BEZOUT] THEN
+  DISCH_THEN(Q.X_CHOOSE_THEN `x` MP_TAC) THEN
+  DISCH_THEN(Q.X_CHOOSE_THEN `y` MP_TAC) THEN
+  DISCH_THEN (DISJ_CASES_THEN (MP_TAC o Q.AP_TERM `$* b`)) THEN
+  REWRITE_TAC[MULT_CLAUSES] THEN DISCH_THEN(SUBST1_TAC o SYM) THEN
+  REWRITE_TAC[LEFT_SUB_DISTRIB, MULT_ASSOC] THEN
+  MATCH_MP_TAC DIVIDES_SUB THEN CONJ_TAC THEN
+  MATCH_MP_TAC DIVIDES_RMUL THEN ONCE_REWRITE_TAC[MULT_SYM] THEN
+  ASM_REWRITE_TAC[] THEN MATCH_MP_TAC DIVIDES_RMUL THEN
+  ASM_REWRITE_TAC[DIVIDES_REFL]);
+
+val COPRIME_1 = Q.store_thm("COPRIME_1",
+  `!a. coprime(a,1)`,
+  GEN_TAC THEN REWRITE_TAC[coprime, DIVIDES_ONE] THEN
+  GEN_TAC THEN DISCH_THEN(fn th => REWRITE_TAC[th]));
+
+val GCD_COPRIME = Q.store_thm("GCD_COPRIME",
+  `!a b a' b'. ~(gcd(a,b) = 0) /\
+               (a = a' * gcd(a,b)) /\
+               (b = b' * gcd(a,b)) ==> coprime(a',b')`,
+  REPEAT GEN_TAC THEN DISCH_THEN(CONJUNCTS_THEN2 ASSUME_TAC MP_TAC) THEN
+  CONV_TAC CONTRAPOS_CONV THEN REWRITE_TAC[coprime] THEN
+  CONV_TAC (ONCE_DEPTH_CONV NOT_FORALL_CONV) THEN
+  REWRITE_TAC[NOT_IMP] THEN DISCH_THEN(Q.X_CHOOSE_TAC `d`) THEN
+  POP_ASSUM(CONJUNCTS_THEN2 MP_TAC ASSUME_TAC) THEN
+  REWRITE_TAC[divides] THEN
+  DISCH_THEN(CONJUNCTS_THEN2 (Q.X_CHOOSE_THEN `a''` SUBST1_TAC)
+    (Q.X_CHOOSE_THEN `b''` SUBST1_TAC)) THEN
+  ONCE_REWRITE_TAC[MULT_SYM] THEN REWRITE_TAC[MULT_ASSOC] THEN
+  DISCH_TAC THEN MP_TAC(Q.SPECL [`a`, `b`] GCD) THEN
+  DISCH_THEN(MP_TAC o Q.SPEC `gcd(a,b) * d` 
+             o snd o Lib.front_n_back o CONJUNCTS) THEN
+  REWRITE_TAC[NOT_IMP] THEN REPEAT CONJ_TAC THENL
+   [REWRITE_TAC[divides] THEN Q.EXISTS_TAC `a'':num` THEN
+    FIRST_ASSUM(MATCH_ACCEPT_TAC o CONJUNCT1),
+    REWRITE_TAC[divides] THEN Q.EXISTS_TAC `b'':num` THEN
+    FIRST_ASSUM(MATCH_ACCEPT_TAC o CONJUNCT2),
+    DISCH_THEN(MP_TAC o MATCH_MP DIVIDES_LE) THEN
+    REWRITE_TAC[DE_MORGAN_THM, NOT_LESS_EQUAL] THEN
+    FIRST_ASSUM(UNDISCH_TAC o assert is_conj o concl) THEN
+    Q.UNDISCH_TAC `~(d = 1)` THEN
+    STRUCT_CASES_TAC(Q.SPEC `d` num_CASES) THEN
+    REWRITE_TAC[MULT_CLAUSES, SUC_NOT, Q.num_CONV `1`, INV_SUC_EQ] THENL
+     [DISCH_THEN(CONJUNCTS_THEN SUBST_ALL_TAC) THEN
+      POP_ASSUM MP_TAC THEN REWRITE_TAC[GCD_0],
+      DISCH_TAC THEN DISCH_THEN(K ALL_TAC) THEN
+      ASM_REWRITE_TAC[] THEN MATCH_MP_TAC LESS_ADD_NONZERO THEN
+      ASM_REWRITE_TAC[MULT_EQ_0]]]);
+
+val GCD_COPRIME_EXISTS = Q.store_thm("GCD_COPRIME_EXISTS",
+  `!a b. ~(gcd(a,b) = 0) ==>
+        ?a' b'. (a = a' * gcd(a,b)) /\
+                (b = b' * gcd(a,b)) /\
+                coprime(a',b')`,
+  REPEAT GEN_TAC THEN DISCH_TAC THEN MP_TAC(Q.SPECL [`a`,`b`] GCD) THEN
+  DISCH_THEN(MP_TAC o CONJUNCT1) THEN REWRITE_TAC[divides] THEN
+  DISCH_THEN(CONJUNCTS_THEN2 (Q.X_CHOOSE_TAC `a'` o GSYM)
+   (Q.X_CHOOSE_TAC `b'` o GSYM)) THEN
+  MAP_EVERY Q.EXISTS_TAC [`a':num`, `b':num`] THEN
+  ONCE_REWRITE_TAC[MULT_SYM] THEN ASM_REWRITE_TAC[] THEN
+  MATCH_MP_TAC GCD_COPRIME THEN
+  MAP_EVERY Q.EXISTS_TAC [`a`, `b`] THEN
+  ONCE_REWRITE_TAC[MULT_SYM] THEN ASM_REWRITE_TAC[]);
+
+val COPRIME_0 = Q.store_thm("COPRIME_0",
+  `!d. coprime(d,0) = (d = 1)`,
+  GEN_TAC THEN EQ_TAC THEN DISCH_TAC THEN
+  ASM_REWRITE_TAC[ONCE_REWRITE_RULE[COPRIME_SYM] COPRIME_1] THEN
+  POP_ASSUM MP_TAC THEN REWRITE_TAC[coprime] THEN
+  DISCH_THEN MATCH_MP_TAC THEN REWRITE_TAC[DIVIDES_REFL, DIVIDES_0]);
+
+val COPRIME_MUL = Q.store_thm("COPRIME_MUL",
+  `!d a b. coprime(d,a) /\ coprime(d,b) ==> coprime(d,a * b)`,
+  REPEAT GEN_TAC THEN REWRITE_TAC[COPRIME_GCD] THEN
+  DISCH_THEN(CONJUNCTS_THEN2 MP_TAC (MP_TAC o Q.AP_TERM `$* a`)) THEN
+  REWRITE_TAC[MULT_CLAUSES] THEN DISCH_THEN
+   (fn th => PURE_GEN_REWRITE_TAC (LAND_CONV o ONCE_DEPTH_CONV) [GSYM th]) THEN
+  REWRITE_TAC[GSYM GCD_LMUL, GCD_ASSOC, GCD_MULTIPLE]);
+
+val COPRIME_LMUL2 = Q.store_thm("COPRIME_LMUL2",
+  `!d a b. coprime(d,a * b) ==> coprime(d,b)`,
+  REPEAT GEN_TAC THEN CONV_TAC CONTRAPOS_CONV THEN
+  REWRITE_TAC[coprime] THEN CONV_TAC(ONCE_DEPTH_CONV NOT_FORALL_CONV) THEN
+  REWRITE_TAC[NOT_IMP] THEN
+  DISCH_THEN(Q.X_CHOOSE_THEN `k` STRIP_ASSUME_TAC) THEN
+  Q.EXISTS_TAC `k` THEN ASM_REWRITE_TAC[] THEN
+  MATCH_MP_TAC DIVIDES_LMUL THEN ASM_REWRITE_TAC[]);
+
+val COPRIME_RMUL2 = Q.store_thm("COPRIME_RMUL2",
+  `!d a b.  coprime(d,a * b) ==> coprime(d,a)`,
+  ONCE_REWRITE_TAC[MULT_SYM] THEN REWRITE_TAC[COPRIME_LMUL2]);
+
+val COPRIME_EXP = Q.store_thm("COPRIME_EXP",
+  `!n a d. coprime(d,a) ==> coprime(d,a EXP n)`,
+  INDUCT_TAC THEN REWRITE_TAC[EXP, COPRIME_1] THEN
+  REPEAT GEN_TAC THEN DISCH_TAC THEN
+  MATCH_MP_TAC COPRIME_MUL THEN ASM_REWRITE_TAC[] THEN
+  FIRST_ASSUM MATCH_MP_TAC THEN ASM_REWRITE_TAC[]);
+
+val COPRIME_EXP_IMP = Q.store_thm("COPRIME_EXP_IMP",
+  `!n a b. coprime(a,b) ==> coprime(a EXP n,b EXP n)`,
+  REPEAT GEN_TAC THEN DISCH_TAC THEN
+  MATCH_MP_TAC COPRIME_EXP THEN ONCE_REWRITE_TAC[COPRIME_SYM] THEN
+  MATCH_MP_TAC COPRIME_EXP THEN
+  ONCE_REWRITE_TAC[COPRIME_SYM] THEN ASM_REWRITE_TAC[]);
+
+val BEZOUT_GCD_POW = Q.store_thm("BEZOUT_GCD_POW",
+  `!n a b. ?x y. (((a EXP n) * x) - ((b EXP n) * y) = gcd(a,b) EXP n) \/
+                 (((b EXP n) * x) - ((a EXP n) * y) = gcd(a,b) EXP n)`,
+  REPEAT GEN_TAC THEN Q.ASM_CASES_TAC `gcd(a,b) = 0` THENL
+   [STRUCT_CASES_TAC(Q.SPEC `n` num_CASES) THEN
+    ASM_REWRITE_TAC[EXP, MULT_CLAUSES] THENL
+     [MAP_EVERY Q.EXISTS_TAC [`1`, `0`] THEN REWRITE_TAC[SUB_0],
+      REPEAT(Q.EXISTS_TAC `0`) THEN REWRITE_TAC[MULT_CLAUSES, SUB_0]],
+    MP_TAC(Q.SPECL [`a`, `b`] GCD) THEN
+    DISCH_THEN(CONJUNCTS_THEN2 MP_TAC ASSUME_TAC) THEN
+    DISCH_THEN(CONJUNCTS_THEN MP_TAC) THEN REWRITE_TAC[divides] THEN
+    DISCH_THEN(Q.X_CHOOSE_THEN `b'` ASSUME_TAC) THEN
+    DISCH_THEN(Q.X_CHOOSE_THEN `a'` ASSUME_TAC) THEN
+    MP_TAC(Q.SPECL [`a`, `b`, `a':num`, `b':num`] GCD_COPRIME) THEN
+    RULE_ASSUM_TAC GSYM THEN RULE_ASSUM_TAC(ONCE_REWRITE_RULE[MULT_SYM]) THEN
+    ASM_REWRITE_TAC[] THEN DISCH_THEN(MP_TAC o GSYM) THEN
+    ASM_REWRITE_TAC[] THEN
+    DISCH_THEN(MP_TAC o Q.SPEC `n` o MATCH_MP COPRIME_EXP_IMP) THEN
+    REWRITE_TAC[COPRIME_BEZOUT] THEN
+    DISCH_THEN(Q.X_CHOOSE_THEN `x` (Q.X_CHOOSE_THEN `y` MP_TAC)) THEN
+    DISCH_THEN(DISJ_CASES_THEN MP_TAC) THEN
+    DISCH_THEN (MP_TAC o Q.AP_TERM `$* (gcd(a,b) EXP n)`) THEN
+    REWRITE_TAC[MULT_CLAUSES, LEFT_SUB_DISTRIB] THEN
+    DISCH_THEN(SUBST1_TAC o SYM) THEN
+    MAP_EVERY Q.EXISTS_TAC [`x`, `y`] THEN
+    REWRITE_TAC[MULT_ASSOC, GSYM MULT_EXP] THEN
+    RULE_ASSUM_TAC(ONCE_REWRITE_RULE[MULT_SYM]) THEN
+    ASM_REWRITE_TAC[]]);
+
+val GCD_EXP = Q.store_thm("GCD_EXP",
+  `!n a b. gcd(a EXP n,b EXP n) = gcd(a,b) EXP n`,
+  REPEAT GEN_TAC THEN CONV_TAC SYM_CONV THEN
+  ONCE_REWRITE_TAC[GSYM GCD_UNIQUE] THEN REPEAT CONJ_TAC THENL
+   [MATCH_MP_TAC DIVIDES_EXP THEN REWRITE_TAC[GCD],
+    MATCH_MP_TAC DIVIDES_EXP THEN REWRITE_TAC[GCD],
+    Q.X_GEN_TAC `d` THEN STRIP_TAC THEN
+    MP_TAC(Q.SPECL [`n`, `a`, `b`] BEZOUT_GCD_POW) THEN
+    DISCH_THEN(REPEAT_TCL CHOOSE_THEN (DISJ_CASES_THEN
+     (SUBST1_TAC o SYM))) THEN
+    MATCH_MP_TAC DIVIDES_SUB THEN CONJ_TAC THEN
+    MATCH_MP_TAC DIVIDES_RMUL THEN ASM_REWRITE_TAC[]]);
+
+val COPRIME_EXP2 = Q.store_thm("COPRIME_EXP2",
+  `!n a b. coprime(a EXP (SUC n),b EXP (SUC n)) = coprime(a,b)`,
+  REWRITE_TAC[COPRIME_GCD, GCD_EXP] THEN
+  INDUCT_TAC THEN ONCE_REWRITE_TAC[EXP] THENL
+   [REWRITE_TAC[EXP, MULT_CLAUSES],
+    ASM_REWRITE_TAC[MULT_EQ_1]]);
+
+val DIVISION_DECOMP = Q.store_thm("DIVISION_DECOMP",
+  `!a b c. a divides (b * c) ==>
+     ?b' c'. (a = b' * c') /\ b' divides b /\ c' divides c`,
+  REPEAT GEN_TAC THEN DISCH_TAC THEN
+  Q.EXISTS_TAC `gcd(a,b)` THEN REWRITE_TAC[GCD] THEN
+  MP_TAC(Q.SPECL [`a`, `b`] GCD_COPRIME_EXISTS) THEN
+  Q.ASM_CASES_TAC `gcd(a,b) = 0` THENL
+  [ASM_REWRITE_TAC[] THEN Q.EXISTS_TAC `1` THEN
+   RULE_ASSUM_TAC(REWRITE_RULE[GCD_ZERO]) THEN
+   ASM_REWRITE_TAC[MULT_CLAUSES, DIVIDES_1],
+   ASM_REWRITE_TAC[] THEN
+   DISCH_THEN(Q.X_CHOOSE_THEN `a'` (Q.X_CHOOSE_THEN `b'`
+      (STRIP_ASSUME_TAC o GSYM o ONCE_REWRITE_RULE[MULT_SYM]))) THEN
+   Q.EXISTS_TAC `a':num` THEN ASM_REWRITE_TAC[] THEN
+   Q.UNDISCH_TAC `a divides (b * c)` THEN
+   FIRST_ASSUM(fn th => PURE_GEN_REWRITE_TAC (LAND_CONV o LAND_CONV)[GSYM th])
+   THEN 
+   FIRST_ASSUM(fn th => PURE_GEN_REWRITE_TAC(LAND_CONV o RAND_CONV o LAND_CONV)
+                           [GSYM th]) THEN REWRITE_TAC[MULT_ASSOC] THEN
+   DISCH_TAC THEN MATCH_MP_TAC COPRIME_DIVPROD THEN
+   Q.EXISTS_TAC `b':num` THEN ASM_REWRITE_TAC[] THEN
+   MATCH_MP_TAC DIVIDES_CMUL2 THEN Q.EXISTS_TAC `gcd(a,b)` THEN
+   REWRITE_TAC[MULT_ASSOC] THEN CONJ_TAC THEN
+   FIRST_ASSUM MATCH_ACCEPT_TAC]);
+
+val DIVIDES_REV = Q.store_thm("DIVIDES_REV",
+  `!n a b. (a EXP n) divides (b EXP n) /\ ~(n = 0) ==> a divides b`,
+  REPEAT GEN_TAC THEN STRIP_TAC THEN
+  Q.ASM_CASES_TAC `gcd(a,b) = 0` THENL
+   [RULE_ASSUM_TAC(REWRITE_RULE[GCD_ZERO]) THEN
+    ASM_REWRITE_TAC[DIVIDES_REFL], ALL_TAC] THEN
+  FIRST_ASSUM(MP_TAC o MATCH_MP GCD_COPRIME_EXISTS) THEN
+  DISCH_THEN(Q.X_CHOOSE_THEN `a'` (Q.X_CHOOSE_THEN `b'`
+   (STRIP_ASSUME_TAC o GSYM))) THEN
+  Q.UNDISCH_TAC `(a EXP n) divides (b EXP n)` THEN
+  DISCH_THEN(Q.X_CHOOSE_THEN `k` MP_TAC o REWRITE_RULE[divides]) THEN
+  FIRST_ASSUM(fn th => PURE_GEN_REWRITE_TAC (funpow 3 LAND_CONV)[GSYM th]) THEN
+  FIRST_ASSUM(fn th => PURE_GEN_REWRITE_TAC (LAND_CONV o RAND_CONV o
+                                        LAND_CONV o LAND_CONV) [GSYM th]) THEN
+  REWRITE_TAC[Q.SPECL [`x`, `gcd(a,b)`] MULT_SYM] THEN
+  REWRITE_TAC[MULT_EXP, GSYM MULT_ASSOC] THEN
+  Q.SUBGOAL_THEN `~(gcd(a,b) EXP n = 0)` MP_TAC THENL
+   [Q.UNDISCH_TAC `~(gcd(a,b) = 0)` THEN
+    STRUCT_CASES_TAC(Q.SPEC `gcd(a,b)` num_CASES) THEN
+    REWRITE_TAC[NOT_EXP_0],
+    ONCE_REWRITE_TAC[Q.TAUT_CONV `a ==> b ==> c = a /\ b ==> c`]] THEN
+  DISCH_THEN(MP_TAC o MATCH_MP MULT_LCANCEL) THEN
+  DISCH_TAC THEN Q.SUBGOAL_THEN `coprime(a' EXP n,b' EXP n)` MP_TAC THENL
+   [Q.UNDISCH_TAC `~(n = 0)` THEN
+    STRUCT_CASES_TAC(Q.SPEC `n` num_CASES) THEN
+    ASM_REWRITE_TAC[COPRIME_EXP2], ALL_TAC] THEN
+  ASM_REWRITE_TAC[coprime] THEN
+  DISCH_THEN(MP_TAC o Q.SPEC `a' EXP n`) THEN
+  REWRITE_TAC[MATCH_MP DIVIDES_RMUL (SPEC_ALL DIVIDES_REFL), DIVIDES_REFL] THEN
+  ASM_REWRITE_TAC[EXP_EQ_1] THEN DISCH_THEN SUBST_ALL_TAC THEN
+  Q.UNDISCH_TAC `1 * gcd(a,b) = a` THEN REWRITE_TAC[MULT_CLAUSES] THEN
+  DISCH_THEN(SUBST1_TAC o SYM) THEN REWRITE_TAC[GCD]);
+
+val DIVIDES_MUL = Q.store_thm("DIVIDES_MUL",
+  `!m n r. 
+       m divides r /\ n divides r /\ coprime(m,n) 
+       ==> (m * n) divides r`,
+  REPEAT GEN_TAC THEN DISCH_THEN(CONJUNCTS_THEN2 ASSUME_TAC MP_TAC) THEN
+  POP_ASSUM(Q.X_CHOOSE_THEN `d` SUBST1_TAC o REWRITE_RULE[divides])
+  THEN ONCE_REWRITE_TAC[COPRIME_SYM] THEN
+  DISCH_THEN(MP_TAC o MATCH_MP COPRIME_DIVPROD) THEN
+  MATCH_ACCEPT_TAC DIVIDES_MUL_L);
+
+(*---------------------------------------------------------------------------*)
+(* Primality                                                                 *)
+(*---------------------------------------------------------------------------*)
+
+val prime = Q.new_definition("prime",
+  `prime(p) = ~(p = 1) /\ !x. x divides p ==> (x = 1) \/ (x = p)`);
+
+(*---------------------------------------------------------------------------*)
+(* A few useful theorems about primes                                        *)
+(*---------------------------------------------------------------------------*)
+
+val PRIME_0 = Q.store_thm("PRIME_0",
+  `~prime 0`,
+  REWRITE_TAC[prime] THEN
+  DISCH_THEN(MP_TAC o Q.SPEC `2` o CONJUNCT2) THEN
+  REWRITE_TAC[DIVIDES_0] THEN REDUCE_TAC);
+
+val PRIME_1 = Q.store_thm("PRIME_1",
+  `~prime 1`,
+  REWRITE_TAC[prime]);
+
+val PRIME_2 = Q.store_thm("PRIME_2",
+  `prime 2`,
+  REWRITE_TAC[prime] THEN REDUCE_TAC THEN
+  REWRITE_TAC[] THEN REPEAT STRIP_TAC THEN
+  FIRST_ASSUM(MP_TAC o MATCH_MP DIVIDES_LE) THEN
+  REDUCE_TAC THEN REWRITE_TAC[LESS_OR_EQ] THEN
+  REWRITE_TAC[Q.num_CONV `2`, Q.num_CONV `1`, LESS_THM, NOT_LESS_0] THEN
+  DISCH_THEN(REPEAT_TCL DISJ_CASES_THEN SUBST_ALL_TAC) THEN
+  REWRITE_TAC[] THEN POP_ASSUM MP_TAC THEN REWRITE_TAC[DIVIDES_ZERO] THEN
+  REDUCE_TAC THEN REWRITE_TAC[]);
+
+val PRIME_GE_2 = Q.store_thm("PRIME_GE_2",
+  `!p. prime(p) ==> 2 <= p`,
+  GEN_TAC THEN CONV_TAC CONTRAPOS_CONV THEN REWRITE_TAC[NOT_LESS_EQUAL] THEN
+  REWRITE_TAC[Q.num_CONV `2`, Q.num_CONV `1`, 
+              LESS_THM, NOT_LESS_0] THEN
+  DISCH_THEN(REPEAT_TCL DISJ_CASES_THEN SUBST1_TAC) THEN
+  REWRITE_TAC[SYM(Q.num_CONV `1`), PRIME_0, PRIME_1]);
+
+val PRIME_FACTOR = Q.store_thm("PRIME_FACTOR",
+  `!n. ~(n = 1) ==> ?p. prime(p) /\ p divides n`,
+  COMPLETE_INDUCT_TAC THEN
+  Q.X_GEN_TAC `n` THEN REPEAT STRIP_TAC THEN
+  Q.ASM_CASES_TAC `prime(n)` THENL
+   [Q.EXISTS_TAC `n` THEN ASM_REWRITE_TAC[DIVIDES_REFL],
+    Q.UNDISCH_TAC `~prime(n)` THEN
+    DISCH_THEN(MP_TAC o REWRITE_RULE[prime]) THEN
+    ASM_REWRITE_TAC[] THEN CONV_TAC(ONCE_DEPTH_CONV NOT_FORALL_CONV) THEN
+    DISCH_THEN(Q.X_CHOOSE_THEN `m` MP_TAC) THEN
+    REWRITE_TAC[NOT_IMP, DE_MORGAN_THM] THEN STRIP_TAC THEN
+    FIRST_ASSUM(DISJ_CASES_THEN MP_TAC o MATCH_MP DIVIDES_LE) THENL
+     [ASM_REWRITE_TAC[LESS_OR_EQ] THEN
+      DISCH_THEN(ANTE_RES_THEN MP_TAC) THEN ASM_REWRITE_TAC[] THEN
+      DISCH_THEN(Q.X_CHOOSE_THEN `p` STRIP_ASSUME_TAC) THEN
+      Q.EXISTS_TAC `p` THEN ASM_REWRITE_TAC[] THEN
+      MATCH_MP_TAC DIVIDES_TRANS THEN Q.EXISTS_TAC `m` THEN
+      ASM_REWRITE_TAC[],
+      DISCH_THEN SUBST1_TAC THEN Q.EXISTS_TAC `2` THEN
+      REWRITE_TAC[PRIME_2, DIVIDES_0]]]);
+
+val PRIME_FACTOR_LT = Q.store_thm("PRIME_FACTOR_LT",
+  `!n m p. prime(p) /\ ~(n = 0) /\ (n = p * m) ==> m < n`,
+  REPEAT STRIP_TAC THEN FIRST_ASSUM(MP_TAC o MATCH_MP PRIME_GE_2) THEN
+  ASM_REWRITE_TAC[LESS_EQ_EXISTS] THEN
+  DISCH_THEN(Q.X_CHOOSE_THEN `q` SUBST_ALL_TAC) THEN
+  REWRITE_TAC[Q.num_CONV `2`, RIGHT_ADD_DISTRIB, MULT_CLAUSES] THEN
+  REWRITE_TAC[GSYM ADD_ASSOC] THEN MATCH_MP_TAC LESS_ADD_NONZERO THEN
+  REWRITE_TAC[ADD_EQ_0] THEN DISCH_THEN(CONJUNCTS_THEN SUBST_ALL_TAC) THEN
+  FIRST_ASSUM(UNDISCH_TAC o assert is_eq o concl) THEN
+  ASM_REWRITE_TAC[MULT_CLAUSES]);
+
+
+val EUCLID = Q.store_thm("EUCLID",
+  `!n. ?p. prime(p) /\ p > n`,
+  PURE_GEN_REWRITE_TAC I [Q.TAUT_CONV `x = ~~x`] THEN
+  DISCH_THEN(Q.X_CHOOSE_THEN `n` MP_TAC o CONV_RULE NOT_FORALL_CONV) THEN
+  DISCH_THEN(STRIP_ASSUME_TAC o CONV_RULE NOT_EXISTS_CONV) THEN
+  MP_TAC(Q.SPEC `SUC(FACT n)` PRIME_FACTOR) THEN
+  REWRITE_TAC[Q.num_CONV `1`, INV_SUC_EQ, GSYM LESS_EQ_0, NOT_LESS_EQUAL,
+    FACT_LESS] THEN DISCH_THEN(Q.X_CHOOSE_TAC `p`) THEN
+  FIRST_ASSUM(UNDISCH_TAC o assert is_forall o concl) THEN
+  DISCH_THEN(MP_TAC o Q.SPEC `p`) THEN ASM_REWRITE_TAC[] THEN
+  DISJ_CASES_TAC(Q.SPECL [`n`, `p`] LESS_CASES) THEN
+  ASM_REWRITE_TAC[GREATER] THEN
+  Q.SUBGOAL_THEN `p divides (FACT n)` ASSUME_TAC THENL
+   [MATCH_MP_TAC DIVIDES_FACT THEN ASM_REWRITE_TAC[] THEN
+    REWRITE_TAC[GSYM NOT_LESS_EQUAL, LESS_EQ_0] THEN
+    DISCH_THEN SUBST_ALL_TAC THEN
+    EVERY_ASSUM(UNDISCH_TAC o concl) THEN REWRITE_TAC[PRIME_0],
+    Q.SUBGOAL_THEN `p = 1` SUBST_ALL_TAC THENL
+     [REWRITE_TAC[GSYM DIVIDES_ONE] THEN MATCH_MP_TAC DIVIDES_ADD_REVR THEN
+      Q.EXISTS_TAC `FACT n` THEN ASM_REWRITE_TAC[GSYM ADD1],
+      FIRST_ASSUM(MP_TAC o CONJUNCT1) THEN REWRITE_TAC[PRIME_1]]]);
+
+val PRIME_COPRIME = Q.store_thm("PRIME_COPRIME",
+  `!n p. prime(p) ==> (n = 1) \/ p divides n \/ coprime(p,n)`,
+  REPEAT GEN_TAC THEN REWRITE_TAC[prime, COPRIME_GCD] THEN
+  STRIP_ASSUME_TAC(Q.SPECL [`p`, `n`] GCD) THEN
+  DISCH_THEN(CONJUNCTS_THEN2 ASSUME_TAC MP_TAC) THEN
+  DISCH_THEN(MP_TAC o Q.SPEC `gcd(p,n)`) THEN ASM_REWRITE_TAC[] THEN
+  DISCH_THEN(DISJ_CASES_THEN SUBST_ALL_TAC) THEN
+  ASM_REWRITE_TAC[]);
+
+val COPRIME_PRIME = Q.store_thm("COPRIME_PRIME",
+  `!p a b. coprime(a,b) ==> ~(prime(p) /\ p divides a /\ p divides b)`,
+  REPEAT GEN_TAC THEN REWRITE_TAC[coprime] THEN REPEAT STRIP_TAC THEN
+  Q.SUBGOAL_THEN `p = 1` SUBST_ALL_TAC THENL
+   [FIRST_ASSUM MATCH_MP_TAC THEN ASM_REWRITE_TAC[],
+    Q.UNDISCH_TAC `prime 1` THEN REWRITE_TAC[PRIME_1]]);
+
+val COPRIME_PRIME_EQ = Q.store_thm("COPRIME_PRIME_EQ",
+  `!a b. coprime(a,b) = !p. ~(prime(p) /\ p divides a /\ p divides b)`,
+  REPEAT GEN_TAC THEN EQ_TAC THENL
+   [DISCH_THEN(fn th => REWRITE_TAC[MATCH_MP COPRIME_PRIME th]),
+    CONV_TAC CONTRAPOS_CONV THEN REWRITE_TAC[coprime] THEN
+    CONV_TAC(ONCE_DEPTH_CONV NOT_FORALL_CONV) THEN REWRITE_TAC[NOT_IMP] THEN
+    DISCH_THEN(Q.X_CHOOSE_THEN `d` STRIP_ASSUME_TAC) THEN
+    FIRST_ASSUM(Q.X_CHOOSE_TAC `p` o MATCH_MP PRIME_FACTOR) THEN
+    Q.EXISTS_TAC `p` THEN ASM_REWRITE_TAC[] THEN CONJ_TAC THEN
+    MATCH_MP_TAC DIVIDES_TRANS THEN Q.EXISTS_TAC `d` THEN
+    ASM_REWRITE_TAC[]]);
+
+val PRIME_DIVPROD = Q.store_thm("PRIME_DIVPROD",
+  `!p a b. prime(p) /\ p divides (a * b) 
+           ==> p divides a \/ p divides b`,
+  REPEAT GEN_TAC THEN STRIP_TAC THEN
+  FIRST_ASSUM(MP_TAC o Q.SPEC `a` o MATCH_MP PRIME_COPRIME) THEN
+  DISCH_THEN(REPEAT_TCL DISJ_CASES_THEN ASSUME_TAC) THEN
+  ASM_REWRITE_TAC[] THENL
+   [DISJ2_TAC THEN Q.UNDISCH_TAC `p divides (a * b)` THEN
+    ASM_REWRITE_TAC[MULT_CLAUSES],
+    DISJ2_TAC THEN MATCH_MP_TAC COPRIME_DIVPROD THEN
+    Q.EXISTS_TAC `a` THEN ASM_REWRITE_TAC[]]);
+
+val PRIME_DIVEXP = Q.store_thm("PRIME_DIVEXP",
+  `!n p x. prime(p) /\ p divides (x EXP n) ==> p divides x`,
+  INDUCT_TAC THEN REPEAT GEN_TAC THEN REWRITE_TAC[EXP, DIVIDES_ONE] THENL
+   [DISCH_THEN(SUBST1_TAC o CONJUNCT2) THEN REWRITE_TAC[DIVIDES_1],
+    DISCH_THEN(fn th => ASSUME_TAC(CONJUNCT1 th) THEN MP_TAC th) THEN
+    DISCH_THEN(DISJ_CASES_TAC o MATCH_MP PRIME_DIVPROD) THEN
+    ASM_REWRITE_TAC[] THEN FIRST_ASSUM MATCH_MP_TAC THEN
+    ASM_REWRITE_TAC[]]);
+
+val PRIME_DIVEXP_N = Q.store_thm("PRIME_DIVEXP_N",
+  `!n p x. 
+       prime(p) /\ p divides (x EXP n) ==> (p EXP n) divides (x EXP n)`,
+  REPEAT GEN_TAC THEN DISCH_THEN(MP_TAC o MATCH_MP PRIME_DIVEXP) THEN
+  MATCH_ACCEPT_TAC DIVIDES_EXP);
+
+val PARITY_EXP = Q.store_thm("PARITY_EXP",
+  `!n x. EVEN(x EXP (SUC n)) = EVEN(x)`,
+  REPEAT GEN_TAC THEN REWRITE_TAC[GSYM DIVIDES_2] THEN EQ_TAC THENL
+   [DISCH_TAC THEN MATCH_MP_TAC PRIME_DIVEXP THEN
+    Q.EXISTS_TAC `SUC n` THEN ASM_REWRITE_TAC[PRIME_2],
+    REWRITE_TAC[EXP] THEN MATCH_ACCEPT_TAC DIVIDES_RMUL]);
+
+val COPRIME_SOS = Q.store_thm("COPRIME_SOS",
+  `!x y. coprime(x,y) ==> coprime(x * y,(x EXP 2) + (y EXP 2))`,
+  REPEAT GEN_TAC THEN REWRITE_TAC[COPRIME_PRIME_EQ] THEN
+  CONV_TAC CONTRAPOS_CONV THEN
+  CONV_TAC(ONCE_DEPTH_CONV NOT_FORALL_CONV) THEN
+  REWRITE_TAC[] THEN 
+  DISCH_THEN(Q.X_CHOOSE_THEN `p` STRIP_ASSUME_TAC) THEN
+  Q.EXISTS_TAC `p` THEN ASM_REWRITE_TAC[] THEN
+  MP_TAC(Q.SPECL [`p`, `x`, `y`] PRIME_DIVPROD) THEN
+  ASM_REWRITE_TAC[] THEN DISCH_THEN DISJ_CASES_TAC THEN
+  ASM_REWRITE_TAC[] THEN MATCH_MP_TAC PRIME_DIVEXP THEN
+  Q.EXISTS_TAC `2` THEN ASM_REWRITE_TAC[] THEN
+  MATCH_MP_TAC DIVIDES_ADD_REVR THENL
+   [Q.EXISTS_TAC `x EXP 2`,
+    Q.EXISTS_TAC `y EXP 2` THEN ONCE_REWRITE_TAC[ADD_SYM]] THEN
+  ASM_REWRITE_TAC[] THEN REWRITE_TAC[Q.num_CONV `2`] THEN
+  MATCH_MP_TAC DIVIDES_REXP THEN ASM_REWRITE_TAC[]);
+
+(*---------------------------------------------------------------------------*)
+(* One property of coprimality is easier to prove via prime factors.         *)
+(*---------------------------------------------------------------------------*)
+
+val PRIME_DIVPROD_POW = Q.store_thm("PRIME_DIVPROD_POW",
+  `!n p a b. prime(p) /\ coprime(a,b) /\ (p EXP n) divides (a * b)
+                ==> (p EXP n) divides a \/ (p EXP n) divides b`,
+  REPEAT STRIP_TAC THEN
+  Q.ASM_CASES_TAC `n = 0` THEN ASM_REWRITE_TAC[EXP, DIVIDES_1] THEN
+  Q.SUBGOAL_THEN `p divides a \/ p divides b` DISJ_CASES_TAC THENL
+   [MATCH_MP_TAC PRIME_DIVPROD THEN ASM_REWRITE_TAC[] THEN
+    MATCH_MP_TAC DIVIDES_EXP2 THEN Q.EXISTS_TAC `n` 
+    THEN ASM_REWRITE_TAC[],
+    DISJ1_TAC THEN RULE_ASSUM_TAC(ONCE_REWRITE_RULE[COPRIME_SYM, MULT_SYM]),
+    DISJ2_TAC] THEN
+  MATCH_MP_TAC COPRIME_DIVPROD THENL
+   [Q.EXISTS_TAC `b`, Q.EXISTS_TAC `a`] THEN
+  ASM_REWRITE_TAC[] THEN
+  ONCE_REWRITE_TAC[COPRIME_SYM] THEN
+  MATCH_MP_TAC COPRIME_EXP THEN
+  FIRST_ASSUM(MP_TAC o Q.SPEC `p` o MATCH_MP COPRIME_PRIME) THEN
+  ASM_REWRITE_TAC[] THEN ONCE_REWRITE_TAC[COPRIME_SYM] THENL
+   [FIRST_ASSUM(MP_TAC o Q.SPEC `b` o MATCH_MP PRIME_COPRIME),
+    FIRST_ASSUM(MP_TAC o Q.SPEC `a` o MATCH_MP PRIME_COPRIME)] THEN
+  DISCH_THEN(REPEAT_TCL DISJ_CASES_THEN ASSUME_TAC) THEN
+  ASM_REWRITE_TAC[COPRIME_1]);
+
+val COPRIME_POW = Q.store_thm("COPRIME_POW",
+  `!n a b c. coprime(a,b) /\ (a * b = c EXP n) ==>
+             ?r s. (a = r EXP n) /\ (b = s EXP n)`,
+  REPEAT GEN_TAC THEN
+  MAP_EVERY (W(curry Q.SPEC_TAC)) [`a:num`, `b:num`, `n:num`, `c:num`] THEN
+  COMPLETE_INDUCT_TAC THEN Q.X_GEN_TAC `c` THEN
+  DISCH_THEN(MP_TAC o CONV_RULE(REDEPTH_CONV RIGHT_IMP_FORALL_CONV)) THEN
+  REWRITE_TAC[Q.TAUT_CONV `a ==> b ==> c = a /\ b ==> c`] THEN
+  DISCH_TAC THEN Q.X_GEN_TAC `n` THEN
+  REPEAT GEN_TAC THEN Q.ASM_CASES_TAC `c = 1` THENL
+   [ASM_REWRITE_TAC[EXP_1, MULT_EQ_1] THEN
+    REPEAT STRIP_TAC THEN MAP_EVERY Q.EXISTS_TAC [`1`, `1`] THEN
+    ASM_REWRITE_TAC[MULT_CLAUSES, EXP_1],
+    STRIP_TAC] THEN
+  Q.ASM_CASES_TAC `c = 0` THENL
+   [Q.UNDISCH_TAC `a * b = c EXP n` THEN
+    STRUCT_CASES_TAC(Q.SPEC `n` num_CASES) THEN
+    ASM_REWRITE_TAC[MULT_EQ_0, EXP, MULT_CLAUSES, MULT_EQ_1] THEN
+    STRIP_TAC THEN Q.UNDISCH_TAC `coprime(a,b)` THEN
+    ASM_REWRITE_TAC[ONCE_REWRITE_RULE[COPRIME_SYM] COPRIME_0, COPRIME_0] THEN
+    DISCH_TAC THENL
+     [MAP_EVERY Q.EXISTS_TAC [`0`, `1`],
+      MAP_EVERY Q.EXISTS_TAC [`1`, `0`]] THEN
+    ASM_REWRITE_TAC[ADD_CLAUSES, MULT_CLAUSES, EXP_1], ALL_TAC] THEN
+  FIRST_ASSUM(Q.X_CHOOSE_THEN `p` MP_TAC o MATCH_MP PRIME_FACTOR) THEN
+  STRIP_TAC THEN
+  Q.SUBGOAL_THEN `(p EXP n) divides a \/ (p EXP n) divides b` MP_TAC THENL
+   [MATCH_MP_TAC PRIME_DIVPROD_POW THEN ASM_REWRITE_TAC[] THEN
+    MATCH_MP_TAC DIVIDES_EXP THEN ASM_REWRITE_TAC[], ALL_TAC] THEN
+  Q.UNDISCH_TAC `p divides c` THEN REWRITE_TAC[divides] THEN
+  DISCH_THEN(Q.X_CHOOSE_TAC `l`) THEN
+  Q.SUBGOAL_THEN `~(p EXP n = 0)` ASSUME_TAC THENL
+   [Q.UNDISCH_TAC `c = p * l` THEN
+    REWRITE_TAC[GSYM LESS_EQ_0, NOT_LESS_EQUAL] THEN
+    STRUCT_CASES_TAC(Q.SPEC `p` num_CASES) THEN
+    ASM_REWRITE_TAC[MULT_CLAUSES, NOT_SUC, ZERO_LESS_EXP], ALL_TAC] THEN
+  DISCH_THEN(DISJ_CASES_THEN(Q.X_CHOOSE_TAC `k`)) THENL
+   [Q.SUBGOAL_THEN `?r s. (k = r EXP n) /\ (b = s EXP n)` STRIP_ASSUME_TAC 
+    THENL
+     [FIRST_ASSUM MATCH_MP_TAC THEN Q.EXISTS_TAC `l`,
+      MAP_EVERY Q.EXISTS_TAC [`p * r`, `s`] THEN
+      ASM_REWRITE_TAC[MULT_EXP]] THEN
+    REPEAT CONJ_TAC THENL
+     [MATCH_MP_TAC PRIME_FACTOR_LT THEN Q.EXISTS_TAC `p` THEN
+      ASM_REWRITE_TAC[],
+      Q.UNDISCH_TAC `coprime(a,b)` THEN ONCE_REWRITE_TAC[COPRIME_SYM] THEN
+      ASM_REWRITE_TAC[COPRIME_LMUL2],
+      MATCH_MP_TAC MULT_LCANCEL THEN Q.EXISTS_TAC `p EXP n` THEN
+      Q.UNDISCH_TAC `a * b = c EXP n` THEN
+      ASM_REWRITE_TAC[MULT_ASSOC, MULT_EXP]],
+    Q.SUBGOAL_THEN `?r s. (a = r EXP n) /\ (k = s EXP n)` STRIP_ASSUME_TAC 
+    THENL
+     [FIRST_ASSUM MATCH_MP_TAC THEN Q.EXISTS_TAC `l`,
+      MAP_EVERY Q.EXISTS_TAC [`r`, `p * s`] THEN
+      ASM_REWRITE_TAC[MULT_EXP]] THEN
+    REPEAT CONJ_TAC THENL
+     [MATCH_MP_TAC PRIME_FACTOR_LT THEN Q.EXISTS_TAC `p` THEN
+      ASM_REWRITE_TAC[],
+      Q.UNDISCH_TAC `coprime(a,b)` THEN ASM_REWRITE_TAC[COPRIME_LMUL2],
+      ONCE_REWRITE_TAC[MULT_SYM] THEN
+      MATCH_MP_TAC MULT_LCANCEL THEN Q.EXISTS_TAC `p EXP n` THEN
+      Q.UNDISCH_TAC `a * b = c EXP n` THEN
+      ASM_REWRITE_TAC[MULT_ASSOC, MULT_EXP] THEN
+      DISCH_THEN(SUBST1_TAC o SYM) THEN
+      CONV_TAC(AC_CONV(MULT_ASSOC,MULT_SYM))]]);
+
+(*---------------------------------------------------------------------------*)
+(* Classification of Pythagorean triples.                                    *)
+(*---------------------------------------------------------------------------*)
+
+val PYTHAG_EVEN_LEMMA1 = Q.store_thm("PYTHAG_EVEN_LEMMA1",
+  `!u v w. ((u EXP 2) + (v EXP 2) = w EXP 2) ==> ~(ODD(u) /\ ODD(v))`,
+  REPEAT GEN_TAC THEN CONV_TAC CONTRAPOS_CONV THEN REWRITE_TAC[] THEN
+  DISCH_THEN(CONJUNCTS_THEN(CHOOSE_THEN SUBST1_TAC o MATCH_MP ODD_SQUARE)) THEN
+  ONCE_REWRITE_TAC[(EQT_ELIM o Q.AC_CONV(ADD_ASSOC,ADD_SYM))
+   `(a + b) + (c + d) = (a + c) + (b + d)`] THEN
+  DISJ_CASES_THEN MP_TAC (Q.SPEC `w` EVEN_OR_ODD) THENL
+   [DISCH_THEN(CHOOSE_THEN SUBST1_TAC o MATCH_MP EVEN_SQUARE),
+    DISCH_THEN(CHOOSE_THEN SUBST1_TAC o MATCH_MP ODD_SQUARE)] THEN
+  REWRITE_TAC[SYM(REDUCE_CONV (--`2 * 2`--))] THEN
+  REWRITE_TAC[GSYM LEFT_ADD_DISTRIB, GSYM TIMES2, GSYM MULT_ASSOC] THEN
+  REWRITE_TAC[CANCEL_TIMES2, GSYM ADD1, GSYM NOT_EVEN_EQ_ODD,
+    NOT_EVEN_EQ_ODD]);
+
+val PYTHAG_EVEN_LEMMA2 = Q.store_thm("PYTHAG_EVEN_LEMMA2",
+  `!u v. coprime(u,v) ==> ~(EVEN(u) /\ EVEN(v))`,
+  REPEAT GEN_TAC THEN CONV_TAC CONTRAPOS_CONV THEN
+  REWRITE_TAC[GSYM DIVIDES_2, divides] THEN
+  STRIP_TAC THEN ASM_REWRITE_TAC[GCD_LMUL, COPRIME_GCD, MULT_EQ_1] THEN
+  REDUCE_TAC THEN REWRITE_TAC[]);
+
+val PYTHAG_EVEN = Q.store_thm("PYTHAG_EVEN",
+  `!u v w. ((u EXP 2) + (v EXP 2) = w EXP 2) /\ coprime(u,v)
+        ==> (EVEN(u) /\ ODD(v) /\ ODD(w)) \/
+            (ODD(u) /\ EVEN(v) /\ ODD(w))`,
+  REPEAT STRIP_TAC THEN
+  FIRST_ASSUM(MP_TAC o MATCH_MP PYTHAG_EVEN_LEMMA1) THEN
+  FIRST_ASSUM(MP_TAC o MATCH_MP PYTHAG_EVEN_LEMMA2) THEN
+  REPEAT GEN_TAC THEN MAP_EVERY (DISJ_CASES_TAC o C Q.SPEC EVEN_OR_ODD)
+   [`u`, `v`, `w`] THEN ASM_REWRITE_TAC[] THEN
+  ASM_REWRITE_TAC[GSYM EVEN_ODD, GSYM ODD_EVEN] THENL
+   [DISJ1_TAC, DISJ2_TAC] THEN
+  (Q.SUBGOAL_THEN `~EVEN(w EXP 2)` MP_TAC THENL
+    [FIRST_ASSUM(SUBST1_TAC o SYM) THEN REWRITE_TAC[EVEN_ADD], ALL_TAC] THEN
+   ASM_REWRITE_TAC[Q.num_CONV `2`, PARITY_EXP] THEN
+   ASM_REWRITE_TAC[GSYM ODD_EVEN]));
+
+val PYTHAG_COCLASSIFY = Q.store_thm("PYTHAG_COCLASSIFY",
+  `!u v w. ((u EXP 2) + (v EXP 2) = w EXP 2) /\ coprime(u,v) /\
+           (EVEN(u) /\ ODD(v) /\ ODD(w)) ==>
+                ?p q. coprime(p,q) /\
+                      (u = 2 * p * q) /\
+                      (v = (p EXP 2) - (q EXP 2)) /\
+                      (w = (p EXP 2) + (q EXP 2))`,
+  REPEAT STRIP_TAC THEN FIRST_ASSUM(MP_TAC o MATCH_MP ADD_IMP_SUB) THEN
+  REWRITE_TAC[DIFF_SQUARE] THEN RULE_ASSUM_TAC(REWRITE_RULE[ODD_EVEN]) THEN
+  Q.SUBGOAL_THEN `coprime(v,w)` ASSUME_TAC THENL
+   [REWRITE_TAC[coprime] THEN Q.X_GEN_TAC `d` THEN STRIP_TAC THEN
+    Q.SUBGOAL_THEN `d divides u` ASSUME_TAC THENL
+     [MATCH_MP_TAC DIVIDES_REV THEN Q.EXISTS_TAC `2` THEN
+      REDUCE_TAC THEN REWRITE_TAC[] THEN
+      MATCH_MP_TAC DIVIDES_ADD_REVR THEN Q.EXISTS_TAC `v EXP 2` THEN
+      ONCE_REWRITE_TAC[ADD_SYM] THEN ASM_REWRITE_TAC[] THEN
+      CONJ_TAC THEN MATCH_MP_TAC DIVIDES_EXP THEN ASM_REWRITE_TAC[],
+      Q.UNDISCH_TAC `coprime(u,v)` THEN REWRITE_TAC[coprime] THEN
+      DISCH_THEN MATCH_MP_TAC THEN ASM_REWRITE_TAC[]], ALL_TAC] THEN
+  Q.ASM_CASES_TAC `u = 0` THENL
+   [ASM_REWRITE_TAC[EXP_2, MULT_CLAUSES] THEN
+    DISCH_THEN(MP_TAC o REWRITE_RULE[MULT_EQ_0] o SYM) THEN
+    REWRITE_TAC[ADD_EQ_0, SUB_EQ_0] THEN
+    DISCH_THEN(DISJ_CASES_TAC) THENL
+     [Q.UNDISCH_TAC `coprime(u,v)` THEN ASM_REWRITE_TAC[COPRIME_0] THEN
+      REDUCE_TAC THEN REWRITE_TAC[],
+      Q.UNDISCH_TAC `coprime(u,v)` THEN ONCE_REWRITE_TAC[COPRIME_SYM] THEN
+      ASM_REWRITE_TAC[COPRIME_0] THEN DISCH_THEN SUBST_ALL_TAC THEN
+      MAP_EVERY Q.EXISTS_TAC [`1`, `0`] THEN
+      REWRITE_TAC[MULT_CLAUSES, ADD_CLAUSES, SUB_0] THEN
+      Q.UNDISCH_TAC `(u EXP 2) + (1 EXP 2) = w EXP 2` THEN
+      ASM_REWRITE_TAC[EXP_2, MULT_CLAUSES, ADD_CLAUSES] THEN
+      DISCH_THEN(MP_TAC o SYM) THEN REWRITE_TAC[MULT_EQ_1] THEN
+      DISCH_THEN SUBST1_TAC THEN REWRITE_TAC[COPRIME_1]], ALL_TAC] THEN
+  Q.SUBGOAL_THEN `EVEN(w + v)` 
+               (Q.X_CHOOSE_TAC `r` o REWRITE_RULE[EVEN_EXISTS])
+  THENL [ASM_REWRITE_TAC[EVEN_ADD], ALL_TAC] THEN
+  DISJ_CASES_TAC(Q.SPECL [`v`, `w`] LESS_EQ_CASES) THENL
+   [ALL_TAC,
+    FIRST_ASSUM(fn th => REWRITE_TAC[REWRITE_RULE[GSYM SUB_EQ_0] th]) THEN
+    ASM_REWRITE_TAC[MULT_CLAUSES, EXP_2, MULT_EQ_0]] THEN
+  Q.SUBGOAL_THEN `EVEN(w - v)` (Q.X_CHOOSE_TAC `s` o REWRITE_RULE[EVEN_EXISTS])
+  THENL
+   [Q.UNDISCH_TAC `v <= w` THEN REWRITE_TAC[LESS_EQ_EXISTS] THEN
+    DISCH_THEN(Q.X_CHOOSE_THEN `d` SUBST_ALL_TAC) THEN
+    Q.UNDISCH_TAC `~EVEN(v + d)` THEN ASM_REWRITE_TAC[EVEN_ADD] THEN
+    REWRITE_TAC[ONCE_REWRITE_RULE[ADD_SYM] ADD_SUB], ALL_TAC] THEN
+  FIRST_ASSUM(Q.X_CHOOSE_TAC `t` o REWRITE_RULE[EVEN_EXISTS]) THEN
+  ASM_REWRITE_TAC[EXP_2] THEN ONCE_REWRITE_TAC[(EQT_ELIM o Q.AC_CONV
+    (MULT_ASSOC,MULT_SYM)) `(a * b) * (c * d) = (a * c) * (b * d)`] THEN
+  REWRITE_TAC[REDUCE_CONV (--`2 * 2`--), Q.num_CONV `4`, MULT_MONO_EQ] THEN
+  Q.SUBGOAL_THEN `coprime(r,s)` ASSUME_TAC THENL
+   [REWRITE_TAC[coprime] THEN Q.X_GEN_TAC `d` THEN REWRITE_TAC[divides] THEN
+    DISCH_THEN(CONJUNCTS_THEN2 (Q.X_CHOOSE_TAC `k`) (Q.X_CHOOSE_TAC `l`))
+    THEN MAP_EVERY Q.UNDISCH_TAC [`w + v = 2 * r`, `w - v = 2 * s`] THEN
+    ASM_REWRITE_TAC[Q.TAUT_CONV `a ==> b ==> c = a /\ b ==> c`] THEN
+    DISCH_THEN
+     (fn th => let val (t2,t1) = CONJ_PAIR th 
+               in MP_TAC(MK_COMB(Q.AP_TERM `$+` t1, t2)) THEN
+                  MP_TAC(MK_COMB(Q.AP_TERM `$-` t1, t2))
+               end) THEN
+    FIRST_ASSUM(fn th =>  REWRITE_TAC[MATCH_MP ADD_SUM_DIFF th]) THEN
+    REWRITE_TAC[GSYM LEFT_ADD_DISTRIB, GSYM LEFT_SUB_DISTRIB] THEN
+    REWRITE_TAC[Q.num_CONV `2`, MULT_MONO_EQ] THEN
+    REPEAT DISCH_TAC THEN Q.UNDISCH_TAC `coprime(v,w)` THEN
+    ASM_REWRITE_TAC[coprime] THEN DISCH_THEN MATCH_MP_TAC THEN
+    ASM_REWRITE_TAC[] THEN CONJ_TAC THEN
+    MATCH_MP_TAC DIVIDES_RMUL THEN
+    MATCH_ACCEPT_TAC DIVIDES_REFL,
+    MP_TAC(Q.ASSUME `coprime(r,s)`) THEN
+    REWRITE_TAC[Q.TAUT_CONV `a ==> b ==> c = a /\ b ==> c`] THEN
+    DISCH_THEN(MP_TAC o REWRITE_RULE[GSYM EXP_2] o GSYM) THEN
+    DISCH_THEN(MP_TAC o MATCH_MP COPRIME_POW) THEN
+    DISCH_THEN(Q.X_CHOOSE_THEN `p` (Q.X_CHOOSE_THEN `q`
+      (CONJUNCTS_THEN SUBST_ALL_TAC))) THEN
+    FIRST_ASSUM(MP_TAC o MATCH_MP ADD_SUM_DIFF) THEN
+    ASM_REWRITE_TAC[GSYM LEFT_ADD_DISTRIB, GSYM LEFT_SUB_DISTRIB] THEN
+    REWRITE_TAC[Q.num_CONV `2`, MULT_MONO_EQ] THEN
+    REWRITE_TAC[SYM(Q.num_CONV `2`)] THEN
+    DISCH_THEN(CONJUNCTS_THEN(ASSUME_TAC o SYM)) THEN
+    MAP_EVERY Q.EXISTS_TAC [`p`, `q`] THEN
+    ASM_REWRITE_TAC[GSYM DIFF_SQUARE, GSYM EXP_2] THEN
+    Q.UNDISCH_TAC `(u EXP 2) + (v EXP 2) = w EXP 2` THEN
+    DISCH_THEN(MP_TAC o MATCH_MP ADD_IMP_SUB) THEN
+    REWRITE_TAC[DIFF_SQUARE] THEN ASM_REWRITE_TAC[EXP_2] THEN
+    ONCE_REWRITE_TAC[(EQT_ELIM o Q.AC_CONV (MULT_ASSOC,MULT_SYM))
+                      `(a * b) * (c * d) = (a * c) * (b * d)`] THEN
+    REWRITE_TAC[REDUCE_CONV (--`2 * 2`--), Q.num_CONV `4`, MULT_MONO_EQ] THEN
+    ONCE_REWRITE_TAC[(EQT_ELIM o Q.AC_CONV (MULT_ASSOC,MULT_SYM))
+                      `(a * b) * (c * d) = (a * c) * (b * d)`] THEN
+    REWRITE_TAC[GSYM EXP_2] THEN REWRITE_TAC[Q.num_CONV `2`] THEN
+    REWRITE_TAC[EXP_MONO_EQ] THEN DISCH_TAC THEN ASM_REWRITE_TAC[] THEN
+    Q.UNDISCH_TAC `coprime(p EXP 2,q EXP 2)` THEN
+    REWRITE_TAC[Q.num_CONV `2`, COPRIME_EXP2]]);
+
+(*---------------------------------------------------------------------------*)
+(* Now the main result                                                       *)
+(*---------------------------------------------------------------------------*)
+
+val FLT42_DOWN_LEMMA1 = Q.store_thm("FLT42_DOWN_LEMMA1",
+  `!x y z. ~coprime(x,y) /\
+           ((x EXP 4) + (y EXP 4) = z EXP 2) /\
+           ~(x = 0) /\ ~(y = 0)
+        ==> ?u v w. ~(u = 0) /\ ~(v = 0) /\
+                    ((u EXP 4) + (v EXP 4) = w EXP 2) /\ w < z`,
+  REPEAT GEN_TAC THEN DISCH_THEN(CONJUNCTS_THEN2 MP_TAC STRIP_ASSUME_TAC) THEN
+  Q.SUBGOAL_THEN `~(z EXP 2 = 0)` MP_TAC THENL
+   [FIRST_ASSUM(SUBST1_TAC o SYM) THEN REWRITE_TAC[EXP_EQ_0, ADD_EQ_0] THEN
+    ASM_REWRITE_TAC[] THEN REDUCE_TAC,
+    REWRITE_TAC[EXP_EQ_0] THEN REDUCE_TAC THEN DISCH_TAC] THEN
+  REWRITE_TAC[COPRIME_PRIME_EQ] THEN
+  CONV_TAC(ONCE_DEPTH_CONV NOT_FORALL_CONV) THEN REWRITE_TAC[] THEN
+  DISCH_THEN(Q.X_CHOOSE_THEN `p` STRIP_ASSUME_TAC) THEN
+  Q.SUBGOAL_THEN `(p EXP 2) divides z` MP_TAC THENL
+   [MATCH_MP_TAC DIVIDES_REV THEN Q.EXISTS_TAC `2` THEN REDUCE_TAC THEN
+    REWRITE_TAC[GSYM EXP_4] THEN FIRST_ASSUM(SUBST1_TAC o SYM) THEN
+    MATCH_MP_TAC DIVIDES_ADD THEN CONJ_TAC THEN
+    MATCH_MP_TAC DIVIDES_EXP THEN ASM_REWRITE_TAC[],
+    DISCH_THEN(Q.X_CHOOSE_TAC `w` o REWRITE_RULE[divides])] THEN
+  Q.UNDISCH_TAC `p divides y` THEN REWRITE_TAC[divides] THEN
+  DISCH_THEN(Q.X_CHOOSE_TAC `v`) THEN
+  Q.UNDISCH_TAC `p divides x` THEN REWRITE_TAC[divides] THEN
+  DISCH_THEN(Q.X_CHOOSE_TAC `u`) THEN
+  MAP_EVERY Q.EXISTS_TAC [`u`, `v`, `w`] THEN
+  Q.UNDISCH_TAC `(x EXP 4) + (y EXP 4) = z EXP 2` THEN
+  ASM_REWRITE_TAC[MULT_EXP, GSYM EXP_4, GSYM LEFT_ADD_DISTRIB] THEN
+  Q.SUBGOAL_THEN `~(p EXP 4 = 0)` MP_TAC THENL
+   [REWRITE_TAC[EXP_EQ_0] THEN REDUCE_TAC THEN DISCH_THEN SUBST_ALL_TAC THEN
+    Q.UNDISCH_TAC `prime(0)` THEN REWRITE_TAC[PRIME_0],
+    REWRITE_TAC[Q.TAUT_CONV `a ==> b ==> c = a /\ b ==> c`]] THEN
+  DISCH_THEN(fn th => REWRITE_TAC[MATCH_MP MULT_LCANCEL th]) THEN
+  Q.UNDISCH_TAC `~(x = 0)` THEN
+  ASM_REWRITE_TAC[MULT_EQ_0, DE_MORGAN_THM] THEN
+  STRIP_TAC THEN ASM_REWRITE_TAC[] THEN
+  Q.UNDISCH_TAC `~(y = 0)` THEN 
+  ASM_REWRITE_TAC[MULT_EQ_0, DE_MORGAN_THM] THEN
+  STRIP_TAC THEN ASM_REWRITE_TAC[] THEN 
+  PURE_GEN_REWRITE_TAC LAND_CONV
+           [GSYM(el 3 (CONJUNCTS(SPEC_ALL MULT_CLAUSES)))] THEN
+  ONCE_REWRITE_TAC[MULT_SYM] THEN
+  Q.UNDISCH_TAC `~(z = 0)` THEN ASM_REWRITE_TAC[] THEN
+  STRUCT_CASES_TAC(Q.SPEC `w` num_CASES) THENL
+   [REWRITE_TAC[MULT_CLAUSES],
+    DISCH_TAC THEN REWRITE_TAC[LESS_MULT_MONO]] THEN
+  Q.UNDISCH_TAC `prime(p)` THEN
+  STRUCT_CASES_TAC(Q.SPEC `p` num_CASES) THEN
+  REWRITE_TAC[PRIME_0, EXP_2] THEN
+  REWRITE_TAC[ADD_CLAUSES, MULT_CLAUSES, LESS_MONO_EQ, 
+              Q.num_CONV `1`] THEN
+  W(STRUCT_CASES_TAC o C SPEC num_CASES o hd o free_vars o snd) THEN
+  REWRITE_TAC[SYM(Q.num_CONV `1`), PRIME_1, ADD_CLAUSES, LESS_0]);
+
+val FLT42_DOWN_LEMMA2 = Q.store_thm("FLT42_DOWN_LEMMA2",
+  `!x y z. ~(x = 0) /\ ~(y = 0) /\
+           ((x EXP 4) + (y EXP 4) = z EXP 2) /\
+           coprime(x EXP 2,y EXP 2) /\
+           (EVEN(x EXP 2) /\ ODD(y EXP 2) /\ ODD(z))
+        ==> ?u v w. ~(u = 0) /\ ~(v = 0) /\
+                    ((u EXP 4) + (v EXP 4) = w EXP 2) /\ w < z`,
+  REPEAT GEN_TAC THEN REWRITE_TAC[EXP_4] THEN
+  DISCH_THEN(CONJUNCTS_THEN2 ASSUME_TAC MP_TAC) THEN
+  DISCH_THEN(CONJUNCTS_THEN ASSUME_TAC) THEN
+  FIRST_ASSUM(MP_TAC o MATCH_MP PYTHAG_COCLASSIFY) THEN
+  DISCH_THEN(Q.X_CHOOSE_THEN `p` MP_TAC) THEN
+  DISCH_THEN(Q.X_CHOOSE_THEN `q` STRIP_ASSUME_TAC) THEN
+  Q.SUBGOAL_THEN `(q EXP 2) + (y EXP 2) = p EXP 2` ASSUME_TAC THENL
+   [ASM_REWRITE_TAC[] THEN ONCE_REWRITE_TAC[ADD_SYM] THEN
+    MATCH_MP_TAC SUB_ADD THEN ONCE_REWRITE_TAC[GSYM NOT_LESS] THEN
+    DISCH_THEN(MP_TAC o MATCH_MP LESS_IMP_LESS_OR_EQ) THEN
+    REWRITE_TAC[GSYM SUB_EQ_0] THEN DISCH_THEN SUBST_ALL_TAC THEN
+    FIRST_ASSUM(UNDISCH_TAC o assert is_conj o concl) THEN
+    ASM_REWRITE_TAC[ODD], ALL_TAC] THEN
+  Q.SUBGOAL_THEN `coprime(q,y)` MP_TAC THENL
+   [REWRITE_TAC[COPRIME_PRIME_EQ] THEN Q.X_GEN_TAC `r` THEN
+    STRIP_TAC THEN MP_TAC(Q.ASSUME `coprime(p,q)`) THEN
+    REWRITE_TAC[COPRIME_PRIME_EQ] THEN
+    DISCH_THEN(MP_TAC o Q.SPEC `r`) THEN ASM_REWRITE_TAC[] THEN
+    MATCH_MP_TAC PRIME_DIVEXP THEN Q.EXISTS_TAC `2` THEN
+    ASM_REWRITE_TAC[] THEN
+    FIRST_ASSUM(fn th => PURE_GEN_REWRITE_TAC RAND_CONV [SYM th]) THEN
+    MATCH_MP_TAC DIVIDES_ADD THEN
+    REWRITE_TAC[Q.num_CONV `2`] THEN CONJ_TAC THEN
+    MATCH_MP_TAC DIVIDES_REXP THEN ASM_REWRITE_TAC[], ALL_TAC] THEN
+  DISCH_THEN(ASSUME_TAC 
+             o CONJ(Q.ASSUME `(q EXP 2) + (y EXP 2) = p EXP 2`)) THEN
+  Q.SUBGOAL_THEN `ODD(y)` ASSUME_TAC THENL
+   [REWRITE_TAC[ODD_EVEN] THEN 
+    ONCE_REWRITE_TAC[GSYM(Q.SPEC `1` PARITY_EXP)] THEN
+    REWRITE_TAC[SYM(Q.num_CONV `2`), GSYM ODD_EVEN] THEN
+    FIRST_ASSUM(MATCH_ACCEPT_TAC o el 4 o CONJUNCTS), ALL_TAC] THEN
+  FIRST_ASSUM(MP_TAC o MATCH_MP PYTHAG_EVEN) THEN
+  ASM_REWRITE_TAC[EVEN_ODD] THEN REWRITE_TAC[GSYM EVEN_ODD] THEN STRIP_TAC THEN
+  MP_TAC(Q.SPECL [`q`, `y`, `p`] PYTHAG_COCLASSIFY) THEN
+  ASM_REWRITE_TAC[] THEN DISCH_THEN(Q.X_CHOOSE_THEN `a` MP_TAC) THEN
+  DISCH_THEN(Q.X_CHOOSE_THEN `b` STRIP_ASSUME_TAC) THEN
+  MP_TAC(Q.ASSUME `x EXP 2 = 2 * p * q`) THEN
+  REWRITE_TAC[Q.ASSUME `p = (a EXP 2) + (b EXP 2)`, 
+              Q.ASSUME `q = 2 * a * b`] THEN
+  Q.SUBGOAL_THEN `EVEN(x)` MP_TAC THENL
+   [ONCE_REWRITE_TAC[GSYM(Q.SPEC `1` PARITY_EXP)] THEN
+    REWRITE_TAC[SYM(Q.num_CONV `2`), GSYM ODD_EVEN] THEN
+    FIRST_ASSUM(MATCH_ACCEPT_TAC o el 3 o CONJUNCTS), ALL_TAC] THEN
+  REWRITE_TAC[EVEN_EXISTS] THEN
+  DISCH_THEN(Q.X_CHOOSE_THEN `x2` SUBST_ALL_TAC) THEN
+  DISCH_THEN(MP_TAC o REWRITE_RULE[EXP_2, GSYM MULT_ASSOC]) THEN
+  ONCE_REWRITE_TAC[(EQT_ELIM o Q.AC_CONV (MULT_ASSOC,MULT_SYM))
+    `m * n * p * q = (m * p) * n * q`] THEN REDUCE_TAC THEN
+  REWRITE_TAC[GSYM MULT_ASSOC] THEN
+  DISCH_THEN(MP_TAC o CONJ(EQF_ELIM(REDUCE_CONV (--`4 = 0`--)))) THEN
+  DISCH_THEN(MP_TAC o MATCH_MP MULT_LCANCEL) THEN
+  REWRITE_TAC[GSYM EXP_2] THEN DISCH_THEN(ASSUME_TAC o SYM) THEN
+  MP_TAC(MATCH_MP COPRIME_SOS (Q.ASSUME `coprime(a,b)`)) THEN
+  ONCE_REWRITE_TAC[COPRIME_SYM] THEN DISCH_TAC THEN
+  MP_TAC(Q.SPECL [`2`, `(a EXP 2) + (b EXP 2)`, `a * b`, `x2`]
+    COPRIME_POW) THEN ASM_REWRITE_TAC[] THEN
+  DISCH_THEN(Q.X_CHOOSE_THEN `Z` MP_TAC) THEN
+  DISCH_THEN(Q.X_CHOOSE_THEN `W` STRIP_ASSUME_TAC) THEN
+  MP_TAC(Q.SPECL [`2`, `a`, `b`, `W`] COPRIME_POW) THEN
+  ASM_REWRITE_TAC[] THEN DISCH_THEN(Q.X_CHOOSE_THEN `X` MP_TAC) THEN
+  DISCH_THEN(Q.X_CHOOSE_THEN `Y` (STRIP_ASSUME_TAC o GSYM)) THEN
+  MAP_EVERY Q.EXISTS_TAC [`X`, `Y`, `Z`] THEN 
+  ASM_REWRITE_TAC[] THEN
+  Q.SUBGOAL_THEN `~(W = 0)` ASSUME_TAC THENL
+   [DISCH_TAC THEN Q.UNDISCH_TAC `a * b = W EXP 2` THEN
+    DISCH_THEN SUBST_ALL_TAC THEN
+    Q.UNDISCH_TAC `q = 2 * (W EXP 2)` THEN
+    ASM_REWRITE_TAC[EXP_2, MULT_CLAUSES] THEN
+    DISCH_THEN SUBST_ALL_TAC THEN
+    Q.UNDISCH_TAC `(2 * x2) EXP 2 = 2 * p * 0` THEN
+    REWRITE_TAC[MULT_CLAUSES, EXP_EQ_0] THEN
+    REDUCE_TAC THEN ASM_REWRITE_TAC[], ALL_TAC] THEN
+  Q.SUBGOAL_THEN `~(X EXP 2 = 0)` MP_TAC THENL
+   [ASM_REWRITE_TAC[] THEN DISCH_TAC THEN
+    Q.UNDISCH_TAC `a * b = W EXP 2` THEN
+    ASM_REWRITE_TAC[EXP_2, MULT_CLAUSES, MULT_EQ_0] THEN
+    DISCH_THEN(MP_TAC o SYM) THEN ASM_REWRITE_TAC[MULT_EQ_0],
+    REWRITE_TAC[EXP_EQ_0] THEN REDUCE_TAC THEN DISCH_TAC] THEN
+  ASM_REWRITE_TAC[] THEN
+  Q.SUBGOAL_THEN `~(Y EXP 2 = 0)` MP_TAC THENL
+   [ASM_REWRITE_TAC[] THEN DISCH_TAC THEN
+    Q.UNDISCH_TAC `a * b = W EXP 2` THEN
+    ASM_REWRITE_TAC[EXP_2, MULT_CLAUSES, MULT_EQ_0] THEN
+    DISCH_THEN(MP_TAC o SYM) THEN ASM_REWRITE_TAC[MULT_EQ_0],
+    REWRITE_TAC[EXP_EQ_0] THEN REDUCE_TAC THEN DISCH_TAC] THEN
+  ASM_REWRITE_TAC[] THEN
+  Q.SUBGOAL_THEN `~((2 * (W EXP 2)) EXP 2 = 0)` MP_TAC THENL
+   [ASM_REWRITE_TAC[EXP_EQ_0, MULT_EQ_0] THEN REDUCE_TAC, ALL_TAC] THEN
+  REWRITE_TAC[GSYM LESS_EQ_0, NOT_LESS_EQUAL] THEN DISCH_TAC THEN
+  MATCH_MP_TAC LESS_EQ_LESS_TRANS THEN Q.EXISTS_TAC `(Z EXP 2) EXP 2` THEN
+  CONJ_TAC THENL
+   [REWRITE_TAC[GSYM EXP_4] THEN
+    STRUCT_CASES_TAC(Q.SPEC `Z` num_CASES) THEN
+    REWRITE_TAC[EXP_4, EXP_2, MULT_CLAUSES, LESS_EQ_REFL] THEN
+    REWRITE_TAC[ADD_CLAUSES, MULT_CLAUSES, LESS_EQ_MONO] THEN
+    REWRITE_TAC[GSYM ADD_ASSOC, LESS_EQ_ADD],
+    PURE_GEN_REWRITE_TAC LAND_CONV [GSYM ADD_0] THEN
+    ONCE_REWRITE_TAC[ADD_SYM] THEN
+    ASM_REWRITE_TAC[LESS_MONO_ADD_EQ]]);
+
+val FLT42 = Q.store_thm("FLT42",
+  `!z y x. ((x EXP 4) + (y EXP 4) = z EXP 2) ==> (x = 0) \/ (y = 0)`,
+  COMPLETE_INDUCT_TAC THEN Q.X_GEN_TAC `z` THEN
+  CONV_TAC CONTRAPOS_CONV THEN
+  CONV_TAC(ONCE_DEPTH_CONV NOT_FORALL_CONV) THEN
+  REWRITE_TAC[NOT_IMP] THEN
+  CONV_TAC(TOP_DEPTH_CONV NOT_FORALL_CONV) THEN
+  REWRITE_TAC[NOT_IMP, DE_MORGAN_THM] THEN
+  DISCH_THEN(Q.X_CHOOSE_THEN `y` MP_TAC) THEN
+  DISCH_THEN(Q.X_CHOOSE_THEN `x` STRIP_ASSUME_TAC) THEN
+  Q.ASM_CASES_TAC `coprime(x,y)` THENL
+   [MP_TAC(Q.SPECL [`x EXP 2`, `y EXP 2`, `z`] PYTHAG_EVEN) THEN
+    ASM_REWRITE_TAC[GSYM EXP_4] THEN
+    ASM_REWRITE_TAC[Q.num_CONV `2`, COPRIME_EXP2] THEN
+    REWRITE_TAC[SYM(Q.num_CONV `2`)] THEN
+    DISCH_THEN DISJ_CASES_TAC THENL
+     [MP_TAC(Q.SPECL [`x`, `y`,`z`] FLT42_DOWN_LEMMA2) THEN
+      ASM_REWRITE_TAC[] THEN
+      ASM_REWRITE_TAC[Q.num_CONV `2`, COPRIME_EXP2] THEN
+      REWRITE_TAC[SYM(Q.num_CONV `2`)],
+      MP_TAC(Q.SPECL [`y`, `x`,`z`] FLT42_DOWN_LEMMA2) THEN
+      ASM_REWRITE_TAC[] THEN
+      ASM_REWRITE_TAC[Q.num_CONV `2`, COPRIME_EXP2] THEN
+      REWRITE_TAC[SYM(Q.num_CONV `2`)] THEN
+      ONCE_REWRITE_TAC[COPRIME_SYM, ADD_SYM] THEN ASM_REWRITE_TAC[]],
+  MP_TAC(Q.SPECL [`x`, `y`, `z`] FLT42_DOWN_LEMMA1) THEN
+  ASM_REWRITE_TAC[]] THEN
+    DISCH_THEN(Q.X_CHOOSE_THEN `u` MP_TAC) THEN
+  DISCH_THEN(Q.X_CHOOSE_THEN `v` MP_TAC) THEN
+  DISCH_THEN(Q.X_CHOOSE_THEN `w` STRIP_ASSUME_TAC) THEN
+  Q.EXISTS_TAC `w` THEN ASM_REWRITE_TAC[] THEN
+  MAP_EVERY Q.EXISTS_TAC [`v`, `u`] THEN ASM_REWRITE_TAC[]);
+
+(*---------------------------------------------------------------------------*)
+(* And now at last....                                                       *)
+(*---------------------------------------------------------------------------*)
+
+val FLT4 = Q.store_thm("FLT4",
+  `!x y z. ((x EXP 4) + (y EXP 4) = z EXP 4) ==> (x = 0) \/ (y = 0)`,
+  REPEAT GEN_TAC THEN SUBST1_TAC(Q.SPEC `z` EXP_4) THEN
+  MATCH_ACCEPT_TAC FLT42);
+
+end_time();
+
+let val {ABS,ASSUME,BETA_CONV,DISCH,INST_TYPE,MP,
+         REFL,SUBST,drule,other,...} = Thm.thm_count()
+in
+   Lib.say("\nTotal inferences = "
+            ^Lib.int_to_string(ABS + ASSUME + BETA_CONV + DISCH + INST_TYPE + 
+                               MP + REFL + SUBST + drule + other)^"\n")
+end;
+
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@a5 2
+open Psyntax;
+
+d8 1
+a8 1
+Thm.counting_thms true; Thm.reset_thm_count();
+a9 1
+new_theory "FERMAT";
+d12 1
+a12 1
+(* Useful tactics.                                                           *)
+d15 16
+d36 2
+a37 2
+val TAUT_CONV =
+  let fun bval w t = (type_of t = (==`:bool`==)) andalso 
+d40 2
+a41 1
+  in
+d47 1
+a47 1
+  end;
+a52 1
+
+d55 2
+a56 2
+(* ********************************************************************
+ * Fold in parsing for some routines - this makes them slicker 
+d58 1
+a58 1
+ ******************************************************************** *)
+d60 15
+a74 33
+fun Q_ERR{func,mesg} = 
+    HOL_ERR{origin_structure = "FLT4 proof",
+            origin_function = func, message = mesg};
+
+val ptm = Parse.term_parser;
+
+(* constrain parsed term to have a given type *)
+fun ptm_with_ty qtm ty = 
+   let fun trail s = [QUOTE (s^"):"), ANTIQUOTE(ty_antiq ty), QUOTE""]
+   in
+   ptm (case (Lib.front_n_back qtm)
+          of ([],QUOTE s) => trail ("("^s)
+           | (QUOTE s::rst, QUOTE s') => (QUOTE ("("^s)::rst) @@ trail s'
+           | _ => raise Q_ERR{func="ptm_with_ty",mesg="badly formed quote"})
+   end;
+
+(* coerce parsed term to be boolean *)
+fun btm q = ptm_with_ty q bool;
+
+val QTAUT_CONV = TAUT_CONV o ptm;
+fun Qstore_thm(s,q,t) = store_thm(s,btm q,t);
+fun Qnew_definition(s,q) = new_definition(s,btm q);
+fun Qnew_infix_definition(s,q,f) = new_infix_definition(s,btm q,f);
+fun QSPEC qtm th = 
+    Drule.SPEC (ptm_with_ty qtm 
+                  (Term.type_of(#Bvar(Dsyntax.dest_forall(concl th)))))
+            th;
+
+val QSPECL = rev_itlist QSPEC;
+fun QSPEC_TAC(q1,q2) = SPEC_TAC(ptm q1, ptm q2);
+fun QEXISTS_TAC qtm (g as (_,w)) =
+     let val {Bvar,Body} = Dsyntax.dest_exists w
+     in  Tactic.EXISTS_TAC (ptm_with_ty qtm (Term.type_of Bvar)) g
+d76 25
+a100 19
+
+fun QX_CHOOSE_THEN [QUOTE s] (ttac:thm_tactic) : thm_tactic = fn xth =>
+   let val {Bvar,Body} = Dsyntax.dest_exists (Thm.concl xth)
+       val y = Term.mk_var{Name=s,Ty=Term.type_of Bvar}
+   in
+   fn (asl,w) =>
+      let val th = itlist Drule.ADD_ASSUM (Thm.hyp xth)
+                          (Thm.ASSUME (Term.subst [Bvar |-> y] Body))
+          val (gl,prf) = ttac th (asl,w) 
+      in
+      (gl, (Drule.CHOOSE (y,xth)) o prf)
+      end
+   end
+   handle _ => raise Q_ERR{func = "QX_CHOOSE_THEN",mesg = ""};
+
+val QX_CHOOSE_TAC = C QX_CHOOSE_THEN ASSUME_TAC;
+
+val QUNDISCH_TAC = Tactic.UNDISCH_TAC o btm
+val Qnum_CONV = Num_conv.num_CONV o ptm
+d102 1
+a102 14
+val QSUBGOAL_THEN = Tactical.SUBGOAL_THEN o btm
+val QASSUME = ASSUME o btm
+fun QX_GEN_TAC [QUOTE s] : tactic = fn (asl,w) =>
+   let val {Bvar,Body} = Dsyntax.dest_forall w 
+       val x1 = Term.mk_var{Name = s, Ty = Term.type_of Bvar}
+   in if (Bvar=x1)
+      then ([(asl,Body)], fn [th] => Drule.GEN x1 th)
+      else ([(asl,Term.subst [Bvar |-> x1] Body)],
+            fn [th] => 
+               let val th' = Drule.GEN x1 th
+               in Drule.EQ_MP(Drule.GEN_ALPHA_CONV Bvar (Thm.concl th')) th'
+               end)
+   end
+   handle _ => raise Q_ERR{func = "QX_GEN_TAC",mesg = ""};
+a103 3
+val QAP_TERM = Drule.AP_TERM  o ptm
+val QASM_CASES_TAC = Tactic.ASM_CASES_TAC o btm
+fun QAC_CONV p q = AC_CONV p (ptm q);
+d109 3
+d117 1
+a117 1
+val COMPLETE_INDUCTION = Qstore_thm("COMPLETE_INDUCTION",
+d124 2
+a125 2
+  REWRITE_TAC[NOT_IMP] THEN DISCH_THEN(QX_CHOOSE_TAC `n`) THEN
+  QEXISTS_TAC `n` THEN ASM_REWRITE_TAC[]
+d136 1
+a136 1
+val MULT_EQ_1 = Qstore_thm("MULT_EQ_1",
+d139 3
+a141 3
+  STRUCT_CASES_TAC(QSPEC `x` num_CASES) THEN
+  STRUCT_CASES_TAC(QSPEC `y` num_CASES) THEN
+  REWRITE_TAC[MULT_CLAUSES, ADD_CLAUSES, Qnum_CONV `1`,
+d147 1
+a147 1
+val MULT_FIX = Qstore_thm("MULT_FIX",
+d150 1
+a150 1
+  STRUCT_CASES_TAC(QSPEC `x` num_CASES) THEN
+d157 1
+a157 1
+val LESS_EQ_MULT = Qstore_thm("LESS_EQ_MULT",
+d164 1
+a164 1
+val LESS_MULT = Qstore_thm("LESS_MULT",
+d173 1
+a173 1
+val MULT_LCANCEL = Qstore_thm("MULT_LCANCEL",
+d175 1
+a175 1
+  REPEAT GEN_TAC THEN STRUCT_CASES_TAC(QSPEC `a` num_CASES) THEN
+d178 1
+a178 1
+val LESS_EQ_ANTISYM_EQ = Qstore_thm("LESS_EQ_ANTISYM_EQ",
+d187 1
+a187 1
+val EXP_0 = Qstore_thm("EXP_0",
+d191 1
+a191 1
+val EXP_1 = Qstore_thm("EXP_1",
+d195 1
+a195 1
+val EXP_2 = Qstore_thm("EXP_2",
+d197 1
+a197 1
+  REWRITE_TAC[Qnum_CONV `2`, Qnum_CONV `1`, EXP, 
+d200 1
+a200 1
+val MULT_EXP = Qstore_thm("MULT_EXP",
+d205 1
+a205 1
+val EXP_EQ_0 = Qstore_thm("EXP_EQ_0",
+d208 1
+a208 1
+   [QSPEC_TAC(`n:num`,`n:num`) THEN INDUCT_TAC THEN
+d214 1
+a214 1
+    STRUCT_CASES_TAC(QSPEC `n` num_CASES) THEN
+d218 1
+a218 1
+val EXP_EQ_1 = Qstore_thm("EXP_EQ_1",
+d220 1
+a220 1
+  REPEAT GEN_TAC THEN STRUCT_CASES_TAC(QSPEC `n` num_CASES) THEN
+d224 1
+a224 1
+val EXP_MONO_LEMMA = Qstore_thm("EXP_MONO_LEMMA",
+d232 1
+a232 1
+val EXP_MONO_LT = Qstore_thm("EXP_MONO_LT",
+d239 1
+a239 1
+val EXP_MONO_LE = Qstore_thm("EXP_MONO_LE",
+d243 1
+a243 1
+val EXP_MONO_EQ = Qstore_thm("EXP_MONO_EQ",
+d248 1
+a248 1
+val EXP_EXP = Qstore_thm("EXP_EXP",
+d257 1
+a257 1
+val DIFF_LEMMA = Qstore_thm("DIFF_LEMMA",
+d260 1
+a260 1
+  DISJ_CASES_TAC(QSPEC `a` LESS_0_CASES) THEN ASM_REWRITE_TAC[] THEN
+d267 1
+a267 1
+val NOT_EVEN_EQ_ODD = Qstore_thm("NOT_EVEN_EQ_ODD",
+d271 1
+a271 1
+val CANCEL_TIMES2 = Qstore_thm("CANCEL_TIMES2",
+d273 1
+a273 1
+  REWRITE_TAC[Qnum_CONV `2`, MULT_MONO_EQ]);
+d275 1
+a275 1
+val EVEN_SQUARE = Qstore_thm("EVEN_SQUARE",
+d278 2
+a279 2
+  DISCH_THEN(QX_CHOOSE_THEN `m` SUBST1_TAC) THEN
+  QEXISTS_TAC `m * m` THEN REWRITE_TAC[EXP_2] THEN
+d283 1
+a283 1
+val ODD_SQUARE = Qstore_thm("ODD_SQUARE",
+d286 1
+a286 1
+  DISCH_THEN(QX_CHOOSE_THEN `m` SUBST1_TAC) THEN
+d289 2
+a290 2
+  QEXISTS_TAC `m * m + m` THEN
+  REWRITE_TAC(map Qnum_CONV [`4`, `3`, `2`, `1`]) THEN
+d295 1
+a295 1
+val DIFF_SQUARE = Qstore_thm("DIFF_SQUARE",
+d298 2
+a299 2
+  DISJ_CASES_TAC(QSPECL [`x`, `y`] LESS_EQ_CASES) THENL
+   [QSUBGOAL_THEN `x * x <= y * y` MP_TAC THENL
+d310 1
+a310 1
+val ADD_IMP_SUB = Qstore_thm("ADD_IMP_SUB",
+d315 1
+a315 1
+val ADD_SUM_DIFF = Qstore_thm("ADD_SUM_DIFF",
+d325 1
+a325 1
+val EXP_4 = Qstore_thm("EXP_4",
+d334 1
+a334 1
+val divides = Qnew_infix_definition("divides",
+d337 1
+a337 1
+val DIVIDES_0 = Qstore_thm("DIVIDES_0",
+d340 1
+a340 1
+  QEXISTS_TAC `0` THEN REWRITE_TAC[MULT_CLAUSES]);
+d342 1
+a342 1
+val DIVIDES_ZERO = Qstore_thm("DIVIDES_ZERO",
+d347 1
+a347 1
+val DIVIDES_1 = Qstore_thm("DIVIDES_1",
+d350 1
+a350 1
+  QEXISTS_TAC `x` THEN REWRITE_TAC[MULT_CLAUSES]);
+d352 1
+a352 1
+val DIVIDES_ONE = Qstore_thm("DIVIDES_ONE",
+d357 1
+a357 1
+  ASM_REWRITE_TAC[] THEN QEXISTS_TAC `1` THEN REFL_TAC);
+d359 1
+a359 1
+val DIVIDES_GE = Qstore_thm("DIVIDES_GE",
+d362 2
+a363 2
+  DISCH_THEN(QX_CHOOSE_THEN `x` SUBST1_TAC) THEN
+  STRUCT_CASES_TAC(QSPEC `x` num_CASES) THEN
+d366 1
+a366 1
+val DIVIDES_REFL = Qstore_thm("DIVIDES_REFL",
+d369 1
+a369 1
+  QEXISTS_TAC `1` THEN REWRITE_TAC[MULT_CLAUSES]);
+d371 1
+a371 1
+val DIVIDES_TRANS = Qstore_thm("DIVIDES_TRANS",
+d380 1
+a380 1
+val DIVIDES_ANTISYM = Qstore_thm("DIVIDES_ANTISYM",
+d391 1
+a391 1
+val DIVIDES_ADD = Qstore_thm("DIVIDES_ADD",
+d399 1
+a399 1
+val DIVIDES_SUB = Qstore_thm("DIVIDES_SUB",
+d407 1
+a407 1
+val DIVIDES_LMUL = Qstore_thm("DIVIDES_LMUL",
+d410 2
+a411 2
+  DISCH_THEN(QX_CHOOSE_THEN `p` SUBST1_TAC) THEN
+  QEXISTS_TAC `x * p` THEN
+d414 1
+a414 1
+val DIVIDES_RMUL = Qstore_thm("DIVIDES_RMUL",
+d418 1
+a418 1
+val DIVIDES_ADD_REVR = Qstore_thm("DIVIDES_ADD_REVR",
+d421 1
+a421 1
+  SUBST1_TAC(SYM(QSPECL [`b`, `a`] ADD_SUB)) THEN
+d425 1
+a425 1
+val DIVIDES_ADD_REVL = Qstore_thm("DIVIDES_ADD_REVL",
+d429 1
+a429 1
+val DIVIDES_DIV = Qstore_thm("DIVIDES_DIV",
+d432 1
+a432 1
+  FIRST_ASSUM(MP_TAC o QSPEC`x:num` o MATCH_MP DIVISION) THEN
+d434 1
+a434 1
+  REWRITE_TAC[divides] THEN QEXISTS_TAC `x DIV n` THEN
+d437 1
+a437 1
+val DIVIDES_MUL_L = Qstore_thm("DIVIDES_MUL_L",
+d440 2
+a441 2
+  DISCH_THEN(QX_CHOOSE_THEN `x` SUBST1_TAC) THEN
+  QEXISTS_TAC `x` THEN REWRITE_TAC[MULT_ASSOC]);
+d443 1
+a443 1
+val DIVIDES_MUL_R = Qstore_thm("DIVIDES_MUL_R",
+d447 1
+a447 1
+val DIVIDES_LMUL2 = Qstore_thm("DIVIDES_LMUL2",
+d450 2
+a451 2
+  DISCH_THEN(QX_CHOOSE_THEN `y` SUBST1_TAC) THEN
+  QEXISTS_TAC `x * y` THEN
+d454 1
+a454 1
+val DIVIDES_RMUL2 = Qstore_thm("DIVIDES_RMUL2",
+d459 1
+a459 1
+val DIVIDES_CMUL2 = Qstore_thm("DIVIDES_CMUL2",
+d462 3
+a464 3
+  DISCH_THEN(CONJUNCTS_THEN2 (QX_CHOOSE_TAC `x`) ASSUME_TAC) THEN
+  QEXISTS_TAC `x` THEN MATCH_MP_TAC MULT_LCANCEL THEN
+  QEXISTS_TAC `c` THEN ASM_REWRITE_TAC[MULT_ASSOC]);
+d466 1
+a466 1
+val DIVIDES_LE = Qstore_thm("DIVIDES_LE",
+d469 1
+a469 1
+  DISCH_THEN(QX_CHOOSE_THEN `x` SUBST1_TAC) THEN
+d471 1
+a471 1
+  STRUCT_CASES_TAC(QSPEC `x` num_CASES) THEN
+d474 1
+a474 1
+val DIVIDES_DIV_NOT = Qstore_thm("DIVIDES_DIV_NOT",
+d477 3
+a479 3
+  MP_TAC(QSPEC `n` DIVIDES_REFL) THEN
+  DISCH_THEN(MP_TAC o QSPEC `q:num` o MATCH_MP DIVIDES_LMUL) THEN
+  PURE_REWRITE_TAC[QTAUT_CONV `a ==> ~b = a /\ b ==> F`] THEN
+d484 1
+a484 1
+val DIVIDES_MUL2 = Qstore_thm("DIVIDES_MUL2",
+d487 2
+a488 2
+  DISCH_THEN(CONJUNCTS_THEN2 (QX_CHOOSE_TAC `x`) (QX_CHOOSE_TAC `y`)) THEN 
+  QEXISTS_TAC `x * y` THEN
+d492 1
+a492 1
+val DIVIDES_EXP = Qstore_thm("DIVIDES_EXP",
+d495 2
+a496 2
+  DISCH_THEN(QX_CHOOSE_THEN `d` SUBST1_TAC) THEN
+  QEXISTS_TAC `d EXP n` THEN MATCH_ACCEPT_TAC MULT_EXP);
+d498 1
+a498 1
+val DIVIDES_EXP2 = Qstore_thm("DIVIDES_EXP2",
+d503 2
+a504 2
+  DISCH_THEN(MP_TAC o QSPECL [`x`, `y`]) THEN
+  POP_ASSUM MP_TAC THEN STRUCT_CASES_TAC(QSPEC `n` num_CASES) THENL
+d509 1
+a509 1
+    QEXISTS_TAC `x` THEN ASM_REWRITE_TAC[]]);
+d511 1
+a511 1
+val DIVIDES_FACT = Qstore_thm("DIVIDES_FACT",
+d514 2
+a515 2
+  DISCH_THEN(CONJUNCTS_THEN2 MP_TAC (QX_CHOOSE_THEN `d` SUBST1_TAC))
+  THEN QSPEC_TAC(`d:num`,`d:num`) THEN INDUCT_TAC THEN
+d517 1
+a517 1
+   [QSPEC_TAC(`m:num`,`m:num`) THEN INDUCT_TAC THEN
+d524 1
+a524 1
+val DIVIDES_2 = Qstore_thm("DIVIDES_2",
+d528 1
+a528 1
+val DIVIDES_REXP = Qstore_thm("DIVIDES_REXP",
+d536 1
+a536 1
+val IND_EUCLID = Qstore_thm("IND_EUCLID",
+d542 2
+a543 3
+  W(fn (asl,w)=>  QSUBGOAL_THEN `!n a b. (a + b = n) ==> ^w` MATCH_MP_TAC)
+  THENL
+   [ALL_TAC, QEXISTS_TAC `a + b` THEN REFL_TAC] THEN
+d546 1
+a546 1
+   (QSPECL [`a`, `b`] LESS_LESS_CASES) THENL
+d559 1
+a559 1
+    REWRITE_TAC[QASSUME `a + b = n`] THEN
+d563 1
+a563 1
+    REWRITE_TAC[ONCE_REWRITE_RULE[ADD_SYM] (QASSUME `a + b = n`)] THEN
+d569 1
+a569 1
+val BEZOUT_LEMMA = Qstore_thm("BEZOUT_LEMMA",
+d576 3
+a578 3
+  REPEAT STRIP_TAC THEN QEXISTS_TAC `d` THENL
+   [MAP_EVERY QEXISTS_TAC [`x + y`, `y`],
+    MAP_EVERY QEXISTS_TAC [`x`, `x + y`]] THEN
+d586 1
+a586 1
+val BEZOUT_ADD = Qstore_thm("BEZOUT_ADD",
+d591 1
+a591 1
+     MP_TAC(QSPEC `\(a:num) (b:num). ^(snd(strip_forall w))` IND_EUCLID)) THEN
+d598 1
+a598 1
+    GEN_TAC THEN MAP_EVERY QEXISTS_TAC [`a`, `1`, `0`] THEN
+d602 1
+a602 1
+val BEZOUT = Qstore_thm("BEZOUT",
+d607 1
+a607 1
+   (QSPECL [`a`, `b`] BEZOUT_ADD) THEN
+d616 1
+a616 1
+val gcd = Qnew_definition("gcd",
+d620 1
+a620 1
+val GCD = Qstore_thm("GCD",
+d625 4
+a628 4
+  MP_TAC(QSPECL [`a`, `b`] BEZOUT) THEN
+  DISCH_THEN(EVERY_TCL (map QX_CHOOSE_THEN [`d`, `x`, `y`]) STRIP_ASSUME_TAC)
+  THEN QEXISTS_TAC `d` THEN ASM_REWRITE_TAC[] THEN
+  QX_GEN_TAC `e` THEN STRIP_TAC THEN
+d635 1
+a635 1
+val GCD_COMMON = Qstore_thm("GCD_COMMON",
+d639 1
+a639 1
+  QEXISTS_TAC `gcd(a,b)` THEN ASM_REWRITE_TAC[GCD]);
+d641 1
+a641 1
+val GCD_UNIQUE = Qstore_thm("GCD_UNIQUE",
+d650 1
+a650 1
+val DIVIDES_GCD = Qstore_thm("DIVIDES_GCD",
+d654 1
+a654 1
+  MATCH_MP_TAC DIVIDES_TRANS THEN QEXISTS_TAC `gcd(a,b)` THEN
+d657 1
+a657 1
+val GCD_SYM = Qstore_thm("GCD_SYM",
+d661 1
+a661 1
+  MATCH_MP_TAC(QTAUT_CONV `(a = b) /\ (c = d) ==> (a /\ c = b /\ d)`) THEN
+d665 1
+a665 1
+val GCD_ASSOC = Qstore_thm("GCD_ASSOC",
+d670 1
+a670 1
+  QEXISTS_TAC `gcd(b,c)` THEN ASM_REWRITE_TAC[GCD]);
+d672 1
+a672 1
+val BEZOUT_GCD = Qstore_thm("BEZOUT_GCD",
+d676 2
+a677 2
+  MP_TAC(QSPECL [`a`, `b`] BEZOUT) THEN
+  DISCH_THEN(EVERY_TCL (map QX_CHOOSE_THEN [`d`, `x`, `y`])
+d679 1
+a679 1
+  QSUBGOAL_THEN `d divides gcd(a,b)` MP_TAC THENL
+d682 2
+a683 2
+    DISCH_THEN(QX_CHOOSE_THEN `k` SUBST1_TAC o REWRITE_RULE[divides]) THEN
+    MAP_EVERY QEXISTS_TAC [`x * k`, `y * k`] THEN
+d687 1
+a687 1
+val GCD_LMUL = Qstore_thm("GCD_LMUL",
+d694 1
+a694 1
+   (QSPECL [`a`, `b`] BEZOUT_GCD) THEN
+d699 1
+a699 1
+val GCD_RMUL = Qstore_thm("GCD_RMUL",
+d705 1
+a705 1
+val GCD_BEZOUT = Qstore_thm("GCD_BEZOUT",
+d712 3
+a714 3
+    DISCH_THEN(QX_CHOOSE_THEN `k` SUBST1_TAC o REWRITE_RULE[divides]) THEN
+    STRIP_ASSUME_TAC(QSPECL [`a`, `b`] BEZOUT_GCD) THEN
+    MAP_EVERY QEXISTS_TAC [`x * k`, `y * k`] THEN
+d718 1
+a718 1
+val GCD_BEZOUT_SUM = Qstore_thm("GCD_BEZOUT_SUM",
+d724 1
+a724 1
+val GCD_0 = Qstore_thm("GCD_0",
+d731 1
+a731 1
+val GCD_ZERO = Qstore_thm("GCD_ZERO",
+d735 1
+a735 1
+  MP_TAC(QSPECL [`a`, `b`] GCD) THEN
+d739 1
+a739 1
+val GCD_REFL = Qstore_thm("GCD_REFL",
+d745 1
+a745 1
+val GCD_1 = Qstore_thm("GCD_1",
+d752 1
+a752 1
+val GCD_MULTIPLE = Qstore_thm("GCD_MULTIPLE",
+d764 1
+a764 1
+val coprime = Qnew_definition("coprime",
+d767 1
+a767 1
+val COPRIME = Qstore_thm("COPRIME",
+d775 1
+a775 1
+val COPRIME_GCD = Qstore_thm("COPRIME_GCD",
+d779 1
+a779 1
+    DISCH_TAC THEN MP_TAC(QSPECL [`a`, `b`] GCD) THEN
+d782 1
+a782 1
+val COPRIME_SYM = Qstore_thm("COPRIME_SYM",
+d788 1
+a788 1
+val COPRIME_BEZOUT = Qstore_thm("COPRIME_BEZOUT",
+d793 1
+a793 1
+val COPRIME_DIVPROD = Qstore_thm("COPRIME_DIVPROD",
+d797 3
+a799 3
+  DISCH_THEN(QX_CHOOSE_THEN `x` MP_TAC) THEN
+  DISCH_THEN(QX_CHOOSE_THEN `y` MP_TAC) THEN
+  DISCH_THEN (DISJ_CASES_THEN (MP_TAC o QAP_TERM `$* b`)) THEN
+d807 1
+a807 1
+val COPRIME_1 = Qstore_thm("COPRIME_1",
+d812 1
+a812 1
+val GCD_COPRIME = Qstore_thm("GCD_COPRIME",
+d819 1
+a819 1
+  REWRITE_TAC[NOT_IMP] THEN DISCH_THEN(QX_CHOOSE_TAC `d`) THEN
+d822 2
+a823 2
+  DISCH_THEN(CONJUNCTS_THEN2 (QX_CHOOSE_THEN `a''` SUBST1_TAC)
+    (QX_CHOOSE_THEN `b''` SUBST1_TAC)) THEN
+d825 2
+a826 2
+  DISCH_TAC THEN MP_TAC(QSPECL [`a`, `b`] GCD) THEN
+  DISCH_THEN(MP_TAC o QSPEC `gcd(a,b) * d` 
+d829 1
+a829 1
+   [REWRITE_TAC[divides] THEN QEXISTS_TAC `a'':num` THEN
+d831 1
+a831 1
+    REWRITE_TAC[divides] THEN QEXISTS_TAC `b'':num` THEN
+d836 3
+a838 3
+    QUNDISCH_TAC `~(d = 1)` THEN
+    STRUCT_CASES_TAC(QSPEC `d` num_CASES) THEN
+    REWRITE_TAC[MULT_CLAUSES, SUC_NOT, Qnum_CONV `1`, INV_SUC_EQ] THENL
+d845 1
+a845 1
+val GCD_COPRIME_EXISTS = Qstore_thm("GCD_COPRIME_EXISTS",
+d850 1
+a850 1
+  REPEAT GEN_TAC THEN DISCH_TAC THEN MP_TAC(QSPECL [`a`,`b`] GCD) THEN
+d852 3
+a854 3
+  DISCH_THEN(CONJUNCTS_THEN2 (QX_CHOOSE_TAC `a'` o GSYM)
+   (QX_CHOOSE_TAC `b'` o GSYM)) THEN
+  MAP_EVERY QEXISTS_TAC [`a':num`, `b':num`] THEN
+d857 1
+a857 1
+  MAP_EVERY QEXISTS_TAC [`a`, `b`] THEN
+d860 1
+a860 1
+val COPRIME_0 = Qstore_thm("COPRIME_0",
+d867 1
+a867 1
+val COPRIME_MUL = Qstore_thm("COPRIME_MUL",
+d870 1
+a870 1
+  DISCH_THEN(CONJUNCTS_THEN2 MP_TAC (MP_TAC o QAP_TERM `$* a`)) THEN
+d875 1
+a875 1
+val COPRIME_LMUL2 = Qstore_thm("COPRIME_LMUL2",
+d880 2
+a881 2
+  DISCH_THEN(QX_CHOOSE_THEN `k` STRIP_ASSUME_TAC) THEN
+  QEXISTS_TAC `k` THEN ASM_REWRITE_TAC[] THEN
+d884 1
+a884 1
+val COPRIME_RMUL2 = Qstore_thm("COPRIME_RMUL2",
+d888 1
+a888 1
+val COPRIME_EXP = Qstore_thm("COPRIME_EXP",
+d895 1
+a895 1
+val COPRIME_EXP_IMP = Qstore_thm("COPRIME_EXP_IMP",
+d902 1
+a902 1
+val BEZOUT_GCD_POW = Qstore_thm("BEZOUT_GCD_POW",
+d905 2
+a906 2
+  REPEAT GEN_TAC THEN QASM_CASES_TAC `gcd(a,b) = 0` THENL
+   [STRUCT_CASES_TAC(QSPEC `n` num_CASES) THEN
+d908 3
+a910 3
+     [MAP_EVERY QEXISTS_TAC [`1`, `0`] THEN REWRITE_TAC[SUB_0],
+      REPEAT(QEXISTS_TAC `0`) THEN REWRITE_TAC[MULT_CLAUSES, SUB_0]],
+    MP_TAC(QSPECL [`a`, `b`] GCD) THEN
+d913 3
+a915 3
+    DISCH_THEN(QX_CHOOSE_THEN `b'` ASSUME_TAC) THEN
+    DISCH_THEN(QX_CHOOSE_THEN `a'` ASSUME_TAC) THEN
+    MP_TAC(QSPECL [`a`, `b`, `a':num`, `b':num`] GCD_COPRIME) THEN
+d919 1
+a919 1
+    DISCH_THEN(MP_TAC o QSPEC `n` o MATCH_MP COPRIME_EXP_IMP) THEN
+d921 1
+a921 1
+    DISCH_THEN(QX_CHOOSE_THEN `x` (QX_CHOOSE_THEN `y` MP_TAC)) THEN
+d923 1
+a923 1
+    DISCH_THEN (MP_TAC o QAP_TERM `$* (gcd(a,b) EXP n)`) THEN
+d926 1
+a926 1
+    MAP_EVERY QEXISTS_TAC [`x`, `y`] THEN
+d931 1
+a931 1
+val GCD_EXP = Qstore_thm("GCD_EXP",
+d937 2
+a938 2
+    QX_GEN_TAC `d` THEN STRIP_TAC THEN
+    MP_TAC(QSPECL [`n`, `a`, `b`] BEZOUT_GCD_POW) THEN
+d944 1
+a944 1
+val COPRIME_EXP2 = Qstore_thm("COPRIME_EXP2",
+d951 1
+a951 1
+val DIVISION_DECOMP = Qstore_thm("DIVISION_DECOMP",
+d955 4
+a958 4
+  QEXISTS_TAC `gcd(a,b)` THEN REWRITE_TAC[GCD] THEN
+  MP_TAC(QSPECL [`a`, `b`] GCD_COPRIME_EXISTS) THEN
+  QASM_CASES_TAC `gcd(a,b) = 0` THENL
+  [ASM_REWRITE_TAC[] THEN QEXISTS_TAC `1` THEN
+d962 1
+a962 1
+   DISCH_THEN(QX_CHOOSE_THEN `a'` (QX_CHOOSE_THEN `b'`
+d964 2
+a965 2
+   QEXISTS_TAC `a':num` THEN ASM_REWRITE_TAC[] THEN
+   QUNDISCH_TAC `a divides (b * c)` THEN
+d971 2
+a972 2
+   QEXISTS_TAC `b':num` THEN ASM_REWRITE_TAC[] THEN
+   MATCH_MP_TAC DIVIDES_CMUL2 THEN QEXISTS_TAC `gcd(a,b)` THEN
+d976 1
+a976 1
+val DIVIDES_REV = Qstore_thm("DIVIDES_REV",
+d979 1
+a979 1
+  QASM_CASES_TAC `gcd(a,b) = 0` THENL
+d983 1
+a983 1
+  DISCH_THEN(QX_CHOOSE_THEN `a'` (QX_CHOOSE_THEN `b'`
+d985 2
+a986 2
+  QUNDISCH_TAC `(a EXP n) divides (b EXP n)` THEN
+  DISCH_THEN(QX_CHOOSE_THEN `k` MP_TAC o REWRITE_RULE[divides]) THEN
+d990 1
+a990 1
+  REWRITE_TAC[QSPECL [`x`, `gcd(a,b)`] MULT_SYM] THEN
+d992 3
+a994 3
+  QSUBGOAL_THEN `~(gcd(a,b) EXP n = 0)` MP_TAC THENL
+   [QUNDISCH_TAC `~(gcd(a,b) = 0)` THEN
+    STRUCT_CASES_TAC(QSPEC `gcd(a,b)` num_CASES) THEN
+d996 1
+a996 1
+    ONCE_REWRITE_TAC[QTAUT_CONV `a ==> b ==> c = a /\ b ==> c`]] THEN
+d998 3
+a1000 3
+  DISCH_TAC THEN QSUBGOAL_THEN `coprime(a' EXP n,b' EXP n)` MP_TAC THENL
+   [QUNDISCH_TAC `~(n = 0)` THEN
+    STRUCT_CASES_TAC(QSPEC `n` num_CASES) THEN
+d1003 1
+a1003 1
+  DISCH_THEN(MP_TAC o QSPEC `a' EXP n`) THEN
+d1006 1
+a1006 1
+  QUNDISCH_TAC `1 * gcd(a,b) = a` THEN REWRITE_TAC[MULT_CLAUSES] THEN
+d1009 1
+a1009 1
+val DIVIDES_MUL = Qstore_thm("DIVIDES_MUL",
+d1014 1
+a1014 1
+  POP_ASSUM(QX_CHOOSE_THEN `d` SUBST1_TAC o REWRITE_RULE[divides])
+d1023 1
+a1023 1
+val prime = Qnew_definition("prime",
+d1030 1
+a1030 1
+val PRIME_0 = Qstore_thm("PRIME_0",
+d1033 1
+a1033 1
+  DISCH_THEN(MP_TAC o QSPEC `2` o CONJUNCT2) THEN
+d1036 1
+a1036 1
+val PRIME_1 = Qstore_thm("PRIME_1",
+d1040 1
+a1040 1
+val PRIME_2 = Qstore_thm("PRIME_2",
+d1046 1
+a1046 1
+  REWRITE_TAC[Qnum_CONV `2`, Qnum_CONV `1`, LESS_THM, NOT_LESS_0] THEN
+d1051 1
+a1051 1
+val PRIME_GE_2 = Qstore_thm("PRIME_GE_2",
+d1054 1
+a1054 1
+  REWRITE_TAC[Qnum_CONV `2`, Qnum_CONV `1`, 
+d1057 1
+a1057 1
+  REWRITE_TAC[SYM(Qnum_CONV `1`), PRIME_0, PRIME_1]);
+d1059 1
+a1059 1
+val PRIME_FACTOR = Qstore_thm("PRIME_FACTOR",
+d1062 4
+a1065 4
+  QX_GEN_TAC `n` THEN REPEAT STRIP_TAC THEN
+  QASM_CASES_TAC `prime(n)` THENL
+   [QEXISTS_TAC `n` THEN ASM_REWRITE_TAC[DIVIDES_REFL],
+    QUNDISCH_TAC `~prime(n)` THEN
+d1068 1
+a1068 1
+    DISCH_THEN(QX_CHOOSE_THEN `m` MP_TAC) THEN
+d1073 3
+a1075 3
+      DISCH_THEN(QX_CHOOSE_THEN `p` STRIP_ASSUME_TAC) THEN
+      QEXISTS_TAC `p` THEN ASM_REWRITE_TAC[] THEN
+      MATCH_MP_TAC DIVIDES_TRANS THEN QEXISTS_TAC `m` THEN
+d1077 1
+a1077 1
+      DISCH_THEN SUBST1_TAC THEN QEXISTS_TAC `2` THEN
+d1080 1
+a1080 1
+val PRIME_FACTOR_LT = Qstore_thm("PRIME_FACTOR_LT",
+d1084 2
+a1085 2
+  DISCH_THEN(QX_CHOOSE_THEN `q` SUBST_ALL_TAC) THEN
+  REWRITE_TAC[Qnum_CONV `2`, RIGHT_ADD_DISTRIB, MULT_CLAUSES] THEN
+d1091 2
+a1092 1
+val EUCLID = Qstore_thm("EUCLID",
+d1094 2
+a1095 2
+  PURE_GEN_REWRITE_TAC I [QTAUT_CONV `x = ~~x`] THEN
+  DISCH_THEN(QX_CHOOSE_THEN `n` MP_TAC o CONV_RULE NOT_FORALL_CONV) THEN
+d1097 3
+a1099 3
+  MP_TAC(QSPEC `SUC(FACT n)` PRIME_FACTOR) THEN
+  REWRITE_TAC[Qnum_CONV `1`, INV_SUC_EQ, GSYM LESS_EQ_0, NOT_LESS_EQUAL,
+    FACT_LESS] THEN DISCH_THEN(QX_CHOOSE_TAC `p`) THEN
+d1101 2
+a1102 2
+  DISCH_THEN(MP_TAC o QSPEC `p`) THEN ASM_REWRITE_TAC[] THEN
+  DISJ_CASES_TAC(QSPECL [`n`, `p`] LESS_CASES) THEN
+d1104 1
+a1104 1
+  QSUBGOAL_THEN `p divides (FACT n)` ASSUME_TAC THENL
+d1109 1
+a1109 1
+    QSUBGOAL_THEN `p = 1` SUBST_ALL_TAC THENL
+d1111 1
+a1111 1
+      QEXISTS_TAC `FACT n` THEN ASM_REWRITE_TAC[GSYM ADD1],
+d1114 1
+a1114 1
+val PRIME_COPRIME = Qstore_thm("PRIME_COPRIME",
+d1117 1
+a1117 1
+  STRIP_ASSUME_TAC(QSPECL [`p`, `n`] GCD) THEN
+d1119 1
+a1119 1
+  DISCH_THEN(MP_TAC o QSPEC `gcd(p,n)`) THEN ASM_REWRITE_TAC[] THEN
+d1123 1
+a1123 1
+val COPRIME_PRIME = Qstore_thm("COPRIME_PRIME",
+d1126 1
+a1126 1
+  QSUBGOAL_THEN `p = 1` SUBST_ALL_TAC THENL
+d1128 1
+a1128 1
+    QUNDISCH_TAC `prime 1` THEN REWRITE_TAC[PRIME_1]]);
+d1130 1
+a1130 1
+val COPRIME_PRIME_EQ = Qstore_thm("COPRIME_PRIME_EQ",
+d1136 4
+a1139 4
+    DISCH_THEN(QX_CHOOSE_THEN `d` STRIP_ASSUME_TAC) THEN
+    FIRST_ASSUM(QX_CHOOSE_TAC `p` o MATCH_MP PRIME_FACTOR) THEN
+    QEXISTS_TAC `p` THEN ASM_REWRITE_TAC[] THEN CONJ_TAC THEN
+    MATCH_MP_TAC DIVIDES_TRANS THEN QEXISTS_TAC `d` THEN
+d1142 1
+a1142 1
+val PRIME_DIVPROD = Qstore_thm("PRIME_DIVPROD",
+d1146 1
+a1146 1
+  FIRST_ASSUM(MP_TAC o QSPEC `a` o MATCH_MP PRIME_COPRIME) THEN
+d1149 1
+a1149 1
+   [DISJ2_TAC THEN QUNDISCH_TAC `p divides (a * b)` THEN
+d1152 1
+a1152 1
+    QEXISTS_TAC `a` THEN ASM_REWRITE_TAC[]]);
+d1154 1
+a1154 1
+val PRIME_DIVEXP = Qstore_thm("PRIME_DIVEXP",
+d1163 1
+a1163 1
+val PRIME_DIVEXP_N = Qstore_thm("PRIME_DIVEXP_N",
+d1169 1
+a1169 1
+val PARITY_EXP = Qstore_thm("PARITY_EXP",
+d1173 1
+a1173 1
+    QEXISTS_TAC `SUC n` THEN ASM_REWRITE_TAC[PRIME_2],
+d1176 1
+a1176 1
+val COPRIME_SOS = Qstore_thm("COPRIME_SOS",
+d1182 3
+a1184 3
+  DISCH_THEN(QX_CHOOSE_THEN `p` STRIP_ASSUME_TAC) THEN
+  QEXISTS_TAC `p` THEN ASM_REWRITE_TAC[] THEN
+  MP_TAC(QSPECL [`p`, `x`, `y`] PRIME_DIVPROD) THEN
+d1187 1
+a1187 1
+  QEXISTS_TAC `2` THEN ASM_REWRITE_TAC[] THEN
+d1189 3
+a1191 3
+   [QEXISTS_TAC `x EXP 2`,
+    QEXISTS_TAC `y EXP 2` THEN ONCE_REWRITE_TAC[ADD_SYM]] THEN
+  ASM_REWRITE_TAC[] THEN REWRITE_TAC[Qnum_CONV `2`] THEN
+d1198 1
+a1198 1
+val PRIME_DIVPROD_POW = Qstore_thm("PRIME_DIVPROD_POW",
+d1202 2
+a1203 2
+  QASM_CASES_TAC `n = 0` THEN ASM_REWRITE_TAC[EXP, DIVIDES_1] THEN
+  QSUBGOAL_THEN `p divides a \/ p divides b` DISJ_CASES_TAC THENL
+d1205 1
+a1205 1
+    MATCH_MP_TAC DIVIDES_EXP2 THEN QEXISTS_TAC `n` 
+d1210 1
+a1210 1
+   [QEXISTS_TAC `b`, QEXISTS_TAC `a`] THEN
+d1214 1
+a1214 1
+  FIRST_ASSUM(MP_TAC o QSPEC `p` o MATCH_MP COPRIME_PRIME) THEN
+d1216 2
+a1217 2
+   [FIRST_ASSUM(MP_TAC o QSPEC `b` o MATCH_MP PRIME_COPRIME),
+    FIRST_ASSUM(MP_TAC o QSPEC `a` o MATCH_MP PRIME_COPRIME)] THEN
+d1221 1
+a1221 1
+val COPRIME_POW = Qstore_thm("COPRIME_POW",
+d1225 2
+a1226 2
+  MAP_EVERY (W(curry QSPEC_TAC)) [`a:num`, `b:num`, `n:num`, `c:num`] THEN
+  COMPLETE_INDUCT_TAC THEN QX_GEN_TAC `c` THEN
+d1228 3
+a1230 3
+  REWRITE_TAC[QTAUT_CONV `a ==> b ==> c = a /\ b ==> c`] THEN
+  DISCH_TAC THEN QX_GEN_TAC `n` THEN
+  REPEAT GEN_TAC THEN QASM_CASES_TAC `c = 1` THENL
+d1232 1
+a1232 1
+    REPEAT STRIP_TAC THEN MAP_EVERY QEXISTS_TAC [`1`, `1`] THEN
+d1235 3
+a1237 3
+  QASM_CASES_TAC `c = 0` THENL
+   [QUNDISCH_TAC `a * b = c EXP n` THEN
+    STRUCT_CASES_TAC(QSPEC `n` num_CASES) THEN
+d1239 1
+a1239 1
+    STRIP_TAC THEN QUNDISCH_TAC `coprime(a,b)` THEN
+d1242 2
+a1243 2
+     [MAP_EVERY QEXISTS_TAC [`0`, `1`],
+      MAP_EVERY QEXISTS_TAC [`1`, `0`]] THEN
+d1245 1
+a1245 1
+  FIRST_ASSUM(QX_CHOOSE_THEN `p` MP_TAC o MATCH_MP PRIME_FACTOR) THEN
+d1247 1
+a1247 1
+  QSUBGOAL_THEN `(p EXP n) divides a \/ (p EXP n) divides b` MP_TAC THENL
+d1250 4
+a1253 4
+  QUNDISCH_TAC `p divides c` THEN REWRITE_TAC[divides] THEN
+  DISCH_THEN(QX_CHOOSE_TAC `l`) THEN
+  QSUBGOAL_THEN `~(p EXP n = 0)` ASSUME_TAC THENL
+   [QUNDISCH_TAC `c = p * l` THEN
+d1255 1
+a1255 1
+    STRUCT_CASES_TAC(QSPEC `p` num_CASES) THEN
+d1257 2
+a1258 2
+  DISCH_THEN(DISJ_CASES_THEN(QX_CHOOSE_TAC `k`)) THENL
+   [QSUBGOAL_THEN `?r s. (k = r EXP n) /\ (b = s EXP n)` STRIP_ASSUME_TAC 
+d1260 2
+a1261 2
+     [FIRST_ASSUM MATCH_MP_TAC THEN QEXISTS_TAC `l`,
+      MAP_EVERY QEXISTS_TAC [`p * r`, `s`] THEN
+d1264 1
+a1264 1
+     [MATCH_MP_TAC PRIME_FACTOR_LT THEN QEXISTS_TAC `p` THEN
+d1266 1
+a1266 1
+      QUNDISCH_TAC `coprime(a,b)` THEN ONCE_REWRITE_TAC[COPRIME_SYM] THEN
+d1268 2
+a1269 2
+      MATCH_MP_TAC MULT_LCANCEL THEN QEXISTS_TAC `p EXP n` THEN
+      QUNDISCH_TAC `a * b = c EXP n` THEN
+d1271 1
+a1271 1
+    QSUBGOAL_THEN `?r s. (a = r EXP n) /\ (k = s EXP n)` STRIP_ASSUME_TAC 
+d1273 2
+a1274 2
+     [FIRST_ASSUM MATCH_MP_TAC THEN QEXISTS_TAC `l`,
+      MAP_EVERY QEXISTS_TAC [`r`, `p * s`] THEN
+d1277 1
+a1277 1
+     [MATCH_MP_TAC PRIME_FACTOR_LT THEN QEXISTS_TAC `p` THEN
+d1279 1
+a1279 1
+      QUNDISCH_TAC `coprime(a,b)` THEN ASM_REWRITE_TAC[COPRIME_LMUL2],
+d1281 2
+a1282 2
+      MATCH_MP_TAC MULT_LCANCEL THEN QEXISTS_TAC `p EXP n` THEN
+      QUNDISCH_TAC `a * b = c EXP n` THEN
+d1291 1
+a1291 1
+val PYTHAG_EVEN_LEMMA1 = Qstore_thm("PYTHAG_EVEN_LEMMA1",
+d1295 1
+a1295 1
+  ONCE_REWRITE_TAC[(EQT_ELIM o QAC_CONV(ADD_ASSOC,ADD_SYM))
+d1297 1
+a1297 1
+  DISJ_CASES_THEN MP_TAC (QSPEC `w` EVEN_OR_ODD) THENL
+d1305 1
+a1305 1
+val PYTHAG_EVEN_LEMMA2 = Qstore_thm("PYTHAG_EVEN_LEMMA2",
+d1312 1
+a1312 1
+val PYTHAG_EVEN = Qstore_thm("PYTHAG_EVEN",
+d1319 1
+a1319 1
+  REPEAT GEN_TAC THEN MAP_EVERY (DISJ_CASES_TAC o C QSPEC EVEN_OR_ODD)
+d1323 1
+a1323 1
+  (QSUBGOAL_THEN `~EVEN(w EXP 2)` MP_TAC THENL
+d1325 1
+a1325 1
+   ASM_REWRITE_TAC[Qnum_CONV `2`, PARITY_EXP] THEN
+d1328 1
+a1328 1
+val PYTHAG_COCLASSIFY = Qstore_thm("PYTHAG_COCLASSIFY",
+d1337 4
+a1340 4
+  QSUBGOAL_THEN `coprime(v,w)` ASSUME_TAC THENL
+   [REWRITE_TAC[coprime] THEN QX_GEN_TAC `d` THEN STRIP_TAC THEN
+    QSUBGOAL_THEN `d divides u` ASSUME_TAC THENL
+     [MATCH_MP_TAC DIVIDES_REV THEN QEXISTS_TAC `2` THEN
+d1342 1
+a1342 1
+      MATCH_MP_TAC DIVIDES_ADD_REVR THEN QEXISTS_TAC `v EXP 2` THEN
+d1345 1
+a1345 1
+      QUNDISCH_TAC `coprime(u,v)` THEN REWRITE_TAC[coprime] THEN
+d1347 1
+a1347 1
+  QASM_CASES_TAC `u = 0` THENL
+d1352 1
+a1352 1
+     [QUNDISCH_TAC `coprime(u,v)` THEN ASM_REWRITE_TAC[COPRIME_0] THEN
+d1354 1
+a1354 1
+      QUNDISCH_TAC `coprime(u,v)` THEN ONCE_REWRITE_TAC[COPRIME_SYM] THEN
+d1356 1
+a1356 1
+      MAP_EVERY QEXISTS_TAC [`1`, `0`] THEN
+d1358 1
+a1358 1
+      QUNDISCH_TAC `(u EXP 2) + (1 EXP 2) = w EXP 2` THEN
+d1362 2
+a1363 2
+  QSUBGOAL_THEN `EVEN(w + v)` 
+               (QX_CHOOSE_TAC `r` o REWRITE_RULE[EVEN_EXISTS])
+d1365 1
+a1365 1
+  DISJ_CASES_TAC(QSPECL [`v`, `w`] LESS_EQ_CASES) THENL
+d1369 1
+a1369 1
+  QSUBGOAL_THEN `EVEN(w - v)` (QX_CHOOSE_TAC `s` o REWRITE_RULE[EVEN_EXISTS])
+d1371 3
+a1373 3
+   [QUNDISCH_TAC `v <= w` THEN REWRITE_TAC[LESS_EQ_EXISTS] THEN
+    DISCH_THEN(QX_CHOOSE_THEN `d` SUBST_ALL_TAC) THEN
+    QUNDISCH_TAC `~EVEN(v + d)` THEN ASM_REWRITE_TAC[EVEN_ADD] THEN
+d1375 2
+a1376 2
+  FIRST_ASSUM(QX_CHOOSE_TAC `t` o REWRITE_RULE[EVEN_EXISTS]) THEN
+  ASM_REWRITE_TAC[EXP_2] THEN ONCE_REWRITE_TAC[(EQT_ELIM o QAC_CONV
+d1378 6
+a1383 6
+  REWRITE_TAC[REDUCE_CONV (--`2 * 2`--), Qnum_CONV `4`, MULT_MONO_EQ] THEN
+  QSUBGOAL_THEN `coprime(r,s)` ASSUME_TAC THENL
+   [REWRITE_TAC[coprime] THEN QX_GEN_TAC `d` THEN REWRITE_TAC[divides] THEN
+    DISCH_THEN(CONJUNCTS_THEN2 (QX_CHOOSE_TAC `k`) (QX_CHOOSE_TAC `l`))
+    THEN MAP_EVERY QUNDISCH_TAC [`w + v = 2 * r`, `w - v = 2 * s`] THEN
+    ASM_REWRITE_TAC[QTAUT_CONV `a ==> b ==> c = a /\ b ==> c`] THEN
+d1386 2
+a1387 2
+               in MP_TAC(MK_COMB(QAP_TERM `$+` t1, t2)) THEN
+                  MP_TAC(MK_COMB(QAP_TERM `$-` t1, t2))
+d1391 2
+a1392 2
+    REWRITE_TAC[Qnum_CONV `2`, MULT_MONO_EQ] THEN
+    REPEAT DISCH_TAC THEN QUNDISCH_TAC `coprime(v,w)` THEN
+d1397 2
+a1398 2
+    MP_TAC(QASSUME `coprime(r,s)`) THEN
+    REWRITE_TAC[QTAUT_CONV `a ==> b ==> c = a /\ b ==> c`] THEN
+d1401 1
+a1401 1
+    DISCH_THEN(QX_CHOOSE_THEN `p` (QX_CHOOSE_THEN `q`
+d1405 2
+a1406 2
+    REWRITE_TAC[Qnum_CONV `2`, MULT_MONO_EQ] THEN
+    REWRITE_TAC[SYM(Qnum_CONV `2`)] THEN
+d1408 1
+a1408 1
+    MAP_EVERY QEXISTS_TAC [`p`, `q`] THEN
+d1410 1
+a1410 1
+    QUNDISCH_TAC `(u EXP 2) + (v EXP 2) = w EXP 2` THEN
+d1413 1
+a1413 1
+    ONCE_REWRITE_TAC[(EQT_ELIM o QAC_CONV (MULT_ASSOC,MULT_SYM))
+d1415 2
+a1416 2
+    REWRITE_TAC[REDUCE_CONV (--`2 * 2`--), Qnum_CONV `4`, MULT_MONO_EQ] THEN
+    ONCE_REWRITE_TAC[(EQT_ELIM o QAC_CONV (MULT_ASSOC,MULT_SYM))
+d1418 1
+a1418 1
+    REWRITE_TAC[GSYM EXP_2] THEN REWRITE_TAC[Qnum_CONV `2`] THEN
+d1420 2
+a1421 2
+    QUNDISCH_TAC `coprime(p EXP 2,q EXP 2)` THEN
+    REWRITE_TAC[Qnum_CONV `2`, COPRIME_EXP2]]);
+d1427 1
+a1427 1
+val FLT42_DOWN_LEMMA1 = Qstore_thm("FLT42_DOWN_LEMMA1",
+d1434 1
+a1434 1
+  QSUBGOAL_THEN `~(z EXP 2 = 0)` MP_TAC THENL
+d1440 3
+a1442 3
+  DISCH_THEN(QX_CHOOSE_THEN `p` STRIP_ASSUME_TAC) THEN
+  QSUBGOAL_THEN `(p EXP 2) divides z` MP_TAC THENL
+   [MATCH_MP_TAC DIVIDES_REV THEN QEXISTS_TAC `2` THEN REDUCE_TAC THEN
+d1446 7
+a1452 7
+    DISCH_THEN(QX_CHOOSE_TAC `w` o REWRITE_RULE[divides])] THEN
+  QUNDISCH_TAC `p divides y` THEN REWRITE_TAC[divides] THEN
+  DISCH_THEN(QX_CHOOSE_TAC `v`) THEN
+  QUNDISCH_TAC `p divides x` THEN REWRITE_TAC[divides] THEN
+  DISCH_THEN(QX_CHOOSE_TAC `u`) THEN
+  MAP_EVERY QEXISTS_TAC [`u`, `v`, `w`] THEN
+  QUNDISCH_TAC `(x EXP 4) + (y EXP 4) = z EXP 2` THEN
+d1454 1
+a1454 1
+  QSUBGOAL_THEN `~(p EXP 4 = 0)` MP_TAC THENL
+d1456 2
+a1457 2
+    QUNDISCH_TAC `prime(0)` THEN REWRITE_TAC[PRIME_0],
+    REWRITE_TAC[QTAUT_CONV `a ==> b ==> c = a /\ b ==> c`]] THEN
+d1459 1
+a1459 1
+  QUNDISCH_TAC `~(x = 0)` THEN
+d1462 1
+a1462 1
+  QUNDISCH_TAC `~(y = 0)` THEN 
+d1468 2
+a1469 2
+  QUNDISCH_TAC `~(z = 0)` THEN ASM_REWRITE_TAC[] THEN
+  STRUCT_CASES_TAC(QSPEC `w` num_CASES) THENL
+d1472 2
+a1473 2
+  QUNDISCH_TAC `prime(p)` THEN
+  STRUCT_CASES_TAC(QSPEC `p` num_CASES) THEN
+d1476 1
+a1476 1
+              Qnum_CONV `1`] THEN
+d1478 1
+a1478 1
+  REWRITE_TAC[SYM(Qnum_CONV `1`), PRIME_1, ADD_CLAUSES, LESS_0]);
+d1480 1
+a1480 1
+val FLT42_DOWN_LEMMA2 = Qstore_thm("FLT42_DOWN_LEMMA2",
+d1491 3
+a1493 3
+  DISCH_THEN(QX_CHOOSE_THEN `p` MP_TAC) THEN
+  DISCH_THEN(QX_CHOOSE_THEN `q` STRIP_ASSUME_TAC) THEN
+  QSUBGOAL_THEN `(q EXP 2) + (y EXP 2) = p EXP 2` ASSUME_TAC THENL
+d1500 3
+a1502 3
+  QSUBGOAL_THEN `coprime(q,y)` MP_TAC THENL
+   [REWRITE_TAC[COPRIME_PRIME_EQ] THEN QX_GEN_TAC `r` THEN
+    STRIP_TAC THEN MP_TAC(QASSUME `coprime(p,q)`) THEN
+d1504 2
+a1505 2
+    DISCH_THEN(MP_TAC o QSPEC `r`) THEN ASM_REWRITE_TAC[] THEN
+    MATCH_MP_TAC PRIME_DIVEXP THEN QEXISTS_TAC `2` THEN
+d1509 1
+a1509 1
+    REWRITE_TAC[Qnum_CONV `2`] THEN CONJ_TAC THEN
+d1512 2
+a1513 2
+             o CONJ(QASSUME `(q EXP 2) + (y EXP 2) = p EXP 2`)) THEN
+  QSUBGOAL_THEN `ODD(y)` ASSUME_TAC THENL
+d1515 2
+a1516 2
+    ONCE_REWRITE_TAC[GSYM(QSPEC `1` PARITY_EXP)] THEN
+    REWRITE_TAC[SYM(Qnum_CONV `2`), GSYM ODD_EVEN] THEN
+d1520 9
+a1528 9
+  MP_TAC(QSPECL [`q`, `y`, `p`] PYTHAG_COCLASSIFY) THEN
+  ASM_REWRITE_TAC[] THEN DISCH_THEN(QX_CHOOSE_THEN `a` MP_TAC) THEN
+  DISCH_THEN(QX_CHOOSE_THEN `b` STRIP_ASSUME_TAC) THEN
+  MP_TAC(QASSUME `x EXP 2 = 2 * p * q`) THEN
+  REWRITE_TAC[QASSUME `p = (a EXP 2) + (b EXP 2)`, 
+              QASSUME `q = 2 * a * b`] THEN
+  QSUBGOAL_THEN `EVEN(x)` MP_TAC THENL
+   [ONCE_REWRITE_TAC[GSYM(QSPEC `1` PARITY_EXP)] THEN
+    REWRITE_TAC[SYM(Qnum_CONV `2`), GSYM ODD_EVEN] THEN
+d1531 1
+a1531 1
+  DISCH_THEN(QX_CHOOSE_THEN `x2` SUBST_ALL_TAC) THEN
+d1533 1
+a1533 1
+  ONCE_REWRITE_TAC[(EQT_ELIM o QAC_CONV (MULT_ASSOC,MULT_SYM))
+d1539 1
+a1539 1
+  MP_TAC(MATCH_MP COPRIME_SOS (QASSUME `coprime(a,b)`)) THEN
+d1541 1
+a1541 1
+  MP_TAC(QSPECL [`2`, `(a EXP 2) + (b EXP 2)`, `a * b`, `x2`]
+d1543 6
+a1548 6
+  DISCH_THEN(QX_CHOOSE_THEN `Z` MP_TAC) THEN
+  DISCH_THEN(QX_CHOOSE_THEN `W` STRIP_ASSUME_TAC) THEN
+  MP_TAC(QSPECL [`2`, `a`, `b`, `W`] COPRIME_POW) THEN
+  ASM_REWRITE_TAC[] THEN DISCH_THEN(QX_CHOOSE_THEN `X` MP_TAC) THEN
+  DISCH_THEN(QX_CHOOSE_THEN `Y` (STRIP_ASSUME_TAC o GSYM)) THEN
+  MAP_EVERY QEXISTS_TAC [`X`, `Y`, `Z`] THEN 
+d1550 2
+a1551 2
+  QSUBGOAL_THEN `~(W = 0)` ASSUME_TAC THENL
+   [DISCH_TAC THEN QUNDISCH_TAC `a * b = W EXP 2` THEN
+d1553 1
+a1553 1
+    QUNDISCH_TAC `q = 2 * (W EXP 2)` THEN
+d1556 1
+a1556 1
+    QUNDISCH_TAC `(2 * x2) EXP 2 = 2 * p * 0` THEN
+d1559 1
+a1559 1
+  QSUBGOAL_THEN `~(X EXP 2 = 0)` MP_TAC THENL
+d1561 1
+a1561 1
+    QUNDISCH_TAC `a * b = W EXP 2` THEN
+d1566 1
+a1566 1
+  QSUBGOAL_THEN `~(Y EXP 2 = 0)` MP_TAC THENL
+d1568 1
+a1568 1
+    QUNDISCH_TAC `a * b = W EXP 2` THEN
+d1573 1
+a1573 1
+  QSUBGOAL_THEN `~((2 * (W EXP 2)) EXP 2 = 0)` MP_TAC THENL
+d1576 1
+a1576 1
+  MATCH_MP_TAC LESS_EQ_LESS_TRANS THEN QEXISTS_TAC `(Z EXP 2) EXP 2` THEN
+d1579 1
+a1579 1
+    STRUCT_CASES_TAC(QSPEC `Z` num_CASES) THEN
+d1587 1
+a1587 1
+val FLT42 = Qstore_thm("FLT42",
+d1589 1
+a1589 1
+  COMPLETE_INDUCT_TAC THEN QX_GEN_TAC `z` THEN
+d1595 4
+a1598 4
+  DISCH_THEN(QX_CHOOSE_THEN `y` MP_TAC) THEN
+  DISCH_THEN(QX_CHOOSE_THEN `x` STRIP_ASSUME_TAC) THEN
+  QASM_CASES_TAC `coprime(x,y)` THENL
+   [MP_TAC(QSPECL [`x EXP 2`, `y EXP 2`, `z`] PYTHAG_EVEN) THEN
+d1600 2
+a1601 2
+    ASM_REWRITE_TAC[Qnum_CONV `2`, COPRIME_EXP2] THEN
+    REWRITE_TAC[SYM(Qnum_CONV `2`)] THEN
+d1603 1
+a1603 1
+     [MP_TAC(QSPECL [`x`, `y`,`z`] FLT42_DOWN_LEMMA2) THEN
+d1605 3
+a1607 3
+      ASM_REWRITE_TAC[Qnum_CONV `2`, COPRIME_EXP2] THEN
+      REWRITE_TAC[SYM(Qnum_CONV `2`)],
+      MP_TAC(QSPECL [`y`, `x`,`z`] FLT42_DOWN_LEMMA2) THEN
+d1609 2
+a1610 2
+      ASM_REWRITE_TAC[Qnum_CONV `2`, COPRIME_EXP2] THEN
+      REWRITE_TAC[SYM(Qnum_CONV `2`)] THEN
+d1612 1
+a1612 1
+  MP_TAC(QSPECL [`x`, `y`, `z`] FLT42_DOWN_LEMMA1) THEN
+d1614 5
+a1618 5
+    DISCH_THEN(QX_CHOOSE_THEN `u` MP_TAC) THEN
+  DISCH_THEN(QX_CHOOSE_THEN `v` MP_TAC) THEN
+  DISCH_THEN(QX_CHOOSE_THEN `w` STRIP_ASSUME_TAC) THEN
+  QEXISTS_TAC `w` THEN ASM_REWRITE_TAC[] THEN
+  MAP_EVERY QEXISTS_TAC [`v`, `u`] THEN ASM_REWRITE_TAC[]);
+d1624 1
+a1624 1
+val FLT4 = Qstore_thm("FLT4",
+d1626 1
+a1626 1
+  REPEAT GEN_TAC THEN SUBST1_TAC(QSPEC `z` EXP_4) THEN
+d1629 1
+a1629 1
+close_theory();
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@
+
+
+1.1.1.1.2.1
+log
+@Konrad's bug fixes and further development to hol90.7 after it's release.
+Checked n on a side branch for later merging with the main trunk
+(Els'a revisions).  See doc/7.changes for details.
+@
+text
+@d6 2
+d10 1
+a10 1
+open Psyntax;
+d12 1
+d15 1
+a15 1
+(* Some useful things that aren't built-in.                                  *)
+a17 16
+
+(* Timing *)
+local open System.Timer
+      val st_tim = ref(start_timer())
+in
+ fun start_time () = st_tim := start_timer()
+ fun end_time () =
+   let val rt = check_timer (!st_tim)
+       and gt = check_timer_gc (!st_tim) in
+       "runtime: " ^ makestring rt ^ "s, gctime: " ^ makestring gt ^ "s."
+   end
+end;
+
+
+(* Tactics *)
+
+d23 2
+a24 2
+(* A tautology checker *)
+local fun bval w t = (type_of t = Dsyntax.bool) andalso 
+d27 1
+a27 2
+in
+val TAUT_CONV =
+d33 1
+a33 1
+end;
+d39 1
+d42 2
+a43 2
+(*-------------------------------------------------------------------------
+ * Fold in parsing for some proof procedures - this makes them slicker 
+d45 1
+a45 1
+ *-------------------------------------------------------------------------*)
+d47 33
+a79 15
+structure Q =
+struct
+  fun Q_ERR{func,mesg} = 
+      HOL_ERR{origin_structure = "FLT4 proof",
+              origin_function = func, message = mesg};
+  
+  val ptm = Parse.term_parser;
+
+  (* constrain parsed term to have a given type *)
+  fun ptm_with_ty qtm ty = 
+     let fun trail s = [QUOTE (s^"):"), ANTIQUOTE(ty_antiq ty), QUOTE""]
+     in ptm (case (Lib.front_n_back qtm)
+            of ([],QUOTE s) => trail ("("^s)
+             | (QUOTE s::rst, QUOTE s') => (QUOTE ("("^s)::rst) @@ trail s'
+             | _ => raise Q_ERR{func="ptm_with_ty",mesg="badly formed quote"})
+d81 19
+a99 25
+  fun btm q = ptm_with_ty q Dsyntax.bool;
+  
+  val TAUT_CONV = TAUT_CONV o btm;
+  val store_thm = fn (s,q,t) => store_thm(s,btm q,t);
+  val new_definition = fn (s,q) => new_definition(s,btm q);
+  val new_infix_definition = fn (s,q,f) => new_infix_definition(s,btm q,f);
+  val SPEC = fn q => 
+       W(SPEC o (ptm_with_ty q o (type_of o #1 o dest_forall o concl)))
+  val SPECL = rev_itlist SPEC;
+  val SPEC_TAC = fn (q1,q2) => SPEC_TAC(ptm q1, ptm q2);
+  val EXISTS_TAC = fn q => 
+     W(EXISTS_TAC o (ptm_with_ty q o (type_of o #1 o dest_exists o snd)));
+  val X_CHOOSE_THEN = fn q => fn ttac =>
+      W(C X_CHOOSE_THEN ttac o ptm_with_ty q
+                             o (type_of o #1 o dest_exists o concl))
+  val X_CHOOSE_TAC = C X_CHOOSE_THEN ASSUME_TAC;
+  val X_GEN_TAC = fn q => 
+      W(X_GEN_TAC o ptm_with_ty q o (type_of o #1 o dest_forall o snd))
+  val UNDISCH_TAC = Tactic.UNDISCH_TAC o btm
+  val num_CONV = Num_conv.num_CONV o ptm
+  val SUBGOAL_THEN = Tactical.SUBGOAL_THEN o btm
+  val ASSUME = ASSUME o btm
+  val AP_TERM = Drule.AP_TERM  o ptm
+  val ASM_CASES_TAC = Tactic.ASM_CASES_TAC o btm
+  val AC_CONV  = fn p => AC_CONV p o ptm;
+d101 14
+a114 1
+end; (* structure Q *)
+d116 3
+a123 3
+start_time();  Thm.counting_thms true; Thm.reset_thm_count();
+
+new_theory "FERMAT";
+d129 1
+a129 1
+val COMPLETE_INDUCTION = Q.store_thm("COMPLETE_INDUCTION",
+d136 2
+a137 2
+  REWRITE_TAC[NOT_IMP] THEN DISCH_THEN(Q.X_CHOOSE_TAC `n`) THEN
+  Q.EXISTS_TAC `n` THEN ASM_REWRITE_TAC[]
+d148 1
+a148 1
+val MULT_EQ_1 = Q.store_thm("MULT_EQ_1",
+d151 3
+a153 3
+  STRUCT_CASES_TAC(Q.SPEC `x` num_CASES) THEN
+  STRUCT_CASES_TAC(Q.SPEC `y` num_CASES) THEN
+  REWRITE_TAC[MULT_CLAUSES, ADD_CLAUSES, Q.num_CONV `1`,
+d159 1
+a159 1
+val MULT_FIX = Q.store_thm("MULT_FIX",
+d162 1
+a162 1
+  STRUCT_CASES_TAC(Q.SPEC `x` num_CASES) THEN
+d169 1
+a169 1
+val LESS_EQ_MULT = Q.store_thm("LESS_EQ_MULT",
+d176 1
+a176 1
+val LESS_MULT = Q.store_thm("LESS_MULT",
+d185 1
+a185 1
+val MULT_LCANCEL = Q.store_thm("MULT_LCANCEL",
+d187 1
+a187 1
+  REPEAT GEN_TAC THEN STRUCT_CASES_TAC(Q.SPEC `a` num_CASES) THEN
+d190 1
+a190 1
+val LESS_EQ_ANTISYM_EQ = Q.store_thm("LESS_EQ_ANTISYM_EQ",
+d199 1
+a199 1
+val EXP_0 = Q.store_thm("EXP_0",
+d203 1
+a203 1
+val EXP_1 = Q.store_thm("EXP_1",
+d207 1
+a207 1
+val EXP_2 = Q.store_thm("EXP_2",
+d209 1
+a209 1
+  REWRITE_TAC[Q.num_CONV `2`, Q.num_CONV `1`, EXP, 
+d212 1
+a212 1
+val MULT_EXP = Q.store_thm("MULT_EXP",
+d217 1
+a217 1
+val EXP_EQ_0 = Q.store_thm("EXP_EQ_0",
+d220 1
+a220 1
+   [Q.SPEC_TAC(`n:num`,`n:num`) THEN INDUCT_TAC THEN
+d226 1
+a226 1
+    STRUCT_CASES_TAC(Q.SPEC `n` num_CASES) THEN
+d230 1
+a230 1
+val EXP_EQ_1 = Q.store_thm("EXP_EQ_1",
+d232 1
+a232 1
+  REPEAT GEN_TAC THEN STRUCT_CASES_TAC(Q.SPEC `n` num_CASES) THEN
+d236 1
+a236 1
+val EXP_MONO_LEMMA = Q.store_thm("EXP_MONO_LEMMA",
+d244 1
+a244 1
+val EXP_MONO_LT = Q.store_thm("EXP_MONO_LT",
+d251 1
+a251 1
+val EXP_MONO_LE = Q.store_thm("EXP_MONO_LE",
+d255 1
+a255 1
+val EXP_MONO_EQ = Q.store_thm("EXP_MONO_EQ",
+d260 1
+a260 1
+val EXP_EXP = Q.store_thm("EXP_EXP",
+d269 1
+a269 1
+val DIFF_LEMMA = Q.store_thm("DIFF_LEMMA",
+d272 1
+a272 1
+  DISJ_CASES_TAC(Q.SPEC `a` LESS_0_CASES) THEN ASM_REWRITE_TAC[] THEN
+d279 1
+a279 1
+val NOT_EVEN_EQ_ODD = Q.store_thm("NOT_EVEN_EQ_ODD",
+d283 1
+a283 1
+val CANCEL_TIMES2 = Q.store_thm("CANCEL_TIMES2",
+d285 1
+a285 1
+  REWRITE_TAC[Q.num_CONV `2`, MULT_MONO_EQ]);
+d287 1
+a287 1
+val EVEN_SQUARE = Q.store_thm("EVEN_SQUARE",
+d290 2
+a291 2
+  DISCH_THEN(Q.X_CHOOSE_THEN `m` SUBST1_TAC) THEN
+  Q.EXISTS_TAC `m * m` THEN REWRITE_TAC[EXP_2] THEN
+d295 1
+a295 1
+val ODD_SQUARE = Q.store_thm("ODD_SQUARE",
+d298 1
+a298 1
+  DISCH_THEN(Q.X_CHOOSE_THEN `m` SUBST1_TAC) THEN
+d301 2
+a302 2
+  Q.EXISTS_TAC `m * m + m` THEN
+  REWRITE_TAC(map Q.num_CONV [`4`, `3`, `2`, `1`]) THEN
+d307 1
+a307 1
+val DIFF_SQUARE = Q.store_thm("DIFF_SQUARE",
+d310 2
+a311 2
+  DISJ_CASES_TAC(Q.SPECL [`x`, `y`] LESS_EQ_CASES) THENL
+   [Q.SUBGOAL_THEN `x * x <= y * y` MP_TAC THENL
+d322 1
+a322 1
+val ADD_IMP_SUB = Q.store_thm("ADD_IMP_SUB",
+d327 1
+a327 1
+val ADD_SUM_DIFF = Q.store_thm("ADD_SUM_DIFF",
+d337 1
+a337 1
+val EXP_4 = Q.store_thm("EXP_4",
+d346 1
+a346 1
+val divides = Q.new_infix_definition("divides",
+d349 1
+a349 1
+val DIVIDES_0 = Q.store_thm("DIVIDES_0",
+d352 1
+a352 1
+  Q.EXISTS_TAC `0` THEN REWRITE_TAC[MULT_CLAUSES]);
+d354 1
+a354 1
+val DIVIDES_ZERO = Q.store_thm("DIVIDES_ZERO",
+d359 1
+a359 1
+val DIVIDES_1 = Q.store_thm("DIVIDES_1",
+d362 1
+a362 1
+  Q.EXISTS_TAC `x` THEN REWRITE_TAC[MULT_CLAUSES]);
+d364 1
+a364 1
+val DIVIDES_ONE = Q.store_thm("DIVIDES_ONE",
+d369 1
+a369 1
+  ASM_REWRITE_TAC[] THEN Q.EXISTS_TAC `1` THEN REFL_TAC);
+d371 1
+a371 1
+val DIVIDES_GE = Q.store_thm("DIVIDES_GE",
+d374 2
+a375 2
+  DISCH_THEN(Q.X_CHOOSE_THEN `x` SUBST1_TAC) THEN
+  STRUCT_CASES_TAC(Q.SPEC `x` num_CASES) THEN
+d378 1
+a378 1
+val DIVIDES_REFL = Q.store_thm("DIVIDES_REFL",
+d381 1
+a381 1
+  Q.EXISTS_TAC `1` THEN REWRITE_TAC[MULT_CLAUSES]);
+d383 1
+a383 1
+val DIVIDES_TRANS = Q.store_thm("DIVIDES_TRANS",
+d392 1
+a392 1
+val DIVIDES_ANTISYM = Q.store_thm("DIVIDES_ANTISYM",
+d403 1
+a403 1
+val DIVIDES_ADD = Q.store_thm("DIVIDES_ADD",
+d411 1
+a411 1
+val DIVIDES_SUB = Q.store_thm("DIVIDES_SUB",
+d419 1
+a419 1
+val DIVIDES_LMUL = Q.store_thm("DIVIDES_LMUL",
+d422 2
+a423 2
+  DISCH_THEN(Q.X_CHOOSE_THEN `p` SUBST1_TAC) THEN
+  Q.EXISTS_TAC `x * p` THEN
+d426 1
+a426 1
+val DIVIDES_RMUL = Q.store_thm("DIVIDES_RMUL",
+d430 1
+a430 1
+val DIVIDES_ADD_REVR = Q.store_thm("DIVIDES_ADD_REVR",
+d433 1
+a433 1
+  SUBST1_TAC(SYM(Q.SPECL [`b`, `a`] ADD_SUB)) THEN
+d437 1
+a437 1
+val DIVIDES_ADD_REVL = Q.store_thm("DIVIDES_ADD_REVL",
+d441 1
+a441 1
+val DIVIDES_DIV = Q.store_thm("DIVIDES_DIV",
+d444 1
+a444 1
+  FIRST_ASSUM(MP_TAC o Q.SPEC`x:num` o MATCH_MP DIVISION) THEN
+d446 1
+a446 1
+  REWRITE_TAC[divides] THEN Q.EXISTS_TAC `x DIV n` THEN
+d449 1
+a449 1
+val DIVIDES_MUL_L = Q.store_thm("DIVIDES_MUL_L",
+d452 2
+a453 2
+  DISCH_THEN(Q.X_CHOOSE_THEN `x` SUBST1_TAC) THEN
+  Q.EXISTS_TAC `x` THEN REWRITE_TAC[MULT_ASSOC]);
+d455 1
+a455 1
+val DIVIDES_MUL_R = Q.store_thm("DIVIDES_MUL_R",
+d459 1
+a459 1
+val DIVIDES_LMUL2 = Q.store_thm("DIVIDES_LMUL2",
+d462 2
+a463 2
+  DISCH_THEN(Q.X_CHOOSE_THEN `y` SUBST1_TAC) THEN
+  Q.EXISTS_TAC `x * y` THEN
+d466 1
+a466 1
+val DIVIDES_RMUL2 = Q.store_thm("DIVIDES_RMUL2",
+d471 1
+a471 1
+val DIVIDES_CMUL2 = Q.store_thm("DIVIDES_CMUL2",
+d474 3
+a476 3
+  DISCH_THEN(CONJUNCTS_THEN2 (Q.X_CHOOSE_TAC `x`) ASSUME_TAC) THEN
+  Q.EXISTS_TAC `x` THEN MATCH_MP_TAC MULT_LCANCEL THEN
+  Q.EXISTS_TAC `c` THEN ASM_REWRITE_TAC[MULT_ASSOC]);
+d478 1
+a478 1
+val DIVIDES_LE = Q.store_thm("DIVIDES_LE",
+d481 1
+a481 1
+  DISCH_THEN(Q.X_CHOOSE_THEN `x` SUBST1_TAC) THEN
+d483 1
+a483 1
+  STRUCT_CASES_TAC(Q.SPEC `x` num_CASES) THEN
+d486 1
+a486 1
+val DIVIDES_DIV_NOT = Q.store_thm("DIVIDES_DIV_NOT",
+d489 3
+a491 3
+  MP_TAC(Q.SPEC `n` DIVIDES_REFL) THEN
+  DISCH_THEN(MP_TAC o Q.SPEC `q:num` o MATCH_MP DIVIDES_LMUL) THEN
+  PURE_REWRITE_TAC[Q.TAUT_CONV `a ==> ~b = a /\ b ==> F`] THEN
+d496 1
+a496 1
+val DIVIDES_MUL2 = Q.store_thm("DIVIDES_MUL2",
+d499 2
+a500 2
+  DISCH_THEN(CONJUNCTS_THEN2 (Q.X_CHOOSE_TAC `x`) (Q.X_CHOOSE_TAC `y`)) THEN 
+  Q.EXISTS_TAC `x * y` THEN
+d504 1
+a504 1
+val DIVIDES_EXP = Q.store_thm("DIVIDES_EXP",
+d507 2
+a508 2
+  DISCH_THEN(Q.X_CHOOSE_THEN `d` SUBST1_TAC) THEN
+  Q.EXISTS_TAC `d EXP n` THEN MATCH_ACCEPT_TAC MULT_EXP);
+d510 1
+a510 1
+val DIVIDES_EXP2 = Q.store_thm("DIVIDES_EXP2",
+d515 2
+a516 2
+  DISCH_THEN(MP_TAC o Q.SPECL [`x`, `y`]) THEN
+  POP_ASSUM MP_TAC THEN STRUCT_CASES_TAC(Q.SPEC `n` num_CASES) THENL
+d521 1
+a521 1
+    Q.EXISTS_TAC `x` THEN ASM_REWRITE_TAC[]]);
+d523 1
+a523 1
+val DIVIDES_FACT = Q.store_thm("DIVIDES_FACT",
+d526 2
+a527 2
+  DISCH_THEN(CONJUNCTS_THEN2 MP_TAC (Q.X_CHOOSE_THEN `d` SUBST1_TAC))
+  THEN Q.SPEC_TAC(`d:num`,`d:num`) THEN INDUCT_TAC THEN
+d529 1
+a529 1
+   [Q.SPEC_TAC(`m:num`,`m:num`) THEN INDUCT_TAC THEN
+d536 1
+a536 1
+val DIVIDES_2 = Q.store_thm("DIVIDES_2",
+d540 1
+a540 1
+val DIVIDES_REXP = Q.store_thm("DIVIDES_REXP",
+d548 1
+a548 1
+val IND_EUCLID = Q.store_thm("IND_EUCLID",
+d554 3
+a556 2
+  W(fn (asl,w)=>  Q.SUBGOAL_THEN `!n a b. (a + b = n) ==> ^w` MATCH_MP_TAC)
+  THENL [ALL_TAC, Q.EXISTS_TAC `a + b` THEN REFL_TAC] THEN
+d559 1
+a559 1
+   (Q.SPECL [`a`, `b`] LESS_LESS_CASES) THENL
+d572 1
+a572 1
+    REWRITE_TAC[Q.ASSUME `a + b = n`] THEN
+d576 1
+a576 1
+    REWRITE_TAC[ONCE_REWRITE_RULE[ADD_SYM] (Q.ASSUME `a + b = n`)] THEN
+d582 1
+a582 1
+val BEZOUT_LEMMA = Q.store_thm("BEZOUT_LEMMA",
+d589 3
+a591 3
+  REPEAT STRIP_TAC THEN Q.EXISTS_TAC `d` THENL
+   [MAP_EVERY Q.EXISTS_TAC [`x + y`, `y`],
+    MAP_EVERY Q.EXISTS_TAC [`x`, `x + y`]] THEN
+d599 1
+a599 1
+val BEZOUT_ADD = Q.store_thm("BEZOUT_ADD",
+d604 1
+a604 1
+     MP_TAC(Q.SPEC `\(a:num) (b:num). ^(snd(strip_forall w))` IND_EUCLID)) THEN
+d611 1
+a611 1
+    GEN_TAC THEN MAP_EVERY Q.EXISTS_TAC [`a`, `1`, `0`] THEN
+d615 1
+a615 1
+val BEZOUT = Q.store_thm("BEZOUT",
+d620 1
+a620 1
+   (Q.SPECL [`a`, `b`] BEZOUT_ADD) THEN
+d629 1
+a629 1
+val gcd = Q.new_definition("gcd",
+d633 1
+a633 1
+val GCD = Q.store_thm("GCD",
+d638 4
+a641 4
+  MP_TAC(Q.SPECL [`a`, `b`] BEZOUT) THEN
+  DISCH_THEN(EVERY_TCL (map Q.X_CHOOSE_THEN [`d`, `x`, `y`]) STRIP_ASSUME_TAC)
+  THEN Q.EXISTS_TAC `d` THEN ASM_REWRITE_TAC[] THEN
+  Q.X_GEN_TAC `e` THEN STRIP_TAC THEN
+d648 1
+a648 1
+val GCD_COMMON = Q.store_thm("GCD_COMMON",
+d652 1
+a652 1
+  Q.EXISTS_TAC `gcd(a,b)` THEN ASM_REWRITE_TAC[GCD]);
+d654 1
+a654 1
+val GCD_UNIQUE = Q.store_thm("GCD_UNIQUE",
+d663 1
+a663 1
+val DIVIDES_GCD = Q.store_thm("DIVIDES_GCD",
+d667 1
+a667 1
+  MATCH_MP_TAC DIVIDES_TRANS THEN Q.EXISTS_TAC `gcd(a,b)` THEN
+d670 1
+a670 1
+val GCD_SYM = Q.store_thm("GCD_SYM",
+d674 1
+a674 1
+  MATCH_MP_TAC(Q.TAUT_CONV `(a = b) /\ (c = d) ==> (a /\ c = b /\ d)`) THEN
+d678 1
+a678 1
+val GCD_ASSOC = Q.store_thm("GCD_ASSOC",
+d683 1
+a683 1
+  Q.EXISTS_TAC `gcd(b,c)` THEN ASM_REWRITE_TAC[GCD]);
+d685 1
+a685 1
+val BEZOUT_GCD = Q.store_thm("BEZOUT_GCD",
+d689 2
+a690 2
+  MP_TAC(Q.SPECL [`a`, `b`] BEZOUT) THEN
+  DISCH_THEN(EVERY_TCL (map Q.X_CHOOSE_THEN [`d`, `x`, `y`])
+d692 1
+a692 1
+  Q.SUBGOAL_THEN `d divides gcd(a,b)` MP_TAC THENL
+d695 2
+a696 2
+    DISCH_THEN(Q.X_CHOOSE_THEN `k` SUBST1_TAC o REWRITE_RULE[divides]) THEN
+    MAP_EVERY Q.EXISTS_TAC [`x * k`, `y * k`] THEN
+d700 1
+a700 1
+val GCD_LMUL = Q.store_thm("GCD_LMUL",
+d707 1
+a707 1
+   (Q.SPECL [`a`, `b`] BEZOUT_GCD) THEN
+d712 1
+a712 1
+val GCD_RMUL = Q.store_thm("GCD_RMUL",
+d718 1
+a718 1
+val GCD_BEZOUT = Q.store_thm("GCD_BEZOUT",
+d725 3
+a727 3
+    DISCH_THEN(Q.X_CHOOSE_THEN `k` SUBST1_TAC o REWRITE_RULE[divides]) THEN
+    STRIP_ASSUME_TAC(Q.SPECL [`a`, `b`] BEZOUT_GCD) THEN
+    MAP_EVERY Q.EXISTS_TAC [`x * k`, `y * k`] THEN
+d731 1
+a731 1
+val GCD_BEZOUT_SUM = Q.store_thm("GCD_BEZOUT_SUM",
+d737 1
+a737 1
+val GCD_0 = Q.store_thm("GCD_0",
+d744 1
+a744 1
+val GCD_ZERO = Q.store_thm("GCD_ZERO",
+d748 1
+a748 1
+  MP_TAC(Q.SPECL [`a`, `b`] GCD) THEN
+d752 1
+a752 1
+val GCD_REFL = Q.store_thm("GCD_REFL",
+d758 1
+a758 1
+val GCD_1 = Q.store_thm("GCD_1",
+d765 1
+a765 1
+val GCD_MULTIPLE = Q.store_thm("GCD_MULTIPLE",
+d777 1
+a777 1
+val coprime = Q.new_definition("coprime",
+d780 1
+a780 1
+val COPRIME = Q.store_thm("COPRIME",
+d788 1
+a788 1
+val COPRIME_GCD = Q.store_thm("COPRIME_GCD",
+d792 1
+a792 1
+    DISCH_TAC THEN MP_TAC(Q.SPECL [`a`, `b`] GCD) THEN
+d795 1
+a795 1
+val COPRIME_SYM = Q.store_thm("COPRIME_SYM",
+d801 1
+a801 1
+val COPRIME_BEZOUT = Q.store_thm("COPRIME_BEZOUT",
+d806 1
+a806 1
+val COPRIME_DIVPROD = Q.store_thm("COPRIME_DIVPROD",
+d810 3
+a812 3
+  DISCH_THEN(Q.X_CHOOSE_THEN `x` MP_TAC) THEN
+  DISCH_THEN(Q.X_CHOOSE_THEN `y` MP_TAC) THEN
+  DISCH_THEN (DISJ_CASES_THEN (MP_TAC o Q.AP_TERM `$* b`)) THEN
+d820 1
+a820 1
+val COPRIME_1 = Q.store_thm("COPRIME_1",
+d825 1
+a825 1
+val GCD_COPRIME = Q.store_thm("GCD_COPRIME",
+d832 1
+a832 1
+  REWRITE_TAC[NOT_IMP] THEN DISCH_THEN(Q.X_CHOOSE_TAC `d`) THEN
+d835 2
+a836 2
+  DISCH_THEN(CONJUNCTS_THEN2 (Q.X_CHOOSE_THEN `a''` SUBST1_TAC)
+    (Q.X_CHOOSE_THEN `b''` SUBST1_TAC)) THEN
+d838 2
+a839 2
+  DISCH_TAC THEN MP_TAC(Q.SPECL [`a`, `b`] GCD) THEN
+  DISCH_THEN(MP_TAC o Q.SPEC `gcd(a,b) * d` 
+d842 1
+a842 1
+   [REWRITE_TAC[divides] THEN Q.EXISTS_TAC `a'':num` THEN
+d844 1
+a844 1
+    REWRITE_TAC[divides] THEN Q.EXISTS_TAC `b'':num` THEN
+d849 3
+a851 3
+    Q.UNDISCH_TAC `~(d = 1)` THEN
+    STRUCT_CASES_TAC(Q.SPEC `d` num_CASES) THEN
+    REWRITE_TAC[MULT_CLAUSES, SUC_NOT, Q.num_CONV `1`, INV_SUC_EQ] THENL
+d858 1
+a858 1
+val GCD_COPRIME_EXISTS = Q.store_thm("GCD_COPRIME_EXISTS",
+d863 1
+a863 1
+  REPEAT GEN_TAC THEN DISCH_TAC THEN MP_TAC(Q.SPECL [`a`,`b`] GCD) THEN
+d865 3
+a867 3
+  DISCH_THEN(CONJUNCTS_THEN2 (Q.X_CHOOSE_TAC `a'` o GSYM)
+   (Q.X_CHOOSE_TAC `b'` o GSYM)) THEN
+  MAP_EVERY Q.EXISTS_TAC [`a':num`, `b':num`] THEN
+d870 1
+a870 1
+  MAP_EVERY Q.EXISTS_TAC [`a`, `b`] THEN
+d873 1
+a873 1
+val COPRIME_0 = Q.store_thm("COPRIME_0",
+d880 1
+a880 1
+val COPRIME_MUL = Q.store_thm("COPRIME_MUL",
+d883 1
+a883 1
+  DISCH_THEN(CONJUNCTS_THEN2 MP_TAC (MP_TAC o Q.AP_TERM `$* a`)) THEN
+d888 1
+a888 1
+val COPRIME_LMUL2 = Q.store_thm("COPRIME_LMUL2",
+d893 2
+a894 2
+  DISCH_THEN(Q.X_CHOOSE_THEN `k` STRIP_ASSUME_TAC) THEN
+  Q.EXISTS_TAC `k` THEN ASM_REWRITE_TAC[] THEN
+d897 1
+a897 1
+val COPRIME_RMUL2 = Q.store_thm("COPRIME_RMUL2",
+d901 1
+a901 1
+val COPRIME_EXP = Q.store_thm("COPRIME_EXP",
+d908 1
+a908 1
+val COPRIME_EXP_IMP = Q.store_thm("COPRIME_EXP_IMP",
+d915 1
+a915 1
+val BEZOUT_GCD_POW = Q.store_thm("BEZOUT_GCD_POW",
+d918 2
+a919 2
+  REPEAT GEN_TAC THEN Q.ASM_CASES_TAC `gcd(a,b) = 0` THENL
+   [STRUCT_CASES_TAC(Q.SPEC `n` num_CASES) THEN
+d921 3
+a923 3
+     [MAP_EVERY Q.EXISTS_TAC [`1`, `0`] THEN REWRITE_TAC[SUB_0],
+      REPEAT(Q.EXISTS_TAC `0`) THEN REWRITE_TAC[MULT_CLAUSES, SUB_0]],
+    MP_TAC(Q.SPECL [`a`, `b`] GCD) THEN
+d926 3
+a928 3
+    DISCH_THEN(Q.X_CHOOSE_THEN `b'` ASSUME_TAC) THEN
+    DISCH_THEN(Q.X_CHOOSE_THEN `a'` ASSUME_TAC) THEN
+    MP_TAC(Q.SPECL [`a`, `b`, `a':num`, `b':num`] GCD_COPRIME) THEN
+d932 1
+a932 1
+    DISCH_THEN(MP_TAC o Q.SPEC `n` o MATCH_MP COPRIME_EXP_IMP) THEN
+d934 1
+a934 1
+    DISCH_THEN(Q.X_CHOOSE_THEN `x` (Q.X_CHOOSE_THEN `y` MP_TAC)) THEN
+d936 1
+a936 1
+    DISCH_THEN (MP_TAC o Q.AP_TERM `$* (gcd(a,b) EXP n)`) THEN
+d939 1
+a939 1
+    MAP_EVERY Q.EXISTS_TAC [`x`, `y`] THEN
+d944 1
+a944 1
+val GCD_EXP = Q.store_thm("GCD_EXP",
+d950 2
+a951 2
+    Q.X_GEN_TAC `d` THEN STRIP_TAC THEN
+    MP_TAC(Q.SPECL [`n`, `a`, `b`] BEZOUT_GCD_POW) THEN
+d957 1
+a957 1
+val COPRIME_EXP2 = Q.store_thm("COPRIME_EXP2",
+d964 1
+a964 1
+val DIVISION_DECOMP = Q.store_thm("DIVISION_DECOMP",
+d968 4
+a971 4
+  Q.EXISTS_TAC `gcd(a,b)` THEN REWRITE_TAC[GCD] THEN
+  MP_TAC(Q.SPECL [`a`, `b`] GCD_COPRIME_EXISTS) THEN
+  Q.ASM_CASES_TAC `gcd(a,b) = 0` THENL
+  [ASM_REWRITE_TAC[] THEN Q.EXISTS_TAC `1` THEN
+d975 1
+a975 1
+   DISCH_THEN(Q.X_CHOOSE_THEN `a'` (Q.X_CHOOSE_THEN `b'`
+d977 2
+a978 2
+   Q.EXISTS_TAC `a':num` THEN ASM_REWRITE_TAC[] THEN
+   Q.UNDISCH_TAC `a divides (b * c)` THEN
+d984 2
+a985 2
+   Q.EXISTS_TAC `b':num` THEN ASM_REWRITE_TAC[] THEN
+   MATCH_MP_TAC DIVIDES_CMUL2 THEN Q.EXISTS_TAC `gcd(a,b)` THEN
+d989 1
+a989 1
+val DIVIDES_REV = Q.store_thm("DIVIDES_REV",
+d992 1
+a992 1
+  Q.ASM_CASES_TAC `gcd(a,b) = 0` THENL
+d996 1
+a996 1
+  DISCH_THEN(Q.X_CHOOSE_THEN `a'` (Q.X_CHOOSE_THEN `b'`
+d998 2
+a999 2
+  Q.UNDISCH_TAC `(a EXP n) divides (b EXP n)` THEN
+  DISCH_THEN(Q.X_CHOOSE_THEN `k` MP_TAC o REWRITE_RULE[divides]) THEN
+d1003 1
+a1003 1
+  REWRITE_TAC[Q.SPECL [`x`, `gcd(a,b)`] MULT_SYM] THEN
+d1005 3
+a1007 3
+  Q.SUBGOAL_THEN `~(gcd(a,b) EXP n = 0)` MP_TAC THENL
+   [Q.UNDISCH_TAC `~(gcd(a,b) = 0)` THEN
+    STRUCT_CASES_TAC(Q.SPEC `gcd(a,b)` num_CASES) THEN
+d1009 1
+a1009 1
+    ONCE_REWRITE_TAC[Q.TAUT_CONV `a ==> b ==> c = a /\ b ==> c`]] THEN
+d1011 3
+a1013 3
+  DISCH_TAC THEN Q.SUBGOAL_THEN `coprime(a' EXP n,b' EXP n)` MP_TAC THENL
+   [Q.UNDISCH_TAC `~(n = 0)` THEN
+    STRUCT_CASES_TAC(Q.SPEC `n` num_CASES) THEN
+d1016 1
+a1016 1
+  DISCH_THEN(MP_TAC o Q.SPEC `a' EXP n`) THEN
+d1019 1
+a1019 1
+  Q.UNDISCH_TAC `1 * gcd(a,b) = a` THEN REWRITE_TAC[MULT_CLAUSES] THEN
+d1022 1
+a1022 1
+val DIVIDES_MUL = Q.store_thm("DIVIDES_MUL",
+d1027 1
+a1027 1
+  POP_ASSUM(Q.X_CHOOSE_THEN `d` SUBST1_TAC o REWRITE_RULE[divides])
+d1036 1
+a1036 1
+val prime = Q.new_definition("prime",
+d1043 1
+a1043 1
+val PRIME_0 = Q.store_thm("PRIME_0",
+d1046 1
+a1046 1
+  DISCH_THEN(MP_TAC o Q.SPEC `2` o CONJUNCT2) THEN
+d1049 1
+a1049 1
+val PRIME_1 = Q.store_thm("PRIME_1",
+d1053 1
+a1053 1
+val PRIME_2 = Q.store_thm("PRIME_2",
+d1059 1
+a1059 1
+  REWRITE_TAC[Q.num_CONV `2`, Q.num_CONV `1`, LESS_THM, NOT_LESS_0] THEN
+d1064 1
+a1064 1
+val PRIME_GE_2 = Q.store_thm("PRIME_GE_2",
+d1067 1
+a1067 1
+  REWRITE_TAC[Q.num_CONV `2`, Q.num_CONV `1`, 
+d1070 1
+a1070 1
+  REWRITE_TAC[SYM(Q.num_CONV `1`), PRIME_0, PRIME_1]);
+d1072 1
+a1072 1
+val PRIME_FACTOR = Q.store_thm("PRIME_FACTOR",
+d1075 4
+a1078 4
+  Q.X_GEN_TAC `n` THEN REPEAT STRIP_TAC THEN
+  Q.ASM_CASES_TAC `prime(n)` THENL
+   [Q.EXISTS_TAC `n` THEN ASM_REWRITE_TAC[DIVIDES_REFL],
+    Q.UNDISCH_TAC `~prime(n)` THEN
+d1081 1
+a1081 1
+    DISCH_THEN(Q.X_CHOOSE_THEN `m` MP_TAC) THEN
+d1086 3
+a1088 3
+      DISCH_THEN(Q.X_CHOOSE_THEN `p` STRIP_ASSUME_TAC) THEN
+      Q.EXISTS_TAC `p` THEN ASM_REWRITE_TAC[] THEN
+      MATCH_MP_TAC DIVIDES_TRANS THEN Q.EXISTS_TAC `m` THEN
+d1090 1
+a1090 1
+      DISCH_THEN SUBST1_TAC THEN Q.EXISTS_TAC `2` THEN
+d1093 1
+a1093 1
+val PRIME_FACTOR_LT = Q.store_thm("PRIME_FACTOR_LT",
+d1097 2
+a1098 2
+  DISCH_THEN(Q.X_CHOOSE_THEN `q` SUBST_ALL_TAC) THEN
+  REWRITE_TAC[Q.num_CONV `2`, RIGHT_ADD_DISTRIB, MULT_CLAUSES] THEN
+d1104 1
+a1104 2
+
+val EUCLID = Q.store_thm("EUCLID",
+d1106 2
+a1107 2
+  PURE_GEN_REWRITE_TAC I [Q.TAUT_CONV `x = ~~x`] THEN
+  DISCH_THEN(Q.X_CHOOSE_THEN `n` MP_TAC o CONV_RULE NOT_FORALL_CONV) THEN
+d1109 3
+a1111 3
+  MP_TAC(Q.SPEC `SUC(FACT n)` PRIME_FACTOR) THEN
+  REWRITE_TAC[Q.num_CONV `1`, INV_SUC_EQ, GSYM LESS_EQ_0, NOT_LESS_EQUAL,
+    FACT_LESS] THEN DISCH_THEN(Q.X_CHOOSE_TAC `p`) THEN
+d1113 2
+a1114 2
+  DISCH_THEN(MP_TAC o Q.SPEC `p`) THEN ASM_REWRITE_TAC[] THEN
+  DISJ_CASES_TAC(Q.SPECL [`n`, `p`] LESS_CASES) THEN
+d1116 1
+a1116 1
+  Q.SUBGOAL_THEN `p divides (FACT n)` ASSUME_TAC THENL
+d1121 1
+a1121 1
+    Q.SUBGOAL_THEN `p = 1` SUBST_ALL_TAC THENL
+d1123 1
+a1123 1
+      Q.EXISTS_TAC `FACT n` THEN ASM_REWRITE_TAC[GSYM ADD1],
+d1126 1
+a1126 1
+val PRIME_COPRIME = Q.store_thm("PRIME_COPRIME",
+d1129 1
+a1129 1
+  STRIP_ASSUME_TAC(Q.SPECL [`p`, `n`] GCD) THEN
+d1131 1
+a1131 1
+  DISCH_THEN(MP_TAC o Q.SPEC `gcd(p,n)`) THEN ASM_REWRITE_TAC[] THEN
+d1135 1
+a1135 1
+val COPRIME_PRIME = Q.store_thm("COPRIME_PRIME",
+d1138 1
+a1138 1
+  Q.SUBGOAL_THEN `p = 1` SUBST_ALL_TAC THENL
+d1140 1
+a1140 1
+    Q.UNDISCH_TAC `prime 1` THEN REWRITE_TAC[PRIME_1]]);
+d1142 1
+a1142 1
+val COPRIME_PRIME_EQ = Q.store_thm("COPRIME_PRIME_EQ",
+d1148 4
+a1151 4
+    DISCH_THEN(Q.X_CHOOSE_THEN `d` STRIP_ASSUME_TAC) THEN
+    FIRST_ASSUM(Q.X_CHOOSE_TAC `p` o MATCH_MP PRIME_FACTOR) THEN
+    Q.EXISTS_TAC `p` THEN ASM_REWRITE_TAC[] THEN CONJ_TAC THEN
+    MATCH_MP_TAC DIVIDES_TRANS THEN Q.EXISTS_TAC `d` THEN
+d1154 1
+a1154 1
+val PRIME_DIVPROD = Q.store_thm("PRIME_DIVPROD",
+d1158 1
+a1158 1
+  FIRST_ASSUM(MP_TAC o Q.SPEC `a` o MATCH_MP PRIME_COPRIME) THEN
+d1161 1
+a1161 1
+   [DISJ2_TAC THEN Q.UNDISCH_TAC `p divides (a * b)` THEN
+d1164 1
+a1164 1
+    Q.EXISTS_TAC `a` THEN ASM_REWRITE_TAC[]]);
+d1166 1
+a1166 1
+val PRIME_DIVEXP = Q.store_thm("PRIME_DIVEXP",
+d1175 1
+a1175 1
+val PRIME_DIVEXP_N = Q.store_thm("PRIME_DIVEXP_N",
+d1181 1
+a1181 1
+val PARITY_EXP = Q.store_thm("PARITY_EXP",
+d1185 1
+a1185 1
+    Q.EXISTS_TAC `SUC n` THEN ASM_REWRITE_TAC[PRIME_2],
+d1188 1
+a1188 1
+val COPRIME_SOS = Q.store_thm("COPRIME_SOS",
+d1194 3
+a1196 3
+  DISCH_THEN(Q.X_CHOOSE_THEN `p` STRIP_ASSUME_TAC) THEN
+  Q.EXISTS_TAC `p` THEN ASM_REWRITE_TAC[] THEN
+  MP_TAC(Q.SPECL [`p`, `x`, `y`] PRIME_DIVPROD) THEN
+d1199 1
+a1199 1
+  Q.EXISTS_TAC `2` THEN ASM_REWRITE_TAC[] THEN
+d1201 3
+a1203 3
+   [Q.EXISTS_TAC `x EXP 2`,
+    Q.EXISTS_TAC `y EXP 2` THEN ONCE_REWRITE_TAC[ADD_SYM]] THEN
+  ASM_REWRITE_TAC[] THEN REWRITE_TAC[Q.num_CONV `2`] THEN
+d1210 1
+a1210 1
+val PRIME_DIVPROD_POW = Q.store_thm("PRIME_DIVPROD_POW",
+d1214 2
+a1215 2
+  Q.ASM_CASES_TAC `n = 0` THEN ASM_REWRITE_TAC[EXP, DIVIDES_1] THEN
+  Q.SUBGOAL_THEN `p divides a \/ p divides b` DISJ_CASES_TAC THENL
+d1217 1
+a1217 1
+    MATCH_MP_TAC DIVIDES_EXP2 THEN Q.EXISTS_TAC `n` 
+d1222 1
+a1222 1
+   [Q.EXISTS_TAC `b`, Q.EXISTS_TAC `a`] THEN
+d1226 1
+a1226 1
+  FIRST_ASSUM(MP_TAC o Q.SPEC `p` o MATCH_MP COPRIME_PRIME) THEN
+d1228 2
+a1229 2
+   [FIRST_ASSUM(MP_TAC o Q.SPEC `b` o MATCH_MP PRIME_COPRIME),
+    FIRST_ASSUM(MP_TAC o Q.SPEC `a` o MATCH_MP PRIME_COPRIME)] THEN
+d1233 1
+a1233 1
+val COPRIME_POW = Q.store_thm("COPRIME_POW",
+d1237 2
+a1238 2
+  MAP_EVERY (W(curry Q.SPEC_TAC)) [`a:num`, `b:num`, `n:num`, `c:num`] THEN
+  COMPLETE_INDUCT_TAC THEN Q.X_GEN_TAC `c` THEN
+d1240 3
+a1242 3
+  REWRITE_TAC[Q.TAUT_CONV `a ==> b ==> c = a /\ b ==> c`] THEN
+  DISCH_TAC THEN Q.X_GEN_TAC `n` THEN
+  REPEAT GEN_TAC THEN Q.ASM_CASES_TAC `c = 1` THENL
+d1244 1
+a1244 1
+    REPEAT STRIP_TAC THEN MAP_EVERY Q.EXISTS_TAC [`1`, `1`] THEN
+d1247 3
+a1249 3
+  Q.ASM_CASES_TAC `c = 0` THENL
+   [Q.UNDISCH_TAC `a * b = c EXP n` THEN
+    STRUCT_CASES_TAC(Q.SPEC `n` num_CASES) THEN
+d1251 1
+a1251 1
+    STRIP_TAC THEN Q.UNDISCH_TAC `coprime(a,b)` THEN
+d1254 2
+a1255 2
+     [MAP_EVERY Q.EXISTS_TAC [`0`, `1`],
+      MAP_EVERY Q.EXISTS_TAC [`1`, `0`]] THEN
+d1257 1
+a1257 1
+  FIRST_ASSUM(Q.X_CHOOSE_THEN `p` MP_TAC o MATCH_MP PRIME_FACTOR) THEN
+d1259 1
+a1259 1
+  Q.SUBGOAL_THEN `(p EXP n) divides a \/ (p EXP n) divides b` MP_TAC THENL
+d1262 4
+a1265 4
+  Q.UNDISCH_TAC `p divides c` THEN REWRITE_TAC[divides] THEN
+  DISCH_THEN(Q.X_CHOOSE_TAC `l`) THEN
+  Q.SUBGOAL_THEN `~(p EXP n = 0)` ASSUME_TAC THENL
+   [Q.UNDISCH_TAC `c = p * l` THEN
+d1267 1
+a1267 1
+    STRUCT_CASES_TAC(Q.SPEC `p` num_CASES) THEN
+d1269 2
+a1270 2
+  DISCH_THEN(DISJ_CASES_THEN(Q.X_CHOOSE_TAC `k`)) THENL
+   [Q.SUBGOAL_THEN `?r s. (k = r EXP n) /\ (b = s EXP n)` STRIP_ASSUME_TAC 
+d1272 2
+a1273 2
+     [FIRST_ASSUM MATCH_MP_TAC THEN Q.EXISTS_TAC `l`,
+      MAP_EVERY Q.EXISTS_TAC [`p * r`, `s`] THEN
+d1276 1
+a1276 1
+     [MATCH_MP_TAC PRIME_FACTOR_LT THEN Q.EXISTS_TAC `p` THEN
+d1278 1
+a1278 1
+      Q.UNDISCH_TAC `coprime(a,b)` THEN ONCE_REWRITE_TAC[COPRIME_SYM] THEN
+d1280 2
+a1281 2
+      MATCH_MP_TAC MULT_LCANCEL THEN Q.EXISTS_TAC `p EXP n` THEN
+      Q.UNDISCH_TAC `a * b = c EXP n` THEN
+d1283 1
+a1283 1
+    Q.SUBGOAL_THEN `?r s. (a = r EXP n) /\ (k = s EXP n)` STRIP_ASSUME_TAC 
+d1285 2
+a1286 2
+     [FIRST_ASSUM MATCH_MP_TAC THEN Q.EXISTS_TAC `l`,
+      MAP_EVERY Q.EXISTS_TAC [`r`, `p * s`] THEN
+d1289 1
+a1289 1
+     [MATCH_MP_TAC PRIME_FACTOR_LT THEN Q.EXISTS_TAC `p` THEN
+d1291 1
+a1291 1
+      Q.UNDISCH_TAC `coprime(a,b)` THEN ASM_REWRITE_TAC[COPRIME_LMUL2],
+d1293 2
+a1294 2
+      MATCH_MP_TAC MULT_LCANCEL THEN Q.EXISTS_TAC `p EXP n` THEN
+      Q.UNDISCH_TAC `a * b = c EXP n` THEN
+d1303 1
+a1303 1
+val PYTHAG_EVEN_LEMMA1 = Q.store_thm("PYTHAG_EVEN_LEMMA1",
+d1307 1
+a1307 1
+  ONCE_REWRITE_TAC[(EQT_ELIM o Q.AC_CONV(ADD_ASSOC,ADD_SYM))
+d1309 1
+a1309 1
+  DISJ_CASES_THEN MP_TAC (Q.SPEC `w` EVEN_OR_ODD) THENL
+d1317 1
+a1317 1
+val PYTHAG_EVEN_LEMMA2 = Q.store_thm("PYTHAG_EVEN_LEMMA2",
+d1324 1
+a1324 1
+val PYTHAG_EVEN = Q.store_thm("PYTHAG_EVEN",
+d1331 1
+a1331 1
+  REPEAT GEN_TAC THEN MAP_EVERY (DISJ_CASES_TAC o C Q.SPEC EVEN_OR_ODD)
+d1335 1
+a1335 1
+  (Q.SUBGOAL_THEN `~EVEN(w EXP 2)` MP_TAC THENL
+d1337 1
+a1337 1
+   ASM_REWRITE_TAC[Q.num_CONV `2`, PARITY_EXP] THEN
+d1340 1
+a1340 1
+val PYTHAG_COCLASSIFY = Q.store_thm("PYTHAG_COCLASSIFY",
+d1349 4
+a1352 4
+  Q.SUBGOAL_THEN `coprime(v,w)` ASSUME_TAC THENL
+   [REWRITE_TAC[coprime] THEN Q.X_GEN_TAC `d` THEN STRIP_TAC THEN
+    Q.SUBGOAL_THEN `d divides u` ASSUME_TAC THENL
+     [MATCH_MP_TAC DIVIDES_REV THEN Q.EXISTS_TAC `2` THEN
+d1354 1
+a1354 1
+      MATCH_MP_TAC DIVIDES_ADD_REVR THEN Q.EXISTS_TAC `v EXP 2` THEN
+d1357 1
+a1357 1
+      Q.UNDISCH_TAC `coprime(u,v)` THEN REWRITE_TAC[coprime] THEN
+d1359 1
+a1359 1
+  Q.ASM_CASES_TAC `u = 0` THENL
+d1364 1
+a1364 1
+     [Q.UNDISCH_TAC `coprime(u,v)` THEN ASM_REWRITE_TAC[COPRIME_0] THEN
+d1366 1
+a1366 1
+      Q.UNDISCH_TAC `coprime(u,v)` THEN ONCE_REWRITE_TAC[COPRIME_SYM] THEN
+d1368 1
+a1368 1
+      MAP_EVERY Q.EXISTS_TAC [`1`, `0`] THEN
+d1370 1
+a1370 1
+      Q.UNDISCH_TAC `(u EXP 2) + (1 EXP 2) = w EXP 2` THEN
+d1374 2
+a1375 2
+  Q.SUBGOAL_THEN `EVEN(w + v)` 
+               (Q.X_CHOOSE_TAC `r` o REWRITE_RULE[EVEN_EXISTS])
+d1377 1
+a1377 1
+  DISJ_CASES_TAC(Q.SPECL [`v`, `w`] LESS_EQ_CASES) THENL
+d1381 1
+a1381 1
+  Q.SUBGOAL_THEN `EVEN(w - v)` (Q.X_CHOOSE_TAC `s` o REWRITE_RULE[EVEN_EXISTS])
+d1383 3
+a1385 3
+   [Q.UNDISCH_TAC `v <= w` THEN REWRITE_TAC[LESS_EQ_EXISTS] THEN
+    DISCH_THEN(Q.X_CHOOSE_THEN `d` SUBST_ALL_TAC) THEN
+    Q.UNDISCH_TAC `~EVEN(v + d)` THEN ASM_REWRITE_TAC[EVEN_ADD] THEN
+d1387 2
+a1388 2
+  FIRST_ASSUM(Q.X_CHOOSE_TAC `t` o REWRITE_RULE[EVEN_EXISTS]) THEN
+  ASM_REWRITE_TAC[EXP_2] THEN ONCE_REWRITE_TAC[(EQT_ELIM o Q.AC_CONV
+d1390 6
+a1395 6
+  REWRITE_TAC[REDUCE_CONV (--`2 * 2`--), Q.num_CONV `4`, MULT_MONO_EQ] THEN
+  Q.SUBGOAL_THEN `coprime(r,s)` ASSUME_TAC THENL
+   [REWRITE_TAC[coprime] THEN Q.X_GEN_TAC `d` THEN REWRITE_TAC[divides] THEN
+    DISCH_THEN(CONJUNCTS_THEN2 (Q.X_CHOOSE_TAC `k`) (Q.X_CHOOSE_TAC `l`))
+    THEN MAP_EVERY Q.UNDISCH_TAC [`w + v = 2 * r`, `w - v = 2 * s`] THEN
+    ASM_REWRITE_TAC[Q.TAUT_CONV `a ==> b ==> c = a /\ b ==> c`] THEN
+d1398 2
+a1399 2
+               in MP_TAC(MK_COMB(Q.AP_TERM `$+` t1, t2)) THEN
+                  MP_TAC(MK_COMB(Q.AP_TERM `$-` t1, t2))
+d1403 2
+a1404 2
+    REWRITE_TAC[Q.num_CONV `2`, MULT_MONO_EQ] THEN
+    REPEAT DISCH_TAC THEN Q.UNDISCH_TAC `coprime(v,w)` THEN
+d1409 2
+a1410 2
+    MP_TAC(Q.ASSUME `coprime(r,s)`) THEN
+    REWRITE_TAC[Q.TAUT_CONV `a ==> b ==> c = a /\ b ==> c`] THEN
+d1413 1
+a1413 1
+    DISCH_THEN(Q.X_CHOOSE_THEN `p` (Q.X_CHOOSE_THEN `q`
+d1417 2
+a1418 2
+    REWRITE_TAC[Q.num_CONV `2`, MULT_MONO_EQ] THEN
+    REWRITE_TAC[SYM(Q.num_CONV `2`)] THEN
+d1420 1
+a1420 1
+    MAP_EVERY Q.EXISTS_TAC [`p`, `q`] THEN
+d1422 1
+a1422 1
+    Q.UNDISCH_TAC `(u EXP 2) + (v EXP 2) = w EXP 2` THEN
+d1425 1
+a1425 1
+    ONCE_REWRITE_TAC[(EQT_ELIM o Q.AC_CONV (MULT_ASSOC,MULT_SYM))
+d1427 2
+a1428 2
+    REWRITE_TAC[REDUCE_CONV (--`2 * 2`--), Q.num_CONV `4`, MULT_MONO_EQ] THEN
+    ONCE_REWRITE_TAC[(EQT_ELIM o Q.AC_CONV (MULT_ASSOC,MULT_SYM))
+d1430 1
+a1430 1
+    REWRITE_TAC[GSYM EXP_2] THEN REWRITE_TAC[Q.num_CONV `2`] THEN
+d1432 2
+a1433 2
+    Q.UNDISCH_TAC `coprime(p EXP 2,q EXP 2)` THEN
+    REWRITE_TAC[Q.num_CONV `2`, COPRIME_EXP2]]);
+d1439 1
+a1439 1
+val FLT42_DOWN_LEMMA1 = Q.store_thm("FLT42_DOWN_LEMMA1",
+d1446 1
+a1446 1
+  Q.SUBGOAL_THEN `~(z EXP 2 = 0)` MP_TAC THENL
+d1452 3
+a1454 3
+  DISCH_THEN(Q.X_CHOOSE_THEN `p` STRIP_ASSUME_TAC) THEN
+  Q.SUBGOAL_THEN `(p EXP 2) divides z` MP_TAC THENL
+   [MATCH_MP_TAC DIVIDES_REV THEN Q.EXISTS_TAC `2` THEN REDUCE_TAC THEN
+d1458 7
+a1464 7
+    DISCH_THEN(Q.X_CHOOSE_TAC `w` o REWRITE_RULE[divides])] THEN
+  Q.UNDISCH_TAC `p divides y` THEN REWRITE_TAC[divides] THEN
+  DISCH_THEN(Q.X_CHOOSE_TAC `v`) THEN
+  Q.UNDISCH_TAC `p divides x` THEN REWRITE_TAC[divides] THEN
+  DISCH_THEN(Q.X_CHOOSE_TAC `u`) THEN
+  MAP_EVERY Q.EXISTS_TAC [`u`, `v`, `w`] THEN
+  Q.UNDISCH_TAC `(x EXP 4) + (y EXP 4) = z EXP 2` THEN
+d1466 1
+a1466 1
+  Q.SUBGOAL_THEN `~(p EXP 4 = 0)` MP_TAC THENL
+d1468 2
+a1469 2
+    Q.UNDISCH_TAC `prime(0)` THEN REWRITE_TAC[PRIME_0],
+    REWRITE_TAC[Q.TAUT_CONV `a ==> b ==> c = a /\ b ==> c`]] THEN
+d1471 1
+a1471 1
+  Q.UNDISCH_TAC `~(x = 0)` THEN
+d1474 1
+a1474 1
+  Q.UNDISCH_TAC `~(y = 0)` THEN 
+d1480 2
+a1481 2
+  Q.UNDISCH_TAC `~(z = 0)` THEN ASM_REWRITE_TAC[] THEN
+  STRUCT_CASES_TAC(Q.SPEC `w` num_CASES) THENL
+d1484 2
+a1485 2
+  Q.UNDISCH_TAC `prime(p)` THEN
+  STRUCT_CASES_TAC(Q.SPEC `p` num_CASES) THEN
+d1488 1
+a1488 1
+              Q.num_CONV `1`] THEN
+d1490 1
+a1490 1
+  REWRITE_TAC[SYM(Q.num_CONV `1`), PRIME_1, ADD_CLAUSES, LESS_0]);
+d1492 1
+a1492 1
+val FLT42_DOWN_LEMMA2 = Q.store_thm("FLT42_DOWN_LEMMA2",
+d1503 3
+a1505 3
+  DISCH_THEN(Q.X_CHOOSE_THEN `p` MP_TAC) THEN
+  DISCH_THEN(Q.X_CHOOSE_THEN `q` STRIP_ASSUME_TAC) THEN
+  Q.SUBGOAL_THEN `(q EXP 2) + (y EXP 2) = p EXP 2` ASSUME_TAC THENL
+d1512 3
+a1514 3
+  Q.SUBGOAL_THEN `coprime(q,y)` MP_TAC THENL
+   [REWRITE_TAC[COPRIME_PRIME_EQ] THEN Q.X_GEN_TAC `r` THEN
+    STRIP_TAC THEN MP_TAC(Q.ASSUME `coprime(p,q)`) THEN
+d1516 2
+a1517 2
+    DISCH_THEN(MP_TAC o Q.SPEC `r`) THEN ASM_REWRITE_TAC[] THEN
+    MATCH_MP_TAC PRIME_DIVEXP THEN Q.EXISTS_TAC `2` THEN
+d1521 1
+a1521 1
+    REWRITE_TAC[Q.num_CONV `2`] THEN CONJ_TAC THEN
+d1524 2
+a1525 2
+             o CONJ(Q.ASSUME `(q EXP 2) + (y EXP 2) = p EXP 2`)) THEN
+  Q.SUBGOAL_THEN `ODD(y)` ASSUME_TAC THENL
+d1527 2
+a1528 2
+    ONCE_REWRITE_TAC[GSYM(Q.SPEC `1` PARITY_EXP)] THEN
+    REWRITE_TAC[SYM(Q.num_CONV `2`), GSYM ODD_EVEN] THEN
+d1532 9
+a1540 9
+  MP_TAC(Q.SPECL [`q`, `y`, `p`] PYTHAG_COCLASSIFY) THEN
+  ASM_REWRITE_TAC[] THEN DISCH_THEN(Q.X_CHOOSE_THEN `a` MP_TAC) THEN
+  DISCH_THEN(Q.X_CHOOSE_THEN `b` STRIP_ASSUME_TAC) THEN
+  MP_TAC(Q.ASSUME `x EXP 2 = 2 * p * q`) THEN
+  REWRITE_TAC[Q.ASSUME `p = (a EXP 2) + (b EXP 2)`, 
+              Q.ASSUME `q = 2 * a * b`] THEN
+  Q.SUBGOAL_THEN `EVEN(x)` MP_TAC THENL
+   [ONCE_REWRITE_TAC[GSYM(Q.SPEC `1` PARITY_EXP)] THEN
+    REWRITE_TAC[SYM(Q.num_CONV `2`), GSYM ODD_EVEN] THEN
+d1543 1
+a1543 1
+  DISCH_THEN(Q.X_CHOOSE_THEN `x2` SUBST_ALL_TAC) THEN
+d1545 1
+a1545 1
+  ONCE_REWRITE_TAC[(EQT_ELIM o Q.AC_CONV (MULT_ASSOC,MULT_SYM))
+d1551 1
+a1551 1
+  MP_TAC(MATCH_MP COPRIME_SOS (Q.ASSUME `coprime(a,b)`)) THEN
+d1553 1
+a1553 1
+  MP_TAC(Q.SPECL [`2`, `(a EXP 2) + (b EXP 2)`, `a * b`, `x2`]
+d1555 6
+a1560 6
+  DISCH_THEN(Q.X_CHOOSE_THEN `Z` MP_TAC) THEN
+  DISCH_THEN(Q.X_CHOOSE_THEN `W` STRIP_ASSUME_TAC) THEN
+  MP_TAC(Q.SPECL [`2`, `a`, `b`, `W`] COPRIME_POW) THEN
+  ASM_REWRITE_TAC[] THEN DISCH_THEN(Q.X_CHOOSE_THEN `X` MP_TAC) THEN
+  DISCH_THEN(Q.X_CHOOSE_THEN `Y` (STRIP_ASSUME_TAC o GSYM)) THEN
+  MAP_EVERY Q.EXISTS_TAC [`X`, `Y`, `Z`] THEN 
+d1562 2
+a1563 2
+  Q.SUBGOAL_THEN `~(W = 0)` ASSUME_TAC THENL
+   [DISCH_TAC THEN Q.UNDISCH_TAC `a * b = W EXP 2` THEN
+d1565 1
+a1565 1
+    Q.UNDISCH_TAC `q = 2 * (W EXP 2)` THEN
+d1568 1
+a1568 1
+    Q.UNDISCH_TAC `(2 * x2) EXP 2 = 2 * p * 0` THEN
+d1571 1
+a1571 1
+  Q.SUBGOAL_THEN `~(X EXP 2 = 0)` MP_TAC THENL
+d1573 1
+a1573 1
+    Q.UNDISCH_TAC `a * b = W EXP 2` THEN
+d1578 1
+a1578 1
+  Q.SUBGOAL_THEN `~(Y EXP 2 = 0)` MP_TAC THENL
+d1580 1
+a1580 1
+    Q.UNDISCH_TAC `a * b = W EXP 2` THEN
+d1585 1
+a1585 1
+  Q.SUBGOAL_THEN `~((2 * (W EXP 2)) EXP 2 = 0)` MP_TAC THENL
+d1588 1
+a1588 1
+  MATCH_MP_TAC LESS_EQ_LESS_TRANS THEN Q.EXISTS_TAC `(Z EXP 2) EXP 2` THEN
+d1591 1
+a1591 1
+    STRUCT_CASES_TAC(Q.SPEC `Z` num_CASES) THEN
+d1599 1
+a1599 1
+val FLT42 = Q.store_thm("FLT42",
+d1601 1
+a1601 1
+  COMPLETE_INDUCT_TAC THEN Q.X_GEN_TAC `z` THEN
+d1607 4
+a1610 4
+  DISCH_THEN(Q.X_CHOOSE_THEN `y` MP_TAC) THEN
+  DISCH_THEN(Q.X_CHOOSE_THEN `x` STRIP_ASSUME_TAC) THEN
+  Q.ASM_CASES_TAC `coprime(x,y)` THENL
+   [MP_TAC(Q.SPECL [`x EXP 2`, `y EXP 2`, `z`] PYTHAG_EVEN) THEN
+d1612 2
+a1613 2
+    ASM_REWRITE_TAC[Q.num_CONV `2`, COPRIME_EXP2] THEN
+    REWRITE_TAC[SYM(Q.num_CONV `2`)] THEN
+d1615 1
+a1615 1
+     [MP_TAC(Q.SPECL [`x`, `y`,`z`] FLT42_DOWN_LEMMA2) THEN
+d1617 3
+a1619 3
+      ASM_REWRITE_TAC[Q.num_CONV `2`, COPRIME_EXP2] THEN
+      REWRITE_TAC[SYM(Q.num_CONV `2`)],
+      MP_TAC(Q.SPECL [`y`, `x`,`z`] FLT42_DOWN_LEMMA2) THEN
+d1621 2
+a1622 2
+      ASM_REWRITE_TAC[Q.num_CONV `2`, COPRIME_EXP2] THEN
+      REWRITE_TAC[SYM(Q.num_CONV `2`)] THEN
+d1624 1
+a1624 1
+  MP_TAC(Q.SPECL [`x`, `y`, `z`] FLT42_DOWN_LEMMA1) THEN
+d1626 5
+a1630 5
+    DISCH_THEN(Q.X_CHOOSE_THEN `u` MP_TAC) THEN
+  DISCH_THEN(Q.X_CHOOSE_THEN `v` MP_TAC) THEN
+  DISCH_THEN(Q.X_CHOOSE_THEN `w` STRIP_ASSUME_TAC) THEN
+  Q.EXISTS_TAC `w` THEN ASM_REWRITE_TAC[] THEN
+  MAP_EVERY Q.EXISTS_TAC [`v`, `u`] THEN ASM_REWRITE_TAC[]);
+d1636 1
+a1636 1
+val FLT4 = Q.store_thm("FLT4",
+d1638 1
+a1638 1
+  REPEAT GEN_TAC THEN SUBST1_TAC(Q.SPEC `z` EXP_4) THEN
+d1641 1
+a1641 1
+end_time();
+@

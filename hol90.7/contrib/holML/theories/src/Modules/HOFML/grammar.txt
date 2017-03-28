@@ -1,0 +1,55 @@
+(* File: HOFML/grammar.txt *)
+
+(* Description: This file gives the grammar of the syntax classes used
+   in the dynamic semantics of the ML Module system with higher order
+   functors. *)
+
+(* Assumes Modules/Common/grammar.txt *)
+
+(* Mutually recursive set *)
+sigexp_h ::= SIGsigexp_h spec_h | 
+             SIGIDsigexp_h sigid
+spec_h ::= VALspec_h valdesc |
+           EXCEPTIONspec_h exdesc |
+           STRUCTUREspec_h strdesc_h |
+           LOCALspec_h spec_h spec_h |
+           OPENspec_h ((strid long) nonemptylist) |
+           INCLUDEspec_h (sigid nonemptylist) |
+           EMPTYspec_h |
+           SEQspec_h spec_h spec_h |
+           FUNCTORspec_h funid strid sigexp_h sigexp_h (* new *)
+strdesc_h ::= STRIDstrdesc_h strid sigexp_h (strdesc_h option)
+
+(*******************************)
+
+sigbind_h ::= BINDsigbind_h sigid sigexp_h (sigbind_h option)
+
+sigdec_h ::= SIGNATUREsigdec_h sigbind_h | 
+             EMPTYsigdec_h | 
+             SEQsigdec_h sigdec_h sigdec_h
+
+(* Mutually recursive type set *)
+strexp_h ::=  STRUCTstrexp_h moddec | 
+              LONGSTRIDstrexp_h (strid long) |
+              APPstrexp_h (funid long) strexp_h |        (* different *)
+              LETstrexp_h moddec_h strexp_h
+moddec_h ::=  DECmoddec_h dec | 
+              STRUCTUREmoddec_h strbind |
+              LOCALmoddec_h moddec_h moddec_h |
+              OPENmoddec_h ((strid long) nonemptylist)
+              EMPTYmoddec_h |
+              SEQmoddec_h moddec_h moddec_h |
+              FUNCTORmoddec_h funbind |                  (* new *)
+strbind_h ::= BINDstrbind_h strid  (sigexp_h option)
+	                    strexp_h (strbind_h option)
+funbind_h ::= BINDfunbind_h funid strid sigexp_h (sigexp_h option)
+                            strexp_h (funbind_h option)
+              REBINDfunbind_h funid (funid long)         (* new *)
+(****************************)
+
+topdec_h ::= MODDEC_h moddec_h |
+             SIGDEC_h sigdec_h
+
+
+
+

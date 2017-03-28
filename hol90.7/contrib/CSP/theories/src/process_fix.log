@@ -1,0 +1,157 @@
+
+
+          HHH                 LL
+          HHH                  LL
+          HHH                   LL
+          HHH                    LL
+          HHH          OOOO       LL
+          HHHHHHH     OO  OO       LL
+          HHHHHHH     OO  OO       LLL
+          HHH          OOOO        LLLL
+          HHH                     LL  LL
+          HHH                    LL    LL
+          HHH                   LL      LL
+          HHH                  LL        LL90.7
+
+Created on Tue Nov 15 10:19:01 GMT 1994
+using: Standard ML of New Jersey, Version 0.93, February 15, 1993
+
+
+val it = () : unit
+val it = () : unit
+- [opening process_fix.sml]
+
+Declaring theory "process_fix".
+
+Theory "CSP_base" already consistent with disk, hence not exported.
+val it = () : unit
+val it = () : unit
+val it = () : unit
+val IS_PROCESS =
+  |- !A TR.
+       IS_PROCESS (A,TR) =
+       TR SUBSET STAR A /\ [] IN TR /\ (!s t. APPEND s t IN TR ==> s IN TR)
+  : thm
+val PROCESS_EQ_SPLIT =
+  |- !P Q. (P = Q) = (ALPHA P = ALPHA Q) /\ (TRACES P = TRACES Q) : thm
+val TRACES_SND = |- !x y. IS_PROCESS (x,y) ==> (TRACES (ABS_process (x,y)) = y)
+  : thm
+val ALPHA_FST = |- !x y. IS_PROCESS (x,y) ==> (ALPHA (ABS_process (x,y)) = x)
+  : thm
+val TRACES_IN_STAR = |- !P. TRACES P SUBSET STAR (ALPHA P) : thm
+val APPEND_IN_TRACES = |- !P s t. APPEND s t IN TRACES P ==> s IN TRACES P
+  : thm
+val NIL_IN_TRACES = |- !P. [] IN TRACES P : thm
+val STOP = |- !x. (ALPHA (STOP x) = x) /\ (TRACES (STOP x) = {[]}) : thm
+val TRACES_STOP = |- !x. TRACES (STOP x) = {[]} : thm
+val ALPHA_STOP = |- !x. ALPHA (STOP x) = x : thm
+val IS_PROCESS_STOP = |- !A. IS_PROCESS (A,{[]}) : thm
+val it = [(),()] : unit list
+val EQ_SUB_THM = |- !A B. (A = B) = A SUBSET B /\ B SUBSET A : thm
+val PROCESS_ORDER =
+  |- !P Q. P << Q = (ALPHA P = ALPHA Q) /\ TRACES P SUBSET TRACES Q : thm
+val REFL_PROCESS_ORDER = |- !P. P << P : thm
+val TRANS_PROCESS_ORDER = |- !P Q R. P << Q /\ Q << R ==> P << R : thm
+val ANTISYM_PROCESS_ORDER = |- !P Q. P << Q /\ Q << P ==> (P = Q) : thm
+val PROCESS_FIX =
+  |- !fun. FIX_PROC fun = (@P. (fun P = P) /\ (!Q. (fun Q = Q) ==> P << Q))
+  : thm
+val ITER =
+  |- (!f x. ITER 0 f x = x) /\ (!n f x. ITER (SUC n) f x = f (ITER n f x))
+  : thm
+val IT_UNION = |- !c. IT_UNION c = {x | ?n. x IN c n} : thm
+val CHAIN = |- !P. CHAIN P = (!n. P n << P (SUC n)) : thm
+val CHAIN_EQ_ALPHA = |- !P. CHAIN P ==> (!n m. ALPHA (P n) = ALPHA (P m)) : thm
+val LIM_PROC =
+  |- !P.
+       LIM_PROC P =
+       (@Q.
+         CHAIN P ==>
+         (Q = ABS_process (ALPHA (P 0),IT_UNION (\n. TRACES (P n))))) : thm
+val LIM_PROC_THM =
+  |- !P.
+       CHAIN P ==>
+       (LIM_PROC P = ABS_process (ALPHA (P 0),IT_UNION (\n. TRACES (P n))))
+  : thm
+val IS_PROCESS_LIMIT =
+  |- !P. CHAIN P ==> IS_PROCESS (ALPHA (P 0),IT_UNION (\n. TRACES (P n))) : thm
+val ALPHA_LIMIT = |- CHAIN P ==> (ALPHA (LIM_PROC P) = ALPHA (P 0)) : thm
+val TRACES_LIMIT =
+  |- CHAIN P ==> (TRACES (LIM_PROC P) = IT_UNION (\n. TRACES (P n))) : thm
+val LEAST_PROCESS = |- !A P. (A = ALPHA P) ==> STOP A << P : thm
+val LUB_CHAIN1 = |- !P. CHAIN P ==> (!n. P n << LIM_PROC P) : thm
+val LUB_CHAIN2 = |- !P Q. CHAIN P /\ (!n. P n << Q) ==> LIM_PROC P << Q : thm
+val CONT_PROCESS =
+  |- !fun.
+       CONTINUOUS fun =
+       (!P. CHAIN P ==> (fun (LIM_PROC P) = LIM_PROC (\n. fun (P n)))) : thm
+val MONO_PROCESS = |- !fun. MONO fun = (!p1 p2. p1 << p2 ==> fun p1 << fun p2)
+  : thm
+
+Theory "process_fix" exported.
+val it = () : unit
+val it = () : unit
+Theory: process_fix
+
+Parents:
+    stop
+    CSP_base
+
+Type constants:
+    
+
+Term constants:
+    << (Infix 450)   :process -> process -> bool
+    FIX_PROC (Prefix)   :(process -> process) -> process
+    ITER (Prefix)   :num -> ('a -> 'a) -> 'a -> 'a
+    IT_UNION (Prefix)   :(num -> 'a set) -> 'a set
+    CHAIN (Prefix)   :(num -> process) -> bool
+    LIM_PROC (Prefix)   :(num -> process) -> process
+    CONTINUOUS (Prefix)   :(process -> process) -> bool
+    MONO (Prefix)   :(process -> process) -> bool
+
+Axioms:
+    
+
+Definitions:
+    PROCESS_ORDER
+    |- !P Q. P << Q = (ALPHA P = ALPHA Q) /\ TRACES P SUBSET TRACES Q
+    PROCESS_FIX
+    |- !fun. FIX_PROC fun = (@P. (fun P = P) /\ (!Q. (fun Q = Q) ==> P << Q))
+    ITER
+    |- (!f x. ITER 0 f x = x) /\ (!n f x. ITER (SUC n) f x = f (ITER n f x))
+    IT_UNION |- !c. IT_UNION c = {x | ?n. x IN c n}
+    CHAIN |- !P. CHAIN P = (!n. P n << P (SUC n))
+    LIM_PROC
+    |- !P.
+         LIM_PROC P =
+         (@Q.
+           CHAIN P ==>
+           (Q = ABS_process (ALPHA (P 0),IT_UNION (\n. TRACES (P n)))))
+    CONTINUOUS
+    |- !fun.
+         CONTINUOUS fun =
+         (!P. CHAIN P ==> (fun (LIM_PROC P) = LIM_PROC (\n. fun (P n))))
+    MONO_PROCESS |- !fun. MONO fun = (!p1 p2. p1 << p2 ==> fun p1 << fun p2)
+
+Theorems:
+    EQ_SUB_THM |- !A B. (A = B) = A SUBSET B /\ B SUBSET A
+    REFL_PROCESS_ORDER |- !P. P << P
+    TRANS_PROCESS_ORDER |- !P Q R. P << Q /\ Q << R ==> P << R
+    ANTISYM_PROCESS_ORDER |- !P Q. P << Q /\ Q << P ==> (P = Q)
+    CHAIN_EQ_ALPHA |- !P. CHAIN P ==> (!n m. ALPHA (P n) = ALPHA (P m))
+    LIM_PROC_THM
+    |- !P.
+         CHAIN P ==>
+         (LIM_PROC P = ABS_process (ALPHA (P 0),IT_UNION (\n. TRACES (P n))))
+    IS_PROCESS_LIMIT
+    |- !P. CHAIN P ==> IS_PROCESS (ALPHA (P 0),IT_UNION (\n. TRACES (P n)))
+    ALPHA_LIMIT |- CHAIN P ==> (ALPHA (LIM_PROC P) = ALPHA (P 0))
+    TRACES_LIMIT
+    |- CHAIN P ==> (TRACES (LIM_PROC P) = IT_UNION (\n. TRACES (P n)))
+    LEAST_PROCESS |- !A P. (A = ALPHA P) ==> STOP A << P
+    LUB_CHAIN1 |- !P. CHAIN P ==> (!n. P n << LIM_PROC P)
+    LUB_CHAIN2 |- !P Q. CHAIN P /\ (!n. P n << Q) ==> LIM_PROC P << Q
+
+Theory "process_fix" is consistent with disk.
+val it = () : unit

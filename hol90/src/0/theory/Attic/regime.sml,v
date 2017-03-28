@@ -1,0 +1,226 @@
+head	1.5;
+access;
+symbols
+	HOL97:1.2.0.4
+	bpHOL97:1.2
+	hol90_9_alpha:1.2
+	hol90_pre8_for_multiple_compilers:1.2.0.2
+	last_edition:1.4
+	hol90_pre8_after_donalds_separate_compilation_changes:1.2
+	hol90_8_after_merging_Konrad_Elsa:1.2
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.5
+date	96.02.08.00.24.06;	author drs1004;	state dead;
+branches;
+next	1.4;
+
+1.4
+date	96.01.04.14.07.42;	author drs1004;	state Exp;
+branches;
+next	1.3;
+
+1.3
+date	95.12.18.11.22.36;	author drs1004;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	95.10.18.16.37.57;	author drs1004;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	95.10.16.13.30.12;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.30.12;	author rjb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.5
+log
+@New theory mechanism, by Donald Syme
+@
+text
+@(* This gives a decomposition of the theory into a hol_sig and a hol_thms. *)
+functor REGIME (structure Theory_data : Theory_data_sig) : Regime_sig =
+struct
+structure Theory_data = Theory_data;
+structure Thm = Theory_data.Thm;
+
+val ERR = Exception.ERR "Regime";
+
+
+type type_record = {name:string, arity :int, theory:string}
+type term_record = {const:Thm.Term.term, theory:string (* , place:Thm.Term.fixity *)};
+
+type hol_sig = { thid: Theory_data.theory_id,
+                 parents : Theory_data.theory_id list,
+                 type_constants : type_record list,
+                 term_constants : term_record list
+               };
+
+type hol_thms = { thid: Theory_data.theory_id,
+                  axioms : (string * Theory_data.Thm.thm) list,
+                  definitions : (string * Theory_data.Thm.thm) list,
+                  theorems : (string * Theory_data.Thm.thm) list
+                }
+
+val mk_hol_sig = Lib.I;
+val dest_hol_sig = Lib.I;
+
+val mk_hol_thms = Lib.I;
+val dest_hol_thms = Lib.I;
+
+fun split_theory(th:Theory_data.theory) =
+   ( { thid = Theory_data.theory_id th,
+       parents = Theory_data.theory_parents th,
+       type_constants = Theory_data.theory_type_constants th,
+       term_constants = Theory_data.theory_term_constants th}
+     ,
+     { thid = Theory_data.theory_id th,
+       axioms = Theory_data.theory_axioms th,
+       definitions = Theory_data.theory_definitions th,
+       theorems = Theory_data.theory_theorems th}
+   );
+
+val theory_to_hol_sig = Lib.fst o split_theory;
+
+fun mk_theory_from_parts (hsig:hol_sig) (thms:hol_thms) : Theory_data.theory = 
+   if (Theory_data.theory_id_eq (#thid hsig, #thid thms))
+   then let val thry = Theory_data.mk_theory (#thid hsig)
+          val thry1 = Lib.itlist Theory_data.add_parent (#parents hsig) thry
+          val thry2 =
+	      Lib.itlist Theory_data.add_type (#type_constants hsig)thry1
+          val thry3 =
+	      Lib.itlist Theory_data.add_term (#term_constants hsig)thry2
+          val thry4 = Lib.itlist Theory_data.add_axiom (#axioms thms) thry3
+          val thry5 =
+	      Lib.itlist Theory_data.add_definition(#definitions thms)thry4
+          val thry6 =
+	      Lib.itlist Theory_data.add_theorem (#theorems thms) thry5
+        in thry6
+        end
+   else ERR("mk_theory_from_parts","holsig and thms have different theory_ids");
+end (* REGIME *)
+@
+
+
+1.4
+log
+@Added simplifier components, added drule files, added MK_ABS_CONV, better error messages
+@
+text
+@@
+
+
+1.3
+log
+@Preterm and other changes, see 7.changes
+@
+text
+@d7 1
+a7 4
+fun REGIME_ERR{function,message} =
+    Exception.HOL_ERR{origin_structure = "Regime",
+		      origin_function = function,
+		      message = message};
+d9 1
+d11 1
+a11 1
+type term_record = {const:Thm.Term.term, theory:string, place:Thm.Term.fixity};
+d60 1
+a60 2
+   else raise REGIME_ERR{function = "mk_theory_from_parts",
+                        message = "holsig and thms have different theory_ids"};
+@
+
+
+1.2
+log
+@Check in after merging in Konrad's changes made after
+the release of hol90.7.  This involved creating a side branch
+in which to check in Konrad's changes, then merging in that
+side branch into the main development (which contains changes
+made by Elsa Gunter).
+
+Some other small modification have been made to the source code,
+as I begun to try to make this version into a working version:
+	- hol90 will now be compiled in an environment were no
+structures can be considered opn.  This means many structures
+now need "open Lib" and other such commands at their head.
+This has not yet been completed, but has been begun.
+	- "rotl" and "rotr" have been added to Lib, something
+which I just did impulsively.   Documentation files
+have also been added in help/90.
+@
+text
+@d2 1
+a2 2
+functor REGIME ((* structure Lib : Lib_sig *)
+		structure Theory_data : Theory_data_sig) : Regime_sig =
+d12 1
+a12 1
+type type_record = {tyc:Thm.Term.Type.hol_type, arity :int, theory:string}
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d2 2
+a3 1
+functor REGIME (Theory_data : Theory_data_sig) : Regime_sig =
+d8 4
+a11 3
+fun REGIME_ERR{function,message} = HOL_ERR{origin_structure = "Regime",
+                                           origin_function = function,
+                                           message = message};
+d28 2
+a29 2
+val mk_hol_sig = I;
+val dest_hol_sig = I;
+d46 1
+a46 1
+val theory_to_hol_sig = fst o split_theory;
+d51 10
+a60 6
+          val thry1 = itlist Theory_data.add_parent (#parents hsig) thry
+          val thry2 = itlist Theory_data.add_type (#type_constants hsig)thry1
+          val thry3 = itlist Theory_data.add_term (#term_constants hsig)thry2
+          val thry4 = itlist Theory_data.add_axiom (#axioms thms) thry3
+          val thry5 = itlist Theory_data.add_definition(#definitions thms)thry4
+          val thry6 = itlist Theory_data.add_theorem (#theorems thms) thry5
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

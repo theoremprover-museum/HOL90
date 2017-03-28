@@ -1,0 +1,54 @@
+\DOC FILTER_COND_RAND_CONV
+
+\TYPE {FILTER_COND_RAND_CONV: (term -> bool) -> conv}
+
+\SYNOPSIS
+moves a selected rand outward through a conditonal.
+
+\LIBRARY cond
+
+\DESCRIBE 
+moves a selected rand outward through a conditonal.
+
+{
+      |- A => f x|g x
+     ==================
+      |- (A => f|g) x 
+}
+
+\EXAMPLE
+
+an example which fulfills the supplied filter:
+
+{
+- FILTER_COND_RAND_CONV 
+  (fn t => #Name(dest_const t) = "5")
+  (--`A => (SUC 5) | (PRE 5)`--);
+val it = |- (A => (SUC 5) | (PRE 5)) = (A => SUC | PRE) 5 : thm
+}
+
+an example which does not fulfill the supplied filter:
+
+{
+- (FILTER_COND_RAND_CONV 
+  (fn t => #Name(dest_const t) = "5")
+  (--`A => SUC 6|PRE 6`--);()) handle e => print_HOL_ERR e;
+Exception raised at cond.FILTER_COND_RAND_CONV:
+the supplied filter is not true for
+6
+}
+
+\FAILURE
+
+if the term has not the form A => f x|g x or the supplied filter is
+not true for x
+
+\SEEALSO
+
+COND_RAND_CONV COND_RAND_RULE COND_RAND_TAC 
+FILTER_COND_RAND_RULE FILTER_COND_RAND_TAC 
+RAND_COND_CONV RAND_COND_RULE RAND_COND_TAC
+FILTER_RAND_COND_CONV FILTER_RAND_COND_RULE FILTER_RAND_COND_TAC
+
+\ENDDOC
+

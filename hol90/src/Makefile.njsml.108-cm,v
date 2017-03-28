@@ -1,0 +1,906 @@
+head	1.4;
+access;
+symbols
+	HOL97:1.1.2.2.0.2
+	bpHOL97:1.1.2.2
+	hol90_9_alpha:1.1.2.2
+	hol90_pre8_for_multiple_compilers:1.1.0.2;
+locks; strict;
+comment	@# @;
+
+
+1.4
+date	96.01.04.22.15.40;	author drs1004;	state Exp;
+branches;
+next	1.3;
+
+1.3
+date	96.01.04.22.06.50;	author drs1004;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	95.12.18.11.41.46;	author drs1004;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	95.11.15.13.22.15;	author rjb;	state Exp;
+branches
+	1.1.2.1;
+next	;
+
+1.1.2.1
+date	96.06.25.15.40.30;	author rjb;	state Exp;
+branches;
+next	1.1.2.2;
+
+1.1.2.2
+date	96.06.27.15.56.47;	author rjb;	state Exp;
+branches
+	1.1.2.2.2.1;
+next	;
+
+1.1.2.2.2.1
+date	97.06.11.18.09.28;	author kxs;	state dead;
+branches;
+next	;
+
+
+desc
+@Makefile moved to Makefile.njsml.108-cm
+@
+
+
+1.4
+log
+@minor mistake
+@
+text
+@#-------------------------------------------------------------------------
+# Makefile for HOL90
+#
+# Standard ML Version: NJSML 108.5
+# Compilation done using: CM
+#
+# We make the CM top level pervasive at the start of each use
+# of sml-cm since CM functions are used to implement the loader
+# in "Portable" (the loader uses CM to load a binary version of
+# a file if one exists).  When you start up sml-cm the CM functions
+# are only in the top level environment, not the pervasive environment.
+#
+# The loader itself is not used during the build sequence, but is used
+# to load libraries.
+#-------------------------------------------------------------------------
+
+#-------------------------------------------------------------------------
+# parameters
+#-------------------------------------------------------------------------
+
+SML_IMPL=njsml.108-cm
+HOL_DIR:sh=(cd ..; /bin/pwd)
+THEORY_TYPE=ascii
+
+#-------------------------------------------------------------------------
+# computed macros
+#-------------------------------------------------------------------------
+
+ARCH:sh=(/bin/mach 2>/dev/null) || /bin/arch
+
+MAKE_IMPL=$(MAKE) -f Makefile.$(SML_IMPL)
+
+BIN_DIR=$(HOL_DIR)/bin/$(SML_IMPL)
+HEAP_DIR=$(BIN_DIR)/.heap
+THEORY_SRC=$(HOL_DIR)/theories/src
+THMS_DIR=$(HOL_DIR)/theories/$(THEORY_TYPE)
+HOLSIG_DIR=$(HOL_DIR)/theories/$(THEORY_TYPE)
+
+SML_CM=$(BIN_DIR)/sml-cm
+SML=$(BIN_DIR)/sml
+
+HOL0_HEAP=$(HEAP_DIR)/hol0.$(ARCH)
+HOL1_HEAP=$(HEAP_DIR)/hol1.$(ARCH)
+HOL2_HEAP=$(HEAP_DIR)/hol2.$(ARCH)
+HOL3_HEAP=$(HEAP_DIR)/hol3.$(ARCH)
+HOL90=$(BIN_DIR)/hol90
+
+#fragments of ML code
+HANDLE_HOL_ERR= \
+	handle e => (print_HOL_ERR e; OS.Process.exit OS.Process.failure)
+
+#-------------------------------------------------------------------------
+# all
+#-------------------------------------------------------------------------
+
+all: $(HOL90) lib_prebuild
+
+#-------------------------------------------------------------------------
+# hol0
+#-------------------------------------------------------------------------
+
+$(HOL0_HEAP):
+	@@-mkdir $(BIN_DIR) 2> /dev/null
+	@@-mkdir $(HEAP_DIR) 2> /dev/null
+	echo 'use "make_toplevel_pervasive.sml";' \
+	     'Compiler.Control.quotation := true;' \
+	     'CM.make'"'"' (CM.cmfile "0/sources.cm");' \
+	     'use "0/hol0.sml";' \
+	     'save_hol "$@@";' \
+	| $(SML_CM) 2>&1 | tee $(BIN_DIR)/hol0.$(ARCH).log
+
+#-------------------------------------------------------------------------
+# Theories built after hol0
+#
+# How we ensure theory files don't get rebuilt
+# --------------------------------------------
+#
+# We carefully make the theories dependent only on their source,
+# not on the executable which is used to process the source.
+# This takes the optimistic approach that if a theory file
+# is up-to-date with respect to its source then it is correct - even
+# though it is possible the executable has changed the theory file format.
+#
+# To remake the theory files, go "make clobber" before you begin.
+#
+# Making the theory files not dependent on the executable 
+# stops theory files getting rebuilt unnecessarily.
+# However, we still need to force the make of the executable
+# which process the theory file if it doesn't exist at all!
+# We do this by running a shell "if" command to do a
+# make in the case where no executable is available.  
+# Shell wizardry courtesy of Michael Norrish. 
+#
+# Note that the *only* reason we make the hol0, hol1
+# and hol2 executables is to process the theory files they are
+# used for.  These are not remade if the relevant theory files
+# are up-to-date, even if some of the source they depend on
+# have changed.  To force the make of a particular executable,
+# try
+#	make ../bin/njsml.108-cm/.heap/hol1.sun4
+#
+# Note that this means it is possible (and even normal) to make
+# a hol3 executable without making hol0, hol1 or hol2 executables.
+#                                                  DRS
+#-------------------------------------------------------------------------
+
+$(HOLSIG_DIR)/min.holsig: \
+		$(THEORY_SRC)/mk_min.sml
+	@@-mkdir $(HOLSIG_DIR) 2> /dev/null
+	if test ! -f $(HOL0_HEAP); then $(MAKE_IMPL) $(HOL0_HEAP); fi
+	echo 'use "$(THEORY_SRC)/mk_min.sml" $(HANDLE_HOL_ERR);' \
+	| $(SML) @@SMLload=$(HOL0_HEAP) 
+
+$(HOLSIG_DIR)/bool.holsig:  \
+		$(HOLSIG_DIR)/min.holsig \
+		$(THEORY_SRC)/mk_bool.sml
+	@@-mkdir $(HOLSIG_DIR) 2> /dev/null
+	if test ! -f $(HOL0_HEAP); then $(MAKE_IMPL) $(HOL0_HEAP); fi
+	echo 'use "$(THEORY_SRC)/ld_min.sml" $(HANDLE_HOL_ERR);' \
+	     'use "$(THEORY_SRC)/mk_bool.sml" $(HANDLE_HOL_ERR);' \
+	| $(SML) @@SMLload=$(HOL0_HEAP) 
+
+#-------------------------------------------------------------------------
+# hol1
+#-------------------------------------------------------------------------
+
+$(HOL1_HEAP): \
+		$(HOLSIG_DIR)/bool.holsig
+	@@-mkdir $(BIN_DIR) 2> /dev/null
+	@@-mkdir $(HEAP_DIR) 2> /dev/null
+	echo 'use "make_toplevel_pervasive.sml";' \
+	     'Compiler.Control.quotation := true;' \
+	     'CM.make'"'"' (CM.cmfile "1/sources.cm");' \
+	     'use "0/hol0.sml";' \
+	     'use "1/hol1.sml";' \
+	     'save_hol "$@@";' \
+	| $(SML_CM) 2>&1 | tee $(BIN_DIR)/hol1.$(ARCH).log
+
+#-------------------------------------------------------------------------
+# Theories built after hol1
+#-------------------------------------------------------------------------
+
+$(HOLSIG_DIR)/combin.holsig: \
+		$(HOLSIG_DIR)/bool.holsig \
+		$(THEORY_SRC)/mk_combin.sml
+	if test ! -f $(HOL1_HEAP); then $(MAKE_IMPL) $(HOL1_HEAP); fi
+	echo 'use "$(THEORY_SRC)/mk_combin.sml" $(HANDLE_HOL_ERR);' \
+	| $(SML) @@SMLload=$(HOL1_HEAP) 
+
+$(HOLSIG_DIR)/num.holsig:  \
+		$(HOLSIG_DIR)/bool.holsig \
+		$(THEORY_SRC)/mk_num.sml
+	if test ! -f $(HOL1_HEAP); then $(MAKE_IMPL) $(HOL1_HEAP); fi
+	echo 'use "$(THEORY_SRC)/mk_num.sml" $(HANDLE_HOL_ERR);' \
+	| $(SML) @@SMLload=$(HOL1_HEAP) 
+
+$(HOLSIG_DIR)/one.holsig:  \
+		$(HOLSIG_DIR)/bool.holsig \
+		$(THEORY_SRC)/mk_one.sml
+	if test ! -f $(HOL1_HEAP); then $(MAKE_IMPL) $(HOL1_HEAP); fi
+	echo 'use "$(THEORY_SRC)/mk_one.sml" $(HANDLE_HOL_ERR);' \
+	| $(SML) @@SMLload=$(HOL1_HEAP) 
+
+$(HOLSIG_DIR)/sum.holsig:  \
+		$(HOLSIG_DIR)/bool.holsig \
+		$(HOLSIG_DIR)/combin.holsig \
+		$(THEORY_SRC)/mk_sum.sml
+	if test ! -f $(HOL1_HEAP); then $(MAKE_IMPL) $(HOL1_HEAP); fi
+	echo 'use "$(THEORY_SRC)/mk_sum.sml" $(HANDLE_HOL_ERR);' \
+	| $(SML) @@SMLload=$(HOL1_HEAP) 
+
+$(HOLSIG_DIR)/restr_binder.holsig:  \
+		$(HOLSIG_DIR)/bool.holsig \
+		$(THEORY_SRC)/mk_restr_binder.sml
+	if test ! -f $(HOL1_HEAP); then $(MAKE_IMPL) $(HOL1_HEAP); fi
+	echo 'use "$(THEORY_SRC)/mk_restr_binder.sml" $(HANDLE_HOL_ERR);' \
+	| $(SML) @@SMLload=$(HOL1_HEAP) 
+
+$(HOLSIG_DIR)/pair.holsig:  \
+		$(HOLSIG_DIR)/bool.holsig \
+		$(THEORY_SRC)/mk_pair.sml
+	if test ! -f $(HOL1_HEAP); then $(MAKE_IMPL) $(HOL1_HEAP); fi
+	echo 'use "$(THEORY_SRC)/mk_pair.sml" $(HANDLE_HOL_ERR);' \
+	| $(SML) @@SMLload=$(HOL1_HEAP) 
+
+$(HOLSIG_DIR)/BASIC_HOL.holsig:  \
+		$(THEORY_SRC)/mk_BASIC_HOL.sml \
+		$(HOLSIG_DIR)/bool.holsig \
+		$(HOLSIG_DIR)/restr_binder.holsig \
+		$(HOLSIG_DIR)/pair.holsig \
+		$(HOLSIG_DIR)/sum.holsig \
+		$(HOLSIG_DIR)/one.holsig \
+		$(HOLSIG_DIR)/num.holsig
+	if test ! -f $(HOL1_HEAP); then $(MAKE_IMPL) $(HOL1_HEAP); fi
+	echo 'use "$(THEORY_SRC)/mk_BASIC_HOL.sml" $(HANDLE_HOL_ERR);' \
+	| $(SML) @@SMLload=$(HOL1_HEAP) 
+
+#-------------------------------------------------------------------------
+# hol2
+#
+#-------------------------------------------------------------------------
+
+$(HOL2_HEAP): 	$(HOLSIG_DIR)/BASIC_HOL.holsig
+	echo 'use "make_toplevel_pervasive.sml";' \
+	     'Compiler.Control.quotation := true;' \
+	     'CM.make'"'"' (CM.cmfile "2/sources.cm");' \
+	     'use "0/hol0.sml";' \
+	     'use "1/hol1.sml";' \
+	     'use "2/hol2.sml";' \
+	     'save_hol "$@@";' \
+	| $(SML_CM) 2>&1 | tee $(BIN_DIR)/hol2.$(ARCH).log
+
+#-------------------------------------------------------------------------
+# Theories built using hol2
+#-------------------------------------------------------------------------
+
+$(HOLSIG_DIR)/prim_rec.holsig:  \
+		$(HOLSIG_DIR)/BASIC_HOL.holsig \
+		$(THEORY_SRC)/mk_prim_rec.sml
+	if test ! -f $(HOL2_HEAP); then $(MAKE_IMPL) $(HOL2_HEAP); fi
+	echo 'use "$(THEORY_SRC)/mk_prim_rec.sml" $(HANDLE_HOL_ERR);' \
+	| $(SML) @@SMLload=$(HOL2_HEAP) 
+
+$(HOLSIG_DIR)/arithmetic.holsig:  \
+		$(HOLSIG_DIR)/BASIC_HOL.holsig \
+		$(HOLSIG_DIR)/prim_rec.holsig \
+		$(THEORY_SRC)/mk_arithmetic.sml
+	if test ! -f $(HOL2_HEAP); then $(MAKE_IMPL) $(HOL2_HEAP); fi
+	echo 'use "$(THEORY_SRC)/mk_arithmetic.sml" $(HANDLE_HOL_ERR);' \
+	| $(SML) @@SMLload=$(HOL2_HEAP) 
+
+$(HOLSIG_DIR)/list.holsig:  \
+		$(HOLSIG_DIR)/BASIC_HOL.holsig \
+		$(HOLSIG_DIR)/arithmetic.holsig \
+		$(THEORY_SRC)/mk_list.sml \
+		$(THEORY_SRC)/mk_list_thms.sml
+	if test ! -f $(HOL2_HEAP); then $(MAKE_IMPL) $(HOL2_HEAP); fi
+	echo 'use "$(THEORY_SRC)/mk_list.sml" $(HANDLE_HOL_ERR);' \
+	     'use "$(THEORY_SRC)/mk_list_thms.sml" $(HANDLE_HOL_ERR);' \
+	| $(SML) @@SMLload=$(HOL2_HEAP) 
+
+$(HOLSIG_DIR)/tree.holsig:  \
+		$(HOLSIG_DIR)/BASIC_HOL.holsig \
+		$(HOLSIG_DIR)/list.holsig \
+		$(THEORY_SRC)/mk_tree.sml
+	if test ! -f $(HOL2_HEAP); then $(MAKE_IMPL) $(HOL2_HEAP); fi
+	echo 'use "$(THEORY_SRC)/mk_tree.sml" $(HANDLE_HOL_ERR);' \
+	| $(SML) @@SMLload=$(HOL2_HEAP) 
+
+$(HOLSIG_DIR)/ltree.holsig:  \
+		$(HOLSIG_DIR)/BASIC_HOL.holsig \
+		$(HOLSIG_DIR)/tree.holsig \
+		$(THEORY_SRC)/mk_ltree.sml
+	if test ! -f $(HOL2_HEAP); then $(MAKE_IMPL) $(HOL2_HEAP); fi
+	echo 'use "$(THEORY_SRC)/mk_ltree.sml" $(HANDLE_HOL_ERR);' \
+	| $(SML) @@SMLload=$(HOL2_HEAP) 
+
+$(HOLSIG_DIR)/rec_type.holsig:  \
+		$(HOLSIG_DIR)/BASIC_HOL.holsig \
+		$(HOLSIG_DIR)/ltree.holsig \
+		$(THEORY_SRC)/mk_rec_type.sml
+	if test ! -f $(HOL2_HEAP); then $(MAKE_IMPL) $(HOL2_HEAP); fi
+	echo 'use "$(THEORY_SRC)/mk_rec_type.sml" $(HANDLE_HOL_ERR);' \
+	| $(SML) @@SMLload=$(HOL2_HEAP) 
+
+$(HOLSIG_DIR)/HOL.holsig:  \
+		$(HOLSIG_DIR)/BASIC_HOL.holsig \
+		$(HOLSIG_DIR)/rec_type.holsig \
+		$(HOLSIG_DIR)/sum.holsig \
+		$(HOLSIG_DIR)/restr_binder.holsig \
+		$(HOLSIG_DIR)/one.holsig \
+		$(THEORY_SRC)/mk_HOL.sml
+	if test ! -f $(HOL2_HEAP); then $(MAKE_IMPL) $(HOL2_HEAP); fi
+	echo 'use "$(THEORY_SRC)/mk_HOL.sml" $(HANDLE_HOL_ERR);' \
+	| $(SML) @@SMLload=$(HOL2_HEAP) 
+
+#-------------------------------------------------------------------------
+# hol3 = HOL
+#
+# If the executable stops building, your best bet is to
+# start up sml-cm and throw the build commands at it one by one.
+# The code below is included here for your convenience (ML
+# comments allow you to cut and paste it into a SML session).
+#
+# sml-cm
+#     use "make_toplevel_pervasive.sml"; (*
+# *) Compiler.Control.quotation := true; (*
+# *) fun m () = CM.make' (CM.cmfile "sources.cm"); (*
+# *) fun c () = CM.recompile' (CM.cmfile "sources.cm"); (*
+# *) m(); (*
+# *) use "0/hol0.sml"; (*
+# *) use "1/hol1.sml"; (*
+# *) use "2/hol2.sml"; (*
+# *) use "3/hol3.sml"; (*
+# *) 
+#
+# Taken out while compilation of libraries is disabled:
+#	     'use "make_toplevel_pervasive.sml";'
+# This means that if the user calls CM.make() the system
+# will bootstrap from "scratch".
+
+#-------------------------------------------------------------------------
+
+$(HOL3_HEAP): 	$(HOLSIG_DIR)/HOL.holsig
+	echo 'use "make_toplevel_pervasive.sml";' \
+	     'Compiler.Control.quotation := true;' \
+	     'CM.make'"'"' (CM.cmfile "sources.cm");' \
+	     'use "0/hol0.sml";' \
+	     'use "1/hol1.sml";' \
+	     'use "2/hol2.sml";' \
+	     'use "3/hol3.sml";' \
+	     'Portable.interp := true; ' \
+	     'Globals.use_init_file := true; ' \
+	     'save_hol "$@@";' \
+	| $(SML_CM) 2>&1 | tee $(BIN_DIR)/hol3.$(ARCH).log
+	chmod ugo+rx $(HOL3_HEAP)
+
+$(HOL90): $(HOL3_HEAP)
+	echo '#! /bin/sh' > $@@
+	echo 'exec $(SML) @@SMLload=$(HOL3_HEAP)' >> $@@
+	chmod ugo+rx $(HOL90)
+
+#-------------------------------------------------------------------------
+# pre-building libraries
+#
+# We just set CM munching away on the source code for the entire
+# system and the libraries, as specified in the sources.cm files.  
+# This will leave the binary files for the libraries lying around.
+#
+# Note: A library which contains theories must load the theories.
+# Using an ld_XXX.sml file for the theory is the standard way of
+# doing this.
+#
+#    fun c () = CM.recompile' (CM.cmfile "../library/sources.cm");
+#    use "0/hol0.sml"; (*
+# *) use "1/hol1.sml"; (*
+# *) use "2/hol2.sml"; (*
+# *) use "3/hol3.sml"; (*
+# *) new_theory "junk"; (*
+# *) load_library_in_place list_lib; (*
+# *) load_library_in_place pair_lib;
+#-------------------------------------------------------------------------
+
+lib_prebuild: $(HOL90)
+	echo 'use "make_toplevel_pervasive.sml";' \
+	     'Compiler.Control.quotation := true;' \
+	     'CM.recompile'"'"' (CM.cmfile "../library/sources.cm");' \
+	| $(SML_CM) 2>&1 | tee $(BIN_DIR)/lib_prebuild.$(ARCH).log
+
+lib_clean:
+	rm -f ../library/*/src/.$(ARCH)/*.bin
+
+#-------------------------------------------------------------------------
+# cleaning
+#-------------------------------------------------------------------------
+
+clean:
+	rm -f 	$(HEAP_DIR)/*.$(ARCH) \
+		0/.$(ARCH)/*.bin \
+		0/theory/.$(ARCH)/*.bin \
+		0/library/.$(ARCH)/*.bin \
+		1/.$(ARCH)/*.bin \
+		2/.$(ARCH)/*.bin \
+		3/.$(ARCH)/*.bin \
+		$(THEORY_SRC)/.$(ARCH)/*.bin \
+		$(THMS_DIR)/.$(ARCH)/*.bin
+
+clobber: clean
+	rm -f 	$(HOLSIG_DIR)/*.holsig \
+		$(THMS_DIR)/*.thms
+
+@
+
+
+1.3
+log
+@NJML 108.19 changes
+@
+text
+@d111 1
+a111 2
+	echo 'use "$(THEORY_SRC)/min.sig" $(HANDLE_HOL_ERR);' \
+	     'use "$(THEORY_SRC)/mk_min.sml" $(HANDLE_HOL_ERR);' \
+@
+
+
+1.2
+log
+@Preterm and other changes, see 7.changes
+@
+text
+@a107 1
+		$(THEORY_SRC)/min.sig \
+a116 3
+		$(THEORY_SRC)/exists.sig \
+		$(THEORY_SRC)/mk_exists.sml \
+		$(THEORY_SRC)/bool.sig \
+d120 1
+a120 5
+	echo 'use "$(THEORY_SRC)/min.sig" $(HANDLE_HOL_ERR);' \
+	     'use "$(THEORY_SRC)/ld_min.sml" $(HANDLE_HOL_ERR);' \
+	     'use "$(THEORY_SRC)/exists.sig" $(HANDLE_HOL_ERR);' \
+	     'use "$(THEORY_SRC)/mk_exists.sml" $(HANDLE_HOL_ERR);' \
+	     'use "$(THEORY_SRC)/bool.sig" $(HANDLE_HOL_ERR);' \
+a295 1
+# *) use "3/simplifier/src/load.sml"; (*
+@
+
+
+1.1
+log
+@The HOL90 sources have been changed to allow for the use of different
+Standard ML compilers (possibly simultaneously).
+
+The main changes are:
+
+ * Introduction of makefiles for different ML compilers.
+
+   - The existing Makefile has become Makefile.njsml.108-cm and has been
+     modified to be called from the new main Makefile.
+
+   - New Makefile introduced. In addition to an entry for making the HOL90
+     executable there are entries for making an architecture-independent
+     script for running HOL and a filter for providing quotation and
+     antiquotation for those ML compilers/interpretors that do not have the
+     facility built-in. The Makefile has a variable for the name of the
+     version, e.g. "pre8", which ultimately should be propagated to the build.
+
+ * The "bin" subdirectory is the location for the new architecture-independent
+   script and for the quotation filters for various architectures. The HOL90
+   executables and heaps are now placed in subdirectories of "bin" based on
+   the name of the SML compiler. The naming scheme is:
+
+      njsml.108      Standard ML of New Jersey, Version 108
+      njsml.108-cm   SML/NJ, Version 108, using the Compilation Manager
+      njsml.93       Standard ML of New Jersey, Version 0.93
+      polyml         Poly/ML
+      mosml          Moscow ML
+
+   The compiler-specific makefiles should write executables, heaps, and logs
+   into these subdirectories. In addition, architecture-independent scripts
+   (or symbolic links to them) for the SML compiler and (where appropriate)
+   the CM version of the compiler should be placed in these directories under
+   the names "sml" and "sml-cm".
+
+ * A file called "script" has been added to the "src" subdirectory. This is
+   the architecture-independent script for executing HOL90. The Makefile
+   simply copies this to the "bin" subdirectory preceded by a few lines of
+   parameter definitions. One of these parameters is the default SML version
+   to use. So, the last version of HOL to be built using "make" or "make all"
+   will become the default.
+
+ * The Lex source for the quotation filter has been added to the "src"
+   subdirectory under the name "quote-filter.lex".
+
+ * Many files in "src/0" changed to make them more portable across different
+   ML compilers. Various additions have been made to the Portable structure
+   and files changed to access identifiers in the Portable structure rather
+   than from the global environment. Worthy of special note are:
+
+   - The pointer equality used in "src/0/term.sml" has been made into a
+     function in the Portable structure.
+
+   - The ML-Lex and ML-Yacc files for the various parsers have been changed
+     to access the Portable structure. Both the source files and the SML
+     produced from them have been changed but I have not verified that the
+     source files would reproduce the new SML versions if ML-Lex and ML-Yacc
+     were to be rerun on them. The changes involve some hacks that exploit the
+     way ML-Lex and ML-Yacc work. See the sources for details.
+
+R.J.Boulton, 15th November 1995.
+@
+text
+@d69 1
+a69 1
+	     'CM.export("$@@",NONE);' \
+d145 1
+a145 1
+	     'CM.export("$@@",NONE);' \
+d219 1
+a219 1
+	     'CM.export("$@@",NONE);' \
+d227 1
+d234 1
+d242 1
+d252 1
+d260 1
+d268 1
+d276 1
+d295 1
+a295 5
+#     local open Compiler.Environment in (*
+# *)       val _ = #set pervasiveEnvRef (concatEnv (#get topLevelEnvRef (), (*
+# *)                                       #get pervasiveEnvRef ())); (*
+# *)      val _ = #set topLevelEnvRef emptyEnv (*
+# *)     end; (*
+d297 2
+a298 2
+# *) fun m () = CM.make' (CM.cmfile "3/sources.cm"); (*
+# *) fun c () = CM.recompile' (CM.cmfile "3/sources.cm"); (*
+d304 1
+d306 6
+d317 1
+a317 1
+	     'CM.make'"'"' (CM.cmfile "3/sources.cm");' \
+d322 1
+a322 1
+	     'use "make_toplevel_pervasive.sml";' \
+d324 1
+a324 2
+	     'Portable.interp := true; ' \
+	     'CM.export("$@@",NONE) $(HANDLE_HOL_ERR);' \
+d336 7
+a342 3
+# We just set CM munching away on the source code for the libraries,
+# as specified in the sources.cm files.  This will leave the binary
+# files for the libraries lying around.
+d344 8
+a351 2
+#    CM.stabilize (CM.cmfile "3/sources.cm", true); (*
+# *) fun c () = CM.recompile' (CM.cmfile "../library/sources.cm");
+d355 4
+a358 2
+	echo 'CM.recompile'"'"' (CM.cmfile "../library/sources.cm");' \
+	| $(HOL90) 2>&1 | tee $(BIN_DIR)/lib_prebuild.$(ARCH).log
+@
+
+
+1.1.2.1
+log
+@The core of hol90.9.alpha now builds successfully with SML/NJ 109,
+SML/NJ 108.5 (using CM), SML/NJ 0.93, and Poly/ML 3.0.
+I have not yet tried rebuilding the theory files.
+@
+text
+@d22 1
+a22 2
+ARCH=unknown
+HOL_DIR=..
+a23 2
+# File to `use' before dumping HOL executable/heap/database
+USE_FILE=
+d29 2
+d45 1
+a45 1
+HOL3_HEAP=$(HEAP_DIR)/hol90.$(ARCH)
+d56 1
+a56 20
+all: check_sources hol
+
+#-------------------------------------------------------------------------
+# check_sources
+#-------------------------------------------------------------------------
+
+check_sources:
+	@@-mkdir $(BIN_DIR) 2> /dev/null
+	@@if test -f $(BIN_DIR)/sml-cm; \
+	 then echo \"sml-cm\" found; \
+	 else echo \"sml-cm\" not found in $(BIN_DIR)/; \
+	      echo Put a symbolic link to the CM executable there.; \
+	      exit 1; \
+	 fi
+	@@if test -f $(BIN_DIR)/sml; \
+	 then echo \"sml\" found; \
+	 else echo \"sml\" not found in $(BIN_DIR)/; \
+	      echo Put a symbolic link to the Standard ML executable there.; \
+	      exit 1; \
+	 fi
+d62 1
+a62 1
+$(HOL0_HEAP): 0/* 0/library/* 0/theory/*
+d136 2
+a137 1
+$(HOL1_HEAP): 0/* 0/library/* 0/theory/* 1/* $(HOLSIG_DIR)/bool.holsig
+d212 1
+a212 1
+$(HOL2_HEAP): 0/* 0/library/* 0/theory/* 1/* 2/* $(HOLSIG_DIR)/BASIC_HOL.holsig
+d280 1
+a280 1
+# hol3
+d304 1
+a304 1
+$(HOL3_HEAP): 0/* 0/library/* 0/theory/* 1/* 2/* 3/* $(HOLSIG_DIR)/HOL.holsig
+d313 3
+a315 8
+	     'if not ("$(USE_FILE)" = "") andalso' \
+	     '   Portable.file_exists_for_reading "$(USE_FILE)"' \
+	     'then use "$(USE_FILE)"' \
+	     'else ();' \
+	     'Globals.use_init_file := true;' \
+	     'Portable.interp := true;' \
+	     'val use = Portable.use;' \
+	     'Save_hol.save_hol "$@@" $(HANDLE_HOL_ERR);' \
+a318 10
+#-------------------------------------------------------------------------
+# HOL90
+#-------------------------------------------------------------------------
+
+hol: $(HOL3_HEAP)
+
+#-------------------------------------------------------------------------
+# Script for running HOL when building libraries
+#-------------------------------------------------------------------------
+
+d322 1
+a322 1
+	chmod ugo+rx $@@
+d339 3
+d347 9
+a355 24
+	@@echo 'let' \
+	      '   val arch = CM.Compiler.architecture;' \
+	      '   val command =' \
+	      '      "rm -rf 0/." ^ arch ^' \
+	      ' " \\\n       0/theory/." ^ arch ^' \
+	      ' " \\\n       0/library/." ^ arch ^' \
+	      ' " \\\n       1/." ^ arch ^' \
+	      ' " \\\n       2/." ^ arch ^' \
+	      ' " \\\n       3/." ^ arch ^' \
+	      ' " \\\n       $(THEORY_SRC)/." ^ arch ^' \
+	      ' " \\\n       $(THMS_DIR)/." ^ arch;' \
+	      'in print ("\n" ^ command ^ "\n");' \
+	      '   OS.Process.exit (OS.Process.system command)' \
+	      'end;' \
+	| $(SML_CM)
+	rm -rf 0/.depend \
+	       0/theory/.depend \
+	       0/library/.depend \
+	       1/.depend \
+	       2/.depend \
+	       3/.depend \
+	       $(THEORY_SRC)/.depend \
+	       $(THMS_DIR)/.depend
+	rm -f $(HEAP_DIR)/*.$(ARCH)
+d358 2
+a359 11
+	rm -f $(HOLSIG_DIR)/*.holsig $(THMS_DIR)/*.thms
+
+lib_clean:
+	@@echo 'let' \
+	      '   val arch = CM.Compiler.architecture;' \
+	      '   val command = "rm -rf ../library/*/src/.depend " ^' \
+	      '                 "../library/*/src/." ^ arch;' \
+	      'in print ("\n" ^ command ^ "\n");' \
+	      '   OS.Process.exit (OS.Process.system command)' \
+	      'end;' \
+	| $(SML_CM)
+@
+
+
+1.1.2.2
+log
+@Theory files now build with SML/NJ 109, SML/NJ 108.5 (using CM), SML/NJ 0.93,
+and Poly/ML 3.0.
+The quotation filter has been modified so that antiquotation works correctly
+in old-style quotations.
+The quotation filter is now compiled using flex and gcc (by default).
+The arguments to the script for running hol90 have been changed.
+@
+text
+@d32 1
+a32 6
+MAKE_IMPL=$(MAKE) -f Makefile.$(SML_IMPL) \
+		  HOL90_VERSION=$(HOL90_VERSION) \
+		  ARCH=$(ARCH) \
+		  HOL_DIR=$(HOL_DIR) \
+		  THEORY_TYPE=$(THEORY_TYPE) \
+		  USE_FILE=$(USE_FILE)
+a52 10
+MAKE_TOPLEVEL_PERVASIVE=\
+	local\
+	   open Compiler.Environment\
+	   val {get=pget,set=pset} = pervasiveEnvRef\
+	   and {get=tget,set=tset} = topLevelEnvRef\
+	in\
+	   val _ = pset (concatEnv (tget (),pget ()))\
+	   val _ = tset emptyEnv\
+	end;
+
+d57 1
+a57 1
+all: check_sources hol lib_clean
+d85 1
+a85 1
+	echo '$(MAKE_TOPLEVEL_PERVASIVE)' \
+d90 1
+a90 1
+	| $(SML_CM) 2>&1 | tee $(BIN_DIR)/log.$(ARCH).0
+d109 1
+a109 1
+# which processes the theory file if it doesn't exist at all!
+d118 3
+a120 4
+# have changed.  To force the make of a particular executable
+# (e.g. hol1), try:
+#
+# 	make -f Makefile.njsml.108-cm ../bin/njsml.108-cm/.heap/hol1.arch
+a123 1
+#
+d131 1
+a131 1
+	@@if test ! -f $(HOL0_HEAP); then $(MAKE_IMPL) $(HOL0_HEAP); fi
+d134 1
+a134 1
+	| $(SML) @@SMLload=$(HOL0_HEAP) 2>&1 | tee -a $(BIN_DIR)/log.$(ARCH).0
+d143 1
+a143 1
+	@@if test ! -f $(HOL0_HEAP); then $(MAKE_IMPL) $(HOL0_HEAP); fi
+d150 1
+a150 1
+	| $(SML) @@SMLload=$(HOL0_HEAP) 2>&1 | tee -a $(BIN_DIR)/log.$(ARCH).0
+d159 1
+a159 1
+	echo '$(MAKE_TOPLEVEL_PERVASIVE)' \
+d165 1
+a165 1
+	| $(SML_CM) 2>&1 | tee $(BIN_DIR)/log.$(ARCH).1
+d174 1
+a174 1
+	@@if test ! -f $(HOL1_HEAP); then $(MAKE_IMPL) $(HOL1_HEAP); fi
+d176 1
+a176 1
+	| $(SML) @@SMLload=$(HOL1_HEAP) 2>&1 | tee -a $(BIN_DIR)/log.$(ARCH).1
+d181 1
+a181 1
+	@@if test ! -f $(HOL1_HEAP); then $(MAKE_IMPL) $(HOL1_HEAP); fi
+d183 1
+a183 1
+	| $(SML) @@SMLload=$(HOL1_HEAP) 2>&1 | tee -a $(BIN_DIR)/log.$(ARCH).1
+d188 1
+a188 1
+	@@if test ! -f $(HOL1_HEAP); then $(MAKE_IMPL) $(HOL1_HEAP); fi
+d190 1
+a190 1
+	| $(SML) @@SMLload=$(HOL1_HEAP) 2>&1 | tee -a $(BIN_DIR)/log.$(ARCH).1
+d196 1
+a196 1
+	@@if test ! -f $(HOL1_HEAP); then $(MAKE_IMPL) $(HOL1_HEAP); fi
+d198 1
+a198 1
+	| $(SML) @@SMLload=$(HOL1_HEAP) 2>&1 | tee -a $(BIN_DIR)/log.$(ARCH).1
+d203 1
+a203 1
+	@@if test ! -f $(HOL1_HEAP); then $(MAKE_IMPL) $(HOL1_HEAP); fi
+d205 1
+a205 1
+	| $(SML) @@SMLload=$(HOL1_HEAP) 2>&1 | tee -a $(BIN_DIR)/log.$(ARCH).1
+d210 1
+a210 1
+	@@if test ! -f $(HOL1_HEAP); then $(MAKE_IMPL) $(HOL1_HEAP); fi
+d212 1
+a212 1
+	| $(SML) @@SMLload=$(HOL1_HEAP) 2>&1 | tee -a $(BIN_DIR)/log.$(ARCH).1
+d222 1
+a222 1
+	@@if test ! -f $(HOL1_HEAP); then $(MAKE_IMPL) $(HOL1_HEAP); fi
+d224 1
+a224 1
+	| $(SML) @@SMLload=$(HOL1_HEAP) 2>&1 | tee -a $(BIN_DIR)/log.$(ARCH).1
+d228 1
+d232 1
+a232 3
+	@@-mkdir $(BIN_DIR) 2> /dev/null
+	@@-mkdir $(HEAP_DIR) 2> /dev/null
+	echo '$(MAKE_TOPLEVEL_PERVASIVE)' \
+d239 1
+a239 1
+	| $(SML_CM) 2>&1 | tee $(BIN_DIR)/log.$(ARCH).2
+d242 1
+a242 1
+# Theories built after hol2
+d247 1
+a247 1
+	@@if test ! -f $(HOL2_HEAP); then $(MAKE_IMPL) $(HOL2_HEAP); fi
+d249 1
+a249 1
+	| $(SML) @@SMLload=$(HOL2_HEAP) 2>&1 | tee -a $(BIN_DIR)/log.$(ARCH).2
+d254 1
+a254 1
+	@@if test ! -f $(HOL2_HEAP); then $(MAKE_IMPL) $(HOL2_HEAP); fi
+d256 1
+a256 1
+	| $(SML) @@SMLload=$(HOL2_HEAP) 2>&1 | tee -a $(BIN_DIR)/log.$(ARCH).2
+d262 1
+a262 1
+	@@if test ! -f $(HOL2_HEAP); then $(MAKE_IMPL) $(HOL2_HEAP); fi
+d265 1
+a265 1
+	| $(SML) @@SMLload=$(HOL2_HEAP) 2>&1 | tee -a $(BIN_DIR)/log.$(ARCH).2
+d270 1
+a270 1
+	@@if test ! -f $(HOL2_HEAP); then $(MAKE_IMPL) $(HOL2_HEAP); fi
+d272 1
+a272 1
+	| $(SML) @@SMLload=$(HOL2_HEAP) 2>&1 | tee -a $(BIN_DIR)/log.$(ARCH).2
+d277 1
+a277 1
+	@@if test ! -f $(HOL2_HEAP); then $(MAKE_IMPL) $(HOL2_HEAP); fi
+d279 1
+a279 1
+	| $(SML) @@SMLload=$(HOL2_HEAP) 2>&1 | tee -a $(BIN_DIR)/log.$(ARCH).2
+d284 1
+a284 1
+	@@if test ! -f $(HOL2_HEAP); then $(MAKE_IMPL) $(HOL2_HEAP); fi
+d286 1
+a286 1
+	| $(SML) @@SMLload=$(HOL2_HEAP) 2>&1 | tee -a $(BIN_DIR)/log.$(ARCH).2
+d294 1
+a294 1
+	@@if test ! -f $(HOL2_HEAP); then $(MAKE_IMPL) $(HOL2_HEAP); fi
+d296 1
+a296 1
+	| $(SML) @@SMLload=$(HOL2_HEAP) 2>&1 | tee -a $(BIN_DIR)/log.$(ARCH).2
+d324 1
+a324 1
+	echo '$(MAKE_TOPLEVEL_PERVASIVE)' \
+d331 1
+a331 1
+	     '$(MAKE_TOPLEVEL_PERVASIVE)' \
+d340 1
+a340 1
+	| $(SML_CM) 2>&1 | tee $(BIN_DIR)/log.$(ARCH).3
+a347 1
+	rm -f $(HOL0_HEAP) $(HOL1_HEAP) $(HOL2_HEAP)
+@
+
+
+1.1.2.2.2.1
+log
+@Many minor changes in order to get HOL to build on SML/NJ 109.26. There are
+several real changes, however.
+
+  1. The reliance on hacked ML-Yacc support files is gone.
+
+  2. After type inference, there is now a pass where new names are guessed for
+     unconstrained type variables. This is experimental.
+
+  3. All the grammars used in the basic HOL system are put in one place
+     (the "src/Grammars" directory).
+
+  4. The implementations of the "Portable" structure have been moved to
+      src/portableML.
+
+  5. All the makefiles used to build the system are in src/Makefiles.
+@
+text
+@@

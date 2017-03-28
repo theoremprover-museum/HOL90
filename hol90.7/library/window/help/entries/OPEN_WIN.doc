@@ -1,0 +1,46 @@
+\DOC OPEN_WIN
+
+\TYPE {OPEN_WIN : (path -> win_stack -> win_stack)}
+
+\SYNOPSIS
+Open a subwindow on the focus of the top window.
+
+\LIBRARY window
+
+\DESCRIBE
+{OPEN_WIN path s} opens a subwindow in the focus of the top window of
+the stack {s} at the position described by {path}. The subwindow is
+then pushed onto the top of the window stack.
+
+\FAILURE
+{OPEN_WIN path s} will fail if {path} describes a position which
+is not present in the focus of the top window of {s}.
+
+\EXAMPLE
+{
+- BEGIN_STACK "example" (--`($<==) (A /\ (B /\ F))`--) [] []; 
+
+<== * A /\ B /\ F
+val it = () : unit
+- DO (OPEN_WIN [RAND]);
+
+    ! A
+<== * B /\ F
+val it = () : unit
+- DO (REWRITE_WIN []);
+
+    ! A
+<== * F
+val it = () : unit
+- DO CLOSE_WIN;
+
+<== * A /\ F
+val it = () : unit
+- END_STACK "example";
+val it = () : unit
+}
+
+\SEEALSO
+CLOSE_WIN, ESTABLISH, GEN_OPEN_WIN, OPEN_CONTEXT
+
+\ENDDOC

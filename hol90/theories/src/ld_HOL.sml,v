@@ -1,0 +1,101 @@
+head	1.2;
+access;
+symbols
+	HOL97:1.1.0.4
+	bpHOL97:1.1
+	hol90_9_alpha:1.1
+	hol90_pre8_for_multiple_compilers:1.1.0.2
+	hol90_pre8_after_donalds_separate_compilation_changes:1.1;
+locks; strict;
+comment	@# @;
+
+
+1.2
+date	96.01.04.21.50.21;	author drs1004;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	95.10.31.14.00.51;	author drs1004;	state Exp;
+branches
+	1.1.4.1;
+next	;
+
+1.1.4.1
+date	97.07.11.16.37.22;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.2
+log
+@see changes file
+@
+text
+@(*========================================================================
+ * ld_HOL.sml
+ *
+ * Loader file for the HOL theory.  Could be remade automatically.
+ *
+ * The idea of this file is that if a structure depends
+ * on having the HOL theory loaded, then it should go "open HOL"
+ * at the top of the structure.  A compilation manager like CM will
+ * then tell that this file needs to be laoded first.  This is the
+ * only way of expressing such a dependency in CM.
+ *
+ * This file may be loaded multiple times without detriment.
+ *
+ * See also ld_BASIC_HOL.sml for more discussion on files of this sort.
+ *======================================================================*)
+
+structure HOL :sig end = struct
+   open Theory;
+   open Lib;
+   val _ = if (current_theory() <> "") andalso
+              (mem "HOL" (current_theory() :: ancestry "-"))
+           then () 
+  	   else load_theory "HOL";
+end;
+
+
+
+
+
+
+@
+
+
+1.1
+log
+@First phase of hol90.8 development.  hol90 now compiles using NJSML-CM
+108.5, with separate compilation of libraries.  System dependencies
+have been isolated in the makefiles and "portable.sml".
+
+This involved a large number of enhancments to the source files,
+most of which are documented in the 7.changes file (or will be shortly).
+See also the correpsonding email corrspondence between RJB, KLS, TFM,
+JRH and DRS that happened during this development.
+@
+text
+@d28 3
+@
+
+
+1.1.4.1
+log
+@Minor changes to accomodate requirements of CM.
+@
+text
+@d9 1
+a9 1
+ * then tell that this file needs to be loaded first.  This is the
+a17 1
+   open CoreHol;
+a19 2
+   open BASIC_HOL;
+
+@

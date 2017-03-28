@@ -1,0 +1,448 @@
+<TITLE>Theory: word_base</TITLE>
+<H1>Theory: word_base</H1>
+<H1>Parents</H1>
+    <UL>
+    <LI><A HREF = "res_quan.html"><STRONG>res_quan</STRONG></A>
+    <LI><A HREF = "List.html"><STRONG>List</STRONG></A>
+    </UL>
+
+
+<HR>
+<H1>Type constants</H1>
+    <UL>
+    <LI><STRONG>word</STRONG>(Arity = 1)
+    </UL>
+
+
+<HR>
+<H1>Term constants</H1>
+    <UL>
+    <LI><STRONG>REP_word</STRONG><EM>:'a word -> 'a list ltree</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>ABS_word</STRONG><EM>:'a list ltree -> 'a word</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>WORD</STRONG><EM>:'a list -> 'a word</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>WORDLEN</STRONG><EM>:'a word -> num</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>PWORDLEN</STRONG><EM>:num -> 'a word -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>WSEG</STRONG><EM>:num -> num -> 'a word -> 'a word</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>BIT</STRONG><EM>:num -> 'a word -> 'a</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>MSB</STRONG><EM>:'a word -> 'a</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>LSB</STRONG><EM>:'a word -> 'a</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>WSPLIT</STRONG><EM>:num -> 'a word -> 'a word # 'a word</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>WCAT</STRONG><EM>:'a word # 'a word -> 'a word</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    </UL>
+
+
+<HR>
+<H1>Axioms</H1>
+<DL>
+
+</DL>
+
+
+<HR>
+<H1>Definitions</H1>
+<DL>
+<DT><STRONG>word_TY_DEF</STRONG>
+<DD>
+<PRE>
+|- ?rep. TYPE_DEFINITION (TRP (\v tl. (?l. v = l) /\ (LENGTH tl = 0))) rep
+</PRE>
+
+<DT><STRONG>word_ISO_DEF</STRONG>
+<DD>
+<PRE>
+|- (!a. ABS_word (REP_word a) = a) /\
+   (!r.
+     TRP (\v tl. (?l. v = l) /\ (LENGTH tl = 0)) r =
+     REP_word (ABS_word r) =
+     r)
+</PRE>
+
+<DT><STRONG>WORD_DEF</STRONG>
+<DD>
+<PRE>
+|- !l. WORD l = ABS_word (Node l [])
+</PRE>
+
+<DT><STRONG>WORDLEN_DEF</STRONG>
+<DD>
+<PRE>
+|- !l. WORDLEN (WORD l) = LENGTH l
+</PRE>
+
+<DT><STRONG>PWORDLEN_DEF</STRONG>
+<DD>
+<PRE>
+|- !n l. PWORDLEN n (WORD l) = n = LENGTH l
+</PRE>
+
+<DT><STRONG>WSEG_DEF</STRONG>
+<DD>
+<PRE>
+|- !m k l. WSEG m k (WORD l) = WORD (LASTN m (BUTLASTN k l))
+</PRE>
+
+<DT><STRONG>BIT_DEF</STRONG>
+<DD>
+<PRE>
+|- !k l. BIT k (WORD l) = ELL k l
+</PRE>
+
+<DT><STRONG>MSB_DEF</STRONG>
+<DD>
+<PRE>
+|- !l. MSB (WORD l) = HD l
+</PRE>
+
+<DT><STRONG>LSB_DEF</STRONG>
+<DD>
+<PRE>
+|- !l. LSB (WORD l) = LAST l
+</PRE>
+
+<DT><STRONG>WSPLIT_DEF</STRONG>
+<DD>
+<PRE>
+|- !m l. WSPLIT m (WORD l) = (WORD (BUTLASTN m l),WORD (LASTN m l))
+</PRE>
+
+<DT><STRONG>WCAT_DEF</STRONG>
+<DD>
+<PRE>
+|- !l1 l2. WCAT (WORD l1,WORD l2) = WORD (APPEND l1 l2)
+</PRE>
+
+</DL>
+
+
+<HR>
+<H1>Theorems</H1>
+<DL>
+<DT><STRONG>word_Ax</STRONG>
+<DD>
+<PRE>
+|- !f. ?!fn. !l. fn (WORD l) = f l
+</PRE>
+
+<DT><STRONG>WORD_11</STRONG>
+<DD>
+<PRE>
+|- !l l'. (WORD l = WORD l') = l = l'
+</PRE>
+
+<DT><STRONG>word_induct</STRONG>
+<DD>
+<PRE>
+|- !P. (!l. P (WORD l)) ==> (!w. P w)
+</PRE>
+
+<DT><STRONG>word_cases</STRONG>
+<DD>
+<PRE>
+|- !w. ?l. w = WORD l
+</PRE>
+
+<DT><STRONG>PWORDLEN</STRONG>
+<DD>
+<PRE>
+|- !n w. PWORDLEN n w = WORDLEN w = n
+</PRE>
+
+<DT><STRONG>PWORDLEN0</STRONG>
+<DD>
+<PRE>
+|- !w. PWORDLEN 0 w ==> (w = WORD [])
+</PRE>
+
+<DT><STRONG>PWORDLEN1</STRONG>
+<DD>
+<PRE>
+|- !x. PWORDLEN 1 (WORD [x])
+</PRE>
+
+<DT><STRONG>WSEG0</STRONG>
+<DD>
+<PRE>
+|- !k w. WSEG 0 k w = WORD []
+</PRE>
+
+<DT><STRONG>WSEG_PWORDLEN</STRONG>
+<DD>
+<PRE>
+|- !n. !w ::(PWORDLEN n). !m k. m + k <= n ==> PWORDLEN m (WSEG m k w)
+</PRE>
+
+<DT><STRONG>WSEG_WORDLEN</STRONG>
+<DD>
+<PRE>
+|- !n. !w ::(PWORDLEN n). !m k. m + k <= n ==> (WORDLEN (WSEG m k w) = m)
+</PRE>
+
+<DT><STRONG>WSEG_WORD_LENGTH</STRONG>
+<DD>
+<PRE>
+|- !n. !w ::(PWORDLEN n). WSEG n 0 w = w
+</PRE>
+
+<DT><STRONG>BIT0</STRONG>
+<DD>
+<PRE>
+|- !b. BIT 0 (WORD [b]) = b
+</PRE>
+
+<DT><STRONG>WSEG_BIT</STRONG>
+<DD>
+<PRE>
+|- !n. !w ::(PWORDLEN n). !k. k < n ==> (WSEG 1 k w = WORD [BIT k w])
+</PRE>
+
+<DT><STRONG>BIT_WSEG</STRONG>
+<DD>
+<PRE>
+|- !n.
+     !w ::(PWORDLEN n).
+       !m k j. m + k <= n ==> j < m ==> (BIT j (WSEG m k w) = BIT (j + k) w)
+</PRE>
+
+<DT><STRONG>MSB</STRONG>
+<DD>
+<PRE>
+|- !n. !w ::(PWORDLEN n). 0 < n ==> (MSB w = BIT (PRE n) w)
+</PRE>
+
+<DT><STRONG>LSB</STRONG>
+<DD>
+<PRE>
+|- !n. !w ::(PWORDLEN n). 0 < n ==> (LSB w = BIT 0 w)
+</PRE>
+
+<DT><STRONG>WORD_PARTITION</STRONG>
+<DD>
+<PRE>
+|- (!n. !w ::(PWORDLEN n). !m. m <= n ==> (WCAT (WSPLIT m w) = w)) /\
+   (!n m.
+     !w1 ::(PWORDLEN n).
+       !w2 ::(PWORDLEN m). WSPLIT m (WCAT (w1,w2)) = (w1,w2))
+</PRE>
+
+<DT><STRONG>WCAT_ASSOC</STRONG>
+<DD>
+<PRE>
+|- !w1 w2 w3. WCAT (w1,WCAT (w2,w3)) = WCAT (WCAT (w1,w2),w3)
+</PRE>
+
+<DT><STRONG>WCAT0</STRONG>
+<DD>
+<PRE>
+|- !w. (WCAT (WORD [],w) = w) /\ (WCAT (w,WORD []) = w)
+</PRE>
+
+<DT><STRONG>WCAT_11</STRONG>
+<DD>
+<PRE>
+|- !m n.
+     !wm1 wm2 ::(PWORDLEN m).
+       !wn1 wn2 ::(PWORDLEN n).
+         (WCAT (wm1,wn1) = WCAT (wm2,wn2)) = (wm1 = wm2) /\ (wn1 = wn2)
+</PRE>
+
+<DT><STRONG>WSPLIT_PWORDLEN</STRONG>
+<DD>
+<PRE>
+|- !n.
+     !w ::(PWORDLEN n).
+       !m.
+         m <= n ==>
+         PWORDLEN (n - m) (FST (WSPLIT m w)) /\ PWORDLEN m (SND (WSPLIT m w))
+</PRE>
+
+<DT><STRONG>WCAT_PWORDLEN</STRONG>
+<DD>
+<PRE>
+|- !n1.
+     !w1 ::(PWORDLEN n1).
+       !n2. !w2 ::(PWORDLEN n2). PWORDLEN (n1 + n2) (WCAT (w1,w2))
+</PRE>
+
+<DT><STRONG>WORDLEN_SUC_WCAT</STRONG>
+<DD>
+<PRE>
+|- !n w.
+     PWORDLEN (SUC n) w ==>
+     (?b ::(PWORDLEN 1). ?w' ::(PWORDLEN n). w = WCAT (b,w'))
+</PRE>
+
+<DT><STRONG>WSEG_WSEG</STRONG>
+<DD>
+<PRE>
+|- !n.
+     !w ::(PWORDLEN n).
+       !m1 k1 m2 k2.
+         m1 + k1 <= n /\ m2 + k2 <= m1 ==>
+         (WSEG m2 k2 (WSEG m1 k1 w) = WSEG m2 (k1 + k2) w)
+</PRE>
+
+<DT><STRONG>WSPLIT_WSEG</STRONG>
+<DD>
+<PRE>
+|- !n.
+     !w ::(PWORDLEN n).
+       !k. k <= n ==> (WSPLIT k w = (WSEG (n - k) k w,WSEG k 0 w))
+</PRE>
+
+<DT><STRONG>WSPLIT_WSEG1</STRONG>
+<DD>
+<PRE>
+|- !n. !w ::(PWORDLEN n). !k. k <= n ==> (FST (WSPLIT k w) = WSEG (n - k) k w)
+</PRE>
+
+<DT><STRONG>WSPLIT_WSEG2</STRONG>
+<DD>
+<PRE>
+|- !n. !w ::(PWORDLEN n). !k. k <= n ==> (SND (WSPLIT k w) = WSEG k 0 w)
+</PRE>
+
+<DT><STRONG>WCAT_WSEG_WSEG</STRONG>
+<DD>
+<PRE>
+|- !n.
+     !w ::(PWORDLEN n).
+       !m1 m2 k.
+         m1 + m2 + k <= n ==>
+         (WCAT (WSEG m2 (m1 + k) w,WSEG m1 k w) = WSEG (m1 + m2) k w)
+</PRE>
+
+<DT><STRONG>WORD_SPLIT</STRONG>
+<DD>
+<PRE>
+|- !n1 n2. !w ::(PWORDLEN (n1 + n2)). w = WCAT (WSEG n1 n2 w,WSEG n2 0 w)
+</PRE>
+
+<DT><STRONG>WORDLEN_SUC_WCAT_WSEG_WSEG</STRONG>
+<DD>
+<PRE>
+|- !w ::(PWORDLEN (SUC n)). w = WCAT (WSEG 1 n w,WSEG n 0 w)
+</PRE>
+
+<DT><STRONG>WORDLEN_SUC_WCAT_WSEG_WSEG_RIGHT</STRONG>
+<DD>
+<PRE>
+|- !w ::(PWORDLEN (SUC n)). w = WCAT (WSEG n 1 w,WSEG 1 0 w)
+</PRE>
+
+<DT><STRONG>WORDLEN_SUC_WCAT_BIT_WSEG</STRONG>
+<DD>
+<PRE>
+|- !n. !w ::(PWORDLEN (SUC n)). w = WCAT (WORD [BIT n w],WSEG n 0 w)
+</PRE>
+
+<DT><STRONG>WORDLEN_SUC_WCAT_BIT_WSEG_RIGHT</STRONG>
+<DD>
+<PRE>
+|- !n. !w ::(PWORDLEN (SUC n)). w = WCAT (WSEG n 1 w,WORD [BIT 0 w])
+</PRE>
+
+<DT><STRONG>WSEG_WCAT1</STRONG>
+<DD>
+<PRE>
+|- !n1 n2.
+     !w1 ::(PWORDLEN n1). !w2 ::(PWORDLEN n2). WSEG n1 n2 (WCAT (w1,w2)) = w1
+</PRE>
+
+<DT><STRONG>WSEG_WCAT2</STRONG>
+<DD>
+<PRE>
+|- !n1 n2.
+     !w1 ::(PWORDLEN n1). !w2 ::(PWORDLEN n2). WSEG n2 0 (WCAT (w1,w2)) = w2
+</PRE>
+
+<DT><STRONG>WORD_CONS_WCAT</STRONG>
+<DD>
+<PRE>
+|- !x l. WORD (CONS x l) = WCAT (WORD [x],WORD l)
+</PRE>
+
+<DT><STRONG>WORD_SNOC_WCAT</STRONG>
+<DD>
+<PRE>
+|- !l x. WORD (SNOC x l) = WCAT (WORD l,WORD [x])
+</PRE>
+
+<DT><STRONG>BIT_WCAT_FST</STRONG>
+<DD>
+<PRE>
+|- !n1 n2.
+     !w1 ::(PWORDLEN n1).
+       !w2 ::(PWORDLEN n2).
+         !k.
+           n2 <= k /\ k < n1 + n2 ==> (BIT k (WCAT (w1,w2)) = BIT (k - n2) w1)
+</PRE>
+
+<DT><STRONG>BIT_WCAT_SND</STRONG>
+<DD>
+<PRE>
+|- !n1 n2.
+     !w1 ::(PWORDLEN n1).
+       !w2 ::(PWORDLEN n2). !k. k < n2 ==> (BIT k (WCAT (w1,w2)) = BIT k w2)
+</PRE>
+
+<DT><STRONG>BIT_WCAT1</STRONG>
+<DD>
+<PRE>
+|- !n. !w ::(PWORDLEN n). !b. BIT n (WCAT (WORD [b],w)) = b
+</PRE>
+
+<DT><STRONG>WSEG_WCAT_WSEG1</STRONG>
+<DD>
+<PRE>
+|- !n1 n2.
+     !w1 ::(PWORDLEN n1).
+       !w2 ::(PWORDLEN n2).
+         !m k.
+           m <= n1 /\ n2 <= k ==>
+           (WSEG m k (WCAT (w1,w2)) = WSEG m (k - n2) w1)
+</PRE>
+
+<DT><STRONG>WSEG_WCAT_WSEG2</STRONG>
+<DD>
+<PRE>
+|- !n1 n2.
+     !w1 ::(PWORDLEN n1).
+       !w2 ::(PWORDLEN n2).
+         !m k. m + k <= n2 ==> (WSEG m k (WCAT (w1,w2)) = WSEG m k w2)
+</PRE>
+
+<DT><STRONG>WSEG_WCAT_WSEG</STRONG>
+<DD>
+<PRE>
+|- !n1 n2.
+     !w1 ::(PWORDLEN n1).
+       !w2 ::(PWORDLEN n2).
+         !m k.
+           m + k <= n1 + n2 /\ k < n2 /\ n2 <= m + k ==>
+           (WSEG m k (WCAT (w1,w2)) =
+            WCAT (WSEG ((m + k) - n2) 0 w1,WSEG (n2 - k) k w2))
+</PRE>
+
+<DT><STRONG>BIT_EQ_IMP_WORD_EQ</STRONG>
+<DD>
+<PRE>
+|- !n.
+     !w1 w2 ::(PWORDLEN n).
+       (!k. k < n ==> (BIT k w1 = BIT k w2)) ==> (w1 = w2)
+</PRE>
+
+</DL>
+
+
+<HR>

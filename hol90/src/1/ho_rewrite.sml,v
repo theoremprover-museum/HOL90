@@ -1,0 +1,208 @@
+head	1.2;
+access;
+symbols;
+locks; strict;
+comment	@# @;
+
+
+1.2
+date	96.03.01.19.48.51;	author drs1004;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	96.02.08.00.35.43;	author drs1004;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.2
+log
+@last entry.
+@
+text
+@
+structure Ho_rewrite : Ho_rewrite_sig =
+struct
+
+
+    open Lib Pterms;
+    open Thm Drule Conv Ho_match Tactic Tactical Rules Plain_rewrite;
+    open Ho_net;
+	infix THEN
+    val ERR = Exception.ERR "Ho_rewrite";
+    val WRAP_ERR = Exception.WRAP_ERR "Ho_rewrite";
+	
+
+(* ---------------------------------------------------------------------
+ * Higher Order Rewriting.  Nearly identical to normal rewriting.
+ * ---------------------------------------------------------------------*)
+
+fun HO_REWR_CONV th =
+   let val instth = HO_PART_MATCH lhs th 
+        handle _ => ERR("HO_REWR_CONV", "bad theorem argument")
+   in fn tm => 
+       let val eqn = instth tm
+	   val l = lhs(concl eqn)
+       in if (l = tm) then eqn 
+	  else TRANS (ALPHA tm l) eqn
+       end 
+   handle _ => ERR("HO_REWR_CONV","lhs of theorem doesn't match term")
+   end;
+
+datatype ho_rewrites = RW of {thms :thm list, net :Abbrev.conv Ho_net.net}
+fun dest_rewrites(RW{thms, ...}) = thms
+fun HO_REWRITES_CONV (RW{net,...}) tm = FIRST_CONV (Ho_net.lookup tm net) tm;
+    
+fun mk_ho_rewrites thl =
+    RW{thms = thl,
+       net = itlist Ho_net.enter
+       (map (fn th => (free_varsl (hyp th),lhs(concl th), HO_REWR_CONV th))
+	(itlist (append o mk_rewrites) thl [])) Ho_net.empty_net }
+    
+fun GEN_HO_REWRITE_CONV func thl = 
+    func (HO_REWRITES_CONV (mk_ho_rewrites thl));
+fun HO_REWRITE_CONV thl = GEN_HO_REWRITE_CONV TOP_DEPTH_CONV thl;
+val HO_REWRITE_TAC = 
+    CONV_TAC o HO_REWRITE_CONV;
+    
+fun HO_ASM_REWRITE_TAC thl = 
+   ASSUM_LIST (fn asl => HO_REWRITE_TAC (asl @@ thl))
+
+(* ---------------------------------------------------------------------
+ * HO_MATCH_MP_TAC:
+ *
+ * Taken from GTT source code.  [DRS January 1996]
+ * ---------------------------------------------------------------------*)
+local
+    open Pterms
+in 
+
+fun SIMPLE_CHOOSE v th =
+  CHOOSE(v,ASSUME (mk_exists(v,hd(hyp th)))) th;;
+
+
+fun HO_MATCH_MP_TAC th = 
+    let val sth =
+	let val tm = concl th
+	    val (avs,bod) = strip_forall tm
+	    val (ant,con) = dest_imp bod
+	    val th1 = SPECL avs (ASSUME tm)
+	    val th2 = UNDISCH th1
+	    val evs = filter (fn v => free_in v ant andalso not (free_in v con)) avs
+	    val th3 = itlist SIMPLE_CHOOSE evs (DISCH tm th2)
+	    val tm3 = hd(hyp th3)
+	in MP (DISCH tm (GEN_ALL (DISCH tm3 (UNDISCH th3)))) th
+	end 
+        handle _ => ERR("MATCH_MP_TAC","Bad theorem")
+        val match_fun = HO_PART_MATCH (snd o dest_imp) sth
+    in fn (asl,w) => 
+	let val xth = match_fun w
+	    val lant = fst(dest_imp(concl xth))
+	in ([(asl,lant)],MP xth o hd)
+	end handle _ => ERR("MATCH_MP_TAC","No match")
+    end;;
+end;
+
+(* ---------------------------------------------------------------------*)
+(* Accept a theorem that, properly instantiated, satisfies the goal     *)
+(* ---------------------------------------------------------------------*)
+
+fun HO_MATCH_ACCEPT_TAC thm =
+    let val fmatch = HO_PART_MATCH I thm 
+        fun atac (asl,w) = ([], K (fmatch w))
+    in
+    REPEAT GEN_TAC THEN atac
+    end
+    handle _ => ERR("MATCH_ACCEPT_TAC","");
+
+(* ---------------------------------------------------------------------*)
+(* Matching modus ponens.                                               *)
+(* ---------------------------------------------------------------------*)
+
+fun HO_MATCH_MP ith =
+  let val sth =
+      let val tm = concl ith
+	  val (avs,bod) = strip_forall tm
+	  val (ant,con) = dest_imp bod
+	  val (svs,pvs) = partition (C free_in ant) avs
+      in if pvs = [] then ith else
+	  let val th1 = SPECL avs (ASSUME tm)
+	      val th2 = GENL svs (DISCH ant (GENL pvs (UNDISCH th1)))
+	  in MP (DISCH tm th2) ith
+	  end
+      end
+      handle _ => ERR("MATCH_MP","Not an implication")
+      val match_fun = HO_PART_MATCH (fst o dest_imp) sth
+  in fn th => 
+      MP (match_fun (concl th)) th
+      handle _ => ERR("HO_MATCH_MP","No match")
+  end;;
+
+(* ------------------------------------------------------------------------- 
+ * Useful instance of more general higher order matching.                    
+ * Taken directly from the GTT source code.
+ *
+ * val LOCAL_COND_ELIM_THM1 = prove
+ *     ((--`!P:'a->bool. P(a => b | c) = (~a \/ P(b)) /\ (a \/ P(c))`--),
+ * 	GEN_TAC THEN COND_CASES_TAC THEN ASM_REWRITE_TAC[]);
+ * 	
+ * val conv = HO_REWRITE_CONV[LOCAL_COND_ELIM_THM1];
+ * val x = conv (--`(P:'a -> bool) (a => b | c)`--);
+ * val x = conv (--`(a + (f x => 0 | n) + m) = 0`--) handle e => Raise e;
+ * ------------------------------------------------------------------------- *)
+
+
+
+val HIGHER_REWRITE_CONV =
+  let fun GINST th =
+      let val fvs = subtract (free_vars(concl th)) (free_varsl (hyp th))
+	  val gvs = map (genvar o type_of) fvs
+      in INST (map2 (curry op |->) fvs gvs) th
+      end
+  in fn ths =>
+      let val thl = map (GINST o SPEC_ALL) ths
+	  val concs = map concl thl
+	  val lefts = map lhs concs
+	  val (preds,pats) = unzip(map dest_comb lefts)
+	  val beta_fns = map2 BETA_VAR preds concs
+	  val ass_list = zip pats (zip preds (zip thl beta_fns))
+	  val mnet = itlist (fn p => fn n => Ho_net.enter([],p,p) n) pats Ho_net.empty_net
+	  fun look_fn t =
+	      mapfilter (fn p => if can (ho_match_term p) t then p 
+				 else raise Fail "")
+	      (lookup t mnet)
+      in fn tm =>
+	  let val ts = find_terms (fn t => not (look_fn t = []) andalso free_in t tm) tm
+	      val stm = hd (sort free_in ts)
+	      val pat = hd(look_fn stm)
+	      val (tmin,tyin) = ho_match_term pat stm
+	      val (pred,(th,beta_fn)) = assoc pat ass_list
+	      val gv = genvar(type_of stm)
+	      val abs = mk_abs(gv,subst[stm |-> gv] tm)
+	      val (tmin0,tyin0) = ho_match_term pred abs
+	  in CONV_RULE beta_fn (INST tmin (INST tmin0 (INST_TYPE tyin0 th)))
+	  end
+      end
+  handle e => WRAP_ERR("HIGHER_REWRITE_CONV",e)
+  end;;
+
+end;
+
+@
+
+
+1.1
+log
+@New theory mechanism, code reorganisation and other enhancements by Don Syme.
+@
+text
+@d40 3
+a42 2
+fun HO_REWRITE_CONV thl = 
+    TOP_DEPTH_CONV (HO_REWRITES_CONV (mk_ho_rewrites thl));
+@

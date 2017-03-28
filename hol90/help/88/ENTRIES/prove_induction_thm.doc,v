@@ -1,0 +1,98 @@
+head	1.1;
+branch	1.1.1;
+access;
+symbols
+	HOL97:1.1.1.1.0.6
+	bpHOL97:1.1.1.1
+	hol90_9_alpha:1.1.1.1
+	hol90_pre8_for_multiple_compilers:1.1.1.1.0.4
+	hol90_pre8_after_donalds_separate_compilation_changes:1.1.1.1
+	hol90_8_after_merging_Konrad_Elsa:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	95.10.16.13.35.23;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.35.23;	author rjb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@\DOC prove_induction_thm
+
+\TYPE {prove_induction_thm : (thm -> thm)}
+
+\SYNOPSIS
+Derives structural induction for an automatically-defined concrete type.
+
+\DESCRIBE
+{prove_induction_thm} takes as its argument a primitive recursion theorem, in
+the form returned by {define_type} for an automatically-defined concrete type.
+When applied to such a theorem, {prove_induction_thm} automatically proves and
+returns a theorem that states a structural induction principle for the concrete
+type described by the argument theorem. The theorem returned by
+{prove_induction_thm} is in a form suitable for use with the general structural
+induction tactic {INDUCT_THEN}.
+
+\FAILURE
+Fails if the argument is not a theorem of the form returned by {define_type}.
+
+\EXAMPLE
+Given the following primitive recursion theorem for labelled binary trees:
+{
+   |- !f0 f1.
+        ?! fn.
+        (!x. fn(LEAF x) = f0 x) /\
+        (!b1 b2. fn(NODE b1 b2) = f1(fn b1)(fn b2)b1 b2)
+}
+\noindent {prove_induction_thm} proves and returns the theorem:
+{
+   |- !P. (!x. P(LEAF x)) /\ (!b1 b2. P b1 /\ P b2 ==> P(NODE b1 b2)) ==>
+          (!b. P b)
+}
+\noindent This theorem states the principle of structural induction on labelled
+binary trees: if a predicate {P} is true of all leaf nodes, and if whenever it
+is true of two subtrees {b1} and {b2} it is also true of the tree {NODE b1 b2},
+then {P} is true of all labelled binary trees.
+
+\SEEALSO
+define_type, INDUCT_THEN, new_recursive_definition, prove_cases_thm,
+prove_constructors_distinct, prove_constructors_one_one, prove_rec_fn_exists.
+
+\ENDDOC
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

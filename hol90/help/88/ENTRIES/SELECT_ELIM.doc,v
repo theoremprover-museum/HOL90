@@ -1,0 +1,116 @@
+head	1.1;
+branch	1.1.1;
+access;
+symbols
+	HOL97:1.1.1.1.0.6
+	bpHOL97:1.1.1.1
+	hol90_9_alpha:1.1.1.1
+	hol90_pre8_for_multiple_compilers:1.1.1.1.0.4
+	hol90_pre8_after_donalds_separate_compilation_changes:1.1.1.1
+	hol90_8_after_merging_Konrad_Elsa:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	95.10.16.13.34.19;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.34.19;	author rjb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@\DOC SELECT_ELIM
+
+\TYPE {SELECT_ELIM : (thm -> (term # thm) -> thm)}
+
+\SYNOPSIS
+Eliminates an epsilon term, using deduction from a particular instance.
+
+\KEYWORDS
+rule, epsilon.
+
+\DESCRIBE
+{SELECT_ELIM} expects two arguments, a theorem {th1}, and a pair
+{(v,th2):(term # thm)}.  The conclusion of {th1} must have the form {P($@@ P)},
+which asserts that the epsilon term {$@@ P} denotes some value at which
+{P} holds.  The variable {v} appears only in the assumption {P v} of
+the theorem {th2}.  The conclusion of the resulting theorem matches
+that of {th2}, and the hypotheses include the union of all hypotheses
+of the premises excepting {P v}.
+{
+    A1 |- P($@@ P)     A2 u {{P v}} |- t
+   -----------------------------------  SELECT_ELIM th1 (v,th2)
+              A1 u A2 |- t
+}
+\noindent where {v} is not free in {A2}. If {v} appears in the conclusion of
+{th2}, the epsilon term will NOT be eliminated, and the conclusion will be
+{t[$@@ P/v]}.
+
+\FAILURE
+Fails if the first theorem is not of the form {A1 |- P($@@ P)}, or if
+the variable {v} occurs free in any other assumption of {th2}.
+
+\EXAMPLE
+If a property of functions is defined by:
+{
+   INCR = |- !f. INCR f = (!t1 t2. t1 < t2 ==> (f t1) < (f t2))
+}
+\noindent The following theorem can be proved.
+{
+   th1 = |- INCR(@@f. INCR f)
+}
+\noindent Additionally, if such a function is assumed to exist, then one
+can prove that there also exists a function which is injective (one-to-one) but
+not surjective (onto).
+{
+   th2 = [ INCR g ] |- ?h. ONE_ONE h /\ ~ONTO h
+}
+\noindent These two results may be combined using {SELECT_ELIM} to
+give a new theorem:
+{
+   #SELECT_ELIM th1 ("g:num->num", th2);;
+   |- ?h. ONE_ONE h /\ ~ONTO h
+}
+\USES
+This rule is rarely used.  The equivalence of {P($@@ P)} and {$? P}
+makes this rule fundamentally similar to the {?}-elimination rule {CHOOSE}.
+
+\SEEALSO
+CHOOSE, SELECT_AX, SELECT_CONV, SELECT_INTRO, SELECT_RULE.
+
+\ENDDOC
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

@@ -1,0 +1,116 @@
+head	1.1;
+branch	1.1.1;
+access;
+symbols
+	HOL97:1.1.1.1.0.6
+	bpHOL97:1.1.1.1
+	hol90_9_alpha:1.1.1.1
+	hol90_pre8_for_multiple_compilers:1.1.1.1.0.4
+	hol90_pre8_after_donalds_separate_compilation_changes:1.1.1.1
+	hol90_8_after_merging_Konrad_Elsa:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	95.10.16.13.34.15;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.34.15;	author rjb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@\DOC REDEPTH_CONV
+
+\TYPE {REDEPTH_CONV : (conv -> conv)}
+
+\SYNOPSIS
+Applies a conversion bottom-up to all subterms, retraversing changed ones.
+
+\KEYWORDS
+conversional.
+
+\DESCRIBE
+{REDEPTH_CONV c tm} applies the conversion {c} repeatedly to all subterms of
+the term {tm} and recursively applies {REDEPTH_CONV c} to each subterm at which
+{c} succeeds, until there is no subterm remaining for which application of {c}
+succeeds.
+
+More precisely, {REDEPTH_CONV c tm} repeatedly applies the conversion {c} to
+all the subterms of the term {tm}, including the term {tm} itself. The supplied
+conversion {c} is applied to the subterms of {tm} in bottom-up order and is
+applied repeatedly (zero or more times, as is done by {REPEATC}) to each
+subterm until it fails.  If {c} is successfully applied at least once to a
+subterm, {t} say, then the term into which {t} is transformed is retraversed by
+applying {REDEPTH_CONV c} to it.
+
+\FAILURE
+{REDEPTH_CONV c tm} never fails but can diverge if the conversion {c} can be
+applied repeatedly to some subterm of {tm} without failing.
+
+\EXAMPLE
+The following example shows how {REDEPTH_CONV} retraverses subterms:
+{
+   #REDEPTH_CONV BETA_CONV "(\f x. (f x) + 1) (\y.y) 2";;
+   |- (\f x. (f x) + 1)(\y. y)2 = 2 + 1
+}
+\noindent Here, {BETA_CONV} is first applied successfully to the (beta-redex)
+subterm:
+{
+   "(\f x. (f x) + 1) (\y.y)"
+}
+\noindent This application reduces this subterm to:
+{
+   "(\x. ((\y.y) x) + 1)"
+}
+\noindent {REDEPTH_CONV BETA_CONV} is then recursively applied to this
+transformed subterm, eventually reducing it to {"(\x. x + 1)"}. Finally, a
+beta-reduction of the top-level term, now the simplified beta-redex
+{"(\x. x + 1) 2"}, produces {"2 + 1"}.
+
+\COMMENTS
+The implementation of this function uses failure to avoid rebuilding
+unchanged subterms. That is to say, during execution the failure string
+{`QCONV`} may be generated and later trapped. The behaviour of the function
+is dependent on this use of failure. So, if the conversion given as argument
+happens to generate a failure with string {`QCONV`}, the operation of
+{REDEPTH_CONV} will be unpredictable.
+
+\SEEALSO
+DEPTH_CONV, ONCE_DEPTH_CONV, TOP_DEPTH_CONV.
+
+\ENDDOC
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

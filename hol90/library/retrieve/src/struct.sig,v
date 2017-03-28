@@ -1,0 +1,130 @@
+head	1.1;
+access;
+symbols
+	HOL97:1.1.0.4
+	bpHOL97:1.1
+	hol90_9_alpha:1.1
+	hol90_pre8_for_multiple_compilers:1.1.0.2;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	95.11.17.10.43.17;	author rjb;	state Exp;
+branches
+	1.1.4.1;
+next	;
+
+1.1.4.1
+date	97.07.14.17.48.44;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@Added library "retrieve", a theorem retrieval system.
+
+R.J.Boulton, 17th November 1995.
+@
+text
+@signature RETRIEVE_STRUCT =
+sig
+   type wildvar
+   val show_wildvar : wildvar -> Term.term
+   val make_wildvar : Term.term -> wildvar
+   val wildvarlist : Term.term list -> wildvar list
+
+   type wildtype
+   val show_wildtype : wildtype -> Type.hol_type
+   val make_wildtype : Type.hol_type -> wildtype
+   val wildtypelist : Type.hol_type list -> wildtype list
+
+   type termpattern
+   val show_termpattern :
+      termpattern -> Term.term * wildvar list * wildtype list
+   val make_termpattern :
+      Term.term * wildvar list * wildtype list -> termpattern
+   val show_full_termpattern :
+      termpattern -> Term.term * Term.term list * Type.hol_type list
+   val make_full_termpattern :
+      Term.term * Term.term list * Type.hol_type list -> termpattern
+   val autotermpattern : Term.term -> termpattern
+
+   type matching
+   val show_matching :
+      matching -> (wildvar * Term.term) list * (wildtype * Type.hol_type) list
+   val null_matching : matching
+   val make_matching : termpattern -> Term.term -> matching
+   val join_matchings : matching -> matching -> matching
+   val show_full_matching :
+      matching ->
+      (Term.term * Term.term) list * (Type.hol_type * Type.hol_type) list
+   val match_of_var : matching -> wildvar -> Term.term
+   val match_of_type : matching -> wildtype -> Type.hol_type
+
+   datatype result_of_match = Nomatch
+                            | Match of matching * (unit -> result_of_match)
+   val Match_null : result_of_match
+   val approms : (unit -> result_of_match) ->
+                 (unit -> result_of_match) ->
+                 (unit -> result_of_match)
+   val bool_to_rom : bool -> result_of_match
+   val rom_to_bool : result_of_match -> bool
+
+   type side_condition
+end;
+@
+
+
+1.1.4.1
+log
+@The "retrieve" library now loads under CM. The unified entrypoint for it is
+retrieveLib.
+@
+text
+@a2 4
+ type term
+ type hol_type
+ type side_condition
+
+d4 3
+a6 3
+   val show_wildvar : wildvar -> term
+   val make_wildvar : term -> wildvar
+   val wildvarlist : term list -> wildvar list
+d9 3
+a11 3
+   val show_wildtype : wildtype -> hol_type
+   val make_wildtype : hol_type -> wildtype
+   val wildtypelist : hol_type list -> wildtype list
+d15 1
+a15 1
+      termpattern -> term * wildvar list * wildtype list
+d17 1
+a17 1
+      term * wildvar list * wildtype list -> termpattern
+d19 1
+a19 1
+      termpattern -> term * term list * hol_type list
+d21 2
+a22 2
+      term * term list * hol_type list -> termpattern
+   val autotermpattern : term -> termpattern
+d26 1
+a26 1
+      matching -> (wildvar * term) list * (wildtype * hol_type) list
+d28 1
+a28 1
+   val make_matching : termpattern -> term -> matching
+d32 3
+a34 3
+      (term * term) list * (hol_type * hol_type) list
+   val match_of_var : matching -> wildvar -> term
+   val match_of_type : matching -> wildtype -> hol_type
+d45 1
+@

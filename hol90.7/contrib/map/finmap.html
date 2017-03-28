@@ -1,0 +1,330 @@
+<TITLE>Theory: finmap</TITLE>
+<H1>Theory: finmap</H1>
+<H1>Parents</H1>
+    <UL>
+    <LI><A HREF = "finite_functions.html"><STRONG>finite_functions</STRONG></A>
+    <LI><A HREF = "partial_functions.html"><STRONG>partial_functions</STRONG></A>
+    <LI><A HREF = "lift.html"><STRONG>lift</STRONG></A>
+    <LI><A HREF = "more_list.html"><STRONG>more_list</STRONG></A>
+    <LI><A HREF = "HOL.html"><STRONG>HOL</STRONG></A>
+    </UL>
+
+
+<HR>
+<H1>Type constants</H1>
+    <UL>
+    <LI><STRONG>finmap</STRONG>(Arity = 1)
+    </UL>
+
+
+<HR>
+<H1>Term constants</H1>
+    <UL>
+    <LI><STRONG>REP_finmap</STRONG><EM>:'a finmap -> 'a ltree</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>ABS_finmap</STRONG><EM>:'a ltree -> 'a finmap</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>FINMAP</STRONG><EM>:'a -> 'a finmap</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>FINMAP_arg</STRONG><EM>:'a finmap -> 'a</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>empty_finmap</STRONG><EM>:('a # 'b) list finmap</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>list_lookup</STRONG><EM>:'a -> ('a # 'b) list -> 'b lift</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>finmap_lookup</STRONG><EM>:'a -> ('a # 'b) list finmap ->
+                                           'b lift</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>list_insert</STRONG><EM>:('a -> 'a -> bool) -> 'a -> 'b ->
+                                         ('a # 'b) list -> ('a # 'b) list</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>finmap_insert</STRONG><EM>:('a -> 'a -> bool) -> 'a -> 'b ->
+                                           ('a # 'b) list finmap ->
+                                           ('a # 'b) list finmap</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>list_modify</STRONG><EM>:('a -> 'a -> bool) ->
+                                         ('a # 'b) list -> ('a # 'b) list ->
+                                         ('a # 'b) list</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>finmap_modify</STRONG><EM>:('a -> 'a -> bool) ->
+                                           ('a # 'b) list finmap ->
+                                           ('a # 'b) list finmap ->
+                                           ('a # 'b) list finmap</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>list_max</STRONG><EM>:num list -> num</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>list_member</STRONG><EM>:'a -> 'a list -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>dom_list_helper</STRONG><EM>:('a # 'b) list -> 'a list</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>dom_list</STRONG><EM>:('a # 'b) list finmap -> 'a list</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>finmap_dom</STRONG><EM>:('a # 'b) list finmap -> 'a set</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>finmap_range</STRONG><EM>:('a # 'b) list finmap -> 'b set</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>restrict_finmap</STRONG><EM>:('a # 'b) list finmap ->
+                                             'a set ->
+                                             ('a # 'b) list finmap</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>bij_inv</STRONG><EM>:('a -> 'b) -> ('b -> 'a) -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>in_dom</STRONG><EM>:('a # 'b) list finmap -> 'a -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>next_dom</STRONG><EM>:('a -> 'a -> bool) ->
+                                      ('a # 'b) list finmap -> 'a</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>ne_length</STRONG><EM>:'a nonemptylist -> num</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    </UL>
+
+
+<HR>
+<H1>Axioms</H1>
+<DL>
+
+</DL>
+
+
+<HR>
+<H1>Definitions</H1>
+<DL>
+<DT><STRONG>finmap_TY_DEF</STRONG>
+<DD>
+<PRE>
+|- ?rep. TYPE_DEFINITION (TRP (\v tl. (?x. v = x) /\ (LENGTH tl = 0))) rep
+</PRE>
+
+<DT><STRONG>finmap_ISO_DEF</STRONG>
+<DD>
+<PRE>
+|- (!a. ABS_finmap (REP_finmap a) = a) /\
+   (!r.
+     TRP (\v tl. (?x. v = x) /\ (LENGTH tl = 0)) r =
+     REP_finmap (ABS_finmap r) =
+     r)
+</PRE>
+
+<DT><STRONG>FINMAP_DEF</STRONG>
+<DD>
+<PRE>
+|- !x. FINMAP x = ABS_finmap (Node x [])
+</PRE>
+
+<DT><STRONG>FINMAP_arg_DEF</STRONG>
+<DD>
+<PRE>
+|- !l. FINMAP_arg (FINMAP l) = l
+</PRE>
+
+<DT><STRONG>empty_finmap_DEF</STRONG>
+<DD>
+<PRE>
+|- empty_finmap = FINMAP []
+</PRE>
+
+<DT><STRONG>list_lookup_DEF</STRONG>
+<DD>
+<PRE>
+|- (!key. list_lookup key [] = undefined) /\
+   (!key t h.
+     list_lookup key (CONS h t) =
+     ((key = FST h) => (lift (SND h)) | (list_lookup key t)))
+</PRE>
+
+<DT><STRONG>finmap_lookup_DEF</STRONG>
+<DD>
+<PRE>
+|- !key l. finmap_lookup key (FINMAP l) = list_lookup key l
+</PRE>
+
+<DT><STRONG>list_insert_DEF</STRONG>
+<DD>
+<PRE>
+|- (!less key item. list_insert less key item [] = [key,item]) /\
+   (!less key item t h.
+     list_insert less key item (CONS h t) =
+     ((less (FST h) key)
+      => (CONS h (list_insert less key item t))
+      | ((key = FST h)
+         => (CONS (key,item) t)
+         | (CONS (key,item) (CONS h t)))))
+</PRE>
+
+<DT><STRONG>finmap_insert_DEF</STRONG>
+<DD>
+<PRE>
+|- !less key item l.
+     finmap_insert less key item (FINMAP l) =
+     FINMAP (list_insert less key item l)
+</PRE>
+
+<DT><STRONG>list_modify_DEF</STRONG>
+<DD>
+<PRE>
+|- (!less f. list_modify less f [] = f) /\
+   (!less f t h.
+     list_modify less f (CONS h t) =
+     list_modify less (list_insert less (FST h) (SND h) f) t)
+</PRE>
+
+<DT><STRONG>finmap_modify_DEF</STRONG>
+<DD>
+<PRE>
+|- !less f g.
+     finmap_modify less f g =
+     ((f = empty_finmap)
+      => g
+      | (FINMAP (list_modify less (FINMAP_arg f) (FINMAP_arg g))))
+</PRE>
+
+<DT><STRONG>list_max_DEF</STRONG>
+<DD>
+<PRE>
+|- (list_max [] = 0) /\
+   (!l n. list_max (CONS n l) = ((list_max l < n) => n | (list_max l)))
+</PRE>
+
+<DT><STRONG>list_member_DEF</STRONG>
+<DD>
+<PRE>
+|- (!item. list_member item [] = F) /\
+   (!item t h.
+     list_member item (CONS h t) = ((h = item) => T | (list_member item t)))
+</PRE>
+
+<DT><STRONG>dom_list_helper_DEF</STRONG>
+<DD>
+<PRE>
+|- (dom_list_helper [] = []) /\
+   (!t h. dom_list_helper (CONS h t) = CONS (FST h) (dom_list_helper t))
+</PRE>
+
+<DT><STRONG>dom_list_DEF</STRONG>
+<DD>
+<PRE>
+|- !l. dom_list (FINMAP l) = dom_list_helper l
+</PRE>
+
+<DT><STRONG>finmap_dom_DEF</STRONG>
+<DD>
+<PRE>
+|- !l. finmap_dom (FINMAP l) = FOLDR (\x s. FST x INSERT s) l {}
+</PRE>
+
+<DT><STRONG>finmap_range_DEF</STRONG>
+<DD>
+<PRE>
+|- !l. finmap_range (FINMAP l) = FOLDR (\x s. SND x INSERT s) l {}
+</PRE>
+
+<DT><STRONG>restrict_finmap_DEF</STRONG>
+<DD>
+<PRE>
+|- !f set.
+     restrict_finmap (FINMAP f) set = FINMAP (FILTER (\x. FST x IN set) f)
+</PRE>
+
+<DT><STRONG>bij_inv_DEF</STRONG>
+<DD>
+<PRE>
+|- !f1 f2.
+     bij_inv f1 f2 =
+     ONE_ONE f1 /\ ONTO f1 /\ (!a. f2 (f1 a) = a) /\ (!b. f1 (f2 b) = b)
+</PRE>
+
+<DT><STRONG>in_dom_DEF</STRONG>
+<DD>
+<PRE>
+|- !f x. in_dom f x = list_member x (dom_list f)
+</PRE>
+
+<DT><STRONG>next_dom_DEF</STRONG>
+<DD>
+<PRE>
+|- !less f.
+     next_dom less f = (@a. ~(in_dom f a) /\ (!a'. less a' a ==> in_dom f a'))
+</PRE>
+
+<DT><STRONG>ne_length_DEF</STRONG>
+<DD>
+<PRE>
+|- (!x. ne_length (ONE x) = 0) /\
+   (!n x. ne_length (MORE x n) = ne_length n + 1)
+</PRE>
+
+</DL>
+
+
+<HR>
+<H1>Theorems</H1>
+<DL>
+<DT><STRONG>finmap_Axiom</STRONG>
+<DD>
+<PRE>
+|- !f. ?!fn. !x. fn (FINMAP x) = f x
+</PRE>
+
+<DT><STRONG>finmap_constructors_one_one</STRONG>
+<DD>
+<PRE>
+|- !x x'. (FINMAP x = FINMAP x') = x = x'
+</PRE>
+
+<DT><STRONG>finmap_induction_thm</STRONG>
+<DD>
+<PRE>
+|- !P. (!x. P (FINMAP x)) ==> (!f. P f)
+</PRE>
+
+<DT><STRONG>finmap_cases_thm</STRONG>
+<DD>
+<PRE>
+|- !f. ?x. f = FINMAP x
+</PRE>
+
+<DT><STRONG>empty_finmap_is_zero</STRONG>
+<DD>
+<PRE>
+|- !less f.
+     (finmap_modify less empty_finmap f = f) /\
+     (finmap_modify less f empty_finmap = f)
+</PRE>
+
+<DT><STRONG>next_dom_thm</STRONG>
+<DD>
+<PRE>
+|- !f from_num to_num less.
+     bij_inv from_num to_num /\ (!a a'. less a a' = to_num a < to_num a') ==>
+     ~(in_dom f (next_dom less f)) /\
+     (!a'. less a' (next_dom less f) ==> in_dom f a')
+</PRE>
+
+<DT><STRONG>length_preserved</STRONG>
+<DD>
+<PRE>
+|- !n f. ne_length (nonempty_MAP f n) = ne_length n
+</PRE>
+
+<DT><STRONG>length_0_thm</STRONG>
+<DD>
+<PRE>
+|- !l. (ne_length l = 0) = (?x. l = ONE x)
+</PRE>
+
+<DT><STRONG>length_suc_thm</STRONG>
+<DD>
+<PRE>
+|- !l. (ne_length l = SUC n) = (?x l2. (l = MORE x l2) /\ (ne_length l2 = n))
+</PRE>
+
+<DT><STRONG>nonempty_MAP_thm</STRONG>
+<DD>
+<PRE>
+|- !l l' f. ONE_ONE f ==> ((nonempty_MAP f l = nonempty_MAP f l') = l = l')
+</PRE>
+
+</DL>
+
+
+<HR>

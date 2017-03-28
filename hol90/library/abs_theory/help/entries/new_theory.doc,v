@@ -1,0 +1,108 @@
+head	1.1;
+branch	1.1.1;
+access;
+symbols
+	HOL97:1.1.1.1.0.6
+	bpHOL97:1.1.1.1
+	hol90_9_alpha:1.1.1.1
+	hol90_pre8_for_multiple_compilers:1.1.1.1.0.4
+	hol90_pre8_after_donalds_separate_compilation_changes:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	95.10.16.13.31.50;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.31.50;	author rjb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@\DOC new_theory
+
+\TYPE {new_theory : (string -> void)}
+
+\LIBRARY {abs_theory}
+
+\SYNOPSIS
+Creates a new theory by extending the current theory with a new theory segment.
+
+\DESCRIBE 
+A theory consists of a hierarchy of named parts called theory
+segments. The theory segment at the top of the hierarchy tree in each
+theory is said to be current. All theory segments have a theory of the same
+name associated with them consisting of the theory segment itself and all
+its ancestors.  Each axiom, definition, specification and theorem belongs
+to a particular theory segment.
+
+Calling {new_theory `thy`} creates a new theory segment and associated
+theory having name {thy}. The theory segment which was current before the
+call becomes a parent of the new theory segment. The new theory therefore
+consists of the current theory extended with the new theory segment. The
+new theory segment replaces its parent as the current theory segment. The
+call switches the system into draft mode and flushes the theory obligation
+list. This allows new axioms, constants, types, constant specifications,
+infix constants, binders and parents to be added to the theory segment.
+Inconsistencies will be introduced into the theory if inconsistent axioms
+are asserted.  New theorems can also be added as when in proof mode. The
+theory file in which the data of the new theory segment is ultimately
+stored will have name {thy.th} in the directory from which HOL was called.
+The theory segment might not be written to this file until the session is
+finished with a call to {close_theory}. If HOL is quit without closing the
+session with {close_theory}, parts of the theory segment created during the
+session may be lost. If the system is in draft mode when a call to
+{new_theory} is made, the previous session is closed; all changes made in
+it will be written to the associated theory file.
+
+\FAILURE The call {new_theory `thy`} will fail if there already exists
+a file {thy.th} in the current search path. It will also fail if the
+name {thy.th} is unsuitable for a filename. Since it could involve writing
+to the file system, if a write fails for any reason {new_theory} will
+fail.
+
+\USES Hierarchically extending the current theory.  By splitting a theory
+into theory segments using {new_theory}, the work required if
+definitions, etc., need to be changed is minimized. Only the associated
+segment and its descendants need be redefined.
+
+\SEEALSO
+close_theory, current_theory, extend_theory, load_theory, new_axiom,
+new_binder, new_constant, new_definition, new_infix, new_parent,
+new_specification, new_type, print_theory, save_thm, search_path.
+
+\ENDDOC
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

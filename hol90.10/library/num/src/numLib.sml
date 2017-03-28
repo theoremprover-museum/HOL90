@@ -1,0 +1,321 @@
+(* ===================================================================== *)
+(* FILE          : num_lib.sml  (Formerly num.sml)                       *)
+(* DESCRIPTION   : Proof support for :num. Translated from hol88.        *)
+(*                                                                       *)
+(* AUTHORS       : (c) Mike Gordon and                                   *)
+(*                     Tom Melham, University of Cambridge               *)
+(* DATE          : 88.04.04                                              *)
+(* TRANSLATOR    : Konrad Slind, University of Calgary                   *)
+(* UPDATE        : October'94 bugfix to num_EQ_CONV (KLS;bugfix from tfm)*)
+(* ===================================================================== *)
+
+
+structure numLib : numLib_sig =
+struct
+
+open Exception;
+open Lib;
+open CoreHol;
+open Term;
+open Thm;
+open Dsyntax;
+open Theory;
+open Drule;
+open Conv; infix THENC;
+open Parse;
+open Tactical;
+open Tactic; infix THEN infix THENL;
+open Rewrite;
+open Num_conv;
+open Thm_cont;
+open Taut_thms;
+open BASIC_HOL;  (* Create dependence on BASIC_HOL theory. *)
+
+fun NUM_ERR{function,message} = 
+    HOL_ERR{origin_structure = "Num",
+            origin_function = function,
+            message = message};
+
+infix 5 |->
+infix ##;
+
+val inc = Portable.Ref.inc;
+val dec = Portable.Ref.dec;
+
+open Rsyntax;
+
+(* --------------------------------------------------------------------- *)
+(* ADD_CONV: addition of natural number constants (numerals).            *)
+(*                                                                       *)
+(* If n and m are numerals (i.e 0,1,2,3,...) then:                       *)
+(*                                                                       *)
+(*      ADD_CONV `n + m`                                                 *)
+(*                                                                       *)
+(* returns                                                               *)
+(*                                                                       *)
+(*      |- n + m = s                                                     *)
+(*                                                                       *)
+(* where s is the numeral denoting the sum of n and m.                   *)
+(*                                                                       *)
+(* NOTE: iterative version.                                              *)
+(* --------------------------------------------------------------------- *)
+
+local val nv = --`n:num`--
+      and mv = --`m:num`--
+      and numty = ==`:num`==
+      and plus = --`+`--
+      val asym = SPECL [nv,mv] (theorem "arithmetic" "ADD_SYM") 
+      val Sth = let val addc = theorem "arithmetic" "ADD_CLAUSES" 
+                    val (t1,t2) = CONJ_PAIR (CONJUNCT2(CONJUNCT2 addc)) 
+                in TRANS t1 (SYM t2) end
+      val ladd0 = let val addc = theorem "arithmetic" "ADD_CLAUSES" 
+                  in GEN (--`n:num`--) (CONJUNCT1 addc)
+                  end
+      val v1 = genvar (==`:num`==)
+      and v2 = genvar (==`:num`==)
+      fun tm_to_int tm = string_to_int(#Name(dest_const tm)) 
+      and int_to_tm i  = mk_const{Name = int_to_string i, Ty = numty}
+      val pl = --`$+`--
+      val lra = mk_comb{Rator = pl, Rand = v1}
+      fun mk_pat (n,m) = mk_eq{lhs = mk_comb{Rator = lra, Rand = m},
+                               rhs=mk_comb{Rator=mk_comb{Rator=pl, Rand=n},
+                                           Rand=v2}}
+     fun trans (c,mi) th =
+      let val {Rator,Rand = m} = dest_comb(rand(concl th))
+          val n = rand Rator
+          val nint = int_to_tm c 
+          and mint = int_to_tm mi
+          val nth = SYM(num_CONV n) 
+          and mth = SYM(num_CONV mint)
+          val thm1 = INST [(mv |-> nint), (nv |-> m)] Sth
+      in SUBST [{var=v1,thm=nth},{var=v2,thm=mth}] (mk_pat(nint,m)) thm1
+      end
+     val zconv = RAND_CONV(REWR_CONV ladd0)
+     fun conv th (n,m) =
+       let val (thm,count,mint) = (ref th, ref n, ref m)
+       in (while (!count <> 0) do 
+             ( dec count; inc mint;
+               thm := TRANS (!thm) (trans (!count, !mint) (!thm))
+             );
+           CONV_RULE zconv (!thm)
+          )
+       end
+in
+fun ADD_CONV tm =
+   let val (c,[n,m]) = (assert (fn c => (c = plus)) ## I) (strip_comb tm)
+       val nint = tm_to_int n 
+       and mint = tm_to_int m 
+   in
+   if not(mint < nint)
+   then conv (REFL tm) (nint,mint) 
+   else let val th1 = conv(REFL(mk_comb{Rator=mk_comb{Rator=c,Rand=m},Rand=n}))
+                          (mint,nint) 
+        in TRANS (INST [(nv |-> n), (mv |-> m)] asym) th1
+        end
+   end
+   handle _ => raise NUM_ERR{function = "ADD_CONV",message = ""}
+end;
+
+(* --------------------------------------------------------------------- *)
+(* num_EQ_CONV: equality of natural number constants.                    *)
+(*                                                                       *)
+(* If n and m are numerals (i.e 0,1,2,3,...) or sucessors of numerals    *)
+(* (e.g. SUC 0, SUC(SUC 2), etc), then:                                  *)
+(*                                                                       *)
+(*      num_EQ_CONV `n = m`                                              *)
+(*                                                                       *)
+(* returns                                                               *)
+(*                                                                       *)
+(*      |- (n = m) = T           if n=m                                  *)
+(*      |- (n = m) = F           if ~(n=m)                               *)
+(*                                                                       *)
+(* and if n and m are syntactically identical terms of type :num, then   *)
+(*                                                                       *)
+(*      num_EQ_CONV `n = m`  returns |- (n = m) = T                      *)
+(*                                                                       *)
+(* NOTE: runs out of stack for large numbers.                            *)
+(* --------------------------------------------------------------------- *)
+
+local
+val N = ==`:num`==    val nv = genvar N  and mv = genvar N
+val rth = SPEC nv (theorem "prim_rec" "LESS_SUC_REFL") 
+and lnth = SPECL [nv,mv] (theorem "prim_rec" "LESS_NOT_EQ") 
+and lmth = SPECL [nv,mv] (theorem "prim_rec" "LESS_MONO") 
+and lz = SPEC nv (theorem "prim_rec" "LESS_0")
+val checkty = assert (fn t => type_of t = N)
+val less = --`$<`--
+val O = --`0`--
+val S = --`SUC`--
+val check = assert (fn t => t = S)
+val Suc = AP_TERM S
+fun tm_to_int tm = string_to_int(#Name(dest_const tm))
+fun Val n = tm_to_int n handle _ 
+   => let val {Rator,Rand} = dest_comb n
+          val _ = check Rator
+      in Val Rand + 1
+      end
+fun mk_pat n = list_mk_comb(less,[n,mv])
+fun mk_pat2 m = list_mk_comb(less,[nv,m])
+fun eqconv n m =
+   if (n=m) then REFL n 
+   else if (is_const n) 
+        then let val th = num_CONV n 
+             in TRANS th (eqconv (rand(concl th)) m) end
+        else if (is_const m) 
+              then let val th = num_CONV m 
+                   in TRANS (eqconv n (rand(concl th))) (SYM th) end
+              else Suc (eqconv (rand n) (rand m))
+fun neqconv n m =
+   if (is_const m) 
+   then let val th = num_CONV m 
+            val thm = (neqconv n (rand(concl th))) 
+        in SUBST [{var=mv,thm=SYM th}] (mk_pat n) thm   end
+   else 
+   let val m' = rand m 
+   in if (n = m') then INST [nv |-> n] rth 
+      else if (is_const n) 
+           then if (n = O) then INST [nv |-> m'] lz
+                else let val th = num_CONV n
+                         val n' = rand(rand(concl th))
+                         val th2 = MP (INST [nv |-> n', mv |-> m'] lmth) 
+                                      (neqconv n' m') 
+                     in SUBST[{var=nv,thm=SYM th}] (mk_pat2 m) th2 end
+           else let val n' = rand n 
+                in MP (INST [nv |-> n', mv |-> m'] lmth) (neqconv n' m')
+                end
+   end
+in
+fun num_EQ_CONV tm = 
+   let val {lhs,rhs=m} = dest_eq tm
+       val n = checkty lhs
+   in if (n=m) then EQT_INTRO (REFL n) 
+      else let val nint = Val n 
+               and mint = Val m 
+           in if (mint=nint)  then EQT_INTRO(eqconv n m) 
+              else if (nint<mint) 
+                   then let val thm = INST[nv |-> n, mv |-> m] lnth 
+                        in EQF_INTRO (MP thm (neqconv n m))  end
+                   else let val thm = INST[nv |-> m, mv |-> n] lnth
+                            val thm2 = MP thm (neqconv m n) 
+                        in EQF_INTRO(NOT_EQ_SYM thm2)  end
+           end
+   end
+   handle _ => raise NUM_ERR{function = "num_EQ_CONV",message = ""}
+end;
+
+(* --------------------------------------------------------------------- *)
+(* EXISTS_LEAST_CONV: applies the well-ordering property to non-empty    *)
+(* sets of numbers specified by predicates.                              *)
+(*                                                                       *)
+(* A call to EXISTS_LEAST_CONV `?n:num. P[n]` returns:                   *)
+(*                                                                       *)
+(*   |- (?n. P[n]) = ?n. P[n] /\ !n'. (n' < n) ==> ~P[n']                *)
+(*                                                                       *)
+(* --------------------------------------------------------------------- *)
+
+local
+val wop = theorem "arithmetic" "WOP"
+val wth = CONV_RULE (ONCE_DEPTH_CONV ETA_CONV) wop 
+val N = ==`:num`==
+val check = assert (fn tm => type_of tm = N)
+val acnv = RAND_CONV o ABS_CONV
+in
+fun EXISTS_LEAST_CONV tm =
+   let val {Bvar,Body = P} = dest_exists tm
+       val n = check Bvar
+       val thm1 = UNDISCH (SPEC (rand tm) wth)
+       val thm2 = CONV_RULE (GEN_ALPHA_CONV n) thm1
+       val {Rator=c1,Rand=c2} = dest_comb (#Body(dest_exists(concl thm2)))
+       val bth1 = RAND_CONV BETA_CONV c1
+       val bth2 = acnv (RAND_CONV (RAND_CONV BETA_CONV)) c2
+       val n' = variant (n :: free_vars tm) n
+       val abth2 = CONV_RULE (RAND_CONV (GEN_ALPHA_CONV n')) bth2
+       val thm3 = EXISTS_EQ n (MK_COMB(bth1,abth2))
+       val imp1 = DISCH tm (EQ_MP thm3 thm2)
+       val eltm = rand(concl thm3)
+       val thm4 = CONJUNCT1 (ASSUME (#Body(dest_exists eltm)))
+       val thm5 = CHOOSE (n,ASSUME eltm) (EXISTS (tm,n) thm4) 
+   in
+   IMP_ANTISYM_RULE imp1 (DISCH eltm thm5)
+   end
+   handle _ => raise NUM_ERR{function = "EXISTS_LEAST_CONV",message = ""}
+end;
+
+(*---------------------------------------------------------------------------*)
+(* EXISTS_GREATEST_CONV - Proves existence of greatest element satisfying P. *)
+(*                                                                           *)
+(* EXISTS_GREATEST_CONV `(?x. P[x]) /\ (?y. !z. z > y ==> ~(P[z]))` =        *)
+(*    |- (?x. P[x]) /\ (?y. !z. z > y ==> ~(P[z])) =                         *)
+(*        ?x. P[x] /\ !z. z > x ==> ~(P[z])                                  *)
+(*                                                                           *)
+(* If the variables x and z are the same, the `z` instance will be primed.   *)
+(* [JRH 91.07.17]                                                            *)
+(*---------------------------------------------------------------------------*)
+
+local
+val LESS_EQ' = theorem "arithmetic" "LESS_EQ"
+and LESS_EQUAL_ANTISYM' = theorem "arithmetic" "LESS_EQUAL_ANTISYM"
+and NOT_LESS' = theorem "arithmetic" "NOT_LESS"
+and LESS_SUC_REFL' = theorem "prim_rec" "LESS_SUC_REFL"
+and LESS_0_CASES' = theorem "arithmetic" "LESS_0_CASES"
+and NOT_LESS_0' = theorem "prim_rec" "NOT_LESS_0"
+and num_CASES' = theorem "arithmetic" "num_CASES"
+and GREATER' = definition "arithmetic" "GREATER_DEF"
+val EXISTS_GREATEST = prove(
+--`!P.(?x. P x) /\ (?x. !y. y > x ==> ~P y) = ?x. P x /\ !y. y > x ==> ~P y`--,
+  GEN_TAC THEN EQ_TAC THENL
+  [REWRITE_TAC[GREATER'] THEN 
+   DISCH_THEN (CONJUNCTS_THEN2 STRIP_ASSUME_TAC
+                 (X_CHOOSE_THEN (--`g:num`--) MP_TAC o 
+                  CONV_RULE EXISTS_LEAST_CONV)) THEN
+   DISCH_THEN (fn th => EXISTS_TAC (--`g:num`--) THEN 
+                        REWRITE_TAC[th] THEN MP_TAC th) THEN
+   STRUCT_CASES_TAC (SPEC (--`g:num`--) num_CASES') THENL
+   [REWRITE_TAC[NOT_LESS_0'] THEN DISCH_THEN (MP_TAC o SPEC (--`x:num`--)) THEN
+    DISJ_CASES_TAC (SPEC (--`x:num`--) LESS_0_CASES'),
+    POP_ASSUM (K ALL_TAC) THEN
+    DISCH_THEN (CONJUNCTS_THEN2
+                   (MP_TAC o REWRITE_RULE[] o 
+                    CONV_RULE (ONCE_DEPTH_CONV CONTRAPOS_CONV))
+                   (X_CHOOSE_TAC (--`y:num`--) o
+                    REWRITE_RULE[NOT_IMP] o 
+                    CONV_RULE NOT_FORALL_CONV o 
+                    REWRITE_RULE[LESS_SUC_REFL'] o
+                    SPEC (--`n:num`--))) THEN
+    DISCH_THEN (MP_TAC o SPEC (--`y:num`--)) THEN 
+    ASM_REWRITE_TAC[NOT_LESS'] THEN
+    POP_ASSUM (CONJUNCTS_THEN2 
+                (fn th => DISCH_THEN 
+                           (SUBST1_TAC o 
+                            MATCH_MP LESS_EQUAL_ANTISYM' o
+                            CONJ (REWRITE_RULE[LESS_EQ'] th)))
+                ASSUME_TAC)],
+   DISCH_THEN CHOOSE_TAC THEN CONJ_TAC THEN EXISTS_TAC (--`x:num`--)]
+   THEN ASM_REWRITE_TAC[])
+val t = RATOR_CONV 
+and n = RAND_CONV 
+and b = ABS_CONV
+val red1 = t o n o t o n o n o b
+and red2 = t o n o n o n o b o n o b o n o n
+and red3 = n o n o b o t o n
+and red4 = n o n o b o n o n o b o n o n
+in
+fun EXISTS_GREATEST_CONV tm =
+   let val {conj1=lc,conj2=rc} = dest_conj tm
+       val pred = rand lc
+       val {Bvar=xv,Body=xb} = dest_exists lc
+       val {Bvar=yv,Body=yb} = dest_exists rc
+       val zv = #Bvar (dest_forall yb)
+       val prealpha = CONV_RULE 
+         (red1 BETA_CONV THENC red2 BETA_CONV THENC
+          red3 BETA_CONV THENC red4 BETA_CONV) (SPEC pred EXISTS_GREATEST)
+       val rqd = mk_eq 
+          {lhs = tm, rhs = mk_exists{Bvar = xv,
+                           Body=mk_conj{conj1=xb, conj2=subst [yv|->xv] yb}}}
+   in
+   Lib.S (Lib.C EQ_MP) (Lib.C ALPHA rqd o concl) prealpha
+   end
+   handle _ => raise NUM_ERR{function = "EXISTS_GREATEST_CONV",message = ""}
+end;
+
+end; (* Num_lib *)

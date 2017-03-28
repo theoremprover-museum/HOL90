@@ -1,0 +1,396 @@
+head	1.4;
+access;
+symbols
+	HOL97:1.1.2.1.0.2
+	bpHOL97:1.1.2.1
+	hol90_9_alpha:1.1.2.1
+	hol90_pre8_for_multiple_compilers:1.1.0.2
+	hol90_pre8_after_donalds_separate_compilation_changes:1.1;
+locks; strict;
+comment	@# @;
+
+
+1.4
+date	96.02.08.00.36.15;	author drs1004;	state Exp;
+branches;
+next	1.3;
+
+1.3
+date	96.01.04.13.48.55;	author drs1004;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	95.12.18.11.36.34;	author drs1004;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	95.10.31.15.05.24;	author drs1004;	state Exp;
+branches
+	1.1.2.1;
+next	;
+
+1.1.2.1
+date	96.08.23.15.38.26;	author rjb;	state Exp;
+branches
+	1.1.2.1.2.1;
+next	;
+
+1.1.2.1.2.1
+date	97.07.11.15.16.12;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.4
+log
+@New theory mechanism, code reorganisation and other enhancements by Don Syme.
+@
+text
+@
+(*------------------------------------------------------------------------
+ * $Id: sources.cm,v 1.3 1996/01/04 13:48:55 drs1004 Exp $
+ *
+ * Sources description for core hol90 (level 1)
+ *-----------------------------------------------------------------------*)
+
+
+
+Group is
+	../0/sources.cm
+	../0/theories.cm
+
+(* non-primitive rules for basic logic constructs *)
+        drule1.sig
+	drule1.sml
+	drule2.sig
+	drule2.sml
+	drule3.sig
+	drule3.sml
+	drule.sig
+	drule.sml
+
+(* rules as theorems *)
+ 	simps.sml
+
+(* plain tactics/tacticals *)
+        tactical.sig 
+	tactical.sml
+
+        thm_cont.sig
+	thm_cont.sml
+
+        tactic.sig
+	tactic.sml
+
+(* plain equality reasoning *)
+        conv.sig
+	conv.sml
+
+(* rewriting and higher order rewriting tools *)
+        rewrite.sig
+	rewrite.sml
+
+	ho_match.sig
+	ho_match.sml
+
+	ho_net.sml
+
+        ho_rewrite.sig
+	ho_rewrite.sml
+
+(* harder theorems, incl. quantifier movement theorems *)
+	theorems.sig
+	theorems.sml
+
+(* quantifier movement conversions implemented via theorems *)
+	quant_convs.sig
+	quant_convs.sml 
+
+
+(* tools *)
+
+        resolve.sig
+	resolve.sml
+        type_def_support.sig
+	type_def_support.sml 
+        induction.sig
+	induction.sml
+        prim_rec.sig
+	prim_rec.sml
+	ac.sml
+	trace.sml
+	imp.sml
+
+(* compatibility/interface/management *)
+	manager1.sml 
+
+
+
+
+
+@
+
+
+1.3
+log
+@Added simplifier components, added drule files, added MK_ABS_CONV, better error messages
+@
+text
+@d3 1
+a3 1
+ * $Id: sources.cm,v 1.2 1995/12/18 11:36:34 drs1004 Exp $
+d13 3
+a15 1
+        drule.sig
+d17 1
+d19 1
+d21 1
+d24 2
+a25 2
+	mk_abs_conv.sml
+	ho_match.sml
+d27 1
+a27 2
+        conv.sig
+	conv.sml
+d30 1
+a30 2
+        rewrite.sig
+	rewrite.sml
+d33 1
+d36 28
+a63 2
+        taut_thms.sig
+	taut_thms.sml
+d68 2
+a69 2
+        induct_then.sig
+	induct_then.sml
+d72 8
+a79 2
+	fixity_compat1.sml
+	core.sml
+@
+
+
+1.2
+log
+@Preterm and other changes, see 7.changes
+@
+text
+@d3 1
+a3 1
+ * $Id: sources.cm,v 1.1 1995/10/31 15:05:24 drs1004 Exp $
+d14 3
+d18 4
+d42 1
+a46 40
+(*
+val prim_hol_lib =
+   if Globals.remake_theory_files
+   then Library.new_library
+         {name = "PRIM_HOL",
+          doc = "Derived rules and such. Preloaded", 
+          path = !Globals.HOLdir,
+          parents = [],
+          theories = [], (* ought to be "bool" in long run *)
+          code = ["1/drule.sig", "1/drule.sml",
+                  "1/conv.sig", "1/conv.sml",
+                  "1/tactical.sig", "1/tactical.sml",
+                  "1/rewrite.sig", "1/rewrite.sml",
+                  "1/thm_cont.sig", "1/thm_cont.sml",
+                  "1/tactic.sig", "1/tactic.sml",
+                  "1/taut_thms.sig", "1/taut_thms.sml",
+                  "1/resolve.sig", "1/resolve.sml",
+                  "1/type_def_support.sig", "1/type_def_support.sml",
+                  "1/induct_then.sig", "1/induct_then.sml",
+                  "1/prim_rec.sig", "1/prim_rec.sml",
+                  "1/hol1.sml"],
+          help = [],
+          loaded = "fn() => \
+                   \  (Sml_system.interp := true;    \
+                   \   PP.install_pp [\"Rewrite\",\"rewrites\"] \
+                   \                 Rewrite.pp_rewrites; \
+                   \   Save_hol.save_hol\"hol90.01\")"}
+   else let val ph_lib = Library.find_library "PRIM_HOL"
+        in Library.move_library(ph_lib, !Globals.HOLdir);
+           ph_lib
+        end;
+
+val _ = Library.load_library_in_place prim_hol_lib;
+
+
+
+
+
+*)
+
+@
+
+
+1.1
+log
+@First phase of hol90.8 development.  hol90 now compiles using NJSML-CM
+108.5, with separate compilation of libraries.  System dependencies
+have been isolated in the makefiles and "portable.sml".
+
+This involved a large number of enhancments to the source files,
+most of which are documented in the 7.changes file (or will be shortly).
+See also the correpsonding email corrspondence between RJB, KLS, TFM,
+JRH and DRS that happened during this development.
+@
+text
+@d3 1
+a3 1
+ * $Id$
+d12 1
+a12 6
+	../../theories/src/min.sig
+	../../theories/src/ld_min.sml
+	../../theories/src/exists.sig
+	../../theories/src/ld_exists.sml
+	../../theories/src/bool.sig
+	../../theories/src/ld_bool.sml
+d30 1
+a30 1
+	type_def_support.sml
+d35 1
+a35 1
+(* 
+a36 101
+mkdir .heap
+sml-cm.108
+Compiler.Control.quotation := true;
+val m = CM.make;
+m();
+use "1/hol1.sml";
+open Abbrev;
+
+#set Compiler.Environment.pervasiveEnvRef (Compiler.Environment.concatEnv (#get Compiler.Environment.topLevelEnvRef (),#get Compiler.Environment.pervasiveEnvRef ()));
+#set Compiler.Environment.topLevelEnvRef Compiler.Environment.emptyEnv;
+
+CM.export(".heap/hol1.sparc",NONE);
+<exit>
+sml.108 @@SMLload=.heap/hol1.sparc < ../theories/src/mk_restr_binder.sml;
+sml.108 @@SMLload=.heap/hol1.sparc < ../theories/src/mk_pair.sml;
+sml.108 @@SMLload=.heap/hol1.sparc < ../theories/src/mk_combin.sml;
+sml.108 @@SMLload=.heap/hol1.sparc < ../theories/src/mk_one.sml;
+sml.108 @@SMLload=.heap/hol1.sparc < ../theories/src/mk_sum.sml;
+sml.108 @@SMLload=.heap/hol1.sparc < ../theories/src/mk_num.sml;
+sml.108 @@SMLload=.heap/hol1.sparc < ../theories/src/mk_BASIC_HOL.sml;
+
+sml.108 @@SMLload=.heap/hol1.sparc
+
+load_theory "BASIC_HOL";
+fun m () = CM.make' (CM.cmfile "2/sources.cm") handle e => Raise e;
+m();
+
+use "2/hol2.sml";
+
+
+#set Compiler.Environment.pervasiveEnvRef (Compiler.Environment.concatEnv (#get Compiler.Environment.topLevelEnvRef (),#get Compiler.Environment.pervasiveEnvRef ()));
+#set Compiler.Environment.topLevelEnvRef Compiler.Environment.emptyEnv;
+
+CM.export(".heap/hol2.sparc",NONE);
+
+
+sml.108 @@SMLload=.heap/hol2.sparc < ../theories/src/mk_prim_rec.sml;
+sml.108 @@SMLload=.heap/hol2.sparc < ../theories/src/mk_arithmetic.sml;
+sml.108 @@SMLload=.heap/hol2.sparc < ../theories/src/mk_list.sml;
+sml.108 @@SMLload=.heap/hol2.sparc < ../theories/src/mk_list_thms.sml;
+sml.108 @@SMLload=.heap/hol2.sparc < ../theories/src/mk_tree.sml;
+sml.108 @@SMLload=.heap/hol2.sparc < ../theories/src/mk_ltree.sml;
+sml.108 @@SMLload=.heap/hol2.sparc < ../theories/src/mk_rec_type.sml;
+sml.108 @@SMLload=.heap/hol2.sparc < ../theories/src/mk_HOL.sml;
+
+sml.108 @@SMLload=.heap/hol2.sparc
+
+load_theory "HOL";
+
+fun m () = CM.make' (CM.cmfile "3/sources.cm") handle e => Raise e;
+m();
+
+use "3/hol3.sml";
+
+#set Compiler.Environment.pervasiveEnvRef (Compiler.Environment.concatEnv (#get Compiler.Environment.topLevelEnvRef (),#get Compiler.Environment.pervasiveEnvRef ()));
+#set Compiler.Environment.topLevelEnvRef Compiler.Environment.emptyEnv;
+
+CM.export(".heap/hol90.sparc",NONE);
+
+sml.108 @@SMLload=.heap/hol90.sparc
+
+
+use "3/sys_lib.sig";
+use "3/sys_lib.sml";
+open Sys_lib;
+
+fun cmfile_for_lib lib = 
+     ("/tmp/"^(#name (dest_library lib))^".cm");
+   
+fun write_cmfileentry (os,path) file = 
+       output(os,"\t"^path^"/"^file^"\n");
+fun write_cmlibentry (os,path) libname = 
+       output(os,"\t"^path^"/"^libname^".cm\n");
+
+fun write_cmfiles_for_lib lib =
+   let val {code, path, name, parents, ...} = dest_library lib
+       val os = open_out (cmfile_for_lib lib)
+       val _ = output(os,"Group is\n");
+       val _ = app (write_cmlibentry (os,"/tmp")) (map (#name o dest_library) parents)
+       val _ = app (write_cmfileentry (os,path^"src")) code
+       val _ = close_out os
+       val _ = map write_cmfiles_for_lib parents
+   in
+      ()
+   end;
+
+fun load_library' lib =
+   let val _ = output (std_out, "[writing CM description files]\n");
+       val _ = write_cmfiles_for_lib lib
+       val _ = output (std_out, "[analysing pervasive environment]\n");
+       val _ = CM.make' (CM.cmfile (cmfile_for_lib lib)) 
+   in ()
+   end;
+
+load_library' num_lib; 
+fun m () = load_library' arith_lib;
+m();
+
+
+*)
+
+@
+
+
+1.1.2.1
+log
+@Changed Sml_system structure to Portable.
+@
+text
+@d3 1
+a3 1
+ * $Id: sources.cm,v 1.1 1995/10/31 15:05:24 drs1004 Exp $
+d168 1
+a168 1
+                   \  (Portable.interp := true;    \
+@
+
+
+1.1.2.1.2.1
+log
+@Minor changes to make HOL CM-friendly.
+@
+text
+@d3 1
+a3 1
+ * $Id: sources.cm,v 1.1.2.1 1996/08/23 15:38:26 rjb Exp $
+d11 1
+a11 1
+(* 	../0/sources.cm *)
+@

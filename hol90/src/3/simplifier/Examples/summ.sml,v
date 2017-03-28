@@ -1,0 +1,226 @@
+head	1.1;
+access;
+symbols;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	96.01.04.14.16.28;	author drs1004;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@Added simplifier components, added drule files, added MK_ABS_CONV, better error messages
+@
+text
+@
+(*-------------------------------------------------------------------------
+ * Define summ by primitve recursion, then define the
+ * natural notion of SUMM in terms of this.
+ *-----------------------------------------------------------------------*)
+
+
+val summ_DEF = new_recursive_definition {  
+    def=(--`(summ f 0 = 0) /\
+            (summ f (SUC n) = f n + summ f n)`--),  
+    fixity=Prefix,  
+    name="summ_DEF",  
+    rec_axiom=theorem "prim_rec" "num_Axiom"  };
+
+val SUMM_DEF = new_definition("SUMM_DEF",
+    (--`SUMM f n m = summ (\k. f(n+k)) ((m+1)-n)`--));
+
+(*-------------------------------------------------------------------------
+ * summ_DEF is not in a very good form for arithmetic.  The following
+ * is a much better version once real arithmetic decision procedures
+ * are available.  The proof is not easily simplified since it is working 
+ * ``the wrong way'' for the simpsets. 
+ *-----------------------------------------------------------------------*)
+
+local
+
+   val fix_summ_ss = 
+        hol_ss addrewrs [SUMM_DEF,summ_DEF, 
+                 definition "arithmetic" "GREATER",
+                 GSYM (theorem "arithmetic" "ADD1"),
+                 theorem "arithmetic" "NOT_LESS"];
+   val fix_summ_arith_ss = fix_summ_ss merge_ss ARITH_ss;
+   
+in
+
+   val summ_ZERO = CONJUNCT1 summ_DEF;
+   val summ_TAKE_RIGHT = prove(
+       (--`!f n. n > 0 ==> (summ f n = f (n-1) + summ f (n-1))`--),
+       SIMP_TAC fix_summ_ss
+       THEN REPEAT STRIP_TAC
+       THEN IMP_RES_TAC (theorem "arithmetic" "LESS_ADD_1")
+       THEN FULL_SIMP_TAC fix_summ_ss
+       THEN SIMP_TAC arith_ss
+   );
+   
+   val summ_TAKE_LEFT = prove(
+       (--`!f n. n > 0 ==> (summ f n = f 0 + (summ (\k. f (k+1)) (n-1)))`--),
+       GEN_TAC THEN INDUCT_TAC
+       THENL [
+          SIMP_TAC arith_ss,
+          FULL_SIMP_TAC fix_summ_ss
+          THEN ASM_CASES_TAC (--`0 < n`--)
+          THENL [
+             FULL_SIMP_TAC fix_summ_ss
+             THEN FULL_SIMP_TAC (fix_summ_arith_ss addrewrs [summ_TAKE_RIGHT]),
+             FULL_SIMP_TAC fix_summ_arith_ss
+          ]
+       ]
+   );
+end;
+   
+   
+
+(*-------------------------------------------------------------------------
+ * Develop theorems for basis of SUMM reduction.
+ *-----------------------------------------------------------------------*)
+
+local
+   val fix_SUMM_ss = 
+           arith_ss 
+           addrewrs [SUMM_DEF,summ_ZERO];
+in
+
+   val SUMM_0 = prove((--`!f n m. (n = m + 1) ==> (SUMM f n m = 0)`--),
+       SIMP_TAC fix_SUMM_ss
+   );
+   val SUMM_1 = prove(
+       (--`!f n m. (n = m) ==> (SUMM f n m = f n)`--),
+       SIMP_TAC (fix_SUMM_ss addrewrs [summ_TAKE_LEFT])
+   );
+   val SUMM_TAKE_RIGHT = prove(
+       (--`!f n m. (n < m) ==> (SUMM f n m = f m + SUMM f n (m-1))`--),
+       SIMP_TAC (fix_SUMM_ss addrewrs [summ_TAKE_RIGHT])
+   );
+   
+   val SUMM_TAKE_LEFT = prove(
+       (--`!f n m. (n < m) ==> (SUMM f n m = f n + SUMM f (n+1) m)`--),
+       SIMP_TAC (fix_SUMM_ss addrewrs [summ_TAKE_LEFT])
+   );
+   
+end
+(*-------------------------------------------------------------------------
+ * SUMM simpsets
+ *-----------------------------------------------------------------------*)
+
+(* sum from left - much more efficient as it uses addition not subtraction *)
+val SUMML_ss = pure_ss addrewrs [SUMM_TAKE_LEFT, SUMM_1,SUMM_0];
+val summl_ss = arith_ss merge_ss reduce_ss merge_ss SUMML_ss;
+
+(* sum from right - need to use this after an induction. *)
+val SUMMR_ss = pure_ss addrewrs [SUMM_TAKE_RIGHT, SUMM_1,SUMM_0];
+val summr_ss = arith_ss merge_ss reduce_ss merge_ss SUMMR_ss;
+
+
+(*-------------------------------------------------------------------------
+ * SUMM_x = |- !n. n >= 1 ==> (2 * SUMM (\x. x) 1 n = (n + 1) * n) : thm
+ *-----------------------------------------------------------------------*)
+
+val SUMM_x = prove(
+    (--`!n. n >= 1 ==> (2*(SUMM (\x.x) 1 n) = (n + 1) * n)`--),
+    INDUCT_TAC
+    THENL [
+       FULL_SIMP_TAC summr_ss,
+       ASM_CASES_TAC (--`n=0`--) THEN  FULL_SIMP_TAC summr_ss
+    ]
+);
+
+
+(*------------------------------------------------------------------------- 
+ * SUMM_x3 = |- !n. 4 * SUMM (\x. x * x * x) 1 n = n * n * (n + 1) * (n + 1)
+ *-----------------------------------------------------------------------*)
+
+
+val SUMM_x3 = prove((--`!n. 4 * SUMM (\x. x * x * x) 1 n = n * n * (n + 1) * (n + 1)`--),
+    INDUCT_TAC
+    THENL [
+       SIMP_TAC summr_ss,
+       ASM_CASES_TAC (--`n = 0`--)
+       THENL [
+          FULL_SIMP_TAC summr_ss,       (* irritating base case *)
+          FULL_SIMP_TAC summr_ss         (* reduce the summation one step *) 
+          THEN SIMP_TAC ac_reduce_ss	 (* sort like terms and reduce multiplicative constants *)
+          THEN SIMP_TAC num_poly_ss  (* collect like terms *)
+       ]
+    ]
+);
+
+(* Total runtime: 17.991799 
+   ABS: 182
+   ASSUME: 183
+   BETA_CONV: 5
+   DISCH: 736
+   INST_TYPE: 190
+   MP: 589
+   REFL: 175
+   SUBST: 103
+   drule: 14989
+   Total: 17152
+*)
+
+(*------------------------------------------------------------------------- 
+ * Using SIMP_CONV as a calculator for Sum.  Let's add up some numbers!!
+ *-----------------------------------------------------------------------*)
+
+delete_arith_caches();
+(SIMP_CONV summl_ss) (--`2 * SUMM (\x. x) 1 10`--);
+(* Total runtime: 1.550155 *)
+(SIMP_CONV summl_ss) (--`2 * SUMM (\x. x) 1 15`--);
+(* Total runtime: 3.430343 *)
+(SIMP_CONV summl_ss) (--`2 * SUMM (\x. x) 1 20`--);
+TkHol - (* Total runtime: 5.890589 *)
+(SIMP_CONV summl_ss) (--`2 * SUMM (\x. x) 1 30`--);
+(* Total runtime: 13.081308 *)
+(SIMP_CONV summl_ss) (--`2 * SUMM (\x. x) 1 40`--);
+
+
+(SIMP_CONV summl_ss) (--`SUMM (\x. x*x*x) 1 2`--);
+(* Total runtime: 0.160016 *)
+(SIMP_CONV summl_ss) (--`SUMM (\x. x*x*x) 1 3`--);
+TkHol - (* Total runtime: 0.620062 *)
+(SIMP_CONV summl_ss) (--`SUMM (\x. x*x*x) 1 4`--);
+TkHol - (* Total runtime: 1.660166 *)
+(SIMP_CONV summl_ss) (--`SUMM (\x. x*x*x) 1 5`--);
+TkHol - (* Total runtime: 3.680368 *)
+(SIMP_CONV summl_ss) (--`SUMM (\x. x*x*x) 1 6`--);
+TkHol - (* Total runtime: 7.270727 *)
+(SIMP_CONV summl_ss) (--`SUMM (\x. x*x*x) 1 7`--);
+TkHol - (* Total runtime: 12.841284 *)
+
+(SIMP_CONV (reduce_ss addrewrs [SUMM_x])) (--`2 * SUMM (\x. x) 1 20`--);
+(* Total runtime: 1.020102 *)
+(SIMP_CONV (reduce_ss addrewrs [SUMM_x])) (--`2 * SUMM (\x. x) 1 30`--);
+(* Total runtime: 1.890189 *)
+
+(SIMP_CONV (reduce_ss addrewrs [SUMM_x])) (--`2 * SUMM (\x. x) 1 40`--);
+(* Total runtime: 3.290329 *)
+
+(SIMP_CONV (reduce_ss addrewrs [SUMM_x])) (--`2 * SUMM (\x. x) 1 50`--);
+(* Total runtime: 5.100510 *)
+(* val it = |- 2 * SUMM (\x. x) 1 50 = 2550 : thm *)
+
+(SIMP_CONV summl_ss) (--`SUMM (\x. x*y*y) 1 3`--);
+
+(* Total runtime: 0.720072 *)
+(* val it = |- SUMM (\x. x * y * y) 1 3 = 6 * y * y : thm *)
+
+(SIMP_CONV summl_ss) (--`SUMM (\x. x*y*y) 1 10`--);
+
+(* Total runtime: 5.220522 *)
+(* val it = |- SUMM (\x. x * y * y) 1 10 = 55 * y * y : thm *)
+
+
+
+@

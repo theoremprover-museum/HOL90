@@ -1,0 +1,123 @@
+<TITLE>Theory: ascii</TITLE>
+<H1>Theory: ascii</H1>
+<H1>Parents</H1>
+    <UL>
+    <LI><A HREF = "HOL.html"><STRONG>HOL</STRONG></A>
+    </UL>
+
+
+<HR>
+<H1>Type constants</H1>
+    <UL>
+    <LI><STRONG>ascii</STRONG>(Arity = 0)
+    </UL>
+
+
+<HR>
+<H1>Term constants</H1>
+    <UL>
+    <LI><STRONG>REP_ascii</STRONG><EM>:ascii ->
+                                       (bool # bool # bool # bool # bool #
+                                       bool # bool # bool) ltree</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>ABS_ascii</STRONG><EM>:(bool # bool # bool # bool # bool #
+                                       bool # bool # bool) ltree -> ascii</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>ASCII</STRONG><EM>:bool -> bool -> bool -> bool -> bool ->
+                                   bool -> bool -> bool -> ascii</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    </UL>
+
+
+<HR>
+<H1>Axioms</H1>
+<DL>
+
+</DL>
+
+
+<HR>
+<H1>Definitions</H1>
+<DL>
+<DT><STRONG>ascii_TY_DEF</STRONG>
+<DD>
+<PRE>
+|- ?rep.
+     TYPE_DEFINITION
+       (TRP
+         (\v tl.
+           (?b0 b1 b2 b3 b4 b5 b6 b7. v = (b0,b1,b2,b3,b4,b5,b6,b7)) /\
+           (LENGTH tl = 0)))
+       rep
+</PRE>
+
+<DT><STRONG>ascii_ISO_DEF</STRONG>
+<DD>
+<PRE>
+|- (!a. ABS_ascii (REP_ascii a) = a) /\
+   (!r.
+     TRP
+       (\v tl.
+         (?b0 b1 b2 b3 b4 b5 b6 b7. v = (b0,b1,b2,b3,b4,b5,b6,b7)) /\
+         (LENGTH tl = 0))
+       r =
+     REP_ascii (ABS_ascii r) =
+     r)
+</PRE>
+
+<DT><STRONG>ASCII_DEF</STRONG>
+<DD>
+<PRE>
+|- !b0 b1 b2 b3 b4 b5 b6 b7.
+     ASCII b0 b1 b2 b3 b4 b5 b6 b7 =
+     ABS_ascii (Node (b0,b1,b2,b3,b4,b5,b6,b7) [])
+</PRE>
+
+</DL>
+
+
+<HR>
+<H1>Theorems</H1>
+<DL>
+<DT><STRONG>ascii_Axiom</STRONG>
+<DD>
+<PRE>
+|- !f.
+     ?!fn.
+       !b0 b1 b2 b3 b4 b5 b6 b7.
+         fn (ASCII b0 b1 b2 b3 b4 b5 b6 b7) = f b0 b1 b2 b3 b4 b5 b6 b7
+</PRE>
+
+<DT><STRONG>ascii_Induct</STRONG>
+<DD>
+<PRE>
+|- !P.
+     (!b0 b1 b2 b3 b4 b5 b6 b7. P (ASCII b0 b1 b2 b3 b4 b5 b6 b7)) ==>
+     (!a. P a)
+</PRE>
+
+<DT><STRONG>ascii_CASES</STRONG>
+<DD>
+<PRE>
+|- !a. ?b0 b1 b2 b3 b4 b5 b6 b7. a = ASCII b0 b1 b2 b3 b4 b5 b6 b7
+</PRE>
+
+<DT><STRONG>ASCII_11</STRONG>
+<DD>
+<PRE>
+|- !b0 b1 b2 b3 b4 b5 b6 b7 b0' b1' b2' b3' b4' b5' b6' b7'.
+     (ASCII b0 b1 b2 b3 b4 b5 b6 b7 = ASCII b0' b1' b2' b3' b4' b5' b6' b7') =
+     (b0 = b0') /\
+     (b1 = b1') /\
+     (b2 = b2') /\
+     (b3 = b3') /\
+     (b4 = b4') /\
+     (b5 = b5') /\
+     (b6 = b6') /\
+     (b7 = b7')
+</PRE>
+
+</DL>
+
+
+<HR>

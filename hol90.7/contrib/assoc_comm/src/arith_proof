@@ -1,0 +1,116 @@
+(* approx. 40% reduction in the proof size *)
+
+val ADD_RW_TAC = AC_Rewrite.AC_REWRITE_TAC ac_eqns;
+
+local
+val p = (--`p:num`--) and n = (--`n:num`--)
+and p' = (--`p':num`--) and n' = (--`n':num`--);
+in
+val it = prove(--`!p n p' n'. (proj(p,n) = proj(p',n')) = (p + n' = p' + n)`--,
+REPEAT GEN_TAC THEN PURE_ONCE_REWRITE_TAC[PROJ_DEF] THEN
+COND_CASES_TAC THEN COND_CASES_TAC THEN
+PURE_ONCE_REWRITE_TAC [(SYM(SPEC_ALL thm1))] THEN
+ASM_REWRITE_TAC[thm5,thm6,PAIR_EQ,(SYM_CONV (--`0 = m`--)),SUB_EQ_0] 
+THENL
+[(* Case 1: n < p and n' < p' *)
+ (ASSUME_TAC (UNDISCH(SPECL [n,p]LESS_IMP_LESS_OR_EQ)) THEN
+  ASSUME_TAC (UNDISCH(SPECL [n',p']LESS_IMP_LESS_OR_EQ)) THEN
+  NEW_SUBST1_TAC
+    (SYM (UNDISCH (SPECL [(--`p - n`--),n',p'] ADD_EQ_SUB))) THEN
+  NEW_SUBST1_TAC (UNDISCH (SPEC_ALL SUB_ADD_ADD_SUB)) THEN
+  NEW_SUBST1_TAC (SYM_CONV (--`(p + n') - n = p'`--)) THEN
+  NEW_SUBST1_TAC (SYM_CONV (--`p + n' = p' + n`--)) THEN
+  NEW_MATCH_ACCEPT_TAC
+    (SYM (UNDISCH (SPECL [p',n,(--`(p + n')`--)] ADD_EQ_SUB))) THEN
+  NEW_MATCH_ACCEPT_TAC
+    (UNDISCH (SPEC_ALL LESS_EQ_IMP_LESS_EQ_ADD))),
+ (* Case 2:  n < p  and  ~(n' < p') *)
+ (ASM_REWRITE_TAC [SYM(SPEC_ALL NOT_LESS)] THEN
+  ASSUME_TAC
+    (PURE_ONCE_REWRITE_RULE[NOT_LESS](ASSUME (--`~(n' < p')`--))) THEN
+  STRIP_ASSUME_TAC (UNDISCH (SPECL [p,n] LESS_ADD_1)) THEN
+  DISJ_CASES_TAC
+    (PURE_ONCE_REWRITE_RULE [LESS_OR_EQ] (ASSUME (--`p' <= n'`--))) 
+  THENL
+  [(* p' < n' *)   STRIP_ASSUME_TAC (UNDISCH (SPECL [n',p'] LESS_ADD_1)),
+   (* p' = n' *)   ALL_TAC]
+  THEN
+  ASM_REWRITE_TAC[] THEN
+  ADD_RW_TAC [ADD_INV_0_EQ,GSYM SUC_NOT, GSYM ADD1]),
+ (* Case 3: n' < p' and  ~(n < p)  *)
+ (ASM_REWRITE_TAC [SYM(SPEC_ALL NOT_LESS)] THEN
+  ASSUME_TAC
+    (PURE_ONCE_REWRITE_RULE[NOT_LESS](ASSUME (--`~(n < p)`--))) THEN
+  STRIP_ASSUME_TAC (UNDISCH (SPECL [p',n'] LESS_ADD_1)) THEN
+  DISJ_CASES_TAC
+    (PURE_ONCE_REWRITE_RULE [LESS_OR_EQ] (ASSUME (--`p <= n`--))) THENL
+  [(* p < n *)  STRIP_ASSUME_TAC (UNDISCH (SPECL [n,p] LESS_ADD_1)),
+   (* p' = n' *) ALL_TAC] THEN
+  ASM_REWRITE_TAC[] THEN
+  CONV_TAC (ONCE_DEPTH_CONV SYM_CONV) THEN
+  ADD_RW_TAC [ADD_INV_0_EQ,GSYM SUC_NOT, GSYM ADD1]),
+ (* Case 4: n < p and n' < p' *)
+ (ASSUME_TAC
+    (PURE_ONCE_REWRITE_RULE[NOT_LESS](ASSUME (--`~(n < p)`--))) THEN
+  ASSUME_TAC
+    (PURE_ONCE_REWRITE_RULE[NOT_LESS](ASSUME (--`~(n' < p')`--))) THEN
+  PURE_ONCE_REWRITE_TAC[ADD_SYM] THEN
+  NEW_SUBST1_TAC
+    (SYM (UNDISCH (SPECL [(--`n - p`--),p',n'] ADD_EQ_SUB))) THEN
+  NEW_SUBST1_TAC (UNDISCH (SPECL [n,p,p'] SUB_ADD_ADD_SUB)) THEN
+  NEW_SUBST1_TAC (SYM_CONV (--`(n + p') - p = n'`--)) THEN
+  NEW_MATCH_ACCEPT_TAC
+    (SYM (UNDISCH (SPECL [n',p,(--`(n + p')`--)] ADD_EQ_SUB))) THEN
+  NEW_MATCH_ACCEPT_TAC
+    (UNDISCH (SPEC_ALL LESS_EQ_IMP_LESS_EQ_ADD)))])
+end;
+
+
+
+
+local 
+val thm = theorem "arithmetic"
+in
+val CANCEL = AC_CANCEL_TAC [{A=thm"ADD_ASSOC", C=thm"ADD_SYM"},
+                            {A=thm"MULT_ASSOC",C=thm"MULT_SYM"}]
+end;
+
+**********************************************************************
+local
+    val EQ_MONO_ADD_EQ1 = PURE_ONCE_REWRITE_RULE[ADD_SYM] EQ_MONO_ADD_EQ
+    val M = (--`M:integer`--) and N = (--`N:integer`--)
+    and P = (--`P:integer`--)
+in
+val RIGHT_PLUS_DISTRIB = store_thm("RIGHT_PLUS_DISTRIB",
+(--`!M N P. (M plus N) times P = (M times P) plus (N times P)`--),
+REPEAT GEN_TAC THEN
+STRIP_ASSUME_TAC (SPEC M PROJ_ONTO) THEN
+STRIP_ASSUME_TAC (SPEC N PROJ_ONTO) THEN
+STRIP_ASSUME_TAC (SPEC P PROJ_ONTO)THEN
+ASM_REWRITE_TAC[PROJ_PLUS,PROJ_TIMES,RIGHT_ADD_DISTRIB,PROJ_EQ] THEN
+PURE_REWRITE_TAC[SYM(SPEC_ALL ADD_ASSOC),EQ_MONO_ADD_EQ1] THEN
+PURE_REWRITE_TAC[ADD_ASSOC,EQ_MONO_ADD_EQ] THEN
+NEW_SUBST1_TAC (SPECL [(--`p' * p''`--),(--`n * n''`--)] ADD_SYM) THEN
+PURE_REWRITE_TAC[SYM(SPEC_ALL ADD_ASSOC),EQ_MONO_ADD_EQ1] THEN
+MATCH_ACCEPT_TAC ADD_SYM)
+end;
+
+**********************************************************************
+can be replaced by
+
+**********************************************************************
+local
+val M = (--`M:integer`--) and N = (--`N:integer`--)
+and P = (--`P:integer`--)
+in
+val RIGHT_PLUS_DISTRIB = prove
+(--`!M N P. (M plus N) times P = (M times P) plus (N times P)`--,
+REPEAT GEN_TAC THEN
+STRIP_ASSUME_TAC (SPEC M PROJ_ONTO) THEN
+STRIP_ASSUME_TAC (SPEC N PROJ_ONTO) THEN
+STRIP_ASSUME_TAC (SPEC P PROJ_ONTO)THEN
+ASM_REWRITE_TAC[PROJ_PLUS,PROJ_TIMES,RIGHT_ADD_DISTRIB,PROJ_EQ] THEN
+CANCEL)
+end;
+
+**********************************************************************

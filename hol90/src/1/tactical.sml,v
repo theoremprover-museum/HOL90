@@ -1,0 +1,674 @@
+head	1.5;
+access;
+symbols
+	HOL97:1.2.0.4
+	bpHOL97:1.2
+	hol90_9_alpha:1.2
+	hol90_pre8_for_multiple_compilers:1.2.0.2
+	hol90_pre8_after_donalds_separate_compilation_changes:1.2
+	hol90_8_after_merging_Konrad_Elsa:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.5
+date	96.02.08.00.36.23;	author drs1004;	state Exp;
+branches;
+next	1.4;
+
+1.4
+date	96.01.04.13.48.59;	author drs1004;	state Exp;
+branches;
+next	1.3;
+
+1.3
+date	95.12.18.11.36.40;	author drs1004;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	95.10.31.15.05.31;	author drs1004;	state Exp;
+branches
+	1.2.4.1;
+next	1.1;
+
+1.1
+date	95.10.16.13.30.18;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.30.18;	author rjb;	state Exp;
+branches;
+next	;
+
+1.2.4.1
+date	97.06.11.17.50.34;	author kxs;	state Exp;
+branches;
+next	1.2.4.2;
+
+1.2.4.2
+date	97.07.11.15.16.19;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.5
+log
+@New theory mechanism, code reorganisation and other enhancements by Don Syme.
+@
+text
+@(* ===================================================================== *)
+(* FILE          : tactical.sml                                          *)
+(* DESCRIPTION   : Functions that glue tactics together. From LCF, and   *)
+(*                 added to through the years. Translated from hol88.    *)
+(*                                                                       *)
+(* AUTHORS       : (c) University of Edinburgh and                       *)
+(*                     University of Cambridge, for hol88                *)
+(* TRANSLATOR    : Konrad Slind, University of Calgary                   *)
+(* DATE          : September 11, 1991                                    *)
+(* ===================================================================== *)
+
+
+structure Tactical :Tactical_sig =
+struct
+
+structure Thm = Thm;
+open Lib
+open Thm;
+
+val ERR = Exception.ERR "Tactical";
+val WRAP_ERR = Exception.WRAP_ERR "Tactical";
+    
+
+(* TAC_PROOF (g,tac) uses tac to prove the goal g *)
+fun TAC_PROOF (g,tac) =
+   case (tac g)
+       of ([],p) => p []
+     | (gls,_) => ERR("TAC_PROOF","unsolved goals still exist");
+	   
+
+
+fun prove(t,tac) = 
+    case tac ([],t)
+	 of ([],p) => optimize_thm(p [])
+       | (gls,_) => 
+	     let val string = foldl (fn ((_,gl),s) => s^"   "^
+				     Hol_pp.term_to_string gl^
+				     "\n") "" gls
+	     in ERR("prove", (int_to_string (length gls))^
+		    " unsolved goal(s) still exist:\n"^
+		    string)
+	     end;
+	 
+       
+       
+
+(* Provide a function (tactic) with the current assumption list
+*)
+fun ASSUM_LIST aslfun (asl,w) =
+    aslfun (map ASSUME asl) (asl,w);
+
+(* Pop the first assumption and give it to a function (tactic) *)
+fun POP_ASSUM thfun ((assum::asl), w) = 
+               thfun (ASSUME assum) (asl,w);
+
+(* Pop off the entire assumption list and give it to a function (tactic) *)
+fun POP_ASSUM_LIST asltac (asl,w) =  
+                    asltac (map ASSUME asl) ([],w);
+
+fun mapshape [] _ _ =  []
+  | mapshape (n1::nums) (f1::funcs) args = 
+       let val (f1_args,args') = split_after n1 args
+       in 
+       (f1 f1_args)::(mapshape nums funcs args')
+       end;
+
+
+infix THEN;
+infix THENL;
+infix ORELSE;
+
+(*
+ * fun (tac1:tactic) THEN (tac2:tactic) : tactic = fn g =>
+ *    let val (gl,p) = tac1 g 
+ *        val (gll,pl) = unzip(map tac2 gl) 
+ *    in
+ *    (flatten gll, (p o mapshape(map length gll)pl))
+ *    end;
+ *******)
+
+(* fun (tac1:tactic) THEN (tac2:tactic) :tactic = fn g =>
+ *    let val (gl,vf) = tac1 g
+ *        val (G,V,lengths) = 
+ *           itlist (fn goal => fn (G,V,lengths) =>
+ *                     case (tac2 goal) 
+ *                       of ([],vfun) => let val th = vfun []
+ *                                       in
+ *                                       (G, (fn [] => th)::V, 0::lengths)
+ *                                       end
+ *                        | (goals,vfun) => (goals@@G, vfun::V, 
+ *                                           (length goals)::lengths))
+ *                  gl ([],[],[])
+ *    in
+ *    case G
+ *      of [] => ([], let val th = vf (map (fn f => f[]) V)
+ *                    in
+ *                    fn [] => th
+ *                    end)
+ *       | _ => (G, (vf o mapshape lengths V))
+ *    end;
+ ************)
+
+fun tac1 THEN tac2 = fn g =>
+   let val (gl,vf) = tac1 g
+   in case (itlist (fn goal => fn (G,V,lengths) =>
+                    case (tac2 goal) 
+                      of ([],vfun) => let val th = vfun []
+                                      in
+                                      (G, (fn [] => th)::V, 0::lengths)
+                                      end
+                       | (goals,vfun) => (goals@@G, vfun::V, 
+                                          (length goals)::lengths))
+                 gl ([],[],[]))
+        of ([],V,_) => ([], let val th = vf (map (fn f => f[]) V)
+                            in fn [] => th
+                            end)
+         | (G,V,lengths) => (G, (vf o mapshape lengths V))
+   end
+handle e => WRAP_ERR("THEN",e);
+		    
+
+
+(*
+ * fun (tac1:tactic) THENL (tac2l : tactic list) : tactic = fn g =>
+ *    let val (gl,p) = tac1 g  
+ *        val tac2gl = zip tac2l gl 
+ *        val (gll,pl) = unzip (map (fn (tac2,g) => tac2 g) tac2gl)
+ *    in
+ *    (flatten gll, p o mapshape(map length gll) pl)
+ *    end
+ *    handle HOL_ERR{origin_structure,origin_function,message} =>
+ *        ERR("THENL",
+ * 			  (origin_structure^"."^origin_function^": "
+ * 				     ^message)};
+ *******)
+fun tac1 THENL tacl = fn g =>
+   let val (gl,vf) = tac1 g
+       val (G,V,lengths) = 
+          itlist2 (fn goal => fn tac => fn (G,V,lengths) =>
+                    case (tac goal) 
+                      of ([],vfun) => let val th = vfun []
+                                      in
+                                      (G, (fn [] => th)::V, 0::lengths)
+                                      end
+                       | (goals,vfun) => (goals@@G, vfun::V, 
+                                          (length goals)::lengths))
+                 gl tacl ([],[],[])
+   in
+   case G
+     of [] => ([], let val th = vf (map (fn f => f[]) V)
+                   in
+                   fn [] => th
+                   end)
+      | _ => (G, (vf o mapshape lengths V))
+   end
+handle e => WRAP_ERR ("THENL",e);
+    
+
+fun tac1 ORELSE tac2 = 
+   fn g => (tac1 g) handle _ => tac2 g ;
+
+(*---------------------------------------------------------------------
+ * Fail with the given token.  Useful in tactic programs to check that a 
+ *  tactic produces no subgoals.  Write
+ *
+ *	TAC  THEN  FAIL_TAC "TAC did not solve the goal"
+ *--------------------------------------------------------------------*)
+
+fun FAIL_TAC tok g = ERR("FAIL_TAC", tok);
+
+(* Tactic that succeeds on no goals;  identity for ORELSE *)
+val NO_TAC = FAIL_TAC "NO_TAC";
+
+(* Tactic that succeeds on all goals;  identity for THEN *)
+fun ALL_TAC g = ([g],hd);
+
+fun TRY tac = tac ORELSE ALL_TAC;
+
+(* The abstraction around g is essential to avoid looping, due to applicative
+   order semantics
+*)
+fun REPEAT tac g = ((tac THEN REPEAT tac) ORELSE ALL_TAC) g ;
+
+
+
+(*-----------------------------------------------------------------------
+ * Check the goal list and proof returned by a tactic.
+ *    At top-level, it is convenient to type "chktac it;"
+ * 
+ *    MJCG 17/1/89 for HOL88: mk_thm used instead of mk_f This
+ *    introduces slight insecurity into the system, but since chktak
+ *    is assignable this insecurity can be removed by doing:
+ * 
+ *    chktak := fn (gl,prf) => ERR("chktac", "");
+ *---------------------------------------------------------------------*)
+
+val chktac = 
+    ref (fn (gl,prf:Thm.thm list -> Thm.thm) => prf(map mk_tac_thm gl));
+
+(* Check whether a theorem achieves a goal, using no extra assumptions *)
+fun achieves th (asl,w) =
+    (Term.aconv (concl th) w) andalso
+    (all (fn h => (exists (Term.aconv h)) asl) (hyp th));
+
+(* Check whether a prospective (goal list, proof) pair is valid.
+ *  MJCG 17/1/89 for HOL88: "falsity.asl" changed to "asl".
+ *******)
+fun check_valid (asl,w) tac_res  =
+   achieves ((!chktac) tac_res) (asl, w);
+
+(*--------------------------------------------------------------------------
+ * Tactical to make any tactic valid.
+ *    "VALID tac" is the same as "tac", except it will fail in the cases where
+ *    "tac" returns an invalid proof. 
+ * 
+ *    VALID uses mk_thm; the proof could assign its arguments to 
+ *    global theorem variables, making them accessible outside.
+ * 
+ *    This kind of insecurity is very unlikely to lead to accidental proof of 
+ *    false theorems; see comment preceding check_valid for how to remove 
+ *    insecurity.
+ * 
+ *    Previously mk_fthm was used by check_valid instead of mk_thm (see 
+ *    hol-drule.ml), but this lead to problems with tactics (like resolution) 
+ *    that checked for "F". A possible solution would be to use another 
+ *    constant that was defined equal to F.
+ *--------------------------------------------------------------------------*)
+fun VALID tac g =
+   let val tac_res = tac g 
+   in if check_valid g tac_res
+      then tac_res
+      else ERR("VALID","Invalid tactic")
+   end;
+
+(* Tactical quantifiers -- Apply a list of tactics in succession. *)
+
+
+(* Uses every tactic.
+ *    EVERY [TAC1;...;TACn] =  TAC1  THEN  ...  THEN  TACn
+ ********)
+fun EVERY tacl = itlist (curry (op THEN)) tacl ALL_TAC;
+
+
+(* Uses first tactic that succeeds.
+ *    FIRST [TAC1;...;TACn] =  TAC1  ORELSE  ...  ORELSE  TACn
+ ***********)
+local
+exception NO_ANSWER
+fun first_answer f [] = raise NO_ANSWER
+  | first_answer f (a::rst) = (f a) 
+                              handle _ => first_answer f rst;
+in
+fun FIRST tacl = 
+   fn g => first_answer (fn tac => tac g) tacl
+           handle _ => NO_TAC g
+end;
+
+fun MAP_EVERY tacf lst  =  EVERY (map tacf lst);
+
+fun MAP_FIRST tacf lst =  FIRST (map tacf lst);
+
+
+(*Call a thm-tactic for every assumption *)
+val EVERY_ASSUM = ASSUM_LIST o MAP_EVERY;
+
+
+(* Call a thm-tactic for the first assumption at which it succeeds. *)
+fun FIRST_ASSUM ttac = fn (A,g)  =>
+   let fun find ttac [] = ERR("FIRST_ASSUM","The tactic did not succeed for any of the assumptions")
+         | find ttac (a::L) = ttac (ASSUME a) (A,g)
+                              handle _ => find ttac L
+   in
+   find ttac A
+   end;
+
+
+
+(* Split off a new subgoal and provide it as a theorem to a tactic
+ * 
+ *     SUBGOAL_THEN wa (\tha. tac)
+ * 
+ * makes a subgoal of wa, and also assumes wa for proving the original goal.
+ * Most convenient when the tactic solves the original goal, leaving only the
+ * new subgoal wa.
+ ***********)
+fun SUBGOAL_THEN wa ttac (asl,w) =
+    let val (gl,p) = ttac (ASSUME wa) (asl,w) 
+    in
+    ((asl,wa)::gl,(fn (tha::thl) => Drule.PROVE_HYP tha (p thl)))
+    end;
+
+(* A tactical that makes a tactic fail if it has no effect *)
+fun CHANGED_TAC tac g =
+ let val (gl,p) = tac g
+ in if (set_eq gl [g]) 
+    then ERR("CHANGED_TAC", "The goal did not change")
+    else (gl,p)
+ end;
+
+end;  (* Tactical *)
+@
+
+
+1.4
+log
+@Added simplifier components, added drule files, added MK_ABS_CONV, better error messages
+@
+text
+@d20 1
+a20 1
+val TACTICAL_ERR = Exception.ERR "Tactical";
+d28 1
+a28 1
+     | (gls,_) => TACTICAL_ERR("TAC_PROOF","unsolved goals still exist");
+d33 14
+a46 16
+    case (tac ([],t))
+       of ([],p) => optimize_thm(p [])
+     | (gls,_) => 
+	   let val string = foldl (fn ((_,gl),s) => s^"   "^
+				   Hol_pp.term_to_string gl^
+				   "\n") "" gls
+	   in TACTICAL_ERR("prove",
+			   (int_to_string (length gls))^
+			   " unsolved goal(s) still exist:\n"^
+			   string)
+	   end;
+
+fun store_thm (name, tm, tac) = 
+    Theory.save_thm (name, prove (tm, tac))
+    handle e => WRAP_ERR("store_thm ("^name^")",e);
+    
+d132 1
+a132 1
+ *        TACTICAL_ERR("THENL",
+d169 1
+a169 1
+fun FAIL_TAC tok g = TACTICAL_ERR("FAIL_TAC", tok);
+d194 1
+a194 1
+ *    chktak := fn (gl,prf) => TACTICAL_ERR("chktac", "");
+d232 1
+a232 1
+      else TACTICAL_ERR("VALID","Invalid tactic")
+d269 1
+a269 1
+   let fun find ttac [] = TACTICAL_ERR("FIRST_ASSUM","The tactic did not succeed for any of the assumptions")
+d296 1
+a296 1
+    then TACTICAL_ERR("CHANGED_TAC", "The goal did not change")
+@
+
+
+1.3
+log
+@Preterm and other changes, see 7.changes
+@
+text
+@a16 1
+(* open Base_logic - no longer needed DRS *)
+a19 6
+type tactic = Abbrev.tactic;
+type thm_tactic = Abbrev.thm_tactic;
+type thm_tactical = Abbrev.thm_tactical;
+type goal = Abbrev.goal;
+
+
+d51 1
+a51 1
+fun ASSUM_LIST (aslfun: (thm list -> tactic)) (asl,w) =
+d59 1
+a59 1
+fun POP_ASSUM_LIST (asltac: thm list -> tactic) (asl,w) =  
+d138 1
+a138 1
+fun (tac1:tactic) THENL (tacl:tactic list) :tactic = fn g =>
+d161 1
+a161 1
+fun (tac1:tactic) ORELSE (tac2:tactic) :tactic = 
+d171 1
+a171 1
+fun FAIL_TAC tok (g:goal) = TACTICAL_ERR("FAIL_TAC", tok);
+a186 5
+(* Check whether a theorem achieves a goal, using no extra assumptions *)
+fun achieves th ((asl,w):goal) =
+    (Term.aconv (concl th) w) andalso
+    (all (fn h => (Portable.List.exists (Term.aconv h)) asl) (hyp th));
+
+d199 7
+a205 2
+val chktac = ref 
+   (fn (gl,(prf:thm list -> thm)) => prf(map mk_tac_thm gl));
+d210 1
+a210 1
+fun check_valid ((asl,w):goal) (tac_res)  =
+d230 1
+a230 1
+fun VALID (tac:tactic) :tactic = fn (g:goal) =>
+d255 1
+a255 1
+fun FIRST (tacl: tactic list): tactic = 
+d266 1
+a266 1
+val EVERY_ASSUM : thm_tactic -> tactic = ASSUM_LIST o MAP_EVERY;
+d270 1
+a270 1
+fun FIRST_ASSUM (ttac:thm->tactic): tactic = fn (A,g)  =>
+d288 1
+a288 1
+fun SUBGOAL_THEN wa (ttac: thm_tactic) (asl,w) =
+d295 1
+a295 1
+fun CHANGED_TAC (tac:tactic) g =
+@
+
+
+1.2
+log
+@First phase of hol90.8 development.  hol90 now compiles using NJSML-CM
+108.5, with separate compilation of libraries.  System dependencies
+have been isolated in the makefiles and "portable.sml".
+
+This involved a large number of enhancments to the source files,
+most of which are documented in the 7.changes file (or will be shortly).
+See also the correpsonding email corrspondence between RJB, KLS, TFM,
+JRH and DRS that happened during this development.
+@
+text
+@a16 1
+open Exception
+d27 3
+a29 4
+fun TACTICAL_ERR{function,message} = HOL_ERR{origin_structure = "Tactical",
+					     origin_function = function,
+					     message = message}
+
+d34 21
+a54 7
+     of ([],p) => p []
+      |     _  => raise TACTICAL_ERR{function = "TAC_PROOF",
+				     message = "unsolved goals"};
+
+
+fun prove(t,tac) = TAC_PROOF(([],t), tac);
+fun store_thm (name, tm, tac) = Theory.save_thm (name, prove (tm, tac));
+d128 2
+a129 3
+   handle HOL_ERR{origin_structure,origin_function,message}
+   => raise TACTICAL_ERR{function = "THEN",
+                message = (origin_structure^"."^origin_function^": "^message)};
+d141 2
+a142 2
+ *        raise TACTICAL_ERR{function = "THENL",
+ * 			  message = (origin_structure^"."^origin_function^": "
+d165 2
+a166 4
+   handle HOL_ERR{origin_structure,origin_function,message}
+   => raise TACTICAL_ERR{function = "THENL",
+                         message = (origin_structure^"."^origin_function^": "
+                                   ^message)};
+d171 6
+a176 2
+(* Fail with the given token.  Useful in tactic programs to check that a 
+   tactic produces no subgoals.  Write
+d178 1
+a178 4
+	TAC  THEN  FAIL_TAC "TAC did not solve the goal"
+*)
+fun FAIL_TAC tok (g:goal) = raise TACTICAL_ERR{function = "FAIL_TAC",
+					       message = tok};
+d184 1
+a184 1
+val ALL_TAC:tactic = fn (g:goal) => ([g],hd);
+d193 1
+d200 2
+a201 1
+(* Check the goal list and proof returned by a tactic.
+d208 2
+a209 3
+ *    chktak := fn (gl,prf) => raise TACTICAL_ERR{function = "chktac",
+ *                                                message = ""};
+ *********)
+d220 2
+a221 1
+(* Tactical to make any tactic valid.
+d236 1
+a236 1
+ ****************************)
+d241 1
+a241 1
+      else raise TACTICAL_ERR{function = "VALID",message = "Invalid tactic"}
+d278 1
+a278 2
+   let fun find ttac [] = raise TACTICAL_ERR{function = "FIRST_ASSUM",
+					     message = ""}
+d305 1
+a305 1
+    then raise TACTICAL_ERR{function = "CHANGED_TAC", message = "no change"}
+@
+
+
+1.2.4.1
+log
+@Various updates have been made in order to build on top of SML/NJ 109.26.
+@
+text
+@d171 1
+a171 1
+fun NO_TAC g = FAIL_TAC "NO_TAC" g;
+d189 1
+a189 2
+(*---------------------------------------------------------------------------
+ * Check the goal list and proof returned by a tactic.
+d198 1
+a198 1
+ *---------------------------------------------------------------------------*)
+d203 1
+a203 2
+(*---------------------------------------------------------------------------
+ * Check whether a prospective (goal list, proof) pair is valid.
+d205 1
+a205 1
+ *---------------------------------------------------------------------------*)
+@
+
+
+1.2.4.2
+log
+@Minor changes to make HOL CM-friendly.
+@
+text
+@a15 1
+open CoreHol;
+a16 1
+
+d18 1
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d16 10
+a25 1
+open Base_logic;
+a26 1
+structure Thm = Base_logic.Thm;
+d34 1
+a34 1
+fun TAC_PROOF (g,(tac:tactic)) =
+d46 2
+a47 2
+fun ASSUM_LIST (aslfun: (Thm.thm list -> tactic)) ((asl,w):goal) =
+    aslfun (map Thm.ASSUME asl) (asl,w);
+d50 2
+a51 2
+fun POP_ASSUM (thfun: thm_tactic) (((assum::asl), w):goal) = 
+               thfun (Thm.ASSUME assum) (asl,w);
+d54 2
+a55 2
+fun POP_ASSUM_LIST (asltac: Thm.thm list -> tactic) ((asl,w):goal) =  
+                    asltac (map Thm.ASSUME asl) ([],w);
+d100 1
+a100 1
+fun (tac1:tactic) THEN (tac2:tactic) :tactic = fn g =>
+d185 2
+a186 2
+    (Term.aconv (Thm.concl th) w) andalso
+    (all (fn h => (exists (Term.aconv h)) asl) (Thm.hyp th));
+d192 1
+a192 1
+ *    MJCG 17/1/89 for HOL88: mk_thm used instead of mk_fthm. This
+d201 1
+a201 1
+   (fn (gl,(prf:Thm.thm list -> Thm.thm)) => prf(map Thm.mk_tac_thm gl));
+d265 1
+a265 1
+fun FIRST_ASSUM (ttac:Thm.thm->tactic): tactic = fn (A,g)  =>
+d268 1
+a268 1
+         | find ttac (a::L) = ttac (Thm.ASSUME a) (A,g)
+d285 1
+a285 1
+    let val (gl,p) = ttac (Thm.ASSUME wa) (asl,w) 
+d293 1
+a293 1
+ in if (Lib.set_eq gl [g]) 
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

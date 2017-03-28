@@ -1,0 +1,22 @@
+#!/bin/csh
+#
+# Usage	 make_more_arithmetic <hol90>
+#
+
+if ("$1" == "") then
+    set hol90 = hol90
+else
+    set hol90    = $1
+endif
+
+set theories = (ineq zero_ineq suc add sub pre mult min_max odd_even div_mod more_arithmetic)
+
+cd theories/src
+
+foreach f ( $theories )
+    echo -n Building theory $f...
+    $hol90 < mk_$f.sml
+    echo ' done.'
+end
+
+echo "hol90 more_arithmetic theories built."

@@ -1,0 +1,111 @@
+head	1.1;
+branch	1.1.1;
+access;
+symbols
+	HOL97:1.1.1.1.0.6
+	bpHOL97:1.1.1.1
+	hol90_9_alpha:1.1.1.1
+	hol90_pre8_for_multiple_compilers:1.1.1.1.0.4
+	hol90_pre8_after_donalds_separate_compilation_changes:1.1.1.1
+	hol90_8_after_merging_Konrad_Elsa:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	95.10.16.13.33.48;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.33.48;	author rjb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@\DOC CONV_TAC
+
+\TYPE {CONV_TAC : (conv -> tactic)}
+
+\SYNOPSIS
+Makes a tactic from a conversion.
+
+\KEYWORDS
+conversional, tactical.
+
+\DESCRIBE
+If {c} is a conversion, then {CONV_TAC c} is a tactic that applies {c} to the
+goal.  That is, if {c} maps a term {"g"} to the theorem {|- g = g'}, then the
+tactic {CONV_TAC c} reduces a goal {g} to the subgoal {g'}.  More precisely, if
+{c "g"} returns {A' |- g = g'}, then:
+{
+         A ?- g
+     ===============  CONV_TAC c
+         A ?- g'
+}
+\noindent Note that the conversion {c} should return a theorem whose
+assumptions are also among the assumptions of the goal (normally, the
+conversion will returns a theorem with no assumptions). {CONV_TAC} does not
+fail if this is not the case, but the resulting tactic will be invalid, so the
+theorem ultimately proved using this tactic will have more assumptions than
+those of the original goal.
+
+\FAILURE
+{CONV_TAC c} applied to a goal {A ?- g} fails if {c} fails when applied to the
+term {g}. The function returned by {CONV_TAC c} will also fail if the ML
+function {c:term->thm} is not, in fact, a conversion (i.e. a function that maps
+a term {t} to a theorem {|- t = t'}).
+
+\USES
+{CONV_TAC} is used to apply simplifications that can't be expressed as
+equations (rewrite rules).  For example, a goal can be simplified by
+beta-reduction, which is not expressible as a single equation, using the tactic
+{
+   CONV_TAC(DEPTH_CONV BETA_CONV)
+}
+\noindent The conversion {BETA_CONV} maps a beta-redex {"(\x.u)v"} to the
+theorem
+{
+   |- (\x.u)v = u[v/x]
+}
+\noindent and the ML expression {(DEPTH_CONV BETA_CONV)} evaluates to a
+conversion that maps a term {"t"} to the theorem {|- t=t'} where {t'} is
+obtained from {t} by beta-reducing all beta-redexes in {t}. Thus
+{CONV_TAC(DEPTH_CONV BETA_CONV)} is a tactic which reduces beta-redexes
+anywhere in a goal.
+
+\SEEALSO
+CONV_RULE.
+
+\ENDDOC
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

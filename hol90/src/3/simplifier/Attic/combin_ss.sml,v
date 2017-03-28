@@ -1,0 +1,89 @@
+head	1.2;
+access;
+symbols;
+locks; strict;
+comment	@# @;
+
+
+1.2
+date	96.02.08.00.48.50;	author drs1004;	state dead;
+branches;
+next	1.1;
+
+1.1
+date	96.01.04.14.14.17;	author drs1004;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.2
+log
+@New theory mechanism, code reorganisation and other enhancements by Don Syme.
+@
+text
+@
+(* =====================================================================
+ * Simpsets for Vanilla HOL
+ *
+ * =====================================================================*)
+
+signature Combin_ss_sig =
+sig
+	structure Simplifier : Simplifier_sig
+	val combin_ss : Simplifier.simpset
+	val COMBIN_ss : Simplifier.simpset
+
+end;
+
+
+structure Combin_ss : Combin_ss_sig =
+struct 
+  structure Simplifier = Simplifier;
+  open Simplifier;
+  infix ++
+  open Core;
+    infix |>
+  open Pure_ss;
+  open Bool_ss;
+
+  open HOL; (* create dependency on theory "HOL" *)
+
+  val COMBIN_ss =
+   pure_ss
+   ++ (map (theorem "combin") [
+      	"I_THM", 
+	"I_o_ID", 
+	"K_THM", 
+	"S_THM", 
+	"o_ASSOC", 
+	"o_THM"])
+
+  val combin_ss = merge_ss [bool_ss, COMBIN_ss];
+
+
+end; 
+
+
+
+
+
+
+
+
+
+
+
+
+@
+
+
+1.1
+log
+@Added simplifier components, added drule files, added MK_ABS_CONV, better error messages
+@
+text
+@@

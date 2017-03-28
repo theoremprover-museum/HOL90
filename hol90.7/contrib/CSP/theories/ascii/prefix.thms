@@ -1,0 +1,60 @@
+thid = (prefix, 784894873, 840873)
+axioms = []
+definitions =
+[((PREFIX),
+  [],
+  `((! :(string -> bool) -> bool) (\(a :string).
+   ((! :(process -> bool) -> bool) (\(P :process). ((==>
+   (((IN :string -> string set -> bool) $1) (ALPHA $0))) ((/\
+   (((= :string set -> string set -> bool) (ALPHA ((--> $1) $0)))
+   (ALPHA $0))) (((= :string list set -> string list set -> bool)
+   (TRACES ((--> $1) $0)))
+   (((UNION :string list set -> string list set -> string list set)
+   (((INSERT :string list -> string list set -> string list set)
+   (NIL :string list)) (EMPTY :string list set)))
+   ((GSPEC :(string list -> string list # bool) -> string list set)
+   (\(t :string list).
+   (((, :string list -> bool -> string list # bool)
+   (((CONS :string -> string list -> string list) $2) $0))
+   (((IN :string list -> string list set -> bool) $0) (TRACES
+   $1)))))))))))))`)]
+theorems =
+[((TRACES_PREFIX),
+  [],
+  `((! :(process -> bool) -> bool) (\(P :process).
+   ((! :(string -> bool) -> bool) (\(a :string). ((==>
+   (((IN :string -> string set -> bool) $0) (ALPHA $1)))
+   (((= :string list set -> string list set -> bool) (TRACES ((--> $0)
+   $1)))
+   (((UNION :string list set -> string list set -> string list set)
+   (((INSERT :string list -> string list set -> string list set)
+   (NIL :string list)) (EMPTY :string list set)))
+   ((GSPEC :(string list -> string list # bool) -> string list set)
+   (\(t :string list).
+   (((, :string list -> bool -> string list # bool)
+   (((CONS :string -> string list -> string list) $1) $0))
+   (((IN :string list -> string list set -> bool) $0) (TRACES
+   $2))))))))))))`),
+ ((ALPHA_PREFIX),
+  [],
+  `((! :(process -> bool) -> bool) (\(P :process).
+   ((! :(string -> bool) -> bool) (\(a :string). ((==>
+   (((IN :string -> string set -> bool) $0) (ALPHA $1)))
+   (((= :string set -> string set -> bool) (ALPHA ((--> $0) $1)))
+   (ALPHA $1)))))))`),
+ ((IS_PROCESS_PREFIX),
+  [],
+  `((! :(string -> bool) -> bool) (\(a :string).
+   ((! :(process -> bool) -> bool) (\(P :process). ((==>
+   (((IN :string -> string set -> bool) $1) (ALPHA $0))) (IS_PROCESS
+   (((, :string set -> string list set ->
+         string set # string list set) (ALPHA $0))
+   (((UNION :string list set -> string list set -> string list set)
+   (((INSERT :string list -> string list set -> string list set)
+   (NIL :string list)) (EMPTY :string list set)))
+   ((GSPEC :(string list -> string list # bool) -> string list set)
+   (\(t :string list).
+   (((, :string list -> bool -> string list # bool)
+   (((CONS :string -> string list -> string list) $2) $0))
+   (((IN :string list -> string list set -> bool) $0) (TRACES
+   $1)))))))))))))`)]

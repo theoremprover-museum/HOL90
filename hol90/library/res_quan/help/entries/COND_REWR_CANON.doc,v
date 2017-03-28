@@ -1,0 +1,104 @@
+head	1.1;
+branch	1.1.1;
+access;
+symbols
+	HOL97:1.1.1.1.0.6
+	bpHOL97:1.1.1.1
+	hol90_9_alpha:1.1.1.1
+	hol90_pre8_for_multiple_compilers:1.1.1.1.0.4
+	hol90_pre8_after_donalds_separate_compilation_changes:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	95.10.16.13.33.26;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.33.26;	author rjb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@\DOC COND_REWR_CANON
+
+\TYPE {COND_REWR_CANON : thm -> thm}
+
+\SYNOPSIS
+Transform a theorem into a form accepted by {COND_REWR_TAC}.
+
+\KEYWORDS
+derived rule, rewriting, conditional.
+
+\DESCRIBE
+{COND_REWR_CANON} transforms a theorem into a form accepted by {COND_REWR_TAC}.
+The input theorem should be an implication of the following form
+{
+   !x1 ... xn. P1[xi] ==> ... ==> !y1 ... ym. Pr[xi,yi] ==>
+     (!z1 ... zk. u[xi,yi,zi] = v[xi,yi,zi])
+}
+\noindent where each antecedent {Pi} itself may be a conjunction or
+disjunction. The output theorem will have all universal quantifications
+moved to the outer most level with possible renaming to prevent
+variable capture, and have all antecedents which are a conjunction
+transformed to implications. The output theorem will be in the
+following form
+{
+   !x1 ... xn y1 ... ym z1 ... zk. 
+    P11[xi] ==> ... ==> P1p[xi] ==> ... ==>
+     Pr1[xi,yi] ==> ... ==> Prq[x1,yi] ==> (u[xi,yi,zi] = v[xi,yi,zi])
+}
+
+\FAILURE
+This function fails if the input theorem is not in the correct form.
+
+\EXAMPLE
+{COND_REWR_CANON} transforms the built-in theorem {CANCL_SUB} into the
+form for conditional rewriting:
+{
+   #COND_REWR_CANON CANCEL_SUB;;
+   Theorem CANCEL_SUB autoloading from theory `arithmetic` ...
+   CANCEL_SUB = |- !p n m. p <= n /\ p <= m ==> ((n - p = m - p) = (n = m))
+
+   |- !p n m. p <= n ==> p <= m ==> ((n - p = m - p) = (n = m))
+}
+
+\SEEALSO
+COND_REWRITE1_TAC, COND_REWR_TAC, COND_REWRITE1_CONV, COND_REWR_CONV, 
+search_top_down.
+
+\ENDDOC
+
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

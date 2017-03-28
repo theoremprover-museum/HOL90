@@ -1,0 +1,124 @@
+head	1.2;
+access;
+symbols
+	HOL97:1.2.0.4
+	bpHOL97:1.2
+	hol90_9_alpha:1.2
+	hol90_pre8_for_multiple_compilers:1.2.0.2;
+locks; strict;
+comment	@# @;
+
+
+1.2
+date	95.11.17.12.14.44;	author rjb;	state Exp;
+branches
+	1.2.4.1;
+next	1.1;
+
+1.1
+date	95.11.17.10.43.12;	author rjb;	state Exp;
+branches;
+next	;
+
+1.2.4.1
+date	97.07.14.17.48.40;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.2
+log
+@Made "retrieve" library work with latest HOL90 by opening "Core" structure
+at the beginning of the library's structures. It was also necessary to make
+some changes in "name.sml" to fit in with the new definitions of "explode"
+and "implode" (which now use type "char").
+
+R.J.Boulton, 17th November 1995.
+@
+text
+@(****************************************************************************)
+(* FILE          : sets.sml                                                 *)
+(* DESCRIPTION   : Functions for treating lists as sets.                    *)
+(*                                                                          *)
+(* AUTHOR (HOL88): R.J.Boulton                                              *)
+(* DATE          : 1989                                                     *)
+(*                                                                          *)
+(* TRANSLATED BY : D.R.Syme                                                 *)
+(* DATE          : 1995                                                     *)
+(*                                                                          *)
+(* LAST MODIFIED : R.J.Boulton                                              *)
+(* DATE          : 17th November 1995                                       *)
+(****************************************************************************)
+
+structure RetrieveSets : RETRIEVE_SETS =
+struct
+
+open Core; (* open up all of the HOL 0/1 Core - could be replaced by more *)
+           (* explicit opens to avoid endless recompilation of libraries  *)
+           (* during system development                                   *)
+
+(*--------------------------------------------------------------------------*)
+(* no_rep : ''a list -> bool                                                *)
+(*                                                                          *)
+(* Function to determine whether a list contains any repetitions.           *)
+(*--------------------------------------------------------------------------*)
+
+fun no_rep [] = true
+  | no_rep (x::xs) = if (mem x xs) then false else no_rep xs;
+
+(*--------------------------------------------------------------------------*)
+(* remove_rep : ''a list -> ''a list                                        *)
+(*                                                                          *)
+(* Function to remove any repetitions in a list.                            *)
+(*--------------------------------------------------------------------------*)
+
+fun remove_rep [] = []
+  | remove_rep (x::xs) =
+   if (mem x xs)
+   then remove_rep xs
+   else x::(remove_rep xs);
+
+(*--------------------------------------------------------------------------*)
+(* is_subset : ''a list -> ''a list -> bool                                 *)
+(*                                                                          *)
+(* Function to determine if one list (containing no repetitions) is a       *)
+(* subset of another list (containing no repetitions).                      *)
+(*                                                                          *)
+(* The function tests if subl is a subset of l by subtracting (setwise) l   *)
+(* from subl. If this gives a null list, then subl is a subset of l.        *)
+(*--------------------------------------------------------------------------*)
+
+fun is_subset l subl = null (subtract subl l);
+
+end; (* RetrieveSets *)
+@
+
+
+1.2.4.1
+log
+@The "retrieve" library now loads under CM. The unified entrypoint for it is
+retrieveLib.
+@
+text
+@d18 3
+a20 1
+open Lib;
+@
+
+
+1.1
+log
+@Added library "retrieve", a theorem retrieval system.
+
+R.J.Boulton, 17th November 1995.
+@
+text
+@d12 1
+a12 1
+(* DATE          : 26th September 1995                                      *)
+d18 4
+@

@@ -1,0 +1,28 @@
+(* File: ModML/semantic_objects.txt *)
+
+(* Description: This file gives the grammar of the compound 
+   semantic objects used in the dynamic semantics of the ML 
+   Module system.  Mutually recursive sets of types have been 
+   grouped together. *)
+
+(* Reference: The "Definition", Section 7.2 *)
+
+
+(* nested mutually recursive set *)
+int ::= BASICint intenv (var set) (excon set)
+intenv ::= INTENV (((strid # int) list) finmap)
+
+(**************************)
+
+
+sigenv ::= SIGENV (sigid -> int lift)
+
+
+intbasis ::= INTBASIS sigenv intenv
+
+
+(*mutually recursive set *)
+funclos ::= FUNCLOS strid int strexp (int option) basis
+basis ::= BASIS funenv sigenv env
+funenv ::= FUNENV (((funid # funclos) list) finmap)
+(**************************)

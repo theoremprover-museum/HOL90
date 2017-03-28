@@ -1,0 +1,1033 @@
+<TITLE>Theory: TRANSC</TITLE>
+<H1>Theory: TRANSC</H1>
+<H1>Parents</H1>
+    <UL>
+    <LI><A HREF = "POWSER.html"><STRONG>POWSER</STRONG></A>
+    </UL>
+
+
+<HR>
+<H1>Type constants</H1>
+    <UL>
+    
+    </UL>
+
+
+<HR>
+<H1>Term constants</H1>
+    <UL>
+    <LI><STRONG>exp</STRONG><EM>:real -> real</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>sin</STRONG><EM>:real -> real</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>cos</STRONG><EM>:real -> real</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>ln</STRONG><EM>:real -> real</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>root</STRONG><EM>:num -> real -> real</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>sqrt</STRONG><EM>:real -> real</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>pi</STRONG><EM>:real</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>tan</STRONG><EM>:real -> real</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>asn</STRONG><EM>:real -> real</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>acs</STRONG><EM>:real -> real</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>atn</STRONG><EM>:real -> real</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    </UL>
+
+
+<HR>
+<H1>Axioms</H1>
+<DL>
+
+</DL>
+
+
+<HR>
+<H1>Definitions</H1>
+<DL>
+<DT><STRONG>exp</STRONG>
+<DD>
+<PRE>
+|- !x. exp x = suminf (\n. (\n. inv (& (FACT n))) n |*| x pow n)
+</PRE>
+
+<DT><STRONG>sin</STRONG>
+<DD>
+<PRE>
+|- !x.
+     sin x =
+     suminf
+       (\n.
+         (\n. (EVEN n) => (& 0) | (-- (& 1) pow ((n - 1) DIV 2) / & (FACT n)))
+           n |*|
+         x pow n)
+</PRE>
+
+<DT><STRONG>cos</STRONG>
+<DD>
+<PRE>
+|- !x.
+     cos x =
+     suminf
+       (\n.
+         (\n. (EVEN n) => (-- (& 1) pow (n DIV 2) / & (FACT n)) | (& 0)) n |*|
+         x pow n)
+</PRE>
+
+<DT><STRONG>ln</STRONG>
+<DD>
+<PRE>
+|- !x. ln x = (@u. exp u = x)
+</PRE>
+
+<DT><STRONG>root</STRONG>
+<DD>
+<PRE>
+|- !n x. root n x = (@u. (& 0 |<| x ==> & 0 |<| u) /\ (u pow n = x))
+</PRE>
+
+<DT><STRONG>sqrt</STRONG>
+<DD>
+<PRE>
+|- !x. sqrt x = root 2 x
+</PRE>
+
+<DT><STRONG>pi</STRONG>
+<DD>
+<PRE>
+|- pi = & 2 |*| (@x. & 0 |<=| x /\ x |<=| & 2 /\ (cos x = & 0))
+</PRE>
+
+<DT><STRONG>tan</STRONG>
+<DD>
+<PRE>
+|- !x. tan x = sin x / cos x
+</PRE>
+
+<DT><STRONG>asn</STRONG>
+<DD>
+<PRE>
+|- !y. asn y = (@x. -- (pi / & 2) |<=| x /\ x |<=| pi / & 2 /\ (sin x = y))
+</PRE>
+
+<DT><STRONG>acs</STRONG>
+<DD>
+<PRE>
+|- !y. acs y = (@x. & 0 |<=| x /\ x |<=| pi /\ (cos x = y))
+</PRE>
+
+<DT><STRONG>atn</STRONG>
+<DD>
+<PRE>
+|- !y. atn y = (@x. -- (pi / & 2) |<| x /\ x |<| pi / & 2 /\ (tan x = y))
+</PRE>
+
+</DL>
+
+
+<HR>
+<H1>Theorems</H1>
+<DL>
+<DT><STRONG>EXP_CONVERGES</STRONG>
+<DD>
+<PRE>
+|- !x. (\n. (\n. inv (& (FACT n))) n |*| x pow n) sums exp x
+</PRE>
+
+<DT><STRONG>SIN_CONVERGES</STRONG>
+<DD>
+<PRE>
+|- !x.
+     (\n.
+       (\n. (EVEN n) => (& 0) | (-- (& 1) pow ((n - 1) DIV 2) / & (FACT n)))
+         n |*|
+       x pow n) sums
+     sin x
+</PRE>
+
+<DT><STRONG>COS_CONVERGES</STRONG>
+<DD>
+<PRE>
+|- !x.
+     (\n.
+       (\n. (EVEN n) => (-- (& 1) pow (n DIV 2) / & (FACT n)) | (& 0)) n |*|
+       x pow n) sums
+     cos x
+</PRE>
+
+<DT><STRONG>EXP_FDIFF</STRONG>
+<DD>
+<PRE>
+|- diffs (\n. inv (& (FACT n))) = (\n. inv (& (FACT n)))
+</PRE>
+
+<DT><STRONG>SIN_FDIFF</STRONG>
+<DD>
+<PRE>
+|- diffs
+     (\n. (EVEN n) => (& 0) | (-- (& 1) pow ((n - 1) DIV 2) / & (FACT n))) =
+   (\n. (EVEN n) => (-- (& 1) pow (n DIV 2) / & (FACT n)) | (& 0))
+</PRE>
+
+<DT><STRONG>COS_FDIFF</STRONG>
+<DD>
+<PRE>
+|- diffs (\n. (EVEN n) => (-- (& 1) pow (n DIV 2) / & (FACT n)) | (& 0)) =
+   (\n.
+     --
+       ((\n. (EVEN n) => (& 0) | (-- (& 1) pow ((n - 1) DIV 2) / & (FACT n)))
+         n))
+</PRE>
+
+<DT><STRONG>SIN_NEGLEMMA</STRONG>
+<DD>
+<PRE>
+|- !x.
+     -- (sin x) =
+     suminf
+       (\n.
+         --
+           ((\n.
+              (EVEN n) => (& 0) | (-- (& 1) pow ((n - 1) DIV 2) / & (FACT n)))
+              n |*|
+            x pow n))
+</PRE>
+
+<DT><STRONG>DIFF_EXP</STRONG>
+<DD>
+<PRE>
+|- !x. (exp diffl exp x) x
+</PRE>
+
+<DT><STRONG>DIFF_SIN</STRONG>
+<DD>
+<PRE>
+|- !x. (sin diffl cos x) x
+</PRE>
+
+<DT><STRONG>DIFF_COS</STRONG>
+<DD>
+<PRE>
+|- !x. (cos diffl -- (sin x)) x
+</PRE>
+
+<DT><STRONG>EXP_0</STRONG>
+<DD>
+<PRE>
+|- exp (& 0) = & 1
+</PRE>
+
+<DT><STRONG>EXP_LE_X</STRONG>
+<DD>
+<PRE>
+|- !x. & 0 |<=| x ==> & 1 |+| x |<=| exp x
+</PRE>
+
+<DT><STRONG>EXP_LT_1</STRONG>
+<DD>
+<PRE>
+|- !x. & 0 |<| x ==> & 1 |<| exp x
+</PRE>
+
+<DT><STRONG>EXP_ADD_MUL</STRONG>
+<DD>
+<PRE>
+|- !x y. exp (x |+| y) |*| exp (-- x) = exp y
+</PRE>
+
+<DT><STRONG>EXP_NEG_MUL</STRONG>
+<DD>
+<PRE>
+|- !x. exp x |*| exp (-- x) = & 1
+</PRE>
+
+<DT><STRONG>EXP_NEG_MUL2</STRONG>
+<DD>
+<PRE>
+|- !x. exp (-- x) |*| exp x = & 1
+</PRE>
+
+<DT><STRONG>EXP_NEG</STRONG>
+<DD>
+<PRE>
+|- !x. exp (-- x) = inv (exp x)
+</PRE>
+
+<DT><STRONG>EXP_ADD</STRONG>
+<DD>
+<PRE>
+|- !x y. exp (x |+| y) = exp x |*| exp y
+</PRE>
+
+<DT><STRONG>EXP_POS_LE</STRONG>
+<DD>
+<PRE>
+|- !x. & 0 |<=| exp x
+</PRE>
+
+<DT><STRONG>EXP_NZ</STRONG>
+<DD>
+<PRE>
+|- !x. ~(exp x = & 0)
+</PRE>
+
+<DT><STRONG>EXP_POS_LT</STRONG>
+<DD>
+<PRE>
+|- !x. & 0 |<| exp x
+</PRE>
+
+<DT><STRONG>EXP_N</STRONG>
+<DD>
+<PRE>
+|- !n x. exp (& n |*| x) = exp x pow n
+</PRE>
+
+<DT><STRONG>EXP_SUB</STRONG>
+<DD>
+<PRE>
+|- !x y. exp (x |-| y) = exp x / exp y
+</PRE>
+
+<DT><STRONG>EXP_MONO_IMP</STRONG>
+<DD>
+<PRE>
+|- !x y. x |<| y ==> exp x |<| exp y
+</PRE>
+
+<DT><STRONG>EXP_MONO_LT</STRONG>
+<DD>
+<PRE>
+|- !x y. exp x |<| exp y = x |<| y
+</PRE>
+
+<DT><STRONG>EXP_MONO_LE</STRONG>
+<DD>
+<PRE>
+|- !x y. exp x |<=| exp y = x |<=| y
+</PRE>
+
+<DT><STRONG>EXP_INJ</STRONG>
+<DD>
+<PRE>
+|- !x y. (exp x = exp y) = x = y
+</PRE>
+
+<DT><STRONG>EXP_TOTAL_LEMMA</STRONG>
+<DD>
+<PRE>
+|- !y. & 1 |<=| y ==> (?x. & 0 |<=| x /\ x |<=| y |-| & 1 /\ (exp x = y))
+</PRE>
+
+<DT><STRONG>EXP_TOTAL</STRONG>
+<DD>
+<PRE>
+|- !y. & 0 |<| y ==> (?x. exp x = y)
+</PRE>
+
+<DT><STRONG>LN_EXP</STRONG>
+<DD>
+<PRE>
+|- !x. ln (exp x) = x
+</PRE>
+
+<DT><STRONG>EXP_LN</STRONG>
+<DD>
+<PRE>
+|- !x. (exp (ln x) = x) = & 0 |<| x
+</PRE>
+
+<DT><STRONG>LN_MUL</STRONG>
+<DD>
+<PRE>
+|- !x y. & 0 |<| x /\ & 0 |<| y ==> (ln (x |*| y) = ln x |+| ln y)
+</PRE>
+
+<DT><STRONG>LN_INJ</STRONG>
+<DD>
+<PRE>
+|- !x y. & 0 |<| x /\ & 0 |<| y ==> ((ln x = ln y) = x = y)
+</PRE>
+
+<DT><STRONG>LN_1</STRONG>
+<DD>
+<PRE>
+|- ln (& 1) = & 0
+</PRE>
+
+<DT><STRONG>LN_INV</STRONG>
+<DD>
+<PRE>
+|- !x. & 0 |<| x ==> (ln (inv x) = -- (ln x))
+</PRE>
+
+<DT><STRONG>LN_DIV</STRONG>
+<DD>
+<PRE>
+|- !x y. & 0 |<| x /\ & 0 |<| y ==> (ln (x / y) = ln x |-| ln y)
+</PRE>
+
+<DT><STRONG>LN_MONO_LT</STRONG>
+<DD>
+<PRE>
+|- !x y. & 0 |<| x /\ & 0 |<| y ==> (ln x |<| ln y = x |<| y)
+</PRE>
+
+<DT><STRONG>LN_MONO_LE</STRONG>
+<DD>
+<PRE>
+|- !x y. & 0 |<| x /\ & 0 |<| y ==> (ln x |<=| ln y = x |<=| y)
+</PRE>
+
+<DT><STRONG>LN_POW</STRONG>
+<DD>
+<PRE>
+|- !n x. & 0 |<| x ==> (ln (x pow n) = & n |*| ln x)
+</PRE>
+
+<DT><STRONG>LN_LT_X</STRONG>
+<DD>
+<PRE>
+|- !x. & 0 |<| x ==> ln x |<| x
+</PRE>
+
+<DT><STRONG>ROOT_LT_LEMMA</STRONG>
+<DD>
+<PRE>
+|- !n x. & 0 |<| x ==> (exp (ln x / & (SUC n)) pow SUC n = x)
+</PRE>
+
+<DT><STRONG>ROOT_LN</STRONG>
+<DD>
+<PRE>
+|- !n x. & 0 |<| x ==> (root (SUC n) x = exp (ln x / & (SUC n)))
+</PRE>
+
+<DT><STRONG>ROOT_0</STRONG>
+<DD>
+<PRE>
+|- !n. root (SUC n) (& 0) = & 0
+</PRE>
+
+<DT><STRONG>ROOT_POS_LT</STRONG>
+<DD>
+<PRE>
+|- !n x. & 0 |<| x ==> & 0 |<| root (SUC n) x
+</PRE>
+
+<DT><STRONG>ROOT_POS</STRONG>
+<DD>
+<PRE>
+|- !n x. & 0 |<=| x ==> & 0 |<=| root (SUC n) x
+</PRE>
+
+<DT><STRONG>ROOT_1</STRONG>
+<DD>
+<PRE>
+|- !n. root (SUC n) (& 1) = & 1
+</PRE>
+
+<DT><STRONG>ROOT_POW_POS</STRONG>
+<DD>
+<PRE>
+|- !n x. & 0 |<=| x ==> (root (SUC n) x pow SUC n = x)
+</PRE>
+
+<DT><STRONG>SQRT_0</STRONG>
+<DD>
+<PRE>
+|- sqrt (& 0) = & 0
+</PRE>
+
+<DT><STRONG>SQRT_1</STRONG>
+<DD>
+<PRE>
+|- sqrt (& 1) = & 1
+</PRE>
+
+<DT><STRONG>SQRT_POW2</STRONG>
+<DD>
+<PRE>
+|- !x. (sqrt x pow 2 = x) = & 0 |<=| x
+</PRE>
+
+<DT><STRONG>POW_ROOT_POS</STRONG>
+<DD>
+<PRE>
+|- !n x. & 0 |<=| x ==> (root (SUC n) (x pow SUC n) = x)
+</PRE>
+
+<DT><STRONG>SQRT_EQ</STRONG>
+<DD>
+<PRE>
+|- !x y. (x pow 2 = y) /\ & 0 |<=| x ==> (x = sqrt y)
+</PRE>
+
+<DT><STRONG>SIN_0</STRONG>
+<DD>
+<PRE>
+|- sin (& 0) = & 0
+</PRE>
+
+<DT><STRONG>COS_0</STRONG>
+<DD>
+<PRE>
+|- cos (& 0) = & 1
+</PRE>
+
+<DT><STRONG>SIN_CIRCLE</STRONG>
+<DD>
+<PRE>
+|- !x. sin x pow 2 |+| cos x pow 2 = & 1
+</PRE>
+
+<DT><STRONG>SIN_BOUND</STRONG>
+<DD>
+<PRE>
+|- !x. abs (sin x) |<=| & 1
+</PRE>
+
+<DT><STRONG>SIN_BOUNDS</STRONG>
+<DD>
+<PRE>
+|- !x. -- (& 1) |<=| sin x /\ sin x |<=| & 1
+</PRE>
+
+<DT><STRONG>COS_BOUND</STRONG>
+<DD>
+<PRE>
+|- !x. abs (cos x) |<=| & 1
+</PRE>
+
+<DT><STRONG>COS_BOUNDS</STRONG>
+<DD>
+<PRE>
+|- !x. -- (& 1) |<=| cos x /\ cos x |<=| & 1
+</PRE>
+
+<DT><STRONG>SIN_COS_ADD</STRONG>
+<DD>
+<PRE>
+|- !x y.
+     (sin (x |+| y) |-| (sin x |*| cos y |+| cos x |*| sin y)) pow 2 |+|
+     (cos (x |+| y) |-| cos x |*| cos y |-| sin x |*| sin y) pow 2 =
+     & 0
+</PRE>
+
+<DT><STRONG>SIN_COS_NEG</STRONG>
+<DD>
+<PRE>
+|- !x. (sin (-- x) |+| sin x) pow 2 |+| (cos (-- x) |-| cos x) pow 2 = & 0
+</PRE>
+
+<DT><STRONG>SIN_ADD</STRONG>
+<DD>
+<PRE>
+|- !x y. sin (x |+| y) = sin x |*| cos y |+| cos x |*| sin y
+</PRE>
+
+<DT><STRONG>COS_ADD</STRONG>
+<DD>
+<PRE>
+|- !x y. cos (x |+| y) = cos x |*| cos y |-| sin x |*| sin y
+</PRE>
+
+<DT><STRONG>SIN_NEG</STRONG>
+<DD>
+<PRE>
+|- !x. sin (-- x) = -- (sin x)
+</PRE>
+
+<DT><STRONG>COS_NEG</STRONG>
+<DD>
+<PRE>
+|- !x. cos (-- x) = cos x
+</PRE>
+
+<DT><STRONG>SIN_DOUBLE</STRONG>
+<DD>
+<PRE>
+|- !x. sin (& 2 |*| x) = & 2 |*| sin x |*| cos x
+</PRE>
+
+<DT><STRONG>COS_DOUBLE</STRONG>
+<DD>
+<PRE>
+|- !x. cos (& 2 |*| x) = cos x pow 2 |-| sin x pow 2
+</PRE>
+
+<DT><STRONG>SIN_PAIRED</STRONG>
+<DD>
+<PRE>
+|- !x.
+     (\n. (-- (& 1) pow n / & (FACT (2 * n + 1))) |*| x pow (2 * n + 1)) sums
+     sin x
+</PRE>
+
+<DT><STRONG>SIN_POS</STRONG>
+<DD>
+<PRE>
+|- !x. & 0 |<| x /\ x |<| & 2 ==> & 0 |<| sin x
+</PRE>
+
+<DT><STRONG>COS_PAIRED</STRONG>
+<DD>
+<PRE>
+|- !x. (\n. (-- (& 1) pow n / & (FACT (2 * n))) |*| x pow (2 * n)) sums cos x
+</PRE>
+
+<DT><STRONG>COS_2</STRONG>
+<DD>
+<PRE>
+|- cos (& 2) |<| & 0
+</PRE>
+
+<DT><STRONG>COS_ISZERO</STRONG>
+<DD>
+<PRE>
+|- ?!x. & 0 |<=| x /\ x |<=| & 2 /\ (cos x = & 0)
+</PRE>
+
+<DT><STRONG>PI2</STRONG>
+<DD>
+<PRE>
+|- pi / & 2 = (@x. & 0 |<=| x /\ x |<=| & 2 /\ (cos x = & 0))
+</PRE>
+
+<DT><STRONG>COS_PI2</STRONG>
+<DD>
+<PRE>
+|- cos (pi / & 2) = & 0
+</PRE>
+
+<DT><STRONG>PI2_BOUNDS</STRONG>
+<DD>
+<PRE>
+|- & 0 |<| pi / & 2 /\ pi / & 2 |<| & 2
+</PRE>
+
+<DT><STRONG>PI_POS</STRONG>
+<DD>
+<PRE>
+|- & 0 |<| pi
+</PRE>
+
+<DT><STRONG>SIN_PI2</STRONG>
+<DD>
+<PRE>
+|- sin (pi / & 2) = & 1
+</PRE>
+
+<DT><STRONG>COS_PI</STRONG>
+<DD>
+<PRE>
+|- cos pi = -- (& 1)
+</PRE>
+
+<DT><STRONG>SIN_PI</STRONG>
+<DD>
+<PRE>
+|- sin pi = & 0
+</PRE>
+
+<DT><STRONG>SIN_COS</STRONG>
+<DD>
+<PRE>
+|- !x. sin x = cos (pi / & 2 |-| x)
+</PRE>
+
+<DT><STRONG>COS_SIN</STRONG>
+<DD>
+<PRE>
+|- !x. cos x = sin (pi / & 2 |-| x)
+</PRE>
+
+<DT><STRONG>SIN_PERIODIC_PI</STRONG>
+<DD>
+<PRE>
+|- !x. sin (x |+| pi) = -- (sin x)
+</PRE>
+
+<DT><STRONG>COS_PERIODIC_PI</STRONG>
+<DD>
+<PRE>
+|- !x. cos (x |+| pi) = -- (cos x)
+</PRE>
+
+<DT><STRONG>SIN_PERIODIC</STRONG>
+<DD>
+<PRE>
+|- !x. sin (x |+| & 2 |*| pi) = sin x
+</PRE>
+
+<DT><STRONG>COS_PERIODIC</STRONG>
+<DD>
+<PRE>
+|- !x. cos (x |+| & 2 |*| pi) = cos x
+</PRE>
+
+<DT><STRONG>COS_NPI</STRONG>
+<DD>
+<PRE>
+|- !n. cos (& n |*| pi) = -- (& 1) pow n
+</PRE>
+
+<DT><STRONG>SIN_NPI</STRONG>
+<DD>
+<PRE>
+|- !n. sin (& n |*| pi) = & 0
+</PRE>
+
+<DT><STRONG>SIN_POS_PI2</STRONG>
+<DD>
+<PRE>
+|- !x. & 0 |<| x /\ x |<| pi / & 2 ==> & 0 |<| sin x
+</PRE>
+
+<DT><STRONG>COS_POS_PI2</STRONG>
+<DD>
+<PRE>
+|- !x. & 0 |<| x /\ x |<| pi / & 2 ==> & 0 |<| cos x
+</PRE>
+
+<DT><STRONG>COS_POS_PI</STRONG>
+<DD>
+<PRE>
+|- !x. -- (pi / & 2) |<| x /\ x |<| pi / & 2 ==> & 0 |<| cos x
+</PRE>
+
+<DT><STRONG>SIN_POS_PI</STRONG>
+<DD>
+<PRE>
+|- !x. & 0 |<| x /\ x |<| pi ==> & 0 |<| sin x
+</PRE>
+
+<DT><STRONG>COS_POS_PI2_LE</STRONG>
+<DD>
+<PRE>
+|- !x. & 0 |<=| x /\ x |<=| pi / & 2 ==> & 0 |<=| cos x
+</PRE>
+
+<DT><STRONG>COS_POS_PI_LE</STRONG>
+<DD>
+<PRE>
+|- !x. -- (pi / & 2) |<=| x /\ x |<=| pi / & 2 ==> & 0 |<=| cos x
+</PRE>
+
+<DT><STRONG>SIN_POS_PI2_LE</STRONG>
+<DD>
+<PRE>
+|- !x. & 0 |<=| x /\ x |<=| pi / & 2 ==> & 0 |<=| sin x
+</PRE>
+
+<DT><STRONG>SIN_POS_PI_LE</STRONG>
+<DD>
+<PRE>
+|- !x. & 0 |<=| x /\ x |<=| pi ==> & 0 |<=| sin x
+</PRE>
+
+<DT><STRONG>COS_TOTAL</STRONG>
+<DD>
+<PRE>
+|- !y.
+     -- (& 1) |<=| y /\ y |<=| & 1 ==>
+     (?!x. & 0 |<=| x /\ x |<=| pi /\ (cos x = y))
+</PRE>
+
+<DT><STRONG>SIN_TOTAL</STRONG>
+<DD>
+<PRE>
+|- !y.
+     -- (& 1) |<=| y /\ y |<=| & 1 ==>
+     (?!x. -- (pi / & 2) |<=| x /\ x |<=| pi / & 2 /\ (sin x = y))
+</PRE>
+
+<DT><STRONG>COS_ZERO_LEMMA</STRONG>
+<DD>
+<PRE>
+|- !x.
+     & 0 |<=| x /\ (cos x = & 0) ==>
+     (?n. ~(EVEN n) /\ (x = & n |*| (pi / & 2)))
+</PRE>
+
+<DT><STRONG>SIN_ZERO_LEMMA</STRONG>
+<DD>
+<PRE>
+|- !x.
+     & 0 |<=| x /\ (sin x = & 0) ==> (?n. EVEN n /\ (x = & n |*| (pi / & 2)))
+</PRE>
+
+<DT><STRONG>COS_ZERO</STRONG>
+<DD>
+<PRE>
+|- !x.
+     (cos x = & 0) =
+     (?n. ~(EVEN n) /\ (x = & n |*| (pi / & 2))) \/
+     (?n. ~(EVEN n) /\ (x = -- (& n |*| (pi / & 2))))
+</PRE>
+
+<DT><STRONG>SIN_ZERO</STRONG>
+<DD>
+<PRE>
+|- !x.
+     (sin x = & 0) =
+     (?n. EVEN n /\ (x = & n |*| (pi / & 2))) \/
+     (?n. EVEN n /\ (x = -- (& n |*| (pi / & 2))))
+</PRE>
+
+<DT><STRONG>TAN_0</STRONG>
+<DD>
+<PRE>
+|- tan (& 0) = & 0
+</PRE>
+
+<DT><STRONG>TAN_PI</STRONG>
+<DD>
+<PRE>
+|- tan pi = & 0
+</PRE>
+
+<DT><STRONG>TAN_NPI</STRONG>
+<DD>
+<PRE>
+|- !n. tan (& n |*| pi) = & 0
+</PRE>
+
+<DT><STRONG>TAN_NEG</STRONG>
+<DD>
+<PRE>
+|- !x. tan (-- x) = -- (tan x)
+</PRE>
+
+<DT><STRONG>TAN_PERIODIC</STRONG>
+<DD>
+<PRE>
+|- !x. tan (x |+| & 2 |*| pi) = tan x
+</PRE>
+
+<DT><STRONG>TAN_ADD</STRONG>
+<DD>
+<PRE>
+|- !x y.
+     ~(cos x = & 0) /\ ~(cos y = & 0) /\ ~(cos (x |+| y) = & 0) ==>
+     (tan (x |+| y) = (tan x |+| tan y) / (& 1 |-| tan x |*| tan y))
+</PRE>
+
+<DT><STRONG>TAN_DOUBLE</STRONG>
+<DD>
+<PRE>
+|- !x.
+     ~(cos x = & 0) /\ ~(cos (& 2 |*| x) = & 0) ==>
+     (tan (& 2 |*| x) = (& 2 |*| tan x) / (& 1 |-| tan x pow 2))
+</PRE>
+
+<DT><STRONG>TAN_POS_PI2</STRONG>
+<DD>
+<PRE>
+|- !x. & 0 |<| x /\ x |<| pi / & 2 ==> & 0 |<| tan x
+</PRE>
+
+<DT><STRONG>DIFF_TAN</STRONG>
+<DD>
+<PRE>
+|- !x. ~(cos x = & 0) ==> (tan diffl inv (cos x pow 2)) x
+</PRE>
+
+<DT><STRONG>TAN_TOTAL_LEMMA</STRONG>
+<DD>
+<PRE>
+|- !y. & 0 |<| y ==> (?x. & 0 |<| x /\ x |<| pi / & 2 /\ y |<| tan x)
+</PRE>
+
+<DT><STRONG>TAN_TOTAL_POS</STRONG>
+<DD>
+<PRE>
+|- !y. & 0 |<=| y ==> (?x. & 0 |<=| x /\ x |<| pi / & 2 /\ (tan x = y))
+</PRE>
+
+<DT><STRONG>TAN_TOTAL</STRONG>
+<DD>
+<PRE>
+|- !y. ?!x. -- (pi / & 2) |<| x /\ x |<| pi / & 2 /\ (tan x = y)
+</PRE>
+
+<DT><STRONG>ASN</STRONG>
+<DD>
+<PRE>
+|- !y.
+     -- (& 1) |<=| y /\ y |<=| & 1 ==>
+     -- (pi / & 2) |<=| asn y /\ asn y |<=| pi / & 2 /\ (sin (asn y) = y)
+</PRE>
+
+<DT><STRONG>ASN_SIN</STRONG>
+<DD>
+<PRE>
+|- !y. -- (& 1) |<=| y /\ y |<=| & 1 ==> (sin (asn y) = y)
+</PRE>
+
+<DT><STRONG>ASN_BOUNDS</STRONG>
+<DD>
+<PRE>
+|- !y.
+     -- (& 1) |<=| y /\ y |<=| & 1 ==>
+     -- (pi / & 2) |<=| asn y /\ asn y |<=| pi / & 2
+</PRE>
+
+<DT><STRONG>ASN_BOUNDS_LT</STRONG>
+<DD>
+<PRE>
+|- !y.
+     -- (& 1) |<| y /\ y |<| & 1 ==>
+     -- (pi / & 2) |<| asn y /\ asn y |<| pi / & 2
+</PRE>
+
+<DT><STRONG>SIN_ASN</STRONG>
+<DD>
+<PRE>
+|- !x. -- (pi / & 2) |<=| x /\ x |<=| pi / & 2 ==> (asn (sin x) = x)
+</PRE>
+
+<DT><STRONG>ACS</STRONG>
+<DD>
+<PRE>
+|- !y.
+     -- (& 1) |<=| y /\ y |<=| & 1 ==>
+     & 0 |<=| acs y /\ acs y |<=| pi /\ (cos (acs y) = y)
+</PRE>
+
+<DT><STRONG>ACS_COS</STRONG>
+<DD>
+<PRE>
+|- !y. -- (& 1) |<=| y /\ y |<=| & 1 ==> (cos (acs y) = y)
+</PRE>
+
+<DT><STRONG>ACS_BOUNDS</STRONG>
+<DD>
+<PRE>
+|- !y. -- (& 1) |<=| y /\ y |<=| & 1 ==> & 0 |<=| acs y /\ acs y |<=| pi
+</PRE>
+
+<DT><STRONG>ACS_BOUNDS_LT</STRONG>
+<DD>
+<PRE>
+|- !y. -- (& 1) |<| y /\ y |<| & 1 ==> & 0 |<| acs y /\ acs y |<| pi
+</PRE>
+
+<DT><STRONG>COS_ACS</STRONG>
+<DD>
+<PRE>
+|- !x. & 0 |<=| x /\ x |<=| pi ==> (acs (cos x) = x)
+</PRE>
+
+<DT><STRONG>ATN</STRONG>
+<DD>
+<PRE>
+|- !y. -- (pi / & 2) |<| atn y /\ atn y |<| pi / & 2 /\ (tan (atn y) = y)
+</PRE>
+
+<DT><STRONG>ATN_TAN</STRONG>
+<DD>
+<PRE>
+|- !y. tan (atn y) = y
+</PRE>
+
+<DT><STRONG>ATN_BOUNDS</STRONG>
+<DD>
+<PRE>
+|- !y. -- (pi / & 2) |<| atn y /\ atn y |<| pi / & 2
+</PRE>
+
+<DT><STRONG>TAN_ATN</STRONG>
+<DD>
+<PRE>
+|- !x. -- (pi / & 2) |<| x /\ x |<| pi / & 2 ==> (atn (tan x) = x)
+</PRE>
+
+<DT><STRONG>TAN_SEC</STRONG>
+<DD>
+<PRE>
+|- !x. ~(cos x = & 0) ==> (& 1 |+| tan x pow 2 = inv (cos x) pow 2)
+</PRE>
+
+<DT><STRONG>SIN_COS_SQ</STRONG>
+<DD>
+<PRE>
+|- !x. & 0 |<=| x /\ x |<=| pi ==> (sin x = sqrt (& 1 |-| cos x pow 2))
+</PRE>
+
+<DT><STRONG>COS_SIN_SQ</STRONG>
+<DD>
+<PRE>
+|- !x.
+     -- (pi / & 2) |<=| x /\ x |<=| pi / & 2 ==>
+     (cos x = sqrt (& 1 |-| sin x pow 2))
+</PRE>
+
+<DT><STRONG>COS_ATN_NZ</STRONG>
+<DD>
+<PRE>
+|- !x. ~(cos (atn x) = & 0)
+</PRE>
+
+<DT><STRONG>COS_ASN_NZ</STRONG>
+<DD>
+<PRE>
+|- !x. -- (& 1) |<| x /\ x |<| & 1 ==> ~(cos (asn x) = & 0)
+</PRE>
+
+<DT><STRONG>SIN_ACS_NZ</STRONG>
+<DD>
+<PRE>
+|- !x. -- (& 1) |<| x /\ x |<| & 1 ==> ~(sin (acs x) = & 0)
+</PRE>
+
+<DT><STRONG>DIFF_LN</STRONG>
+<DD>
+<PRE>
+|- !x. & 0 |<| x ==> (ln diffl inv x) x
+</PRE>
+
+<DT><STRONG>DIFF_ASN_LEMMA</STRONG>
+<DD>
+<PRE>
+|- !x. -- (& 1) |<| x /\ x |<| & 1 ==> (asn diffl inv (cos (asn x))) x
+</PRE>
+
+<DT><STRONG>DIFF_ASN</STRONG>
+<DD>
+<PRE>
+|- !x.
+     -- (& 1) |<| x /\ x |<| & 1 ==>
+     (asn diffl inv (sqrt (& 1 |-| x pow 2))) x
+</PRE>
+
+<DT><STRONG>DIFF_ACS_LEMMA</STRONG>
+<DD>
+<PRE>
+|- !x. -- (& 1) |<| x /\ x |<| & 1 ==> (acs diffl inv (-- (sin (acs x)))) x
+</PRE>
+
+<DT><STRONG>DIFF_ACS</STRONG>
+<DD>
+<PRE>
+|- !x.
+     -- (& 1) |<| x /\ x |<| & 1 ==>
+     (acs diffl -- (inv (sqrt (& 1 |-| x pow 2)))) x
+</PRE>
+
+<DT><STRONG>DIFF_ATN</STRONG>
+<DD>
+<PRE>
+|- !x. (atn diffl inv (& 1 |+| x pow 2)) x
+</PRE>
+
+</DL>
+
+
+<HR>

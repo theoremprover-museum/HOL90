@@ -1,0 +1,210 @@
+head	1.2;
+access;
+symbols
+	HOL97:1.2.0.4
+	bpHOL97:1.2
+	hol90_9_alpha:1.2
+	hol90_pre8_for_multiple_compilers:1.2.0.2
+	hol90_pre8_after_donalds_separate_compilation_changes:1.2
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.2
+date	95.10.31.15.28.50;	author drs1004;	state Exp;
+branches
+	1.2.4.1;
+next	1.1;
+
+1.1
+date	95.10.16.13.31.15;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.31.15;	author rjb;	state Exp;
+branches;
+next	;
+
+1.2.4.1
+date	97.07.14.17.50.45;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.2
+log
+@Changes by DRS for separate compilation using NJSML 108.5/CM
+@
+text
+@(* =====================================================================*)
+(* FILE          : set_ind.ml                                           *)
+(* DESCRIPTION   : Induction principle for finite sets.                 *)
+(*                                                                      *)
+(* AUTHOR        : Philippe Leveilley                                   *)
+(*                                                                      *)
+(* REWRITTEN     : T Melham                                             *)
+(* DATE          : 90.03.14                                             *)
+(*                                                                      *)
+(* REMARKS       : Dependence on taut library removed. Use of rewriting *)
+(*                  eliminated.  Optimized for speed.  Simplified.      *)
+(* TRANSLATOR    : Konrad Slind, University of Calgary                  *)
+(* =====================================================================*)
+
+structure Set_ind : Set_ind_sig =
+struct
+
+open Core; (* open up all of the HOL 0/1 Core - could be replaced by more *)
+           (* explicit opens to avoid endless recompilation of libraries  *)
+           (* during system development                                   *)
+
+fun SET_IND_ERR{function,message} = HOL_ERR{origin_structure = "Set_ind",
+                                            origin_function = function,
+                                            message = message};
+open Rsyntax;
+
+(* ---------------------------------------------------------------------*)
+(*                                                                      *)
+(*    "!s. FINITE s ==>  P s"                                           *)
+(*   ==========================     SET_INDUCT_TAC                      *)
+(*    P EMPTY     P (x INSERT t)                                        *)
+(*                 [ "FINITE t" ]                                       *)
+(*                 [ "P s"      ]                                       *)
+(*                 [ "~x IN t"  ]                                       *)
+(*                                                                      *)
+(* ---------------------------------------------------------------------*)
+
+local
+val FINITE_INDUCT = theorem "set" "FINITE_INDUCT"
+val check = assert (fn tm => #Name(dest_const(rator tm)) = "FINITE")
+val IMP = --`==>`--
+val CONJ = --`/\`--
+val alpha = ==`: 'a `==
+fun MK_IMP1 tm = AP_TERM (mk_comb{Rator=IMP,Rand=tm})
+fun MK_IMP2 th1 th2 = MK_COMB(AP_TERM IMP th1,th2)
+fun dest tm = let val {Bvar,Body} = dest_forall tm
+                  val {ant,conseq} = dest_imp Body
+              in (Bvar,(ant,conseq))
+              end
+fun sconv tm = 
+   let val (s,(a,(e,(h,c)))) = (I ## (I ## dest)) (dest tm)
+       val th1 = RAND_CONV BETA_CONV a 
+       val th2 = BETA_CONV c 
+   in
+   FORALL_EQ s (MK_IMP2 th1 (FORALL_EQ e (MK_IMP1 h th2)))
+   end
+fun conv tm = 
+    let val {conj1,conj2} = dest_conj tm 
+    in  MK_COMB(AP_TERM CONJ (BETA_CONV conj1), sconv conj2)
+    end
+val STAC = GEN_TAC THEN DISCH_THEN (CONJUNCTS_THEN ASSUME_TAC) THEN
+           GEN_TAC THEN DISCH_THEN ASSUME_TAC
+in
+fun SET_INDUCT_TAC (A,g) =
+   let val {Bvar = s, Body} = dest_forall g
+       val {ant,conseq} = dest_imp Body
+       val _ = check ant
+       val {Args=[ty],...} = dest_type(type_of s)
+       val inst = INST_TYPE [{redex=alpha, residue=ty}] FINITE_INDUCT
+       val sv = genvar (type_of s)
+       val pred = mk_abs{Bvar = sv,Body = subst [{redex=s,residue=sv}] conseq}
+       val spec = SPEC s (UNDISCH (SPEC pred inst))
+       val beta = GEN s (CONV_RULE (RAND_CONV BETA_CONV) spec)
+       val disc = DISCH (hd(hyp beta)) beta
+       val ithm = CONV_RULE (RATOR_CONV(RAND_CONV conv)) disc 
+   in
+   (MATCH_MP_TAC ithm THEN CONJ_TAC THENL [ALL_TAC, STAC])(A,g)
+   end
+   handle _ => raise SET_IND_ERR{function = "SET_INDUCT_TAC",message = ""}
+end;
+
+end; (* Set_ind *)
+@
+
+
+1.2.4.1
+log
+@The "set" library now loads under CM. The unified entrypoint for the library
+is the structure setLib.
+@
+text
+@d11 1
+a11 1
+(*                 eliminated.  Optimized for speed.  Simplified.      *)
+d18 7
+a24 12
+type tactic = Abbrev.tactic;
+
+open Exception Lib CoreHol Parse;
+open Type Term Dsyntax Thm Theory Drule Thm_cont Conv Tactical Tactic Resolve;
+infix THEN THENL;
+infix ##;
+
+fun SET_IND_ERR{function,message} = 
+  HOL_ERR{origin_structure = "Set_ind",
+          origin_function = function,
+          message = message};
+
+d38 25
+a62 24
+local val FINITE_INDUCT = theorem "set" "FINITE_INDUCT"
+      val check = assert (fn tm => #Name(dest_const(rator tm)) = "FINITE")
+      val IMP = --`==>`--
+      val CONJ = --`/\`--
+      val alpha = ==`: 'a `==
+      fun MK_IMP1 tm = AP_TERM (mk_comb{Rator=IMP,Rand=tm})
+      fun MK_IMP2 th1 th2 = MK_COMB(AP_TERM IMP th1,th2)
+      fun dest tm = let val {Bvar,Body} = dest_forall tm
+                        val {ant,conseq} = dest_imp Body
+                    in (Bvar,(ant,conseq))
+                    end
+      fun sconv tm = 
+        let val (s,(a,(e,(h,c)))) = (I ## (I ## dest)) (dest tm)
+            val th1 = RAND_CONV BETA_CONV a 
+            val th2 = BETA_CONV c 
+        in
+        FORALL_EQ s (MK_IMP2 th1 (FORALL_EQ e (MK_IMP1 h th2)))
+        end
+      fun conv tm = 
+        let val {conj1,conj2} = dest_conj tm 
+        in  MK_COMB(AP_TERM CONJ (BETA_CONV conj1), sconv conj2)
+        end
+      val STAC = GEN_TAC THEN DISCH_THEN (CONJUNCTS_THEN ASSUME_TAC) THEN
+                 GEN_TAC THEN DISCH_THEN ASSUME_TAC
+d77 1
+a77 1
+   (MATCH_MP_TAC ithm THEN CONJ_TAC THENL [ALL_TAC, STAC]) (A,g)
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d18 4
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

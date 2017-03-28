@@ -1,0 +1,82 @@
+head	1.1;
+access;
+symbols;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	96.02.08.00.31.34;	author drs1004;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@New theory mechanism, by Donald Syme, and many other enhancements.
+@
+text
+@(* ===================================================================== *)
+(* FILE          : parse0.sig                                            *)
+(* DESCRIPTION   : Signature for the type and term parsers.              *)
+(*                                                                       *)
+(* CHANGED       : For Tim Griffin and Roderick, June 4 1992             *)
+(* AUTHOR        : Konrad Slind, University of Calgary                   *)
+(* DATE          : August 26, 1991                                       *)
+(* ===================================================================== *)
+
+
+
+signature Parse0_sig =
+sig
+  structure Parse_support : Parse_support_sig
+
+  type typ sharing type typ = Parse_support.Preterm.Term.Type.typ
+  type term sharing type term = Parse_support.Preterm.Term.term
+  type preterm sharing type preterm = Parse_support.Preterm.preterm
+  type pretype sharing type pretype = Parse_support.Preterm.pretype
+  type quotation (* = term frag list *) 
+  
+  val pretype_parser : quotation -> pretype
+  val preterm_parser : quotation -> preterm
+
+  val string_to_preterm : string -> preterm
+  val string_to_pretype : string -> pretype
+
+  (*--------------------------------------------------------------------
+   * Term parsers with arbitrary manipulations of preterms beforehand
+   *------------------------------------------------------------------*)
+
+  val mk_term_parser : (preterm -> preterm) list -> (quotation -> term)
+  val mk_type_parser : (pretype -> pretype) list -> (quotation -> typ)
+
+  (*--------------------------------------------------------------------
+   * Lift a pretype transformer to a preterm transformer
+   *------------------------------------------------------------------*)
+
+  val pretype_fun :  (pretype -> pretype) -> preterm -> preterm
+
+  (*--------------------------------------------------------------------
+   * Parse type specifications
+   *------------------------------------------------------------------*)
+
+  val type_spec_parser
+   : quotation ->
+     {ty_name:string,
+      clauses : {constructor:string, 
+                 args:Parse_support.arg list} list}
+
+  val string_to_type_spec
+   : string -> {ty_name:string,
+                clauses : {constructor:string,
+                           args:Parse_support.arg list} list}
+
+
+end;
+
+
+@

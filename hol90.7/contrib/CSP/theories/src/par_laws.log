@@ -1,0 +1,209 @@
+
+
+          HHH                 LL
+          HHH                  LL
+          HHH                   LL
+          HHH                    LL
+          HHH          OOOO       LL
+          HHHHHHH     OO  OO       LL
+          HHHHHHH     OO  OO       LLL
+          HHH          OOOO        LLLL
+          HHH                     LL  LL
+          HHH                    LL    LL
+          HHH                   LL      LL
+          HHH                  LL        LL90.7
+
+Created on Tue Nov 15 10:19:01 GMT 1994
+using: Standard ML of New Jersey, Version 0.93, February 15, 1993
+
+
+val it = () : unit
+val it = () : unit
+- [opening par_laws.sml]
+
+Declaring theory "par_laws".
+
+Theory "CSP_base" already consistent with disk, hence not exported.
+val it = () : unit
+val it = () : unit
+val event = (--`(ty_antiq((==`:string`==)))`--) : term
+val trace = (--`(ty_antiq((==`:string list`==)))`--) : term
+val alphabet = (--`(ty_antiq((==`:string set`==)))`--) : term
+val it = [(),(),()] : unit list
+val CONS_EQ_APPEND = |- !a l. CONS a l = APPEND [a] l : thm
+val CONS_MEMBER_LIST =
+  |- !s s' t a.
+       (APPEND s t = CONS a s') ==>
+       (s = []) \/ (?r. (s = CONS a r) /\ (s' = APPEND r t)) : thm
+val ONE_MEMBER_LIST = |- !s t a. (APPEND s t = [a]) ==> (s = []) \/ (s = [a])
+  : thm
+val TL_APPEND = |- !l. ~(l = []) ==> (!l'. TL (APPEND l l') = APPEND (TL l) l')
+  : thm
+val HD_APPEND = |- !l. ~(l = []) ==> (!l'. HD (APPEND l l') = HD l) : thm
+val NULL_EQ_NIL = |- !l. (l = []) = NULL l : thm
+val APPEND_EQ_NIL = |- !l1 l2. (APPEND l1 l2 = []) = (l1 = []) /\ (l2 = [])
+  : thm
+val NOT_LENGTH_EQ = |- !l2 l1. ~(LENGTH l1 = LENGTH l2) ==> ~(l1 = l2) : thm
+val LENGTH_LESS_EQ =
+  |- !l1 l2. LENGTH l1 <= LENGTH l2 ==> (!a. LENGTH l1 < LENGTH (CONS a l2))
+  : thm
+val APPEND_NIL = |- !l. APPEND l [] = l : thm
+val APPEND_ID = |- !l l'. (l = APPEND l l') = l' = [] : thm
+val RESTRICT =
+  |- (!A. RESTRICT [] A = []) /\
+     (!x t A.
+       RESTRICT (CONS x t) A =
+       ((x IN A) => (CONS x (RESTRICT t A)) | (RESTRICT t A))) : thm
+val REP_RESTR = |- !s A B. RESTRICT (RESTRICT s A) B = RESTRICT s (A INTER B)
+  : thm
+val DISTRIB_REST =
+  |- !s t A. RESTRICT (APPEND s t) A = APPEND (RESTRICT s A) (RESTRICT t A)
+  : thm
+val STRICT_REST = |- !A. RESTRICT [] A = [] : thm
+val STAR = |- !A. STAR A = {s | RESTRICT s A = s} : thm
+val CONS_STAR = |- !a t A. CONS a t IN STAR A = a IN A /\ t IN STAR A : thm
+val NIL_IN_STAR = |- !A. [] IN STAR A : thm
+val PROCESS_EQ_SPLIT =
+  |- !P Q. (P = Q) = (ALPHA P = ALPHA Q) /\ (TRACES P = TRACES Q) : thm
+val ALPHA_FST = |- !x y. IS_PROCESS (x,y) ==> (ALPHA (ABS_process (x,y)) = x)
+  : thm
+val TRACES_IN_STAR = |- !P. TRACES P SUBSET STAR (ALPHA P) : thm
+val NIL_IN_TRACES = |- !P. [] IN TRACES P : thm
+val ID_PROCESS = |- !P. ABS_process (ALPHA P,TRACES P) = P : thm
+val STOP = |- !x. (ALPHA (STOP x) = x) /\ (TRACES (STOP x) = {[]}) : thm
+val TRACES_STOP = |- !x. TRACES (STOP x) = {[]} : thm
+val ALPHA_STOP = |- !x. ALPHA (STOP x) = x : thm
+val IS_PROCESS_STOP = |- !A. IS_PROCESS (A,{[]}) : thm
+val RUN = |- !A. (ALPHA (RUN A) = A) /\ (TRACES (RUN A) = STAR A) : thm
+val TRACES_RUN = |- !A. TRACES (RUN A) = STAR A : thm
+val ALPHA_RUN = |- !A. ALPHA (RUN A) = A : thm
+val IS_PROCESS_RUN = |- !A. IS_PROCESS (A,STAR A) : thm
+val PREFIX =
+  |- !a P.
+       a IN ALPHA P ==>
+       (ALPHA (a --> P) = ALPHA P) /\
+       (TRACES (a --> P) = {[]} UNION {CONS a t | t IN TRACES P}) : thm
+val TRACES_PREFIX =
+  |- !P a.
+       a IN ALPHA P ==>
+       (TRACES (a --> P) = {[]} UNION {CONS a t | t IN TRACES P}) : thm
+val ALPHA_PREFIX = |- !P a. a IN ALPHA P ==> (ALPHA (a --> P) = ALPHA P) : thm
+val IS_PROCESS_PREFIX =
+  |- !a P.
+       a IN ALPHA P ==>
+       IS_PROCESS (ALPHA P,{[]} UNION {CONS a t | t IN TRACES P}) : thm
+val PAR =
+  |- !P Q.
+       (ALPHA (P PAR Q) = ALPHA P UNION ALPHA Q) /\
+       (TRACES (P PAR Q) =
+        {s |
+          s IN STAR (ALPHA P UNION ALPHA Q) /\
+          RESTRICT s (ALPHA P) IN TRACES P /\
+          RESTRICT s (ALPHA Q) IN TRACES Q}) : thm
+val TRACES_PAR =
+  |- !Q P.
+       TRACES (P PAR Q) =
+       {s |
+         s IN STAR (ALPHA P UNION ALPHA Q) /\
+         RESTRICT s (ALPHA P) IN TRACES P /\
+         RESTRICT s (ALPHA Q) IN TRACES Q} : thm
+val ALPHA_PAR = |- !Q P. ALPHA (P PAR Q) = ALPHA P UNION ALPHA Q : thm
+val IS_PROCESS_PAR =
+  |- !P Q.
+       IS_PROCESS
+         (ALPHA P UNION ALPHA Q,
+          {s |
+            s IN STAR (ALPHA P UNION ALPHA Q) /\
+            RESTRICT s (ALPHA P) IN TRACES P /\
+            RESTRICT s (ALPHA Q) IN TRACES Q}) : thm
+val RESTRICT =
+  |- (!A. RESTRICT [] A = []) /\
+     (!x t A.
+       RESTRICT (CONS x t) A =
+       ((x IN A) => (CONS x (RESTRICT t A)) | (RESTRICT t A))) : thm
+val REP_RESTR = |- !s A B. RESTRICT (RESTRICT s A) B = RESTRICT s (A INTER B)
+  : thm
+val DISTRIB_REST =
+  |- !s t A. RESTRICT (APPEND s t) A = APPEND (RESTRICT s A) (RESTRICT t A)
+  : thm
+val STRICT_REST = |- !A. RESTRICT [] A = [] : thm
+val it = [(),(),(),(),(),(),(),(),()] : unit list
+val INTER_UNION_IMP = |- !x A B. x IN A INTER B ==> x IN A UNION B : thm
+val PAR_SYM = |- !P Q. P PAR Q = Q PAR P : thm
+val INT_UNI_LEMMA = |- !A B. (A UNION B) INTER A = A : thm
+val INT_UNI_LEMMA' = |- !A B. (B UNION A) INTER A = A : thm
+val PAR_ASSOC = |- !P Q R. P PAR Q PAR R = (P PAR Q) PAR R : thm
+val CONS_RESTR = |- !a s A. RESTRICT (CONS a s) A = RESTRICT (APPEND [a] s) A
+  : thm
+val PAR_STOP_TRACES =
+  |- s IN STAR (ALPHA P) /\
+     RESTRICT s (ALPHA P) IN TRACES P /\
+     (RESTRICT s (ALPHA P) = []) =
+     s =
+     [] : thm
+val PAR_STOP = |- !P. P PAR STOP (ALPHA P) = STOP (ALPHA P) : thm
+val PAR_RUN_TRACES =
+  |- {s |
+       s IN STAR (ALPHA P) /\
+       RESTRICT s (ALPHA P) IN TRACES P /\
+       RESTRICT s (ALPHA P) IN STAR (ALPHA P)} =
+     TRACES P : thm
+val PAR_RUN = |- !P. P PAR RUN (ALPHA P) = P : thm
+val PREFIX_PAR_1 =
+  |- !c P Q.
+       c IN ALPHA P INTER ALPHA Q ==>
+       ((c --> P) PAR (c --> Q) = c --> (P PAR Q)) : thm
+val Sets_Lemma = |- {c; d} SUBSET A ==> c IN A /\ d IN A : thm
+val PREFIX_PAR_2_LEMMA =
+  .....
+  |- !x.
+       x IN STAR (ALPHA P UNION ALPHA Q) /\
+       ((RESTRICT x (ALPHA P) = []) \/
+        (?t. (RESTRICT x (ALPHA P) = CONS c t) /\ t IN TRACES P)) /\
+       ((RESTRICT x (ALPHA Q) = []) \/
+        (?t. (RESTRICT x (ALPHA Q) = CONS d t) /\ t IN TRACES Q)) =
+       x =
+       [] : thm
+val PREFIX_PAR_2 =
+  |- !c d P Q.
+       {c; d} SUBSET ALPHA P INTER ALPHA Q /\ ~(c = d) ==>
+       ((c --> P) PAR (d --> Q) = STOP (ALPHA P UNION ALPHA Q)) : thm
+
+Theory "par_laws" exported.
+val it = () : unit
+val it = () : unit
+Theory: par_laws
+
+Parents:
+    process
+    CSP_base
+
+Type constants:
+    
+
+Term constants:
+    
+
+Axioms:
+    
+
+Definitions:
+    
+
+Theorems:
+    INTER_UNION_IMP |- !x A B. x IN A INTER B ==> x IN A UNION B
+    PAR_SYM |- !P Q. P PAR Q = Q PAR P
+    PAR_ASSOC |- !P Q R. P PAR Q PAR R = (P PAR Q) PAR R
+    PAR_STOP |- !P. P PAR STOP (ALPHA P) = STOP (ALPHA P)
+    PAR_RUN |- !P. P PAR RUN (ALPHA P) = P
+    PREFIX_PAR_1
+    |- !c P Q.
+         c IN ALPHA P INTER ALPHA Q ==>
+         ((c --> P) PAR (c --> Q) = c --> (P PAR Q))
+    PREFIX_PAR_2
+    |- !c d P Q.
+         {c; d} SUBSET ALPHA P INTER ALPHA Q /\ ~(c = d) ==>
+         ((c --> P) PAR (d --> Q) = STOP (ALPHA P UNION ALPHA Q))
+
+Theory "par_laws" is consistent with disk.
+val it = () : unit

@@ -1,0 +1,26 @@
+#!/bin/sh
+
+if test -z "$THEORY_TYPE"; then THEORY_TYPE=ascii; fi
+
+mkdir theories/$THEORY_TYPE 2>/dev/null || true
+#Old version: (cd theories/src; Make $*)
+
+(cd theories/src; ./Make $*)
+
+# The following doesn't work. For it to work, the ML process would have to 
+# exit on encountering an error (such as an unbound variable). Since the ML
+# interface is a read-eval-print loop, this doesn't happen.
+
+#pre_load='Portable.use_and_exit print_HOL_ERR "useful.sml";\
+#	  Portable.use_and_exit print_HOL_ERR "equiv.sml";'
+#cd theories/src
+#echo $pre_load 'Portable.use_and_exit print_HOL_ERR "hrat.sml";'     | $* &&
+#echo $pre_load 'Portable.use_and_exit print_HOL_ERR "hreal.sml";'    | $* &&
+#echo $pre_load 'Portable.use_and_exit print_HOL_ERR "realax.sml";'   | $* &&
+#echo $pre_load 'Portable.use_and_exit print_HOL_ERR "real.sml";'     | $* &&
+#echo $pre_load 'Portable.use_and_exit print_HOL_ERR "topology.sml";' | $* &&
+#echo $pre_load 'Portable.use_and_exit print_HOL_ERR "nets.sml";'     | $* &&
+#echo $pre_load 'Portable.use_and_exit print_HOL_ERR "seq.sml";'      | $* &&
+#echo $pre_load 'Portable.use_and_exit print_HOL_ERR "lim.sml";'      | $* &&
+#echo $pre_load 'Portable.use_and_exit print_HOL_ERR "powser.sml";'   | $* &&
+#echo $pre_load 'Portable.use_and_exit print_HOL_ERR "transc.sml";'   | $*

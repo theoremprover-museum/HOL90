@@ -1,0 +1,163 @@
+thid = (safe_live, 784893894, 26850)
+axioms = []
+definitions =
+[((Liveness),
+  [],
+  `((! :(((num -> 'a) -> bool) -> bool) -> bool)
+   (\(P :(num -> 'a) -> bool). (((= :bool -> bool -> bool)
+   ((Liveness :((num -> 'a) -> bool) -> bool) $0))
+   ((! :((num -> 'a) -> bool) -> bool) (\(w :num -> 'a).
+   (((Safe :((num -> 'a) -> bool) -> (num -> 'a) -> bool) $1)
+   $0))))))`),
+ ((Safety),
+  [],
+  `((! :(((num -> 'a) -> bool) -> bool) -> bool)
+   (\(P :(num -> 'a) -> bool). (((= :bool -> bool -> bool)
+   ((Safety :((num -> 'a) -> bool) -> bool) $0))
+   ((! :((num -> 'a) -> bool) -> bool) (\(w :num -> 'a).
+   (((Live :((num -> 'a) -> bool) -> (num -> 'a) -> bool) $1)
+   $0))))))`),
+ ((Live),
+  [],
+  `((! :(((num -> 'a) -> bool) -> bool) -> bool)
+   (\(P :(num -> 'a) -> bool). ((! :((num -> 'a) -> bool) -> bool)
+   (\(w :num -> 'a). (((= :bool -> bool -> bool)
+   (((Live :((num -> 'a) -> bool) -> (num -> 'a) -> bool) $1) $0))
+   ((==> (((Safe :((num -> 'a) -> bool) -> (num -> 'a) -> bool) $1)
+   $0)) ($1 $0)))))))`),
+ ((Safe),
+  [],
+  `((! :(((num -> 'a) -> bool) -> bool) -> bool)
+   (\(P :(num -> 'a) -> bool). ((! :((num -> 'a) -> bool) -> bool)
+   (\(w :num -> 'a). (((= :bool -> bool -> bool)
+   (((Safe :((num -> 'a) -> bool) -> (num -> 'a) -> bool) $1) $0))
+   ((! :(num -> bool) -> bool) (\(n :num).
+   ((((Prefix_OK :num -> ((num -> 'a) -> bool) -> (num -> 'a) -> bool)
+   $0) $2) $1))))))))`),
+ ((Prefix_OK),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num).
+   ((! :(((num -> 'a) -> bool) -> bool) -> bool)
+   (\(P :(num -> 'a) -> bool). ((! :((num -> 'a) -> bool) -> bool)
+   (\(w :num -> 'a). (((= :bool -> bool -> bool)
+   ((((Prefix_OK :num -> ((num -> 'a) -> bool) -> (num -> 'a) -> bool)
+   $2) $1) $0)) ((? :((num -> 'a) -> bool) -> bool) (\(v :num -> 'a).
+   ((/\ ((! :(num -> bool) -> bool) (\(t :num). ((==> ((< $0) $4))
+   (((= :'a -> 'a -> bool) ($1 $0)) ($2 $0)))))) ($2 $0)))))))))))`)]
+theorems =
+[((Exists_not_Safety),
+  [],
+  `((? :(((num -> bool) -> bool) -> bool) -> bool)
+   (\(P :(num -> bool) -> bool). (~
+   ((Safety :((num -> bool) -> bool) -> bool) $0))))`),
+ ((Safety_Liveness_Decompose),
+  [],
+  `((! :(((num -> 'a) -> bool) -> bool) -> bool)
+   (\(P :(num -> 'a) -> bool).
+   ((? :(((num -> 'a) -> bool) -> bool) -> bool)
+   (\(Q :(num -> 'a) -> bool).
+   ((? :(((num -> 'a) -> bool) -> bool) -> bool)
+   (\(R :(num -> 'a) -> bool). ((/\
+   ((Safety :((num -> 'a) -> bool) -> bool) $1)) ((/\
+   ((Liveness :((num -> 'a) -> bool) -> bool) $0))
+   ((! :((num -> 'a) -> bool) -> bool) (\(w :num -> 'a).
+   (((= :bool -> bool -> bool) ($3 $0)) ((/\ ($2 $0)) ($1
+   $0)))))))))))))`),
+ ((Strongest_safety),
+  [],
+  `((! :(((num -> 'a) -> bool) -> bool) -> bool)
+   (\(P :(num -> 'a) -> bool).
+   ((! :(((num -> 'a) -> bool) -> bool) -> bool)
+   (\(Q :(num -> 'a) -> bool). ((==> ((/\
+   ((Safety :((num -> 'a) -> bool) -> bool) $0))
+   ((! :((num -> 'a) -> bool) -> bool) (\(w :num -> 'a). ((==> ($2
+   $0)) ($1 $0)))))) ((! :((num -> 'a) -> bool) -> bool)
+   (\(w :num -> 'a). ((==>
+   (((Safe :((num -> 'a) -> bool) -> (num -> 'a) -> bool) $2) $0)) ($1
+   $0)))))))))`),
+ ((Liveness_AND_Safety),
+  [],
+  `((! :(((num -> 'a) -> bool) -> bool) -> bool)
+   (\(P :(num -> 'a) -> bool). ((==> ((/\
+   ((Liveness :((num -> 'a) -> bool) -> bool) $0))
+   ((Safety :((num -> 'a) -> bool) -> bool) $0)))
+   ((! :((num -> 'a) -> bool) -> bool) (\(w :num -> 'a). ($1
+   $0))))))`),
+ ((Liveness_Live),
+  [],
+  `((! :(((num -> 'a) -> bool) -> bool) -> bool)
+   (\(P :(num -> 'a) -> bool).
+   ((Liveness :((num -> 'a) -> bool) -> bool)
+   ((Live :((num -> 'a) -> bool) -> (num -> 'a) -> bool) $0))))`),
+ ((Safety_Safe),
+  [],
+  `((! :(((num -> 'a) -> bool) -> bool) -> bool)
+   (\(P :(num -> 'a) -> bool).
+   ((Safety :((num -> 'a) -> bool) -> bool)
+   ((Safe :((num -> 'a) -> bool) -> (num -> 'a) -> bool) $0))))`),
+ ((Live_Safe),
+  [],
+  `((! :(((num -> 'a) -> bool) -> bool) -> bool)
+   (\(P :(num -> 'a) -> bool). ((! :((num -> 'a) -> bool) -> bool)
+   (\(w :num -> 'a).
+   (((Live :((num -> 'a) -> bool) -> (num -> 'a) -> bool)
+   ((Safe :((num -> 'a) -> bool) -> (num -> 'a) -> bool) $1))
+   $0)))))`),
+ ((Live_Idem),
+  [],
+  `((! :(((num -> 'a) -> bool) -> bool) -> bool)
+   (\(P :(num -> 'a) -> bool).
+   (((= :((num -> 'a) -> bool) -> ((num -> 'a) -> bool) -> bool)
+   ((Live :((num -> 'a) -> bool) -> (num -> 'a) -> bool)
+   ((Live :((num -> 'a) -> bool) -> (num -> 'a) -> bool) $0)))
+   ((Live :((num -> 'a) -> bool) -> (num -> 'a) -> bool) $0))))`),
+ ((Safe_Live),
+  [],
+  `((! :(((num -> 'a) -> bool) -> bool) -> bool)
+   (\(P :(num -> 'a) -> bool). ((! :((num -> 'a) -> bool) -> bool)
+   (\(w :num -> 'a).
+   (((Safe :((num -> 'a) -> bool) -> (num -> 'a) -> bool)
+   ((Live :((num -> 'a) -> bool) -> (num -> 'a) -> bool) $1))
+   $0)))))`),
+ ((Safe_and_Live),
+  [],
+  `((! :(((num -> 'a) -> bool) -> bool) -> bool)
+   (\(P :(num -> 'a) -> bool). ((! :((num -> 'a) -> bool) -> bool)
+   (\(w :num -> 'a). (((= :bool -> bool -> bool) ((/\
+   (((Safe :((num -> 'a) -> bool) -> (num -> 'a) -> bool) $1) $0))
+   (((Live :((num -> 'a) -> bool) -> (num -> 'a) -> bool) $1) $0)))
+   ($1 $0))))))`),
+ ((Live_Contains),
+  [],
+  `((! :(((num -> 'a) -> bool) -> bool) -> bool)
+   (\(P :(num -> 'a) -> bool). ((! :((num -> 'a) -> bool) -> bool)
+   (\(w :num -> 'a). ((==> ($1 $0))
+   (((Live :((num -> 'a) -> bool) -> (num -> 'a) -> bool) $1)
+   $0))))))`),
+ ((Safe_Mono),
+  [],
+  `((! :(((num -> 'a) -> bool) -> bool) -> bool)
+   (\(P :(num -> 'a) -> bool).
+   ((! :(((num -> 'a) -> bool) -> bool) -> bool)
+   (\(Q :(num -> 'a) -> bool). ((==>
+   ((! :((num -> 'a) -> bool) -> bool) (\(w :num -> 'a). ((==> ($2
+   $0)) ($1 $0))))) ((! :((num -> 'a) -> bool) -> bool)
+   (\(w :num -> 'a). ((==>
+   (((Safe :((num -> 'a) -> bool) -> (num -> 'a) -> bool) $2) $0))
+   (((Safe :((num -> 'a) -> bool) -> (num -> 'a) -> bool) $1)
+   $0)))))))))`),
+ ((Safe_Idem),
+  [],
+  `((! :(((num -> 'a) -> bool) -> bool) -> bool)
+   (\(P :(num -> 'a) -> bool).
+   (((= :((num -> 'a) -> bool) -> ((num -> 'a) -> bool) -> bool)
+   ((Safe :((num -> 'a) -> bool) -> (num -> 'a) -> bool)
+   ((Safe :((num -> 'a) -> bool) -> (num -> 'a) -> bool) $0)))
+   ((Safe :((num -> 'a) -> bool) -> (num -> 'a) -> bool) $0))))`),
+ ((Safe_Contains),
+  [],
+  `((! :(((num -> 'a) -> bool) -> bool) -> bool)
+   (\(P :(num -> 'a) -> bool). ((! :((num -> 'a) -> bool) -> bool)
+   (\(w :num -> 'a). ((==> ($1 $0))
+   (((Safe :((num -> 'a) -> bool) -> (num -> 'a) -> bool) $1)
+   $0))))))`)]

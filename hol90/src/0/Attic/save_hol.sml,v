@@ -1,0 +1,348 @@
+head	1.4;
+access;
+symbols
+	HOL97:1.3.2.1.0.2
+	bpHOL97:1.3.2.1
+	hol90_9_alpha:1.3.2.1
+	hol90_pre8_for_multiple_compilers:1.3.0.2
+	hol90_pre8_after_donalds_separate_compilation_changes:1.3
+	hol90_8_after_merging_Konrad_Elsa:1.2
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.4
+date	95.12.18.11.35.16;	author drs1004;	state dead;
+branches;
+next	1.3;
+
+1.3
+date	95.10.31.13.56.31;	author drs1004;	state Exp;
+branches
+	1.3.2.1;
+next	1.2;
+
+1.2
+date	95.10.17.17.07.21;	author drs1004;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	95.10.16.13.30.02;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.30.02;	author rjb;	state Exp;
+branches;
+next	;
+
+1.3.2.1
+date	96.06.25.15.42.00;	author rjb;	state Exp;
+branches
+	1.3.2.1.2.1;
+next	;
+
+1.3.2.1.2.1
+date	97.06.11.17.24.35;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.4
+log
+@Preterm and other changes, see 7.changes
+@
+text
+@functor SAVE_HOL() : Save_hol_sig =
+struct
+
+fun SAVE_HOL_ERR{function,message} =
+    Exception.HOL_ERR{origin_structure = "Save_hol",
+		      origin_function = function,
+		      message = message}
+
+
+fun print_banner date =
+ ( output(std_out, "\n\n");
+   output(std_out,
+"          HHH                 LL\n \
+\         HHH                  LL\n \
+\         HHH                   LL\n \
+\         HHH                    LL\n \
+\         HHH          OOOO       LL\n \
+\         HHHHHHH     OO  OO       LL\n \
+\         HHHHHHH     OO  OO       LLL\n \
+\         HHH          OOOO        LLLL\n \
+\         HHH                     LL  LL\n \
+\         HHH                    LL    LL\n \
+\         HHH                   LL      LL\n \
+\         HHH                  LL        LL90."^
+(Lib.int_to_string Globals.version_number)^"\n\n"^
+"Created on "^date^"using: " ^ Portable.sml_banner ^"\n\n\n"));
+
+
+local
+val init_fname = "/hol-init.sml"
+val local_init_fname = "."^init_fname
+
+in
+fun save_hol str = 
+    let val (I,O) = execute_in_env ("/bin/date",[],[])
+	val date = input_line I;
+        val _ = close_in I
+        val _ = close_out O
+    in 
+       Portable.export str;
+       print_banner date;
+       if (!Globals.use_init_file)
+       then if (Lib.file_exists_for_reading local_init_fname)
+            then Portable.use local_init_fname
+            else
+		(case Portable.getEnv "HOME"
+		     of NONE => () 
+		   (*
+		    We don't raise the following:
+		    raise SAVE_HOL_ERR{function = "save_hol.parse_HOME",
+		    message = "can not find HOME variable in environment"}
+		    because non-unix systems may not have a HOME env var.
+		    *)
+		   | SOME home_init =>
+			 let val home_init_fname = home_init ^init_fname
+			 in if (Lib.file_exists_for_reading home_init_fname)
+				then Portable.use home_init_fname
+			    else ()
+			 end)
+       else ()
+    end
+end;
+
+end; (* SAVE_HOL *)
+@
+
+
+1.3
+log
+@First phase of hol90.8 development.  hol90 now compiles using NJSML-CM
+108.5, with separate compilation of libraries.  System dependencies
+have been isolated in the makefiles and "portable.sml".
+
+This involved a large number of enhancments to the source files,
+most of which are documented in the 7.changes file (or will be shortly).
+See also the correpsonding email corrspondence between RJB, KLS, TFM,
+JRH and DRS that happened during this development.
+@
+text
+@@
+
+
+1.3.2.1
+log
+@The core of hol90.9.alpha now builds successfully with SML/NJ 109,
+SML/NJ 108.5 (using CM), SML/NJ 0.93, and Poly/ML 3.0.
+I have not yet tried rebuilding the theory files.
+@
+text
+@d24 2
+a25 1
+\         HHH                  LL        LL90."^Globals.version_number^"\n\n"^
+d35 2
+a36 2
+    let val (I,O) = Portable.execute ("/bin/date",[])
+	val date = Portable.input_line I;
+@
+
+
+1.3.2.1.2.1
+log
+@Removed files are parse files and portability files that have
+effectively been moved elsewhere.
+
+Modified files are up to date for ML 109.26.
+@
+text
+@d1 1
+a1 1
+structure Save_hol : Save_hol_sig =
+a3 2
+open Portable;
+
+d39 1
+a39 1
+       Portable.exportML str;
+@
+
+
+1.2
+log
+@Keeping you up to date:
+
+I'm about to do a checkin of elsa's modifications to the hol90.7
+sources to create her hol90.pre8.  To recap what I've done:
+	- I checked out hol90 (in /usr/groups/hol/drs1004/hol90)
+		cvs co hol90
+	  (Well, to be honest, I only checked out those
+	  parts of hol90 I knew I'd be changing, e.g. not the
+	  Manual, and only parts of the library.  Checking out the
+	  entire source takes a while, mainly due to the enormous number
+	  of help files.  The limiting factor is files/second, which
+         runs at around 5 when CVS is working on nfs over a network, not
+         KB/second, which you might at first think it would be).
+
+	- By doing a recursive diff between Elsa's source and the
+	hol90.7 source I found all the changes Elsa had made to
+	source files.  I copied relevant files from Elsa's source
+	into my checked out version.  The only new files were
+		- the sml_system files in src/0
+		- some make scripts in src/.
+	Changed files were in:
+		src/{0,1,2,3}
+		library/arith/src/thm_convs.sml
+		library/list/src/list_conv1.sml
+		library/num/src/num_lib.sml
+		library/prog_logic/src/halts_logic.sml
+		library/prog_logic/src/translation.sml
+		library/prog_logic/theories/src/mk_halts.sml
+		library/real/theories/src/Make
+		library/real/theories/src/equiv.sml
+		library/real/theories/src/seq.sml
+		library/reduce/src/arithconv.sml
+		library/string/src/string_conv.sml
+		library/unity/theories/src/aux_definitions.sml
+		library/word/theories/src/*
+
+	- I will now commit these changes, with this email as the log message.
+		cvs commit
+
+	- Tomorrow I will get this version compiling
+	with NJSML 108 (I will probably add
+	the files to enable the NJSML compilation manager to make
+	this easier), then check those changes in.  I think it's
+	good to get things in a working state.
+@
+text
+@d1 1
+a1 2
+functor SAVE_HOL(structure Globals : Globals_sig
+		 (* structure Lib : Lib_sig *)) : Save_hol_sig =
+d26 1
+a26 1
+"Created on "^date^"using: " ^ Sml_system.sml_banner ^"\n\n\n"));
+d40 1
+a40 1
+       Sml_system.exportHOL str;
+d44 1
+a44 1
+            then Sml_system.use local_init_fname
+d46 1
+a46 1
+		(case Sml_system.getEnv "HOME"
+d57 1
+a57 1
+				then Sml_system.use home_init_fname
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d1 2
+a2 1
+functor SAVE_HOL(Globals : Globals_sig) : Save_hol_sig =
+d5 4
+a8 44
+fun SAVE_HOL_ERR{function,message} = HOL_ERR{origin_structure = "Save_hol",
+					     origin_function = function,
+					     message = message}
+
+(* sml/nj 93
+ * fun print_banner date =
+ *  ( output(std_out, "\n\n");
+ *    output(std_out,
+ * "          HHH                 LL\n \
+ * \         HHH                  LL\n \
+ * \         HHH                   LL\n \
+ * \         HHH                    LL\n \
+ * \         HHH          OOOO       LL\n \
+ * \         HHHHHHH     OO  OO       LL\n \
+ * \         HHHHHHH     OO  OO       LLL\n \
+ * \         HHH          OOOO        LLLL\n \
+ * \         HHH                     LL  LL\n \
+ * \         HHH                    LL    LL\n \
+ * \         HHH                   LL      LL\n \
+ * \         HHH                  LL        LL90."^
+ * (Lib.int_to_string Globals.version_number)^"\n\n"^
+ * "Created on "^date^"using: " ^ System.version ^"\n\n\n"));
+ *
+ ************************)
+
+(* sml/nj 102
+ * fun print_banner date =
+ *  ( output(std_out, "\n\n");
+ *    output(std_out,
+ * "          HHH                 LL\n \
+ * \         HHH                  LL\n \
+ * \         HHH                   LL\n \
+ * \         HHH                    LL\n \
+ * \         HHH          OOOO       LL\n \
+ * \         HHHHHHH     OO  OO       LL\n \
+ * \         HHHHHHH     OO  OO       LLL\n \
+ * \         HHH          OOOO        LLLL\n \
+ * \         HHH                     LL  LL\n \
+ * \         HHH                    LL    LL\n \
+ * \         HHH                   LL      LL\n \
+ * \         HHH                  LL        LL90."^
+ * (Lib.int_to_string Globals.version_number)^"\n\n"^
+ * "Created on "^date^"using: " ^Compiler.version ^"\n\n\n"));
+ **************************)
+d10 1
+d27 1
+a27 1
+"Created on "^date^"using: " ^ System.version ^"\n\n\n"));
+d33 1
+a33 6
+fun parse_HOME [] = raise SAVE_HOL_ERR{function = "save_hol.parse_HOME",
+                         message = "can not find HOME variable in environment"}
+  | parse_HOME (s::rst) =
+       case (explode s)
+         of ("H"::"O"::"M"::"E"::"="::path) => implode path
+          | _ => parse_HOME rst
+d41 1
+a41 1
+       exportML str;
+d45 16
+a60 7
+            then use local_init_fname
+            else let val home_init_fname = parse_HOME(System.environ())
+                                           ^init_fname
+                 in if (Lib.file_exists_for_reading home_init_fname)
+                    then use home_init_fname
+                    else ()
+                 end
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

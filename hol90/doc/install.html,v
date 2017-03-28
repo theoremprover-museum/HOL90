@@ -1,0 +1,748 @@
+head	1.1;
+branch	1.1.1;
+access;
+symbols
+	HOL97:1.1.1.1.4.4.0.2
+	bpHOL97:1.1.1.1.4.4
+	hol90_9_alpha:1.1.1.1.4.2
+	hol90_pre8_for_multiple_compilers:1.1.1.1.0.4
+	hol90_pre8_after_donalds_separate_compilation_changes:1.1.1.1
+	hol90_8_after_merging_Konrad_Elsa:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	95.10.16.13.36.09;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.36.09;	author rjb;	state Exp;
+branches
+	1.1.1.1.4.1;
+next	;
+
+1.1.1.1.4.1
+date	96.09.03.16.21.54;	author rjb;	state Exp;
+branches;
+next	1.1.1.1.4.2;
+
+1.1.1.1.4.2
+date	96.09.06.10.48.08;	author rjb;	state Exp;
+branches;
+next	1.1.1.1.4.3;
+
+1.1.1.1.4.3
+date	96.10.01.13.22.56;	author rjb;	state Exp;
+branches;
+next	1.1.1.1.4.4;
+
+1.1.1.1.4.4
+date	96.12.18.12.22.23;	author rjb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@<TITLE> hol90 Installation Guide</TITLE>
+
+<H1><A NAME = "hol90 Installation Guide">
+              hol90 Installation Guide</A></H1>
+
+To build hol90 takes four stages:
+<OL>
+<LI><A HREF = "#Get the hol90 sources">Get the hol90 sources</A>
+<LI><A HREF = "#Get SML/NJ">Get SML/NJ</A>
+<LI><A HREF = "#Make hol90">Make hol90</A>
+<LI><A HREF = "#Install the hol90 manual"> Install the hol90 manual</A>
+</OL>
+
+If it happens that you want to move the system after it has been built,
+consult <A HREF = "#Moving hol90 after it has been built"> Moving hol90
+after it has been built</A>.  If you have any trouble building the
+system, please send mail to 
+<PRE>
+    slind@@informatik.tu-muenchen.de
+</PRE>
+
+<STRONG>Important!</STRONG> Once you have installed the system, all users 
+must rebuild any theories (and libraries that build theories) that have 
+been built on an earlier release of hol90. 
+
+<P>
+<A HREF = "manual.html#Table of Contents">User Manual Table of Contents</A>
+<HR>
+
+<H1><A NAME = "Get the hol90 sources">Get the hol90 sources</A></H1>
+
+These are available by anonymous ftp from either 
+<A HREF = "ftp://ftp.informatik.tu-muenchen.de/local/lehrstuhl/nipkow/slind/hol90/">
+Munich</A> or 
+<A HREF = "ftp://ftp.research.att.com/dist/ml/hol90/">Bell Labs</A>
+<P>
+Once you have the hol90 source, it it can be unpacked by
+<PRE>
+    zcat hol90.7.tar.Z | tar xf -
+</PRE>
+
+This gives a directory called hol90, with the following directories:
+<UL>
+<LI> <A HREF = "../contrib/"> contrib - libraries contributed by users</A>
+<LI> <A HREF = "../doc/"> doc - system documentation</A>
+<LI> <A HREF = "../examples/"> examples - examples of using hol90</A>
+<LI> <A HREF = "../help/"> help - the system online help files</A>
+<LI> <A HREF = "../src/"> src - the hol90 sources</A>
+<LI> <A HREF = "../library/"> library - the standard libraries</A>
+<LI> <A HREF = "../theories/"> theories - the system theories</A>
+<LI> <A HREF = "../tools/"> tools - some useful tools</A>
+</UL>
+
+<P>
+<A HREF = "#Installation">Beginning of Installation Guide</A>.
+<BR>
+<A HREF = "manual.html#Table of Contents">User Manual Table of Contents</A>.
+<HR>
+
+<H1><A NAME = "Get SML/NJ">Get SML/NJ</A></H1>
+
+Currently, hol90 is being implemented in the SML/NJ dialect of SML. It
+has some dependencies on that compiler, although ports to PolyML and
+other compilers have been successfully carried out in the past. For now,
+though, the New Jersey compiler is what you need. The New Jersey
+compiler has a well-deserved reputation for being memory hungry. You can
+run hol90 on a 16 Megabyte Sun workstation, but the more memory the
+better! A workstation with 24 Megabytes or more, with generous swap
+space is recommended. The current public release of the SML/NJ compiler
+is available from
+<A HREF = "ftp://ftp.research.att.com/dist/ml/">Bell Labs</A>.
+<P>
+<A HREF = "#Installation">Beginning of Installation Guide</A>.
+<BR>
+<A HREF = "manual.html#Table of Contents">User Manual Table of Contents</A>.
+
+<HR>
+
+<H1><A NAME = "Make hol90">Make hol90</A></H1>
+
+For this release, we assume that theory files will be represented in
+ascii on disk. Currently this is preferable because ascii theories are
+architecture independent and orders of magnitude smaller than binary
+theories. If you have an intense desire to build binary theory files, 
+send mail to the author of this document.
+
+The model for building the hol90 system is simply to make the system
+image for every architecture of interest. In the following <VAR>sml</VAR>
+is a copy of the SML/NJ compiler (with perhaps some other functions
+added, e.g., the SML/NJ library). The notation <VAR>.../hol90</VAR>
+represents the full path to the hol90 sources.
+<P>
+In the simplest case, making the system image for an architecture is
+done by invoking the unix command
+<PRE>
+    make_hol <VAR>sml</VAR>
+</PRE>
+in the directory <VAR>.../hol90/src</VAR>. This will leave an image
+<KBD>hol90.</KBD><VAR>arch</VAR>, where <VAR>arch</VAR> is what SML/NJ 
+thinks is the machine architecture. It takes about 20 minutes on a SPARC10, 
+and considerably longer for some other machines.
+<P>
+There are extra options to <KBD>make_hol</KBD> that cover special
+circumstances, so if you find that the default option to <KBD>make_hol</KBD>
+doesn't give you the flexibility you need to build hol90 at your
+site, the following documentation gives more detail.
+
+
+<H2>make_hol</H2>
+
+The calling convention for <KBD>make_hol</KBD> is:
+<PRE>
+    <KBD>make_hol</KBD> <VAR>sml</VAR> [-n | -b | -o] [-d <VAR>path</VAR>]
+</PRE>
+The default, calling <KBD>make_hol</KBD> <VAR>sml</VAR> with no parameters, 
+tells the system to
+<UL>
+<LI> Re-use the existing (ascii) theory files. These will be the theory
+     files that were shipped with the release, unless the system has
+     since been remade locally by invoking <KBD>make_hol</KBD> with the
+     <STRONG>-n</STRONG> option.
+
+<LI> Set the hol90 root directory to be the parent directory of the
+     current working directory (which is found by <KBD>pwd</KBD>). 
+     If <KBD>make_hol</KBD> isn't invoked in <VAR>.../hol90/src</VAR>
+     or if one wants the hol90 root directory to be expandable in
+     different ways on different machines in a networked computing
+     environment, the <STRONG>-d</STRONG> option must be used. 
+</UL>
+
+The other options are
+<DL>
+<DT> -o
+<DD> Reuse the existing ascii theory files.
+<P>
+<DT> -n
+
+<DD> This option tells the system to rebuild all its theories. Be
+    warned that a consequence of this option is that the system
+    libraries will have to be rebuilt (with <KBD>src/make_lib</KBD>) 
+    and all user theories at the site will have to be rebuilt, along with 
+    any images that depend on hol90 libraries.
+<P>
+<DT> -b
+
+<DD>The <STRONG>-b</STRONG> option tells the system to build binary
+    theories. This is not advised, and some editing of the 
+    <KBD>src/sys01.sml</KBD> file is necessary to get this approach to work.
+<P>
+<DT> -d <VAR>path</VAR>
+
+<DD> This option to <KBD>make_hol</KBD> is used to establish the root
+directory for hol90. If your current directory at the time of calling
+<KBD>make_hol</KBD> is not <VAR>.../hol90/src</VAR>, then you will need to
+supply the full directory path to the hol90 directory. This option is
+also useful in the case when building a version of the system that will
+be used in a networked environment, where the root directory may be
+expanded differently for different machines in the network. 
+<STRONG>Note:</STRONG> there must be a space separating <STRONG>-d</STRONG> and
+<VAR>path</VAR>.
+</DL>
+
+The default invocation for building the system is equivalent to invoking
+<PRE>
+    <KBD>make_hol</KBD> <VAR>sml</VAR> -o -d `pwd`/..
+</PRE>
+in <VAR>.../hol90/src</VAR>.
+
+<H3>Notes</H3>
+
+<UL>
+<LI> In the normal course of events, the system needn't be built with the
+   <STRONG>-n</STRONG> option. 
+
+<LI> The default and the <STRONG>-n</STRONG> and <STRONG>-o</STRONG> 
+     options entail that theory files will be in ascii. This is preferable,
+     since ascii files are portable between architectures and are much 
+     smaller than binary theory files.
+</UL>
+
+<H2>Libraries</H2>
+
+Please note that in this release the system libraries do not
+have to be built; that has already been done for you. However, if one
+rebuilds the system with the <STRONG>-n</STRONG> option, then libraries
+must be rebuilt.  This is done with <KBD>src/make_lib</KBD>; the invocation is
+<PRE>
+    make_lib <VAR>hol90</VAR>
+</PRE>
+
+
+<H2>Contrib</H2>
+
+In this release the contributed libraries <STRONG>do</STRONG> have to be
+built after hol90 has been made (if you want to use a contrib
+library). This is done with <KBD>src/make_contrib</KBD>; the invocation
+is
+
+<PRE>
+    make_contrib <VAR>hol90</VAR>
+</PRE>
+ 
+<STRONG>Notes.</STRONG> 
+
+<UL> <LI>Some contrib libraries, <KBD>hol_ML</KBD> in particular, can
+take several hours to build, even on a large machine, so you might want
+to leave them out of an initial build sequence. In fact, all theories
+belonging to contrib libraries have already been made, so the only
+installation work that really needs to be done is to re-declare the
+contrib library of interest, and put the declaration in the right
+place. For example, the <KBD>hol_ML</KBD> library gets built with the
+following shell script:
+
+<PRE>
+    #!/bin/sh
+    
+    # Make script for holML library
+    
+    # Build the theories
+    
+    
+    $* < theories/src/more_list/mk_more_list.sml
+    $* < theories/src/more_string/mk_more_string.sml
+    $* < theories/src/finmap/mk_finmap.sml
+    $* < theories/src/Core/Common/mk_common_holML_core.sml
+    $* < theories/src/Core/Plain_Core/mk_holML_Plain_Core.sml
+    $* < theories/src/Core/Determinacy/mk_core_determinacy.sml
+    $* < theories/src/Modules/Common/mk_common_ModML.sml
+    $* < theories/src/Modules/ModML/mk_ModML.sml
+    $* < theories/src/Modules/HOFML/mk_HOFML.sml
+    
+    # Install the library description file
+    
+    $* < theories/src/mk_holML_lib.sml
+    mv holML.hol_lib ../desc
+</PRE>
+
+Only the last two lines would need to be executed to install this
+library. <EM>i.e.</EM>,
+
+<PRE>
+    $* < theories/src/mk_holML_lib.sml
+    mv holML.hol_lib ../desc
+</PRE>
+
+<LI>
+If one moves the hol90 root directory after building the system,
+<KBD>contrib</KBD> libraries will be findable (via
+<KBD>find_library</KBD>) but not loadable. See <A HREF = "#Moving hol90
+after it has been built"> Moving hol90 after it has been built</A> for
+more information.
+</UL>
+
+<A HREF = "#Installation">Beginning of Installation Guide</A>.
+<BR>
+<A HREF = "manual.html#Table of Contents">User Manual Table of Contents</A>.
+<HR>
+
+<H2><A NAME = "Install the hol90 manual">
+    Install the hol90 manual</A></H2>
+
+The hol90 manual is hyperlinked, and is mostly self-contained. However,
+it does provide links to the local SML/NJ installation, in the file <A
+HREF = "sml.html"><KBD>doc/sml.html</KBD></A>. The paths in this file
+should be adjusted to the paths for your local setup.
+
+<P>
+<A HREF = "#Installation">Beginning of Installation Guide</A>.
+<BR>
+<A HREF = "manual.html#Table of Contents">User Manual Table of Contents</A>.
+<HR>
+
+<H1><A NAME = "Moving hol90 after it has been built">
+               Moving hol90 after it has been built</A></H1>
+
+
+One may decide to move hol90 after it has been built. There are a couple
+of scenarios that have been considered by the hol90 implementors:
+
+<UL>
+
+<LI> You move only the executables, or link to them. Nothing needs to
+   be done: executables can be moved with impunity.
+
+<LI> You move the <VAR>hol90</VAR> directory. For instance, you might have 
+  built the system in your home directory, and now want to move the sources to
+   <KBD>/usr/local/lib</KBD> and <KBD>hol90.</KBD><VAR>arch</VAR> to 
+   <KBD>/usr/local/bin</KBD>. In such a case, you
+   have to reset some internal paths in the 
+   <KBD>hol90.</KBD><VAR>arch</VAR> images.
+   Fortunately, this has been automated. In the following, let 
+   <VAR>path</VAR>
+   be the full path to the directory you have moved the sources to. (For
+   example, if you perform <KBD>mv hol90 /usr/local/lib</KBD> then 
+   <VAR>path</VAR>
+   is
+   <KBD>/usr/local/lib/hol90</KBD>.) On each architecture <VAR>arch</VAR> 
+   invoke the following
+<PRE>
+   tools/resituate_hol90 <VAR>from-image</VAR>  <VAR>to-image</VAR>  <VAR>path</VAR>
+</PRE>
+   where <VAR>from-image</VAR> is <KBD>hol90.</KBD><VAR>arch</VAR>,
+   <VAR>to-image</VAR> is the file name to
+   put the saved image at, and  <VAR>path</VAR> is the path to the hol90 root
+   directory. For example, on a sun4 one could do, in directory hol90,
+   <PRE>
+   tools/resituate_hol90 src/hol90.sparc src/hol90.sparc `pwd`
+   </PRE>
+   Note that this particular invocation will overwrite the file of an
+   executing process (namely <KBD>src/hol90.sparc</KBD>). Some operating
+   systems may not allow this (how will you know? Don't worry - the OS
+   will let you know!); in that case one needs to use a "temporary" 
+   <VAR>to-image</VAR>. Invoking 
+   something like
+   <PRE>
+   tools/resituate_hol90 src/hol90.sparc src/hol90.tmp `pwd`
+   mv src/hol90.tmp src/hol90.sparc
+   </PRE>
+   ought to work. After the images have been resituated, one can make 
+   symbolic links in <KBD>/usr/local/bin</KBD> to the executables.
+<P>
+   <KBD>contrib</KBD> libraries will no longer load, although they 
+   are findable with <KBD>find_library</KBD>. Probably the simplest solution 
+   to this is to not execute <KBD>make_contrib</KBD> until the system 
+   is in its final resting place. Otherwise, one can 
+  <UL>
+  <LI> redo the <KBD>make_contrib</KBD>, or
+  <LI> perform a <KBD>find_library</KBD> then <KBD>move_library</KBD>
+       everytime one wants a <KBD>contrib</KBD> library, or 
+  <LI> edit the <KBD>path</KBD> field in each <KBD>.hol_lib</KBD> 
+       file in <KBD>contrib/desc</KBD>.
+  </UL>
+</UL>
+<P>
+
+Finally, once this new version of hol90 has been installed, we repeat
+that all hol90 users must rebuild any of their theories that have been
+built on an earlier release of hol90.
+
+<HR>
+<A HREF = "#Installation">Beginning of Installation Guide</A>.
+<BR>
+<A HREF = "manual.html#Table of Contents">User Manual Table of Contents</A>.
+<BR>
+<A HREF="http://hpbroy3.informatik.tu-muenchen.de/MITARBEITER/slind/slind.html">Konrad Slind</A>, 
+slind@@informatik.tu-muenchen.de<P>
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@
+
+
+1.1.1.1.4.1
+log
+@New installation instructions for hol90.9.
+@
+text
+@d9 1
+a9 1
+<LI><A HREF = "#Get SML">Get a Standard ML compiler</A>
+d33 2
+a34 1
+<A HREF = "http://www.cl.cam.ac.uk/ftp/hvg/hol90/">Cambridge</A> or 
+d39 1
+a39 1
+    gzcat hol90.?.tar.gz | tar xf -
+d42 1
+a42 1
+This gives a directory called hol90.?, with the following directories:
+d44 1
+a44 1
+<!-- <LI> <A HREF = "../contrib/"> contrib - libraries contributed by users</A> -->
+d48 1
+a49 1
+<LI> <A HREF = "../src/"> src - the hol90 sources</A>
+d60 1
+a60 1
+<H1><A NAME = "Get SML">Get a Standard ML Compiler</A></H1>
+d62 10
+a71 12
+Currently, hol90 can be built with SML/NJ 0.93, some more recent versions of
+SML/NJ, and Poly/ML 3.0.
+<A HREF="http://www.ahl.co.uk/poly-ml.html">Poly/ML</A> is a commercial
+product available from <A HREF="http://www.ahl.co.uk/Welcome.html">Abstract
+Hardware Limited</A>. Standard ML of New Jersey version 0.93 is available
+without charge from <A HREF = "ftp://research.att.com/dist/ml/">Bell Labs</A>.
+Or you could try building hol90 with the
+<A HREF = "ftp://research.att.com/dist/ml/working/">current working version of
+SML/NJ</A>. The New Jersey compiler has a well-deserved reputation for being
+memory hungry. You can run hol90 on a 16 Megabyte Sun workstation, but the
+more memory the better! A workstation with 24 Megabytes or more, with generous
+swap space is recommended.
+a72 1
+
+a85 1
+<P>
+d87 1
+a87 1
+The model for building the hol90 system is to make the system
+d89 3
+a91 2
+is the Standard ML compiler. The notation <VAR>.../hol90</VAR> represents the
+full path to the hol90 sources.
+d93 2
+a94 3
+
+To build hol90, move into the directory <VAR>.../hol90</VAR> and create a
+subdirectory called <KBD>bin</KBD>:
+d96 1
+a96 2
+    cd <VAR>.../hol90</VAR>
+    mkdir bin
+d98 9
+d108 2
+a109 12
+Create a subdirectory in <KBD>bin</KBD> for the Standard ML compiler you wish
+to use:
+<PRE>
+    cd bin
+    mkdir <VAR>sml</VAR>
+</PRE>
+where <VAR>sml</VAR> is one of the following:
+<PRE>
+    njsml.1xx   Standard ML of New Jersey 109 or later
+    njsml.93    Standard ML of New Jersey 0.93
+    polyml      Poly/ML 3.0 (and possibly other versions)
+</PRE>
+d111 1
+a111 2
+Within this subdirectory, install the following files for each architecture
+<VAR>arch</VAR> on which you wish to build hol90:
+d113 1
+a113 5
+for njsml.1xx   sml             The architecture-independent script
+                                that runs SML/NJ 1xx, e.g., 1xx/bin/sml
+for njsml.93    sml.<VAR>arch</VAR>        The SML/NJ executable.
+for polyml      sml.<VAR>arch</VAR>        The Poly/ML executable.
+                ML_dbase.<VAR>arch</VAR>   The Poly/ML parent database.
+d115 15
+d131 6
+a136 5
+Normally, these can be symbolic links to the appropriate files. If you don't
+install them the build will fail with hints as to what you need to do.
+Multiple versions of hol90 for different architectures and built with
+different compilers can co-exist. Simply create subdirectories of
+<VAR>.../hol90</VAR>/<KBD>bin</KBD> as required.
+d138 24
+a161 4
+Now go to the hol90 source directory:
+<PRE>
+    cd <VAR>.../hol90</VAR>/src
+</PRE>
+d163 1
+a163 1
+Then type the following commands:
+d165 1
+a165 4
+    ./make clean <VAR>parameters</VAR>
+    ./make hol <VAR>parameters</VAR>
+    ./make hol-script <VAR>parameters</VAR>
+    ./make library <VAR>parameters</VAR>
+d167 1
+d169 1
+a169 6
+The library only has to be made if the theory files are not already present.
+Use <KBD>clobber</KBD> instead of <KBD>clean</KBD> if you wish to rebuild all
+the theory files for the core hol90 system. Be warned that a consequence of
+rebuilding the theory files is that all user theories at the site will have to
+be rebuilt, along with any images that depend on the theory files.
+<P>
+d171 3
+a173 9
+The shell script <KBD>make</KBD> determines the following parameters and calls
+Unix make with them in addition to the parameters specified on the command
+line:
+<DL>
+<DT><STRONG>HOL_DIR</STRONG>
+<DD>The base directory of hol90 (i.e., <VAR>.../hol90</VAR>).
+<DT><STRONG>ARCH</STRONG>
+<DD>The architecture of the machine on which hol90 is being built.
+</DL>
+d175 5
+a179 20
+These parameters do not appear to be computable in the <KBD>Makefile</KBD>, at
+least not in a way that works on all architectures.
+<P>
+
+Other parameters you may wish to specify are:
+<DL>
+<DT><STRONG>SML_IMPL</STRONG>
+<DD>The Standard ML compiler to be used. The compilers currently supported are:
+<KBD>njsml.1xx</KBD> (the default), <KBD>njsml.93</KBD>, and <KBD>polyml</KBD>
+(see above).
+<DT><STRONG>PRE_LOAD</STRONG>
+<DD>The libraries to load before dumping the hol90 executable. The default is
+to load libraries <KBD>automate</KBD> and <KBD>ind_def_new</KBD>. The former
+causes several other libraries to be loaded as well. Be aware that some
+libraries cannot be pre-loaded unless the theory files they use have been
+built previously.
+<DT><STRONG>USE_FILE</STRONG>
+<DD>The name of a file to use after loading any libraries but before dumping
+the hol90 executable. Default is none.
+</DL>
+d181 1
+a181 8
+The values of <STRONG>HOL_DIR</STRONG> and <STRONG>ARCH</STRONG> determined by
+<VAR>.../hol90</VAR>/<KBD>src/make</KBD> may be overridden on the command
+line. If both are specified there is no need to use
+<VAR>.../hol90</VAR>/<KBD>src/make</KBD>; Unix <KBD>make</KBD> may be called
+directly. Specifying <STRONG>HOL_DIR</STRONG> explicitly is recommended if one
+wants the hol90 root directory to be expandable in different ways on different
+machines in a networked computing environment.
+<P>
+d183 4
+a186 3
+The main <KBD>Makefile</KBD> uses compiler-specific Makefiles:
+<KBD>Makefile.njsml.1xx</KBD>, etc. There is also a Standard ML source file
+for each compiler:
+d188 1
+a188 1
+    <VAR>.../hol90</VAR>/src/0/portable.njsml.1xx.sml, etc.
+d190 8
+a197 5
+All compiler-specific features should be contained within these. There is a
+<KBD>Makefile</KBD> and <KBD>portable</KBD> file for <KBD>njsml.108-cm</KBD>.
+This was intended for separate compilation using the Compilation Manager (CM)
+in SML/NJ 108.5, but support for it has been abandoned for the time being.
+<P>
+a198 3
+The latest version of hol90 uses a filter on the input stream to implement
+term and type quotations. The hol90 executable will not work correctly unless
+the filter is used. The command
+d200 1
+a200 1
+    ./make hol-script
+d202 12
+a213 6
+above generates a shell script <VAR>.../hol90</VAR>/<KBD>bin/hol90</KBD> that starts up hol90
+with the filter. It is independent of the architecture on which it is executed
+ and the ML
+implementation to use can be specified on the command line (provided hol90 has
+been built with that implementation). The full list of command line options
+accepted by the script is:
+d215 21
+a235 3
+    <STRONG>-ml</STRONG> <VAR>sml</VAR>       njsml.1xx, njsml.93, polyml, etc.
+    <STRONG>-h</STRONG> <VAR>heapsize</VAR>   The size of heap in Kbytes for Poly/ML (default 10000)
+    <STRONG>-v</STRONG> <VAR>variant</VAR>    Special versions of hol90, e.g., tkhol.
+d238 3
+a240 4
+The default <VAR>sml</VAR> is the one for which <KBD>make</KBD>
+<KBD>hol-script</KBD> was last executed. Thus, if you want <KBD>njsml.93</KBD>
+to become the default, execute the following command while in
+<VAR>.../hol90</VAR>/<KBD>src</KBD>:
+d242 2
+a243 1
+    ./make hol-script SML_IMPL=njsml.93
+d246 7
+a252 9
+If a variant is specified the script looks for a heap, executable, or database
+as follows:
+<PRE>
+    njsml.1xx   <VAR>.../hol90</VAR>/bin/njsml.1xx/.heap/<VAR>variant</VAR>.<VAR>arch</VAR>
+    njsml.93    <VAR>.../hol90</VAR>/bin/njsml.93/<VAR>variant</VAR>.<VAR>arch</VAR>
+    polyml      <VAR>.../hol90</VAR>/bin/polyml/<VAR>variant</VAR>_dbase.<VAR>arch</VAR>
+</PRE>
+where <VAR>arch</VAR> is the architecture to be supported.
+<P>
+d259 2
+a260 2
+<H1><A NAME = "Install the hol90 manual">
+    Install the hol90 manual</A></H1>
+a276 4
+<STRONG>Warning!</STRONG> The following instructions may be incorrect for
+hol90.9 and later versions.
+<P>
+
+d294 1
+a294 1
+   example, if you perform <KBD>mv</KBD> <KBD>hol90</KBD> <KBD>/usr/local/lib</KBD> then 
+@
+
+
+1.1.1.1.4.2
+log
+@*** empty log message ***
+@
+text
+@d32 3
+a34 6
+These are available by anonymous ftp from either
+<A HREF = "ftp://ftp.cl.cam.ac.uk/hvg/hol90/">
+<KBD>ftp://ftp.cl.cam.ac.uk/hvg/hol90/</KBD></A> (Cambridge) or 
+<A HREF = "ftp://research.att.com/dist/ml/hol90/">
+<KBD>ftp://research.att.com/dist/ml/hol90/</KBD></A> (Bell Labs), or by
+http from <A HREF = "http://www.cl.cam.ac.uk/ftp/hvg/hol90/">Cambridge</A>.
+d36 1
+a36 1
+Once you have the hol90 source, it can be unpacked by
+@
+
+
+1.1.1.1.4.3
+log
+@Changed addresses of Bell Labs' ftp site.
+@
+text
+@d35 2
+a36 2
+<A HREF = "ftp://ftp.research.bell-labs.com/dist/hol90/">
+<KBD>ftp://ftp.research.bell-labs.com/dist/hol90/</KBD></A> (Bell Labs), or by
+d69 1
+a69 2
+without charge from
+<A HREF = "ftp://ftp.research.att.com/dist/ml/">Bell Labs</A>.
+d71 5
+a75 5
+<A HREF = "ftp://ftp.research.bell-labs.com/dist/smlnj/working/">current
+working version of SML/NJ</A>. The New Jersey compiler has a well-deserved
+reputation for being memory hungry. You can run hol90 on a 16 Megabyte Sun
+workstation, but the more memory the better! A workstation with 24 Megabytes
+or more, with generous swap space is recommended.
+@
+
+
+1.1.1.1.4.4
+log
+@*** empty log message ***
+@
+text
+@d68 3
+a70 3
+Hardware Limited</A>.
+<A HREF="ftp://ftp.research.bell-labs.com/dist/smlnj/release/93/">Standard ML
+of New Jersey version 0.93</A> is available without charge from Bell Labs.
+d72 1
+a72 1
+<A HREF="ftp://ftp.research.bell-labs.com/dist/smlnj/working/">current
+d143 4
+a146 4
+    build clean <VAR>parameters</VAR>
+    build hol <VAR>parameters</VAR>
+    build hol-script <VAR>parameters</VAR>
+    build library <VAR>parameters</VAR>
+a148 2
+The script <KBD>build</KBD> is a wrapper for the Unix <KBD>make</KBD> program.
+The arguments to <KBD>build</KBD> are the same as those for <KBD>make</KBD>.
+d156 1
+a156 1
+The shell script <KBD>build</KBD> determines the following parameters and calls
+d188 1
+a188 1
+<VAR>.../hol90</VAR>/<KBD>src/build</KBD> may be overridden on the command
+d190 1
+a190 1
+<VAR>.../hol90</VAR>/<KBD>src/build</KBD>; Unix <KBD>make</KBD> may be called
+d212 1
+a212 1
+    build hol-script
+d223 1
+a223 1
+    <STRONG>-u</STRONG> <VAR>exec</VAR>       Use the specified executable/heap/database
+d226 1
+a226 1
+The default <VAR>sml</VAR> is the one for which <KBD>build</KBD>
+d231 1
+a231 1
+    build hol-script SML_IMPL=njsml.93
+d234 8
+a241 4
+If the <STRONG>-u</STRONG> option is specified the script tries to use
+<VAR>exec</VAR> as the executable, heap, or database. This allows the user to
+restart a HOL session that was saved using <KBD>save_hol</KBD>, or with
+Poly/ML, to use a child database of the HOL database.
+@

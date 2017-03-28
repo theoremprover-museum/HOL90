@@ -1,0 +1,904 @@
+head	1.2;
+access;
+symbols
+	HOL97:1.2.0.4
+	bpHOL97:1.2
+	hol90_9_alpha:1.2
+	hol90_pre8_for_multiple_compilers:1.2.0.2
+	hol90_pre8_after_donalds_separate_compilation_changes:1.2
+	hol90_7_cleaned_up_original_branchtag:1.1.0.2;
+locks; strict;
+comment	@# @;
+
+
+1.2
+date	95.10.31.15.07.56;	author drs1004;	state Exp;
+branches
+	1.2.4.1;
+next	1.1;
+
+1.1
+date	95.10.18.10.09.40;	author drs1004;	state dead;
+branches
+	1.1.2.1;
+next	;
+
+1.1.2.1
+date	95.10.18.10.09.41;	author drs1004;	state Exp;
+branches;
+next	;
+
+1.2.4.1
+date	97.06.11.17.54.06;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.2
+log
+@First phase of hol90.8 development.  hol90 now compiles using NJSML-CM
+108.5, with separate compilation of libraries.  System dependencies
+have been isolated in the makefiles and "portable.sml".
+
+This involved a large number of enhancments to the source files,
+most of which are documented in the 7.changes file (or will be shortly).
+See also the correpsonding email corrspondence between RJB, KLS, TFM,
+JRH and DRS that happened during this development.
+@
+text
+@structure Roalstack : Goalstack_sig = 
+struct
+structure Thm = Thm;
+
+
+fun GSTK_ERR{func,mesg} =
+     HOL_ERR{origin_structure = "Roalstack",
+             origin_function = func,
+             message = mesg}
+
+(* -------------------------------------------------------------------------
+ * Could be in some standard library of list processing functions. We 
+ * consider it an error to rotate an empty list,  although it is easier to 
+ * just make that be an identity operation.
+ ***************************************************************************)
+fun rotl (a::rst) = rst@@[a]
+  | rotl [] = raise GSTK_ERR{func = "rotl", mesg =  "empty list"}
+
+fun rotr lst = 
+   let val (front,back) = Lib.front_n_back lst
+   in (back::front)
+   end 
+   handle _ => raise GSTK_ERR{func = "rotr",mesg =  "empty list"}
+
+fun add_string_cr s = Lib.say (s^"\n")
+fun cr_add_string_cr s = Lib.say ("\n"^s^"\n")
+
+
+(* Backward proofs, with no idea of undo *)
+structure Bwd
+ : sig
+      type gstk
+      val expand : gstk -> tactic -> gstk
+      val expandf : gstk -> tactic -> gstk
+      val extract_thm : gstk -> Thm.thm
+      val initial_goal : gstk -> goal
+      val is_initial : gstk -> bool
+      val new_goal : goal -> gstk
+      val pp_goal : System.PrettyPrint.ppstream -> goal -> unit
+      val set_goal_pp : (System.PrettyPrint.ppstream -> goal -> unit)
+                        -> (System.PrettyPrint.ppstream -> goal -> unit)
+      val pp_gstk : System.PrettyPrint.ppstream -> gstk -> unit
+      val rotate : gstk -> int -> gstk
+      val top_goal : gstk -> goal
+      val top_goals : gstk -> goal list
+      val depth :gstk -> int
+   end =
+struct
+
+fun BWD_ERR{func,mesg} =
+    HOL_ERR{origin_structure = "Bwd",
+            origin_function = func,
+            message = mesg}
+
+(* GOALSTACKS *)
+(* A goalstack is a stack of (goal list, validation_function) records. Each 
+ * goal in the goal list is a (term list, term) pair. The validation 
+ * function is a function from a list of theorems to a theorem. It must be 
+ * that the number of goals in the goal list is equal to the number of 
+ * formal parameters in the validation function. Unfortunately, the type
+ * system of ML is not strong enough to check that.
+ ***************************************************************************)
+
+type tac_result = {goals : goal list,
+                   validation : Thm.thm list -> Thm.thm}
+
+datatype proposition = POSED of goal
+                     | PROVED of Thm.thm;
+
+datatype gstk = GSTK of {prop: proposition,
+                         stack : tac_result list}
+
+fun depth(GSTK{stack,...}) = length stack;
+
+fun is_initial(GSTK{prop = POSED g, stack = []}) = true
+  | is_initial _ = false;
+
+fun top_goals(GSTK{prop = POSED g, stack = []}) = [g]
+  | top_goals(GSTK{prop = POSED _, stack = {goals,...}::_}) = goals
+  | top_goals(GSTK{prop = PROVED _, ...}) = raise BWD_ERR{func = "top_goals", 
+                                                          mesg = "no goals"};
+
+val top_goal = hd o top_goals;
+
+fun new_goal (g as (asl,w)) = 
+   let val bool = Type.mk_type{Tyop = "bool", Args = []}
+       fun is_bool tm = (Term.type_of tm = bool)
+   in if (all is_bool (w::asl))
+      then GSTK{prop = POSED g, stack = []}
+      else raise BWD_ERR{func = "set_goal",
+                         mesg = "not a proposition; new goal not added"}
+   end;
+
+fun initial_goal(GSTK{prop = POSED g,...}) = g
+  | initial_goal(GSTK{prop = PROVED th,...}) = Thm.dest_thm th;
+
+
+fun rotate(GSTK{prop = PROVED _, ...}) _ = 
+        raise BWD_ERR{func = "rotate", mesg = "goal has already been proved"}
+  | rotate(GSTK{prop, stack}) n = 
+      if (n<0)
+      then raise BWD_ERR{func="rotate", mesg="negative rotations not allowed"}
+      else 
+      case stack
+      of [] => raise BWD_ERR{func = "rotate",mesg = "No goals to rotate"}
+       | ({goals,validation}::rst) =>
+          if (n > length goals)
+          then raise BWD_ERR{func = "rotate",
+                        mesg = "More rotations than goals -- no rotation done"}
+          else GSTK{prop = prop,
+                    stack = {goals = funpow n rotl goals,
+                             validation=validation o funpow n rotr}
+                            :: rst};
+
+
+local
+fun imp_err s = raise BWD_ERR{func = "expandf",
+                              mesg = "implementation error: "^s}
+fun return(GSTK{stack = {goals = [],validation}::rst, prop}) = 
+    let val th = validation []
+    in case rst 
+       of [] => GSTK{prop = PROVED th, stack = []}
+       | ({goals = _::rst_o_goals, validation}::rst') =>
+           ( cr_add_string_cr "Goal proved.";
+             add_string_cr (Thm.thm_to_string th);
+             return(GSTK{prop = prop,
+                         stack = {goals = rst_o_goals,
+                                  validation=fn thl => validation(th::thl)}
+                                 :: rst'}))
+       | _ => imp_err (Lib.quote "return")
+    end
+  | return gstk = gstk
+in
+fun expandf(GSTK{prop = PROVED _, ...}) _ = 
+           raise BWD_ERR{func = "expandf", mesg="goal has already been proved"}
+  | expandf(GSTK{prop as POSED g, stack}) tac =
+     let val (glist,vf) = tac (case stack of   []    => g 
+                                           | (tr::_) => hd (#goals tr))
+         val dpth = length stack
+         val gs = return(GSTK{prop = prop,
+                              stack = {goals = glist, validation = vf}
+                                      :: stack})
+     in case gs
+        of GSTK{prop = PROVED _, stack} => ()
+         | GSTK{prop, stack as {goals, ...}::_} =>
+             let val dpth' = length stack
+             in if (dpth' > dpth)
+                then if (dpth+1 = dpth') 
+                     then add_string_cr(case (length goals)
+                                        of 0 => imp_err "1"
+                                         | 1 => "1 subgoal:"
+                                         | n => (int_to_string n)^" subgoals:")
+                     else imp_err "2"
+                else cr_add_string_cr "Remaining subgoals:"
+             end
+         | _ => imp_err "3"
+         ; 
+         gs
+     end
+end;
+
+fun expand gs = expandf gs o Tactical.VALID;
+
+fun extract_thm (GSTK{prop = PROVED th, ...}) = th
+  | extract_thm _ = raise BWD_ERR{func = "extract_thm", 
+                                  mesg = "no theorem proved"};
+
+(* Prettyprinting *)
+
+local
+fun ppgoal ppstrm (asl,w) =
+   let val {add_string, add_break, begin_block, end_block, add_newline, ...} =
+                     PP.with_ppstream ppstrm
+       val pr = Term_io.Hol_pp.pp_self_parsing_term ppstrm
+   in
+     begin_block PP.CONSISTENT 0;
+     pr w; 
+     add_newline ();
+     (case asl
+        of [] => ()
+         | _  => ( begin_block PP.CONSISTENT 4;
+                   add_string (!Globals.goal_line);
+                   add_newline ();
+                   PP.pr_list pr (fn () => ()) add_newline (rev asl);
+                   end_block ()));
+     add_newline ();
+     end_block ()
+   end
+   handle e => (Lib.say "\nError in attempting to print a goal!\n";  raise e);
+
+val goal_printer = ref ppgoal
+in
+fun pp_goal ppstrm g = !goal_printer ppstrm g
+fun set_goal_pp pp = !goal_printer before (goal_printer := pp)
+end;
+
+fun pp_gstk ppstrm  =
+   let val pr_goal = pp_goal ppstrm
+       val {add_string, add_break, begin_block, end_block, add_newline, ...} =
+                     PP.with_ppstream ppstrm
+       fun pr (GSTK{prop = POSED g, stack = []}) = 
+              (begin_block PP.CONSISTENT 0;
+               add_string"Initial goal:";
+               add_newline(); add_newline();
+               pr_goal g;
+               end_block())
+         | pr (GSTK{prop = POSED _, stack = {goals,...}::_}) = 
+             (begin_block PP.CONSISTENT 0;
+              PP.pr_list pr_goal (fn () => ()) add_newline (rev goals);
+              end_block())
+         | pr (GSTK{prop = PROVED th, ...}) = 
+             (begin_block PP.CONSISTENT 0;
+              add_string "Initial goal proved.";
+              add_newline();
+              Thm.pp_thm ppstrm th;
+              end_block())
+   in pr
+   end;
+
+end; (* Bwd *)
+
+
+(* COLLECTIONS OF PROOF ATTEMPTS *)
+
+(* History provides "registers-with-bounded-history". You can read (via
+ * "project"), write (via "apply"), and undo. This is a general purpose
+ * type.
+ ***********************************************************************)
+
+abstype 'a history = HISTORY of {obj :'a, past :'a list, limit :int}
+with
+
+exception CANT_BACKUP_ANYMORE;
+
+fun new_history {obj, limit} = HISTORY{obj = obj, past = [], limit = limit}
+
+local
+fun chop n alist = fst (Lib.split_after n alist) handle _ => alist
+in
+fun apply f (HISTORY{obj, past, limit}) = 
+      HISTORY{obj = f obj, past = chop limit (obj :: past), limit = limit}
+
+fun set_limit (HISTORY{obj,past,limit}) n =
+   if (n<0) then raise GSTK_ERR{func = "set_limit", mesg = "negative limit"}
+   else HISTORY{obj = obj, past = chop n past, limit = n}
+end;
+
+fun project f (HISTORY{obj, ...}) = f obj;
+
+fun undo (HISTORY{past = h::rst, limit,...}) = 
+          HISTORY{obj = h, past = rst, limit = limit}
+  | undo (HISTORY{past = [], ...}) = raise CANT_BACKUP_ANYMORE
+
+end; 
+
+
+(* Add the notion of undo *)
+datatype goalstack = GOALSTACK of Bwd.gstk history;
+
+datatype proofs = PRFS of goalstack list;
+
+exception NO_EXTANT_PROOFS;
+
+structure Functional =
+struct
+
+fun set_goal g = GOALSTACK(new_history{obj = Bwd.new_goal g, limit = 15});
+fun add gstk (PRFS L) = PRFS (gstk::L);
+
+fun backup (GOALSTACK s) = GOALSTACK(undo s);
+fun set_backup i (GOALSTACK s) = GOALSTACK(set_limit s i);
+fun restart (GOALSTACK s) = set_goal (project Bwd.initial_goal s);
+fun drop (PRFS (h::rst)) = PRFS rst
+  | drop (PRFS []) = raise NO_EXTANT_PROOFS;
+
+
+fun expandf tac (GOALSTACK s) = GOALSTACK (apply (Lib.C Bwd.expandf tac) s);
+fun expand tac (GOALSTACK s) = GOALSTACK (apply (Lib.C Bwd.expand tac) s);
+
+fun current_goalstack (PRFS (h::_)) = h
+  | current_goalstack (PRFS []) = raise NO_EXTANT_PROOFS;
+
+fun top_thm (GOALSTACK s) = project Bwd.extract_thm s;
+fun initial_goal (GOALSTACK s) = project Bwd.initial_goal s;
+fun top_goal (GOALSTACK s) = project Bwd.top_goal s;
+fun top_goals (GOALSTACK s) = project Bwd.top_goals s;
+
+fun rotate i (GOALSTACK s) = GOALSTACK(apply (Lib.C Bwd.rotate i) s);
+fun rotate_proofs i (PRFS []) = raise NO_EXTANT_PROOFS
+  | rotate_proofs i (PRFS L) = 
+      if (i<0)
+      then raise GSTK_ERR{func = "rotate_proofs", mesg = "negative rotation"}
+      else if (i > length L)
+           then raise GSTK_ERR{func = "rotate_proofs", 
+                               mesg = "more rotations than proofs"}
+           else PRFS(Lib.funpow i rotl L);
+
+end (* Functional *)
+
+structure Implicit =
+struct
+
+val the_proofs = ref (PRFS []);
+
+fun proofs() = (!the_proofs);
+
+fun set_goal g = 
+   (the_proofs := Functional.add (Functional.set_goal g) (proofs());
+    proofs());
+
+fun g flist = set_goal([],Parse.term_parser flist);
+
+fun add g = (Lib.say"Adding new proof..\n";
+             the_proofs := Functional.add g (proofs());
+             proofs());
+
+fun hd_opr f (PRFS (h::rst)) = PRFS(f h::rst)
+  | hd_opr f (PRFS[]) = raise NO_EXTANT_PROOFS;
+
+fun hd_proj f (PRFS (h::_)) = f h
+  | hd_proj f (PRFS[]) = raise NO_EXTANT_PROOFS;
+
+fun backup () = (the_proofs := hd_opr Functional.backup (proofs());
+                 Functional.current_goalstack(proofs()));
+val b = backup;
+fun set_backup i = (the_proofs := hd_opr (Functional.set_backup i) (proofs()));
+fun restart() = (the_proofs := hd_opr Functional.restart (proofs());
+                 Functional.current_goalstack(proofs()));
+
+fun drop() = (Lib.say"OK..\n";
+              the_proofs := Functional.drop (proofs());
+              proofs());
+
+fun expandf tac = (Lib.say "OK..\n";
+                   the_proofs := hd_opr (Functional.expandf tac) (proofs());
+                   Functional.current_goalstack(proofs()));
+fun expand tac = (Lib.say "OK..\n";
+                  the_proofs := hd_opr (Functional.expand tac) (proofs());
+                  Functional.current_goalstack(proofs()));
+
+val e = expand;
+
+val top_thm      = hd_proj Functional.top_thm o proofs;
+val initial_goal = hd_proj Functional.initial_goal o proofs;
+val top_goal     = hd_proj Functional.top_goal o proofs;
+val top_goals    = hd_proj Functional.top_goals o proofs;
+
+val p = hd_proj Lib.I o proofs;
+val status = proofs;
+
+fun rotate i = (the_proofs := hd_opr (Functional.rotate i) (proofs());
+                Functional.current_goalstack(proofs()));
+val r = rotate;
+
+fun rotate_proofs i = (the_proofs := Functional.rotate_proofs i (proofs()); 
+                       proofs());
+val R = rotate_proofs;
+
+end (* Implicit *)
+
+
+(* PrettyPrinting *)
+
+fun pp_goalstack ppstrm (GOALSTACK g) = project (Bwd.pp_gstk ppstrm) g;
+val set_goal_pp = Bwd.set_goal_pp;
+
+fun enumerate L = snd(rev_itlist (fn x => fn (n,A) => (n+1, (n,x)::A)) 
+                                 L (1,[]));
+val inactive = Lib.can Bwd.extract_thm
+
+fun pp_proofs ppstrm =
+   let val pr_proof = Bwd.pp_goal ppstrm 
+       val {add_string, add_break, begin_block, end_block, add_newline, ...} =
+                     PP.with_ppstream ppstrm
+       fun pr1 (GOALSTACK x) = 
+                   if (project inactive x)
+                   then Thm.pp_thm ppstrm (project Bwd.extract_thm x)
+                   else (begin_block PP.CONSISTENT 2;
+                         add_string"Incomplete:";
+                         add_break(1,0);
+                         add_string"Initial goal:";
+                         add_break(1,0);
+                         pr_proof (project Bwd.initial_goal x);
+                         if (project Bwd.is_initial x)
+                         then ()
+                         else (add_newline();
+                               add_string"Current goal:";
+                               add_break(1,0);
+                               pr_proof (project Bwd.top_goal x));
+                         end_block())
+       fun pr (PRFS []) = add_string"There are currently no proofs."
+         | pr (PRFS (extants as (_::_))) = 
+            ( begin_block PP.CONSISTENT 2;
+              add_string("Status:");
+              add_break(1,0);
+              (case (length extants)
+               of 1 => add_string "1 proof."
+                | n => add_string(Lib.int_to_string n^" proofs."));
+               end_block();
+               add_newline();
+               map (fn (i,x) => (begin_block PP.CONSISTENT 0;
+                                 add_string(Lib.int_to_string i^". ");
+                                 pr1 x; 
+                                 end_block(); add_newline()))
+                   (enumerate extants);
+               ())
+   in fn pl => (begin_block PP.CONSISTENT 0; pr pl; end_block())
+   end;
+
+end; (* Roalstack *)
+@
+
+
+1.2.4.1
+log
+@Changes made so that HOL builds on SMLNJ 109.26.
+@
+text
+@d174 1
+a174 1
+       val pr = Hol_pp.pp_self_parsing_term ppstrm
+@
+
+
+1.1
+log
+@file rstack.sml was initially added on branch hol90_7_cleaned_up_original_branchtag.
+@
+text
+@d1 410
+@
+
+
+1.1.2.1
+log
+@	Konrad's bug fixes and further development to hol90.7 after it's release.
+	Checked n on a side branch for later merging with the main trunk
+	(Elsa's revisions).  See doc/7.changes for details.
+@
+text
+@a0 410
+structure Roalstack : Goalstack_sig = 
+struct
+structure Thm = Thm;
+
+
+fun GSTK_ERR{func,mesg} =
+     HOL_ERR{origin_structure = "Roalstack",
+             origin_function = func,
+             message = mesg}
+
+(* -------------------------------------------------------------------------
+ * Could be in some standard library of list processing functions. We 
+ * consider it an error to rotate an empty list,  although it is easier to 
+ * just make that be an identity operation.
+ ***************************************************************************)
+fun rotl (a::rst) = rst@@[a]
+  | rotl [] = raise GSTK_ERR{func = "rotl", mesg =  "empty list"}
+
+fun rotr lst = 
+   let val (front,back) = Lib.front_n_back lst
+   in (back::front)
+   end 
+   handle _ => raise GSTK_ERR{func = "rotr",mesg =  "empty list"}
+
+fun add_string_cr s = Lib.say (s^"\n")
+fun cr_add_string_cr s = Lib.say ("\n"^s^"\n")
+
+
+(* Backward proofs, with no idea of undo *)
+structure Bwd
+ : sig
+      type gstk
+      val expand : gstk -> tactic -> gstk
+      val expandf : gstk -> tactic -> gstk
+      val extract_thm : gstk -> Thm.thm
+      val initial_goal : gstk -> goal
+      val is_initial : gstk -> bool
+      val new_goal : goal -> gstk
+      val pp_goal : System.PrettyPrint.ppstream -> goal -> unit
+      val set_goal_pp : (System.PrettyPrint.ppstream -> goal -> unit)
+                        -> (System.PrettyPrint.ppstream -> goal -> unit)
+      val pp_gstk : System.PrettyPrint.ppstream -> gstk -> unit
+      val rotate : gstk -> int -> gstk
+      val top_goal : gstk -> goal
+      val top_goals : gstk -> goal list
+      val depth :gstk -> int
+   end =
+struct
+
+fun BWD_ERR{func,mesg} =
+    HOL_ERR{origin_structure = "Bwd",
+            origin_function = func,
+            message = mesg}
+
+(* GOALSTACKS *)
+(* A goalstack is a stack of (goal list, validation_function) records. Each 
+ * goal in the goal list is a (term list, term) pair. The validation 
+ * function is a function from a list of theorems to a theorem. It must be 
+ * that the number of goals in the goal list is equal to the number of 
+ * formal parameters in the validation function. Unfortunately, the type
+ * system of ML is not strong enough to check that.
+ ***************************************************************************)
+
+type tac_result = {goals : goal list,
+                   validation : Thm.thm list -> Thm.thm}
+
+datatype proposition = POSED of goal
+                     | PROVED of Thm.thm;
+
+datatype gstk = GSTK of {prop: proposition,
+                         stack : tac_result list}
+
+fun depth(GSTK{stack,...}) = length stack;
+
+fun is_initial(GSTK{prop = POSED g, stack = []}) = true
+  | is_initial _ = false;
+
+fun top_goals(GSTK{prop = POSED g, stack = []}) = [g]
+  | top_goals(GSTK{prop = POSED _, stack = {goals,...}::_}) = goals
+  | top_goals(GSTK{prop = PROVED _, ...}) = raise BWD_ERR{func = "top_goals", 
+                                                          mesg = "no goals"};
+
+val top_goal = hd o top_goals;
+
+fun new_goal (g as (asl,w)) = 
+   let val bool = Type.mk_type{Tyop = "bool", Args = []}
+       fun is_bool tm = (Term.type_of tm = bool)
+   in if (all is_bool (w::asl))
+      then GSTK{prop = POSED g, stack = []}
+      else raise BWD_ERR{func = "set_goal",
+                         mesg = "not a proposition; new goal not added"}
+   end;
+
+fun initial_goal(GSTK{prop = POSED g,...}) = g
+  | initial_goal(GSTK{prop = PROVED th,...}) = Thm.dest_thm th;
+
+
+fun rotate(GSTK{prop = PROVED _, ...}) _ = 
+        raise BWD_ERR{func = "rotate", mesg = "goal has already been proved"}
+  | rotate(GSTK{prop, stack}) n = 
+      if (n<0)
+      then raise BWD_ERR{func="rotate", mesg="negative rotations not allowed"}
+      else 
+      case stack
+      of [] => raise BWD_ERR{func = "rotate",mesg = "No goals to rotate"}
+       | ({goals,validation}::rst) =>
+          if (n > length goals)
+          then raise BWD_ERR{func = "rotate",
+                        mesg = "More rotations than goals -- no rotation done"}
+          else GSTK{prop = prop,
+                    stack = {goals = funpow n rotl goals,
+                             validation=validation o funpow n rotr}
+                            :: rst};
+
+
+local
+fun imp_err s = raise BWD_ERR{func = "expandf",
+                              mesg = "implementation error: "^s}
+fun return(GSTK{stack = {goals = [],validation}::rst, prop}) = 
+    let val th = validation []
+    in case rst 
+       of [] => GSTK{prop = PROVED th, stack = []}
+       | ({goals = _::rst_o_goals, validation}::rst') =>
+           ( cr_add_string_cr "Goal proved.";
+             add_string_cr (Thm.thm_to_string th);
+             return(GSTK{prop = prop,
+                         stack = {goals = rst_o_goals,
+                                  validation=fn thl => validation(th::thl)}
+                                 :: rst'}))
+       | _ => imp_err (Lib.quote "return")
+    end
+  | return gstk = gstk
+in
+fun expandf(GSTK{prop = PROVED _, ...}) _ = 
+           raise BWD_ERR{func = "expandf", mesg="goal has already been proved"}
+  | expandf(GSTK{prop as POSED g, stack}) tac =
+     let val (glist,vf) = tac (case stack of   []    => g 
+                                           | (tr::_) => hd (#goals tr))
+         val dpth = length stack
+         val gs = return(GSTK{prop = prop,
+                              stack = {goals = glist, validation = vf}
+                                      :: stack})
+     in case gs
+        of GSTK{prop = PROVED _, stack} => ()
+         | GSTK{prop, stack as {goals, ...}::_} =>
+             let val dpth' = length stack
+             in if (dpth' > dpth)
+                then if (dpth+1 = dpth') 
+                     then add_string_cr(case (length goals)
+                                        of 0 => imp_err "1"
+                                         | 1 => "1 subgoal:"
+                                         | n => (int_to_string n)^" subgoals:")
+                     else imp_err "2"
+                else cr_add_string_cr "Remaining subgoals:"
+             end
+         | _ => imp_err "3"
+         ; 
+         gs
+     end
+end;
+
+fun expand gs = expandf gs o Tactical.VALID;
+
+fun extract_thm (GSTK{prop = PROVED th, ...}) = th
+  | extract_thm _ = raise BWD_ERR{func = "extract_thm", 
+                                  mesg = "no theorem proved"};
+
+(* Prettyprinting *)
+
+local
+fun ppgoal ppstrm (asl,w) =
+   let val {add_string, add_break, begin_block, end_block, add_newline, ...} =
+                     PP.with_ppstream ppstrm
+       val pr = Term_io.Hol_pp.pp_self_parsing_term ppstrm
+   in
+     begin_block PP.CONSISTENT 0;
+     pr w; 
+     add_newline ();
+     (case asl
+        of [] => ()
+         | _  => ( begin_block PP.CONSISTENT 4;
+                   add_string (!Globals.goal_line);
+                   add_newline ();
+                   PP.pr_list pr (fn () => ()) add_newline (rev asl);
+                   end_block ()));
+     add_newline ();
+     end_block ()
+   end
+   handle e => (Lib.say "\nError in attempting to print a goal!\n";  raise e);
+
+val goal_printer = ref ppgoal
+in
+fun pp_goal ppstrm g = !goal_printer ppstrm g
+fun set_goal_pp pp = !goal_printer before (goal_printer := pp)
+end;
+
+fun pp_gstk ppstrm  =
+   let val pr_goal = pp_goal ppstrm
+       val {add_string, add_break, begin_block, end_block, add_newline, ...} =
+                     PP.with_ppstream ppstrm
+       fun pr (GSTK{prop = POSED g, stack = []}) = 
+              (begin_block PP.CONSISTENT 0;
+               add_string"Initial goal:";
+               add_newline(); add_newline();
+               pr_goal g;
+               end_block())
+         | pr (GSTK{prop = POSED _, stack = {goals,...}::_}) = 
+             (begin_block PP.CONSISTENT 0;
+              PP.pr_list pr_goal (fn () => ()) add_newline (rev goals);
+              end_block())
+         | pr (GSTK{prop = PROVED th, ...}) = 
+             (begin_block PP.CONSISTENT 0;
+              add_string "Initial goal proved.";
+              add_newline();
+              Thm.pp_thm ppstrm th;
+              end_block())
+   in pr
+   end;
+
+end; (* Bwd *)
+
+
+(* COLLECTIONS OF PROOF ATTEMPTS *)
+
+(* History provides "registers-with-bounded-history". You can read (via
+ * "project"), write (via "apply"), and undo. This is a general purpose
+ * type.
+ ***********************************************************************)
+
+abstype 'a history = HISTORY of {obj :'a, past :'a list, limit :int}
+with
+
+exception CANT_BACKUP_ANYMORE;
+
+fun new_history {obj, limit} = HISTORY{obj = obj, past = [], limit = limit}
+
+local
+fun chop n alist = fst (Lib.split_after n alist) handle _ => alist
+in
+fun apply f (HISTORY{obj, past, limit}) = 
+      HISTORY{obj = f obj, past = chop limit (obj :: past), limit = limit}
+
+fun set_limit (HISTORY{obj,past,limit}) n =
+   if (n<0) then raise GSTK_ERR{func = "set_limit", mesg = "negative limit"}
+   else HISTORY{obj = obj, past = chop n past, limit = n}
+end;
+
+fun project f (HISTORY{obj, ...}) = f obj;
+
+fun undo (HISTORY{past = h::rst, limit,...}) = 
+          HISTORY{obj = h, past = rst, limit = limit}
+  | undo (HISTORY{past = [], ...}) = raise CANT_BACKUP_ANYMORE
+
+end; 
+
+
+(* Add the notion of undo *)
+datatype goalstack = GOALSTACK of Bwd.gstk history;
+
+datatype proofs = PRFS of goalstack list;
+
+exception NO_EXTANT_PROOFS;
+
+structure Functional =
+struct
+
+fun set_goal g = GOALSTACK(new_history{obj = Bwd.new_goal g, limit = 15});
+fun add gstk (PRFS L) = PRFS (gstk::L);
+
+fun backup (GOALSTACK s) = GOALSTACK(undo s);
+fun set_backup i (GOALSTACK s) = GOALSTACK(set_limit s i);
+fun restart (GOALSTACK s) = set_goal (project Bwd.initial_goal s);
+fun drop (PRFS (h::rst)) = PRFS rst
+  | drop (PRFS []) = raise NO_EXTANT_PROOFS;
+
+
+fun expandf tac (GOALSTACK s) = GOALSTACK (apply (Lib.C Bwd.expandf tac) s);
+fun expand tac (GOALSTACK s) = GOALSTACK (apply (Lib.C Bwd.expand tac) s);
+
+fun current_goalstack (PRFS (h::_)) = h
+  | current_goalstack (PRFS []) = raise NO_EXTANT_PROOFS;
+
+fun top_thm (GOALSTACK s) = project Bwd.extract_thm s;
+fun initial_goal (GOALSTACK s) = project Bwd.initial_goal s;
+fun top_goal (GOALSTACK s) = project Bwd.top_goal s;
+fun top_goals (GOALSTACK s) = project Bwd.top_goals s;
+
+fun rotate i (GOALSTACK s) = GOALSTACK(apply (Lib.C Bwd.rotate i) s);
+fun rotate_proofs i (PRFS []) = raise NO_EXTANT_PROOFS
+  | rotate_proofs i (PRFS L) = 
+      if (i<0)
+      then raise GSTK_ERR{func = "rotate_proofs", mesg = "negative rotation"}
+      else if (i > length L)
+           then raise GSTK_ERR{func = "rotate_proofs", 
+                               mesg = "more rotations than proofs"}
+           else PRFS(Lib.funpow i rotl L);
+
+end (* Functional *)
+
+structure Implicit =
+struct
+
+val the_proofs = ref (PRFS []);
+
+fun proofs() = (!the_proofs);
+
+fun set_goal g = 
+   (the_proofs := Functional.add (Functional.set_goal g) (proofs());
+    proofs());
+
+fun g flist = set_goal([],Parse.term_parser flist);
+
+fun add g = (Lib.say"Adding new proof..\n";
+             the_proofs := Functional.add g (proofs());
+             proofs());
+
+fun hd_opr f (PRFS (h::rst)) = PRFS(f h::rst)
+  | hd_opr f (PRFS[]) = raise NO_EXTANT_PROOFS;
+
+fun hd_proj f (PRFS (h::_)) = f h
+  | hd_proj f (PRFS[]) = raise NO_EXTANT_PROOFS;
+
+fun backup () = (the_proofs := hd_opr Functional.backup (proofs());
+                 Functional.current_goalstack(proofs()));
+val b = backup;
+fun set_backup i = (the_proofs := hd_opr (Functional.set_backup i) (proofs()));
+fun restart() = (the_proofs := hd_opr Functional.restart (proofs());
+                 Functional.current_goalstack(proofs()));
+
+fun drop() = (Lib.say"OK..\n";
+              the_proofs := Functional.drop (proofs());
+              proofs());
+
+fun expandf tac = (Lib.say "OK..\n";
+                   the_proofs := hd_opr (Functional.expandf tac) (proofs());
+                   Functional.current_goalstack(proofs()));
+fun expand tac = (Lib.say "OK..\n";
+                  the_proofs := hd_opr (Functional.expand tac) (proofs());
+                  Functional.current_goalstack(proofs()));
+
+val e = expand;
+
+val top_thm      = hd_proj Functional.top_thm o proofs;
+val initial_goal = hd_proj Functional.initial_goal o proofs;
+val top_goal     = hd_proj Functional.top_goal o proofs;
+val top_goals    = hd_proj Functional.top_goals o proofs;
+
+val p = hd_proj Lib.I o proofs;
+val status = proofs;
+
+fun rotate i = (the_proofs := hd_opr (Functional.rotate i) (proofs());
+                Functional.current_goalstack(proofs()));
+val r = rotate;
+
+fun rotate_proofs i = (the_proofs := Functional.rotate_proofs i (proofs()); 
+                       proofs());
+val R = rotate_proofs;
+
+end (* Implicit *)
+
+
+(* PrettyPrinting *)
+
+fun pp_goalstack ppstrm (GOALSTACK g) = project (Bwd.pp_gstk ppstrm) g;
+val set_goal_pp = Bwd.set_goal_pp;
+
+fun enumerate L = snd(rev_itlist (fn x => fn (n,A) => (n+1, (n,x)::A)) 
+                                 L (1,[]));
+val inactive = Lib.can Bwd.extract_thm
+
+fun pp_proofs ppstrm =
+   let val pr_proof = Bwd.pp_goal ppstrm 
+       val {add_string, add_break, begin_block, end_block, add_newline, ...} =
+                     PP.with_ppstream ppstrm
+       fun pr1 (GOALSTACK x) = 
+                   if (project inactive x)
+                   then Thm.pp_thm ppstrm (project Bwd.extract_thm x)
+                   else (begin_block PP.CONSISTENT 2;
+                         add_string"Incomplete:";
+                         add_break(1,0);
+                         add_string"Initial goal:";
+                         add_break(1,0);
+                         pr_proof (project Bwd.initial_goal x);
+                         if (project Bwd.is_initial x)
+                         then ()
+                         else (add_newline();
+                               add_string"Current goal:";
+                               add_break(1,0);
+                               pr_proof (project Bwd.top_goal x));
+                         end_block())
+       fun pr (PRFS []) = add_string"There are currently no proofs."
+         | pr (PRFS (extants as (_::_))) = 
+            ( begin_block PP.CONSISTENT 2;
+              add_string("Status:");
+              add_break(1,0);
+              (case (length extants)
+               of 1 => add_string "1 proof."
+                | n => add_string(Lib.int_to_string n^" proofs."));
+               end_block();
+               add_newline();
+               map (fn (i,x) => (begin_block PP.CONSISTENT 0;
+                                 add_string(Lib.int_to_string i^". ");
+                                 pr1 x; 
+                                 end_block(); add_newline()))
+                   (enumerate extants);
+               ())
+   in fn pl => (begin_block PP.CONSISTENT 0; pr pl; end_block())
+   end;
+
+end; (* Roalstack *)
+@

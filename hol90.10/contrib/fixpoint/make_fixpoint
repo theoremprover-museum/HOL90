@@ -1,0 +1,28 @@
+#!/bin/sh
+
+# Invocation: make_fixpoint <hol90>
+
+
+# Make the theory of fixpoints.
+
+$1 < theories/src/mk_fixpoint.sml
+
+
+# Declare library
+
+echo 'new_library'\
+     '{name = "fixpoint",'\
+     'doc = "The fixpoint theory of Scott, by Mike Gordon, ported by Chris Toshok",'\
+     'path = (!HOLdir)^"contrib/fixpoint/",'\
+     'parents = [hol_lib],'\
+     'theories = ["fixpoint"],'\
+     'code = [],'\
+     'help = [],'\
+     'loaded = "fn () => ()"};'\
+     | $1
+
+
+# Move library description to common area for contrib libraries
+
+mv fixpoint.hol_lib ../desc
+

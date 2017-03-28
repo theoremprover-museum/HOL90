@@ -1,0 +1,116 @@
+head	1.2;
+access;
+symbols;
+locks; strict;
+comment	@# @;
+
+
+1.2
+date	96.02.08.00.30.52;	author drs1004;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	96.01.04.13.45.12;	author drs1004;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.2
+log
+@New theory mechanism, by Donald Syme, and many other enhancements.
+@
+text
+@(*======================================================================
+ * $Id: fixity.sig,v 1.1 1996/01/04 13:45:12 drs1004 Exp $
+ *
+ * Donald Syme
+ *=====================================================================*)
+
+signature Fixity_sig = 
+sig
+
+(*-------------------------------------------------------------------
+ * Global Fixities table.  Swapped in and out by the Manager as
+ * the working context changes.
+ *
+ * Support for arbitrary fixities specified in preterms
+ * These take priority over term fixities.
+ *
+ * This table is for use by both parsers and pretty printers.  It
+ * must be a global variable since state cannot be threaded through the 
+ * pretty printer.
+ *------------------------------------------------------------------*)
+
+  datatype fixity = Infix of int | Prefix | Binder;
+  val fixities : unit -> (string * fixity) list
+  val set_fixities : (string * fixity) list -> unit
+      
+  val fixity : string -> fixity
+  val is_binder : string -> bool
+  val is_infix : string -> bool
+  val precedence : string -> int
+      
+(*-------------------------------------------------------------------
+ * Global Binder Restriction table.  Swapped in and out by the Manager as
+ * the working context changes.
+ * 
+ * This table is for use by both parsers and pretty printers.  It
+ * must be a global variable since state cannot be threaded through the 
+ * pretty printer.
+ *------------------------------------------------------------------*)
+
+  val binder_restrictions :unit -> (string * string) list
+  val set_binder_restrictions : (string * string) list -> unit
+
+end;
+
+
+
+
+
+@
+
+
+1.1
+log
+@Fixed types, pretypes, fixities, parsing.
+@
+text
+@d2 1
+a2 1
+ * $Id: preterm.sig,v 1.3 1995/12/18 11:35:08 drs1004 Exp $
+a8 1
+  datatype fixity = Infix of int | Prefix | Binder;
+d11 2
+a12 1
+ * Fixities table.
+d17 3
+a19 1
+ * This table is for use by both parsers and pretty printers.
+d22 9
+a30 10
+val fixities : unit -> (string * fixity) list
+val fixity : string -> fixity
+val hol_infix : int -> string -> unit
+val hol_prefix : string -> unit
+val hol_binder : string -> unit
+val hol_nonfix : string -> unit
+val is_binder : string -> bool
+val is_infix : string -> bool
+val precedence : string -> int
+
+d32 6
+a37 1
+ * Binder restrictions
+d40 2
+a41 4
+
+val binder_restrictions :unit -> (string * string) list
+val associate_restriction :(string*string) -> unit
+val delete_restriction :string -> unit
+@

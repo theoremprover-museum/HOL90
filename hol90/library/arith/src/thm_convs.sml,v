@@ -1,0 +1,372 @@
+head	1.4;
+access;
+symbols
+	HOL97:1.4.0.4
+	bpHOL97:1.4
+	hol90_9_alpha:1.4
+	hol90_pre8_for_multiple_compilers:1.4.0.2
+	hol90_pre8_after_donalds_separate_compilation_changes:1.3
+	hol90_8_after_merging_Konrad_Elsa:1.2
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.4
+date	95.11.16.16.53.10;	author rjb;	state Exp;
+branches
+	1.4.4.1;
+next	1.3;
+
+1.3
+date	95.10.31.14.02.23;	author drs1004;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	95.10.16.17.47.37;	author drs1004;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	95.10.16.13.31.39;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.31.39;	author rjb;	state Exp;
+branches;
+next	;
+
+1.4.4.1
+date	97.07.11.19.29.33;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.4
+log
+@Support for the predecessor function, PRE, has been added to the arith
+library. It is eliminated in the pre-processing phase along with natural
+number subtraction. The modifications are due to Kim Dam Petersen of
+Tele Danmark Research.
+
+R.J.Boulton, 16th November 1995.
+@
+text
+@(*****************************************************************************)
+(* FILE          : thm_convs.sml                                             *)
+(* DESCRIPTION   : Conversions for rewriting with arithmetic theorems.       *)
+(*                                                                           *)
+(* READS FILES   : <none>                                                    *)
+(* WRITES FILES  : <none>                                                    *)
+(*                                                                           *)
+(* AUTHOR        : R.J.Boulton, University of Cambridge                      *)
+(* DATE          : 4th March 1991                                            *)
+(*                                                                           *)
+(* TRANSLATOR    : R.J.Boulton, University of Cambridge                      *)
+(* DATE          : 5th February 1993                                         *)
+(*                                                                           *)
+(* LAST MODIFIED : R.J.Boulton                                               *)
+(* DATE          : 16th November 1995                                        *)
+(*****************************************************************************)
+
+structure Arith_thm_convs : Arith_thm_convs_sig =
+struct
+open Rsyntax;
+open Arith_theorems;
+
+open Core; (* open up all of the HOL 0/1 Core - could be replaced by more *)
+           (* explicit opens to avoid endless recompilation of libraries  *)
+           (* during system development                                   *)
+
+(*===========================================================================*)
+(* Conversions for rewriting Boolean terms                                   *)
+(*===========================================================================*)
+
+val CONJ_ASSOC_NORM_CONV = REWR_CONV (GSYM CONJ_ASSOC);
+
+val DISJ_ASSOC_NORM_CONV = REWR_CONV (GSYM DISJ_ASSOC);
+
+val EQ_EXPAND_CONV = REWR_CONV EQ_EXPAND;
+
+val IMP_EXPAND_CONV = REWR_CONV IMP_DISJ_THM;
+
+val IMP_F_EQ_F_CONV = REWR_CONV IMP_F_EQ_F;
+
+val IMP_IMP_CONJ_IMP_CONV = REWR_CONV AND_IMP_INTRO;
+
+val LEFT_DIST_NORM_CONV = REWR_CONV LEFT_AND_OVER_OR;
+
+val NOT_CONJ_NORM_CONV =
+ REWR_CONV
+  (GEN_ALL (CONJUNCT1 (SPECL [--`t1:bool`--,--`t2:bool`--] DE_MORGAN_THM)));
+
+val NOT_DISJ_NORM_CONV =
+ REWR_CONV
+  (GEN_ALL (CONJUNCT2 (SPECL [--`t1:bool`--,--`t2:bool`--] DE_MORGAN_THM)));
+
+val NOT_NOT_NORM_CONV = REWR_CONV (CONJUNCT1 NOT_CLAUSES);
+
+val OR_F_CONV = REWR_CONV (el 3 (CONJUNCTS (SPEC (--`x:bool`--) OR_CLAUSES)));
+
+val RIGHT_DIST_NORM_CONV = REWR_CONV RIGHT_AND_OVER_OR;
+
+(*===========================================================================*)
+(* Conversions for rewriting arithmetic terms                                *)
+(*===========================================================================*)
+
+val ADD_ASSOC_CONV = REWR_CONV (theorem "arithmetic" "ADD_ASSOC");
+
+val ADD_SYM_CONV = REWR_CONV (theorem "arithmetic" "ADD_SYM");
+
+val GATHER_BOTH_CONV =
+ REWR_CONV
+  (SYM (SPECL [--`a:num`--,--`b:num`--,--`x:num`--]
+         (theorem "arithmetic" "RIGHT_ADD_DISTRIB")));
+
+val GATHER_LEFT_CONV =
+ REWR_CONV
+  (SUBS [el 3 (CONJUNCTS (SPECL [--`x:num`--,--`n:num`--]
+                           (theorem "arithmetic" "MULT_CLAUSES")))]
+    (SYM (SPECL [--`a:num`--,--`1`--,--`x:num`--]
+           (theorem "arithmetic" "RIGHT_ADD_DISTRIB"))));
+
+val GATHER_NEITHER_CONV = REWR_CONV (GSYM (theorem "arithmetic" "TIMES2"));
+
+val GATHER_RIGHT_CONV =
+ REWR_CONV
+  (SUBS [el 3 (CONJUNCTS (SPECL [--`x:num`--,--`n:num`--]
+                           (theorem "arithmetic" "MULT_CLAUSES")))]
+    (SYM (SPECL [--`1`--,--`b:num`--,--`x:num`--]
+           (theorem "arithmetic" "RIGHT_ADD_DISTRIB"))));
+
+val GEQ_NORM_CONV = REWR_CONV (theorem "arithmetic" "GREATER_EQ");
+
+val GREAT_NORM_CONV =
+ REWR_CONV
+  (SUBS [SYM (SPECL [--`m:num`--,--`n:num`--]
+                 (definition "arithmetic" "GREATER_DEF")),
+         SPEC (--`n:num`--) (theorem "arithmetic" "SUC_ONE_ADD")]
+    (SPECL [--`n:num`--,--`m:num`--] (theorem "arithmetic" "LESS_EQ")));
+
+val LEFT_ADD_DISTRIB_CONV =
+ REWR_CONV (theorem "arithmetic" "LEFT_ADD_DISTRIB");
+
+val LESS_NORM_CONV =
+ REWR_CONV
+  (SUBS [SPEC (--`m:num`--) (theorem "arithmetic" "SUC_ONE_ADD")]
+    (SPECL [--`m:num`--,--`n:num`--] (theorem "arithmetic" "LESS_EQ")));
+
+val MULT_ASSOC_CONV = REWR_CONV (theorem "arithmetic" "MULT_ASSOC");
+
+val MULT_COMM_CONV = REWR_CONV MULT_COMM;
+
+val NOT_GEQ_NORM_CONV =
+ REWR_CONV
+  (SUBS [SPEC (--`m:num`--) (theorem "arithmetic" "SUC_ONE_ADD")]
+    (SPECL [--`m:num`--,--`n:num`--]
+        (theorem "arithmetic" "NOT_GREATER_EQ")));
+
+val NOT_GREAT_NORM_CONV = REWR_CONV (theorem "arithmetic" "NOT_GREATER");
+
+val NOT_LEQ_NORM_CONV =
+ REWR_CONV
+  (SUBS [SPEC (--`n:num`--) (theorem "arithmetic" "SUC_ONE_ADD")]
+    (SPECL [--`m:num`--,--`n:num`--] (theorem "arithmetic" "NOT_LEQ")));
+
+val NOT_LESS_NORM_CONV = REWR_CONV (theorem "arithmetic" "NOT_LESS");
+
+val NOT_NUM_EQ_NORM_CONV =
+ REWR_CONV
+  (SUBS [SPEC (--`m:num`--) (theorem "arithmetic" "SUC_ONE_ADD"),
+         SPEC (--`n:num`--) (theorem "arithmetic" "SUC_ONE_ADD")]
+    (SPECL [--`m:num`--,--`n:num`--] (theorem "arithmetic" "NOT_NUM_EQ")));
+
+val NUM_EQ_NORM_CONV = REWR_CONV (theorem "arithmetic" "EQ_LESS_EQ");
+
+val PLUS_ZERO_CONV = REWR_CONV PLUS_ZERO;
+
+val SYM_ADD_ASSOC_CONV = REWR_CONV (GSYM (theorem "arithmetic" "ADD_ASSOC"));
+
+val SYM_ONE_MULT_CONV = REWR_CONV (GEN_ALL (SYM (SPEC_ALL ONE_MULT)));
+
+val ZERO_MULT_CONV = REWR_CONV ZERO_MULT;
+
+val ZERO_MULT_PLUS_CONV =
+ REWR_CONV
+  (SUBS [SYM (CONJUNCT1 (SPECL [--`a:num`--,--`b:num`--]
+                            (theorem "arithmetic" "MULT_CLAUSES")))]
+   (SPEC (--`b:num`--)
+       (GEN_ALL (CONJUNCT1 (theorem "arithmetic" "ADD_CLAUSES")))));
+
+val ZERO_PLUS_CONV = REWR_CONV ZERO_PLUS;
+
+(*===========================================================================*)
+(* Conversions for rewriting inequalities                                    *)
+(*===========================================================================*)
+
+val LEQ_PLUS_CONV = REWR_CONV (theorem "arithmetic" "ADD_MONO_LESS_EQ");
+
+(*===========================================================================*)
+(* Conversions for final simplification                                      *)
+(*===========================================================================*)
+
+val FORALL_SIMP_CONV = REWR_CONV FORALL_SIMP;
+
+(*===========================================================================*)
+(* Conversions for normalising and eliminating subtraction                   *)
+(*===========================================================================*)
+
+val NUM_COND_RATOR_CONV =
+ REWR_CONV
+  (INST_TYPE [{residue = (==`:num`==),redex = (==`:'a`==)}] COND_RATOR);
+
+val NUM_COND_RAND_CONV =
+ REWR_CONV
+  (INST_TYPE [{residue = (==`:num`==),redex = (==`:'a`==)}] COND_RAND);
+
+val SUB_NORM_CONV =
+ ((GEN_REWRITE_CONV I Rewrite.empty_rewrites) o
+   (map (theorem "arithmetic")))
+ ["SUB_LEFT_ADD",          "SUB_RIGHT_ADD",
+  "SUB_LEFT_SUB",          "SUB_RIGHT_SUB",
+  "LEFT_SUB_DISTRIB",      "RIGHT_SUB_DISTRIB",
+  "SUB_LEFT_SUC",
+  "SUB_LEFT_LESS_EQ",      "SUB_RIGHT_LESS_EQ",
+  "SUB_LEFT_LESS",         "SUB_RIGHT_LESS",
+  "SUB_LEFT_GREATER_EQ",   "SUB_RIGHT_GREATER_EQ",
+  "SUB_LEFT_GREATER",      "SUB_RIGHT_GREATER",
+  "SUB_LEFT_EQ",           "SUB_RIGHT_EQ",
+  "PRE_SUB1"
+ ];
+
+(*===========================================================================*)
+(* Conversions for normalising and eliminating conditionals                  *)
+(*===========================================================================*)
+
+val COND_RATOR_CONV = REWR_CONV COND_RATOR;
+val COND_RAND_CONV = REWR_CONV COND_RAND;
+val COND_EXPAND_CONV = REWR_CONV COND_EXPAND;
+
+end
+@
+
+
+1.4.4.1
+log
+@Changes to accomodate CM, and also the differences between  SML'90 and SML'97.
+@
+text
+@a19 2
+
+open CoreHol.Theory;
+a21 4
+open Taut_thms;
+open Parse;
+open Drule;
+open Lib;
+d23 3
+a25 3
+val REWR_CONV = Conv.REWR_CONV;
+val GSYM = Conv.GSYM;
+val GEN_REWRITE_CONV = Rewrite.GEN_REWRITE_CONV;
+@
+
+
+1.3
+log
+@First phase of hol90.8 development.  hol90 now compiles using NJSML-CM
+108.5, with separate compilation of libraries.  System dependencies
+have been isolated in the makefiles and "portable.sml".
+
+This involved a large number of enhancments to the source files,
+most of which are documented in the 7.changes file (or will be shortly).
+See also the correpsonding email corrspondence between RJB, KLS, TFM,
+JRH and DRS that happened during this development.
+@
+text
+@d15 1
+a15 1
+(* DATE          : 17th February 1993                                        *)
+d184 2
+a185 1
+  "SUB_LEFT_EQ",           "SUB_RIGHT_EQ"
+@
+
+
+1.2
+log
+@I'm about to do a checkin of Elsa Gunter's modifications to the hol90.7
+sources to create her hol90.pre8.  To recap what I've done:
+	- I checked out hol90 (in /usr/groups/hol/drs1004/hol90)
+		cvs co hol90
+
+	- By doing a recursive diff between Elsa's source and the
+	hol90.7 source I found all the changes Elsa had made to
+	source files.  I copied relevant files from Elsa's source
+	into my checked out version.  The only new files were
+		- the sml_system files in src/0
+		- some make scripts in src/.
+	Changed files were in:
+		src/{0,1,2,3}
+		library/arith/src/thm_convs.sml
+		library/list/src/list_conv1.sml
+		library/num/src/num_lib.sml
+		library/prog_logic/src/halts_logic.sml
+		library/prog_logic/src/translation.sml
+		library/prog_logic/theories/src/mk_halts.sml
+		library/real/theories/src/Make
+		library/real/theories/src/equiv.sml
+		library/real/theories/src/seq.sml
+		library/reduce/src/arithconv.sml
+		library/string/src/string_conv.sml
+		library/unity/theories/src/aux_definitions.sml
+		library/word/theories/src/*
+
+	- I will now commit these changes, with this email as the log message.
+		cvs commit
+
+	- Tomorrow I will get this version compiling
+	with NJSML 108 (I will probably add
+	the files to enable the NJSML compilation manager to make
+	this easier), then check those changes in.  I think it's
+	good to get things working.
+@
+text
+@d23 4
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d89 1
+a89 1
+                 (definition "arithmetic" "GREATER")),
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

@@ -1,0 +1,18 @@
+val or_to_set =
+    Orsml.SR.orsr(Orsml.empty, (fn (x,y) => Orsml.union(Orsml.sng(x),y)));
+
+val set_to_or =
+    Orsml.SR.sr(Orsml.orempty, (fn (x,y) => Orsml.orunion(Orsml.orsng(x),y)));
+
+val powerset_sr =
+    Orsml.SR.sr(Orsml.sng(Orsml.empty),
+		(fn (v,z) =>
+		 Orsml.union(z,(Orsml.smap
+				(fn y => Orsml.union(y,Orsml.sng(v))) z))));
+
+fun loop f = (fn (X,z) => Orsml.SR.sr(z, (fn (v1,v2) => f(v2)))(X));
+
+fun pick X = Orsml.SR.sr(Orsml.empty,(fn (v1,v2) => v1))(X);
+ 
+fun rest X = Set.diff (X, Orsml.sng(pick X));
+

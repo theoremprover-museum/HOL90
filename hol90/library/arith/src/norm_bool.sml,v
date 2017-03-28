@@ -1,0 +1,247 @@
+head	1.2;
+access;
+symbols
+	HOL97:1.2.0.4
+	bpHOL97:1.2
+	hol90_9_alpha:1.2
+	hol90_pre8_for_multiple_compilers:1.2.0.2
+	hol90_pre8_after_donalds_separate_compilation_changes:1.2
+	hol90_8_after_merging_Konrad_Elsa:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.2
+date	95.10.31.14.01.53;	author drs1004;	state Exp;
+branches
+	1.2.4.1;
+next	1.1;
+
+1.1
+date	95.10.16.13.31.34;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.31.34;	author rjb;	state Exp;
+branches;
+next	;
+
+1.2.4.1
+date	97.07.11.19.28.47;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.2
+log
+@First phase of hol90.8 development.  hol90 now compiles using NJSML-CM
+108.5, with separate compilation of libraries.  System dependencies
+have been isolated in the makefiles and "portable.sml".
+
+This involved a large number of enhancments to the source files,
+most of which are documented in the 7.changes file (or will be shortly).
+See also the correpsonding email corrspondence between RJB, KLS, TFM,
+JRH and DRS that happened during this development.
+@
+text
+@(*****************************************************************************)
+(* FILE          : norm_bool.sml                                             *)
+(* DESCRIPTION   : Functions for normalizing Boolean terms.                  *)
+(*                                                                           *)
+(* READS FILES   : <none>                                                    *)
+(* WRITES FILES  : <none>                                                    *)
+(*                                                                           *)
+(* AUTHOR        : R.J.Boulton, University of Cambridge                      *)
+(* DATE          : 4th March 1991                                            *)
+(*                                                                           *)
+(* TRANSLATOR    : R.J.Boulton, University of Cambridge                      *)
+(* DATE          : 5th February 1993                                         *)
+(*                                                                           *)
+(* LAST MODIFIED : R.J.Boulton                                               *)
+(* DATE          : 16th February 1993                                        *)
+(*****************************************************************************)
+
+structure Norm_bool : Norm_bool_sig =
+struct
+
+open Core; (* open up all of the HOL 0/1 Core - could be replaced by more *)
+           (* explicit opens to avoid endless recompilation of libraries  *)
+           (* during system development                                   *)
+
+fun failwith function = raise HOL_ERR{origin_structure = "Norm_bool",
+                                      origin_function = function,
+                                      message = ""};
+
+open Arith_cons;
+open Qconv;
+open Arith_thm_convs;
+
+(*===========================================================================*)
+(* Conversions for normalizing Boolean terms                                 *)
+(*===========================================================================*)
+
+(*---------------------------------------------------------------------------*)
+(* EQ_IMP_ELIM_CONV : (term -> bool) -> conv                                 *)
+(*                                                                           *)
+(* Eliminates Boolean equalities and implications from terms consisting of   *)
+(* =,==>,/\,\/,~ and atoms. The atoms are specified by the predicate that    *)
+(* the conversion takes as its first argument.                               *)
+(*---------------------------------------------------------------------------*)
+
+fun EQ_IMP_ELIM_CONV is_atom tm =
+ (if (is_atom tm) then ALL_CONV tm
+  else if (is_neg tm) then (RAND_CONV (EQ_IMP_ELIM_CONV is_atom)) tm
+  else if (is_eq tm) then
+          ((ARGS_CONV (EQ_IMP_ELIM_CONV is_atom)) THENC EQ_EXPAND_CONV) tm
+  else if (is_imp tm) then
+          ((ARGS_CONV (EQ_IMP_ELIM_CONV is_atom)) THENC IMP_EXPAND_CONV) tm
+  else ARGS_CONV (EQ_IMP_ELIM_CONV is_atom) tm
+ ) handle (HOL_ERR _) => failwith "EQ_IMP_ELIM_CONV";
+
+(*---------------------------------------------------------------------------*)
+(* MOVE_NOT_DOWN_CONV : (term -> bool) -> conv -> conv                       *)
+(*                                                                           *)
+(* Moves negations down through a term consisting of /\,\/,~ and atoms. The  *)
+(* atoms are specified by a predicate (first argument). When a negation has  *)
+(* reached an atom, the conversion `conv' (second argument) is applied to    *)
+(* the negation of the atom. `conv' is also applied to any non-negated       *)
+(* atoms encountered.                                                        *)
+(*---------------------------------------------------------------------------*)
+
+fun MOVE_NOT_DOWN_CONV is_atom conv tm =
+ (if (is_atom tm) then (conv tm)
+  else if (is_neg tm) then
+     (let val tm' = rand tm
+      in  if (is_atom tm') then (conv tm)
+          else if (is_neg tm') then (NOT_NOT_NORM_CONV THENC
+                                     (MOVE_NOT_DOWN_CONV is_atom conv)) tm
+          else if (is_conj tm') then
+             (NOT_CONJ_NORM_CONV THENC
+              (ARGS_CONV (MOVE_NOT_DOWN_CONV is_atom conv))) tm
+          else if (is_disj tm') then
+             (NOT_DISJ_NORM_CONV THENC
+              (ARGS_CONV (MOVE_NOT_DOWN_CONV is_atom conv))) tm
+          else failwith "fail"
+      end)
+  else if ((is_conj tm) orelse (is_disj tm)) then
+     (ARGS_CONV (MOVE_NOT_DOWN_CONV is_atom conv) tm)
+  else failwith "fail"
+ ) handle (HOL_ERR _) => failwith "MOVE_NOT_DOWN_CONV";
+
+(*---------------------------------------------------------------------------*)
+(* DISJ_LINEAR_CONV : conv                                                   *)
+(*                                                                           *)
+(* Linearizes disjuncts using the following conversion applied recursively:  *)
+(*                                                                           *)
+(*    "(x \/ y) \/ z"                                                        *)
+(*    ================================                                       *)
+(*    |- (x \/ y) \/ z = x \/ (y \/ z)                                       *)
+(*---------------------------------------------------------------------------*)
+
+fun DISJ_LINEAR_CONV tm =
+ (if ((is_disj tm) andalso (is_disj (arg1 tm)))
+  then (DISJ_ASSOC_NORM_CONV THENC
+        (RAND_CONV (TRY_CONV DISJ_LINEAR_CONV)) THENC
+        (TRY_CONV DISJ_LINEAR_CONV)) tm
+  else failwith "fail"
+ ) handle (HOL_ERR _) => failwith "DISJ_LINEAR_CONV";
+
+(*---------------------------------------------------------------------------*)
+(* DISJ_NORM_FORM_CONV : conv                                                *)
+(*                                                                           *)
+(* Puts a term involving /\ and \/ into disjunctive normal form. Anything    *)
+(* other than /\ and \/ is taken to be an atom and is not processed.         *)
+(*                                                                           *)
+(* The disjunction returned is linear, i.e. the disjunctions are associated  *)
+(* to the right. Each disjunct is a linear conjunction.                      *)
+(*---------------------------------------------------------------------------*)
+
+fun DISJ_NORM_FORM_CONV tm =
+ (if (is_conj tm) then
+     (if (is_disj (arg1 tm)) then
+         ((RATOR_CONV (RAND_CONV (ARGS_CONV DISJ_NORM_FORM_CONV))) THENC
+          (RAND_CONV DISJ_NORM_FORM_CONV) THENC
+          RIGHT_DIST_NORM_CONV THENC
+          (ARGS_CONV DISJ_NORM_FORM_CONV) THENC
+          (TRY_CONV DISJ_LINEAR_CONV)) tm
+      else if (is_disj (arg2 tm)) then
+         ((RATOR_CONV (RAND_CONV DISJ_NORM_FORM_CONV)) THENC
+          (RAND_CONV (ARGS_CONV DISJ_NORM_FORM_CONV)) THENC
+          LEFT_DIST_NORM_CONV THENC
+          (ARGS_CONV DISJ_NORM_FORM_CONV) THENC
+          (TRY_CONV DISJ_LINEAR_CONV)) tm
+      else if (is_conj (arg1 tm)) then
+         (CONJ_ASSOC_NORM_CONV THENC DISJ_NORM_FORM_CONV) tm
+      else ((RAND_CONV DISJ_NORM_FORM_CONV) THENC
+            (fn tm' => if (is_disj (arg2 tm'))
+                       then DISJ_NORM_FORM_CONV tm'
+                       else ALL_CONV tm')) tm)
+  else if (is_disj tm) then
+     ((ARGS_CONV DISJ_NORM_FORM_CONV) THENC
+      (TRY_CONV DISJ_LINEAR_CONV)) tm
+  else ALL_CONV tm
+ ) handle (HOL_ERR _) => failwith "DISJ_NORM_FORM_CONV";
+
+end
+@
+
+
+1.2.4.1
+log
+@Changes to accomodate CM, and also the differences between  SML'90 and SML'97.
+@
+text
+@d21 7
+a27 2
+type conv = Abbrev.conv;
+type term = CoreHol.Term.term;
+d30 1
+a31 13
+open CoreHol.Dsyntax;
+open Exception;
+open Qconv;
+infix THENC;
+
+val rand = CoreHol.Term.rand;
+
+fun failwith function = raise 
+           HOL_ERR{origin_structure = "Norm_bool",
+                    origin_function = function,
+                            message = ""};
+
+
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d21 4
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

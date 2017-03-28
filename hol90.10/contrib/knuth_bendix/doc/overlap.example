@@ -1,0 +1,67 @@
+new_theory `gaz`;;
+new_constant(`f`,":ind -> ind -> ind");;
+new_constant(`g`,":ind -> ind -> ind");;
+new_constant(`h`,":ind -> ind");;
+new_constant(`k`,":ind -> ind");;
+new_constant(`a`,":ind");;
+new_constant(`b`,":ind");;
+let th1 = curry mk_thm [] "f x (g x a) = h x";;
+th1 = |- f x(g x a) = h x
+
+let th2 = curry mk_thm [] "g b y = k y";;
+th2 = |- g b y = k y
+
+let r1 = mk_rule 1 th1 false and r2 = mk_rule 2 th2 false;;
+r1 = - : rule
+r2 = - : rule
+
+#let (v,template) = mk_template (rule_thm r1) [2];;
+v = "gen%var%5206" : term
+template = "f x gen%var%5206 = h x" : term
+
+#let [(theta,occ)] = overlap r1 r2 [];;
+theta = [("b", "x"); ("a", "y")] : (term # term) list
+occ = [2] : int list
+
+#INST theta (rule_thm r2);;
+|- g b a = k a
+
+#subst theta template;;
+"f b gen%var%5206 = h b" : term
+
+#INST theta (rule_thm r1);;
+|- f b(g b a) = h b
+
+#crits r1 r2;;
+[|- f b(k a) = h b] : thm list
+
+#mk_template (INST theta (rule_thm r1)) [2];;
+("gen%var%5212", "f b gen%var%5212 = h b") : (term # term)
+
+% Assume that we have derived
+
+    th1 = |- f x (g x a) = h x
+    and
+    th2 = |- g b y = k y
+
+  We don't need to rename apart, as the variables in 
+  th1 and th2 are already disjoint. There is only one
+  overlap, corresponding to the occurrence list [2].
+
+#let [(theta,occ)] = overlap r1 r2 [];;
+theta = [("b", "x"); ("a", "y")] : (term # term) list
+occ = [2] : int list
+
+#let inst_th1 = INST theta th1;;
+inst_th1 = |- f b (g b a) = h b
+
+#let inst_th2 = INST theta th2;;
+inst_th2 = |- g b a = k a
+
+#let (v,template) = mk_template inst_th1 occ;;
+v = "v" : term
+template = "f b v = h b" : term
+
+#SUBST [(inst_th2,v)] template inst_th1;;
+|- f b (k a) = h b
+%

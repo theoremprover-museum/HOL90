@@ -1,0 +1,219 @@
+<TITLE>Theory: semantics</TITLE>
+<H1>Theory: semantics</H1>
+<H1>Parents</H1>
+    <UL>
+    <LI><A HREF = "string.html"><STRONG>string</STRONG></A>
+    <LI><A HREF = "HOL.html"><STRONG>HOL</STRONG></A>
+    </UL>
+
+
+<HR>
+<H1>Type constants</H1>
+    <UL>
+    
+    </UL>
+
+
+<HR>
+<H1>Term constants</H1>
+    <UL>
+    <LI><STRONG>MK_SKIP</STRONG><EM>:(string -> num) # (string -> num) ->
+                                     bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>MK_ABORT</STRONG><EM>:(string -> num) # (string -> num) ->
+                                      bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>MK_IF1</STRONG><EM>:((string -> num) -> bool) #
+                                    ((string -> num) # (string -> num) ->
+                                    bool) ->
+                                    (string -> num) # (string -> num) ->
+                                    bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>MK_IF2</STRONG><EM>:((string -> num) -> bool) #
+                                    ((string -> num) # (string -> num) ->
+                                    bool) #
+                                    ((string -> num) # (string -> num) ->
+                                    bool) ->
+                                    (string -> num) # (string -> num) ->
+                                    bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>MK_SEQ</STRONG><EM>:((string -> num) # (string -> num) ->
+                                    bool) #
+                                    ((string -> num) # (string -> num) ->
+                                    bool) ->
+                                    (string -> num) # (string -> num) ->
+                                    bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>MK_SEQL</STRONG><EM>:((string -> num) # (string -> num) ->
+                                     bool) list ->
+                                     (string -> num) # (string -> num) ->
+                                     bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>MK_FINITE_WHILE</STRONG><EM>:num ->
+                                             ((string -> num) -> bool) #
+                                             ((string -> num) #
+                                              (string -> num) -> bool) ->
+                                             (string -> num) #
+                                             (string -> num) -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>MK_WHILE</STRONG><EM>:((string -> num) -> bool) #
+                                      ((string -> num) # (string -> num) ->
+                                      bool) ->
+                                      (string -> num) # (string -> num) ->
+                                      bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>MK_SPEC</STRONG><EM>:((string -> num) -> bool) #
+                                     ((string -> num) # (string -> num) ->
+                                     bool) # ((string -> num) -> bool) ->
+                                     bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>MK_ASSERT</STRONG><EM>:((string -> num) -> bool) ->
+                                       (string -> num) # (string -> num) ->
+                                       bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>MK_INVARIANT</STRONG><EM>:((string -> num) -> bool) ->
+                                          (string -> num) # (string -> num) ->
+                                          bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>MK_VARIANT</STRONG><EM>:((string -> num) -> num) ->
+                                        (string -> num) # (string -> num) ->
+                                        bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>BND</STRONG><EM>:string -> num -> (string -> num) -> string ->
+                                 num</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>MK_ASSIGN</STRONG><EM>:string # ((string -> num) -> num) ->
+                                       (string -> num) # (string -> num) ->
+                                       bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    </UL>
+
+
+<HR>
+<H1>Axioms</H1>
+<DL>
+
+</DL>
+
+
+<HR>
+<H1>Definitions</H1>
+<DL>
+<DT><STRONG>MK_SKIP</STRONG>
+<DD>
+<PRE>
+|- !s s'. MK_SKIP (s,s') = s = s'
+</PRE>
+
+<DT><STRONG>MK_ABORT</STRONG>
+<DD>
+<PRE>
+|- !s s'. MK_ABORT (s,s') = F
+</PRE>
+
+<DT><STRONG>MK_IF1</STRONG>
+<DD>
+<PRE>
+|- !p c s s'. MK_IF1 (p,c) (s,s') = ((p s) => (c (s,s')) | (s = s'))
+</PRE>
+
+<DT><STRONG>MK_IF2</STRONG>
+<DD>
+<PRE>
+|- !p c c' s s'. MK_IF2 (p,c,c') (s,s') = ((p s) => (c (s,s')) | (c' (s,s')))
+</PRE>
+
+<DT><STRONG>MK_SEQ</STRONG>
+<DD>
+<PRE>
+|- !c c' s s'. MK_SEQ (c,c') (s,s') = (?s''. c (s,s'') /\ c' (s'',s'))
+</PRE>
+
+<DT><STRONG>MK_SEQL</STRONG>
+<DD>
+<PRE>
+|- (MK_SEQL [] = (\(s,s'). s = s')) /\
+   (!cl c. MK_SEQL (CONS c cl) = MK_SEQ (c,MK_SEQL cl))
+</PRE>
+
+<DT><STRONG>MK_FINITE_WHILE</STRONG>
+<DD>
+<PRE>
+|- (MK_FINITE_WHILE 0 = (\(p,c) (s,s'). F)) /\
+   (!n.
+     MK_FINITE_WHILE (SUC n) =
+     (\(p,c). MK_IF1 (p,MK_SEQ (c,MK_FINITE_WHILE n (p,c)))))
+</PRE>
+
+<DT><STRONG>MK_WHILE</STRONG>
+<DD>
+<PRE>
+|- !p c s s'. MK_WHILE (p,c) (s,s') = (?n. MK_FINITE_WHILE n (p,c) (s,s'))
+</PRE>
+
+<DT><STRONG>MK_SPEC</STRONG>
+<DD>
+<PRE>
+|- !p c q. MK_SPEC (p,c,q) = (!s s'. p s /\ c (s,s') ==> q s')
+</PRE>
+
+<DT><STRONG>MK_ASSERT</STRONG>
+<DD>
+<PRE>
+|- !p s s'. MK_ASSERT p (s,s') = p s /\ (s = s')
+</PRE>
+
+<DT><STRONG>MK_INVARIANT</STRONG>
+<DD>
+<PRE>
+|- !p s s'. MK_INVARIANT p (s,s') = p s /\ (s = s')
+</PRE>
+
+<DT><STRONG>MK_VARIANT</STRONG>
+<DD>
+<PRE>
+|- !p s s'. MK_VARIANT p (s,s') = p s > p s' /\ (s = s')
+</PRE>
+
+<DT><STRONG>BND</STRONG>
+<DD>
+<PRE>
+|- !x n s. BND x n s = (\z. (z = x) => n | (s z))
+</PRE>
+
+<DT><STRONG>MK_ASSIGN</STRONG>
+<DD>
+<PRE>
+|- !x e s s'. MK_ASSIGN (x,e) (s,s') = s' = BND x (e s) s
+</PRE>
+
+</DL>
+
+
+<HR>
+<H1>Theorems</H1>
+<DL>
+<DT><STRONG>BND_THM1</STRONG>
+<DD>
+<PRE>
+|- !n x s. BND x n s x = n
+</PRE>
+
+<DT><STRONG>BND_THM2</STRONG>
+<DD>
+<PRE>
+|- !n x s y. ~(y = x) ==> (BND x n s y = s y)
+</PRE>
+
+<DT><STRONG>MK_FINITE_WHILE_CLAUSES</STRONG>
+<DD>
+<PRE>
+|- (MK_FINITE_WHILE 0 (p,c) (s,s') = F) /\
+   (MK_FINITE_WHILE (SUC n) (p,c) (s,s') =
+    MK_IF1 (p,MK_SEQ (c,MK_FINITE_WHILE n (p,c))) (s,s'))
+</PRE>
+
+</DL>
+
+
+<HR>

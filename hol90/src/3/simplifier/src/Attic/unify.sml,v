@@ -1,0 +1,313 @@
+head	1.2;
+access;
+symbols;
+locks; strict;
+comment	@# @;
+
+
+1.2
+date	96.01.04.14.15.25;	author drs1004;	state dead;
+branches;
+next	1.1;
+
+1.1
+date	95.12.18.11.40.03;	author drs1004;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.2
+log
+@Added simplifier components, added drule files, added MK_ABS_CONV, better error messages
+@
+text
+@
+(*------------------------------------------------------------------------
+ *  Matching restricted to specified variables.
+ *
+ * use (simp_dir ^ "/src/sequence.sml");
+ * use (simp_dir ^ "/src/unify.sml");
+ * use (simp_dir ^ "/src/use.sml");
+ *----------------------------------------------------------------------*)
+
+signature Unify_sig = sig
+   type term sharing type term = Term.term;
+   type typ sharing type typ = Type.typ;
+   val unify_types_in_env : 
+               typ list -> 
+               typ -> typ -> 
+               typ Lib.subst -> typ Lib.subst
+
+   val unify_types : 
+               typ * typ list -> 
+               typ * typ list -> 
+               typ Lib.subst
+
+   val discard_env : term list * typ list
+                     -> term Lib.subst * typ Lib.subst
+                     -> term Lib.subst * typ Lib.subst
+   val restrict_env : term list * typ list
+                     -> term Lib.subst * typ Lib.subst
+                     -> term Lib.subst * typ Lib.subst
+
+   val unify_terms_in_env : 
+                term list * typ list -> 
+                term -> term -> 
+                term Lib.subst * typ Lib.subst -> term Lib.subst * typ Lib.subst
+   val unify_terms : 
+                term * (term list * typ list) -> 
+                term * (term list * typ list) -> 
+                term Lib.subst * typ Lib.subst
+   val append_vars : 
+                ('a list * 'b list) * ('a list * 'b list) -> 
+                'a list * 'b list
+   val deref_tyenv : typ Lib.subst -> typ -> typ
+   val reduce_tyenv : typ Lib.subst -> typ Lib.subst
+   val reduce_tmenv : term Lib.subst -> term Lib.subst
+   val reduce_env : term Lib.subst * typ Lib.subst ->
+                 term Lib.subst * typ Lib.subst
+
+   val tyfix_env : 
+                 term Lib.subst * typ Lib.subst ->
+                 term Lib.subst * typ Lib.subst
+
+end;
+
+
+structure Unify : Unify_sig  = struct
+
+open Core;
+open Rsyntax;
+
+val MATCH_TYPE_ERR = HOL_ERR{origin_structure = "Match",
+			     origin_function = "unify_types",
+			     message = ""};
+val MATCH_TERM_ERR = HOL_ERR{origin_structure = "Match",
+			     origin_function = "unify_terms",
+			     message = ""};
+
+val ERR = Exception.ERR "Unify";
+
+fun lookup_env i = Lib.subst_assoc (fn x => x = i);
+
+datatype tyspec = TYVAR of string | TYAPP of (string * typ list);
+fun gen_dest_type ty =
+   if (is_vartype ty) 
+   then TYVAR (dest_vartype ty)
+   else case (dest_type ty) of {Tyop,Args} => TYAPP (Tyop,Args);
+
+fun deref_tyenv env ty =
+  if is_vartype ty
+  then 
+     case (subst_assoc (fn x => x = ty) env) of
+        SOME x => deref_tyenv env x
+      | NONE => ty
+  else ty;
+
+fun deref_tmenv env tm =
+  if is_var tm 
+  then 
+     case (subst_assoc (fn x => x = tm) env) of
+        SOME x => deref_tmenv env x
+      | NONE => tm
+  else tm;
+
+fun reduce_tyenv env =
+    map (fn {redex,residue} => {redex=redex,residue=deref_tyenv env redex}) env;
+
+fun reduce_tmenv env =
+    map (fn {redex,residue} => {redex=redex,residue=deref_tmenv env redex}) env;
+
+
+fun bind env from to = (from |-> to)::env;
+
+(*------------------------------------------------------------------------
+ * val alpha = (==`:'a`==);
+ * val beta = (==`:'b`==);
+ * val gamma = (==`:'c`==);
+ * val numty = (==`:num`==);
+ * unify_types (==`:'a->'b->bool`==,[]) (==`:'a->'c`==,[gamma]);
+ * unify_types (==`:'a->'a->bool`==,[alpha]) (==`:num->num->bool`==,[]);
+ * unify_types (==`:'a->'a`==,[alpha]) (==`:num->num`==,[]);
+ * unify_types_in_env [alpha] alpha numty [(alpha |-> numty)];
+ * unify_types (==`:'a->'b->'a->bool`==,[alpha,beta]) (==`:num->one->num->bool`==,[]);
+ * unify_types (==`:'a->'a->bool`==,[]) (==`:num->num->bool`==,[]); (* fails *)
+ * unify_types (==`:'a->'a->bool`==,[alpha]) 
+ *             (==`:(num->'b)->('c->'b)->bool`==,[gamma]);
+ *
+ * NB. NEED TO CHECK FOR VARIABLE CAPTURE (see Tobias's code)
+ * 
+ *-------------------------------------------------------------------------*)
+
+fun unify_types_in_env vars ty1 ty2 env = 
+    let val deref_ty1 = deref_tyenv env ty1
+        val deref_ty2 = deref_tyenv env ty2
+    in if (is_vartype deref_ty1) andalso (mem deref_ty1 vars)
+       then if (is_vartype deref_ty2) andalso (mem deref_ty2 vars)
+            then if (deref_ty1 = deref_ty2) 
+                 then env 
+                 else (deref_ty2 |-> deref_ty1)::env
+            else bind env deref_ty1 deref_ty2
+       else if (is_vartype deref_ty2) andalso (mem deref_ty2 vars)
+       then bind env deref_ty2 deref_ty1
+       else 
+         case (gen_dest_type deref_ty1, gen_dest_type deref_ty2) of
+           (TYVAR _, TYVAR _) =>
+              if (ty1 = ty2) then env else raise MATCH_TYPE_ERR
+         | (TYAPP (c1,args1), TYAPP (c2,args2)) =>
+              if (c1 = c2)
+              then rev_itlist2 (unify_types_in_env vars) args1 args2 env
+              else raise MATCH_TYPE_ERR
+         |  _ => raise MATCH_TYPE_ERR
+    end;
+
+fun unify_types (ty1,vars1) (ty2,vars2) = unify_types_in_env (vars1@@vars2) ty1 ty2 [];
+
+
+(*--------------------------------------------------------------------
+ * Operations on schema-variable lists and environments
+ *---------------------------------------------------------------------*)
+
+fun append_vars ((tmvars1,tyvars1),(tmvars2,tyvars2)) =
+    (tmvars1@@tmvars2,tyvars1@@tyvars2);
+
+fun reduce_env (tmenv,tyenv) = (reduce_tmenv tmenv,reduce_tyenv tyenv);
+
+fun restrict_subst dom subst =
+    filter (fn {redex,residue} => mem redex dom) subst;
+
+fun discard_subst dom subst =
+    filter (fn {redex,residue} => not (mem redex dom)) subst;
+
+fun restrict_env (tmvars,tyvars) (tmenv,tyenv) =
+	(restrict_subst tmvars tmenv, restrict_subst tyvars tyenv);
+    
+fun discard_env (tmvars,tyvars) (tmenv,tyenv) =
+	(discard_subst tmvars tmenv, discard_subst tyvars tyenv);
+    
+(*--------------------------------------------------------------------
+ *
+ * tyfix_env prepares the substitution for application in inst-then-subst order,
+ * i.e.
+ *   let val (tmsubst,tysubst) = unify_terms....
+ *   in subst tmsubst (inst tysubst tm)
+ *   end
+ *---------------------------------------------------------------------*)
+
+fun tyfix_env (tmenv,tyenv) =
+   let fun fixtypes tyenv {redex,residue} = ((inst tyenv redex) |-> residue)
+   in
+       (map (fixtypes tyenv) tmenv,tyenv)
+   end;
+
+
+(*------------------------------------------------------------------------
+ * val a = (--`a:'a`--);
+ * val b = (--`b:'a`--);
+ * val c = (--`c:'a`--);
+ * val x = (--`x:'a`--);
+ * val P = (--`(P:'a->'a->'a->bool)`--);
+ * val Pnum = (--`(Pnum:num->num->num->bool)`--);
+ * 
+ * unify_terms_in_env ([a,b,c],[]) (--`^(P) a b c`--) (--`^(P) g e f`--) ([],[]);
+ * unify_terms_in_env ([a,b,c],[]) (--`^(P) a b c`--) (--`^(P) a e f`--) ([],[]);
+ * unify_terms_in_env ([b,c],[]) (--`^(P) a b c`--) (--`^(P) g e f`--) ([],[]);
+ * unify_terms_in_env ([b,c],[]) (--`^(P) a b c`--) (--`^(P) a e f`--) ([],[]);
+ * unify_terms_in_env ([a,b],[]) (--`^(P) a b a`--) (--`^(P) x e x`--) ([],[]);
+ * unify_terms_in_env ([a,b,c],[]) (--`^(P) a b c`--) (--`^(Pnum) 1 e f`--) ([],[]);
+ * unify_terms_in_env ([P],[alpha]) P Pnum ([],[]);
+ * unify_terms_in_env ([P],[alpha]) P Pnum ([a |-> b],[]);
+ * unify_terms (P,([P],[alpha])) (Pnum,([],[]));
+ * 
+ *  NB. NEED TO REDUCE RESULTING SUBSTITUTION VIA deref's, e.g.
+ * 
+ * unify_terms_in_env ([a,b,x],[]) (--`^(P) a b a`--) (--`^(P) x e y`--) ([],[]);
+ *   ([{redex=(--`(x :'a)`--),residue=(--`(y :'a)`--)},
+ *     {redex=(--`(b :'a)`--),residue=(--`(e :'a)`--)},
+ *     {redex=(--`(a :'a)`--),residue=(--`(x :'a)`--)}],[])
+ * 
+ * NB. NEED TO CHECK FOR VARIABLE CAPTURE (see Tobias's code)
+ * 
+ *-------------------------------------------------------------------------*)
+fun unify_terms_in_env 
+        (vars as (tmvars,tyvars))
+        tm1 tm2
+        (env as (tmenv,tyenv)) =
+    let val deref_tm1 = deref_tmenv tmenv tm1
+        val deref_tm2 = deref_tmenv tmenv tm2
+    in if (is_var deref_tm1) andalso (mem deref_tm1 tmvars)
+       then if (is_var deref_tm2) andalso (mem deref_tm2 tmvars)
+            then 
+              if (deref_tm1 = deref_tm2)
+              then env
+              else let val new_tyenv = unify_types_in_env 
+                                     tyvars 
+                                     (type_of deref_tm1) 
+                                     (type_of deref_tm2)
+                                     tyenv
+                   in ((deref_tm2 |-> deref_tm1)::tmenv, new_tyenv)
+                   end
+            else 
+              let val new_tyenv = unify_types_in_env 
+                                     tyvars 
+                                     (type_of deref_tm1) 
+                                     (type_of deref_tm2)
+                                     tyenv
+              in ((deref_tm1 |-> deref_tm2)::tmenv, new_tyenv)
+              end
+         else if (is_var deref_tm2) andalso (mem deref_tm2 tmvars)
+         then 
+              let val new_tyenv = unify_types_in_env 
+                                     tyvars 
+                                     (type_of deref_tm1) 
+                                     (type_of deref_tm2)
+                                     tyenv
+              in ((deref_tm2 |-> deref_tm1)::tmenv, new_tyenv)
+              end
+         else case (dest_term deref_tm1,dest_term deref_tm2) of
+            (VAR x, VAR y) =>
+               if (deref_tm1=deref_tm2) then env else raise MATCH_TERM_ERR
+          | (CONST{Name = s1, Ty = ty1},CONST{Name = s2, Ty = ty2}) =>
+               if (s1=s2)
+               then let val new_tyenv = 
+                       unify_types_in_env tyvars ty1 ty2 tyenv
+                    in (tmenv,new_tyenv)
+                    end
+               else raise MATCH_TERM_ERR
+          | (COMB{Rator = M1, Rand = M2},COMB{Rator = N1, Rand = N2}) => 
+               unify_terms_in_env vars M2 N2 (unify_terms_in_env vars M1 N1 env)
+          | (LAMB{Bvar = bv1, Body = M},LAMB{Bvar = bv2, Body = N}) =>
+               let val new_tyenv = 
+                     unify_types_in_env tyvars (type_of bv1) (type_of bv2) tyenv
+               in
+                  unify_terms_in_env 
+                       (subtract tmvars [bv1,bv2],tyvars)
+                       M N 
+                      (tmenv,new_tyenv)
+               end
+          | _ => raise MATCH_TERM_ERR
+    end;
+
+
+
+fun unify_terms (tm1,vars1) (tm2,vars2) = 
+   tyfix_env (reduce_env (unify_terms_in_env (append_vars (vars1,vars2)) tm1 tm2 ([],[])))
+
+end; (* MATCH *)
+
+
+
+
+@
+
+
+1.1
+log
+@Preterm and other changes, see 7.changes
+@
+text
+@@

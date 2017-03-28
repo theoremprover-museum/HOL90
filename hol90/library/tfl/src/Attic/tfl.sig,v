@@ -1,0 +1,189 @@
+head	1.1;
+access;
+symbols
+	HOL97:1.1.2.3.0.2
+	bpHOL97:1.1.2.3
+	hol90_9_alpha:1.1.2.3
+	TFL_1:1.1.2.1
+	hol90_pre8_for_multiple_compilers:1.1.0.2;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	96.06.29.15.11.27;	author rjb;	state dead;
+branches
+	1.1.2.1;
+next	;
+
+1.1.2.1
+date	96.06.29.15.11.28;	author rjb;	state Exp;
+branches;
+next	1.1.2.2;
+
+1.1.2.2
+date	96.08.05.15.42.14;	author rjb;	state Exp;
+branches;
+next	1.1.2.3;
+
+1.1.2.3
+date	96.08.23.10.45.37;	author rjb;	state Exp;
+branches
+	1.1.2.3.2.1;
+next	;
+
+1.1.2.3.2.1
+date	97.07.11.19.16.31;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@file tfl.sig was initially added on branch hol90_pre8_for_multiple_compilers.
+@
+text
+@@
+
+
+1.1.2.1
+log
+@TFL version 1 for HOL: A well-founded recursive function definition package.
+@
+text
+@a0 44
+signature TFL_sig =
+sig
+   structure Rules: Rules_sig
+   structure Thms : Thms_sig
+   structure Thry : Thry_sig
+   structure USyntax : USyntax_sig
+
+   local open Thry Thms Rules USyntax
+   in
+   val mk_functional : Thry -> Preterm ->
+                       {functional:Preterm, patterns:Preterm list}
+
+   val wfrec_eqns : Thry -> Preterm -> Preterm * Preterm 
+                                       * (Thm * Preterm list) list
+
+   val prim_wfrec_definition : Thry 
+                                -> {R:Preterm, functional:Preterm}
+                                -> {def:Thm, corollary:Thm, theory:Thry}
+
+   val gen_wfrec_definition : Thry 
+                               -> {R:Preterm, eqs:Preterm}
+                               -> {theory:Thry, rules:Thm, 
+                                   TCs:Preterm list list}
+
+   val lazyR_def : Thry -> Preterm -> {theory: Thry, eqns:Thm, 
+                                       TCs:Preterm list list}
+
+   val mk_induction : Thry -> Thm -> Preterm list list -> Thm
+
+   val postprocess: {WFtac:Tactic, terminator:Tactic, simplifier:Term -> Thm}
+                     -> Thry 
+                       -> {rules:Thm, induction:Thm, TCs:Preterm list list}
+                           -> {rules:Thm, induction:Thm, nested_tcs:Thm list}
+
+   val termination_goals : Thm -> Preterm list
+
+   structure Context
+   : sig
+       val read : unit -> Thm list
+       val write : Thm list -> unit
+     end
+   
+   end
+end;
+@
+
+
+1.1.2.2
+log
+@Updated to TFL release 4.
+@
+text
+@d8 7
+a14 13
+   type Preterm
+   type Term
+   type Thm
+   type Thry
+   type Tactic
+   
+   val version : int
+   datatype pattern = GIVEN of Preterm * int
+                    | OMITTED of Preterm * int
+
+   val mk_functional : Thry -> Preterm
+                       -> {functional:Preterm,
+                           pats: pattern list}
+d20 4
+a23 5
+   val wfrec_eqns : Thry -> Preterm
+                     -> {WFR : Preterm, 
+                         proto_def : Preterm,
+                         extracta :(Thm * Preterm list) list,
+                         pats  : pattern list}
+d25 2
+d28 1
+a28 20
+   val gen_wfrec_definition : Thry 
+                               -> {R:Preterm, eqs:Preterm}
+                               -> {theory:Thry,
+                                   rules :Thm, 
+                                     TCs : Preterm list list,
+                           full_pats_TCs :(Preterm * Preterm list) list, 
+                                   patterns : pattern list}
+
+   val lazyR_def : Thry
+                   -> Preterm
+                   -> {theory:Thry,
+                       rules :Thm,
+                           R :Preterm,
+                       full_pats_TCs :(Preterm * Preterm list) list, 
+                       patterns: pattern list}
+
+   val mk_induction : Thry 
+                       -> Preterm -> Preterm 
+                         -> (Preterm * Preterm list) list
+                           -> Thm
+d32 2
+a33 2
+                      -> {rules:Thm, induction:Thm, TCs:Preterm list list}
+                       -> {rules:Thm, induction:Thm, nested_tcs:Thm list}
+d38 6
+a43 4
+     : sig
+         val read : unit -> Thm list
+         val write : Thm list -> unit
+       end
+@
+
+
+1.1.2.3
+log
+@Propagated fact that Preterm is an eqtype.
+@
+text
+@d8 1
+a8 1
+   eqtype Preterm
+@
+
+
+1.1.2.3.2.1
+log
+@Small changes to make CM-friendly.
+@
+text
+@d8 1
+a8 1
+   type Preterm
+d14 1
+@

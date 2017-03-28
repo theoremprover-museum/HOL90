@@ -1,0 +1,59 @@
+g`!Q l Qlen sQ mom lower n1 upper n2 middle n3 n.
+    (Q = quints l) /\
+    (Qlen = LENGTH Q) /\
+    (sQ = MAP (CURRY qsort $<=) Q) /\
+    ~(Qlen = 1) /\
+    (mom = select (Qlen/2,MAP median5 sQ)) /\
+    (((lower,n1),(upper,n2),middle,n3) = part3 (mom,l,([],0),([],0),[],0)) /\
+    n1 >= n ==>
+    LENGTH lower < LENGTH l`;
+  
+e(Q.SUBGOAL_THEN`!n l Q Qlen sQ. 
+    (Q = quints l) /\
+    (Qlen = LENGTH Q) /\
+    (sQ = MAP (CURRY qsort $<=) Q) /\
+    ~(Qlen = 1) ==>
+    !mom lower n1 upper n2 middle n3.
+    (mom = select (Qlen/2,MAP median5 sQ)) /\
+    (((lower,n1),(upper,n2),middle,n3) =part3 (mom,l,([],0),([],0),[],0)) /\
+     n1 >= n ==>
+     LENGTH lower < LENGTH l` (fn th => MP_TAC th THEN SIMPL));
+
+e (REC_INDUCT_TAC ind2);
+e (GEN_CASES_TAC ABS_PAIR_THM);
+e (PURE_RW_TAC[theorem"pair" "SND", theorem"pair" "FST"]);
+e (Q.SPEC_TAC(`q:num`,`n`));
+e (Q.SPEC_TAC(`r:num list`,`l`));
+e (REPEAT GEN_TAC THEN DISCH_TAC THEN REPEAT GEN_TAC);
+e (STRIP_TAC THEN REPEAT GEN_TAC);
+e (STRIP_TAC);
+e (MATCH_MP_TAC(GEN_ALL(ARITH`(x+SUC n = y) ==> x < y`)));
+e (Q.SUBGOAL_THEN`?n. SUC n = LENGTH (upper:num list)+LENGTH (middle:num list)`
+     (CHOOSE_THEN MP_TAC));
+(*1*)
+e (Q.SUBGOAL_THEN`(?x:num. mem x middle) ==> ^(snd(top_goal()))`MATCH_MP_TAC);
+(*1.1*)
+e (Q.SUBGOAL_THEN`(?x:num. mem x middle) ==> ?h t. middle = h::t`
+         (fn th => DISCH_THEN (fn th1 => 
+            REPEAT_TCL CHOOSE_THEN SUBST1_TAC (MP th th1))));
+(*1.1.1*)
+e (CONV_TAC CONTRAPOS_CONV THEN CONV_TAC NNF_CONV);
+e (REPEAT GEN_TAC THEN DISCH_TAC);
+e (IMP_RES_THEN SUBST1_TAC not_cons_nil_eq);
+e (RW_TAC[definition"kls_list" "mem_def"]);
+(*1.1.2*)
+e (Q.EXISTS_TAC`LENGTH(upper:num list) + LENGTH(t:num list)`);
+e (SIMPL);
+(*1.2*)
+<The hard bit>
+e (Q.EXISTS_TAC`mom`);
+(*2*)
+e (DISCH_THEN (fn th => Q.EXISTS_TAC`n'` THEN SUBST_TAC[th]));
+e (IMP_RES_THEN MP_TAC part3_correctness);
+e (RW_TAC[append_infix]);
+e SIMPL;
+e (DISCH_THEN (K ALL_TAC));
+e (DISCH_THEN (MP_TAC o MATCH_MP permutation_length));
+e (RW_TAC[length_append_distrib]);
+e (ARITH_TAC);
+Q.E.D.

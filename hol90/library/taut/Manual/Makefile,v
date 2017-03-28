@@ -1,0 +1,103 @@
+head	1.1;
+branch	1.1.1;
+access;
+symbols
+	HOL97:1.1.1.1.0.6
+	bpHOL97:1.1.1.1
+	hol90_9_alpha:1.1.1.1
+	hol90_pre8_for_multiple_compilers:1.1.1.1.0.4
+	hol90_pre8_after_donalds_separate_compilation_changes:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	95.10.16.13.31.07;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.31.07;	author rjb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@# =====================================================================
+# Makefile for the taut library documentation 
+# =====================================================================
+
+# ---------------------------------------------------------------------
+# Pathname to the taut help files
+# ---------------------------------------------------------------------
+Help=../help
+
+# ---------------------------------------------------------------------
+# Pathname to the doc-to-tex script and doc-to-tex.sed file 
+# ---------------------------------------------------------------------
+DOCTOTEX=../../../Manual/Reference/bin/doc-to-tex
+DOCTOTEXSED=../../../Manual/Reference/bin/doc-to-tex.sed
+
+# ---------------------------------------------------------------------
+# Pathname to the makeindex script
+# ---------------------------------------------------------------------
+MAKEINDEX=../../../Manual/LaTeX/makeindex ../../../
+
+default:
+	@@echo "INSTRUCTIONS: Type \"make all\" to make the documentation"
+
+# ---------------------------------------------------------------------
+# Remove all trace of previous LaTeX jobs
+# ---------------------------------------------------------------------
+clean:
+	rm -f *.dvi *.aux *.toc *.log *.idx *.ilg
+	@@echo "\begin{theindex}" > index.tex
+	@@echo "\mbox{}" >> index.tex
+	@@echo "\end{theindex}" >> index.tex
+
+tex: ids
+	@@echo "TeX files made"
+
+ids:
+	@@echo "\chapter{ML Functions in the taut Library}">entries.tex
+	@@echo "\input{entries-intro}" >> entries.tex
+	/bin/sh ${DOCTOTEX} ${DOCTOTEXSED} ${Help}/entries entries.tex
+
+index: 
+	${MAKEINDEX} taut.idx index.tex
+
+taut: 
+	latex taut.tex
+
+all: 
+	make clean; make tex; make taut; make index; make taut
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

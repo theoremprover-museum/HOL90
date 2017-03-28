@@ -1,0 +1,114 @@
+head	1.1;
+branch	1.1.1;
+access;
+symbols
+	HOL97:1.1.1.1.0.6
+	bpHOL97:1.1.1.1
+	hol90_9_alpha:1.1.1.1
+	hol90_pre8_for_multiple_compilers:1.1.1.1.0.4
+	hol90_pre8_after_donalds_separate_compilation_changes:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	95.10.16.13.31.18;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.31.18;	author rjb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@\DOC REV_SUPPOSE_TAC
+
+\TYPE
+{
+REV_SUPPOSE_TAC : term -> tactic
+}
+
+\LIBRARY utils
+
+\SYNOPSIS
+A tactic for adding an assumption to a goal, with the condition
+that the assumption be proved first.
+
+\DESCRIBE
+The tactic {REV_SUPPOSE_TAC t} when applied to a goal {([a1,...,an],Goal)}
+returns the two subgoals
+{
+   ([a1,...,an],t)
+
+   ([t,a1,...,an],Goal)
+}
+\noindent The differnce between {REV_SUPPOSE_TAC} and {SUPPOSE_TAC} is the
+order in which they return the subgoals.
+
+
+\FAILURE
+The tactic {REV_SUPPOSE_TAC} fails if it is not given a term of type
+{(==`:bool`==)}.
+
+\EXAMPLE
+{
+   SUPPOSE_TAC (--`?n. INT n = MIN`--)
+}
+\noindent when applied to the goal
+{
+   ([(--`POS MIN`--)], (--`?x:num. Y = ((MAX times (INT x)) plus REM)`--))
+}
+returns the two subgoals
+{
+   ([(--`POS MIN`--)], (--`?n. INT n = MIN`--))
+
+   ([(--`?n. INT n = MIN`--), (--`POS MIN`--)],
+   (--`?x. Y = ((MAX times (INT x)) plus REM)`--))
+}
+
+\USES
+Adding lemmas as assumptions to a goal to assists in its proof.
+{REV_SUPPOSE_TAC} allows you to inline the proof of a fairly short easy
+lemma while proving a theorem using the goal stack, and then return to your
+original proof with the lemma available as an assumption.
+
+
+\SEEALSO
+{
+SUPPOSE_TAC, ASSUME_TAC
+}
+
+
+\ENDDOC
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

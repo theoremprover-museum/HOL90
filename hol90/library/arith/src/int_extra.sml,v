@@ -1,0 +1,146 @@
+head	1.2;
+access;
+symbols
+	HOL97:1.2.0.4
+	bpHOL97:1.2
+	hol90_9_alpha:1.2
+	hol90_pre8_for_multiple_compilers:1.2.0.2
+	hol90_pre8_after_donalds_separate_compilation_changes:1.2
+	hol90_8_after_merging_Konrad_Elsa:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.2
+date	95.10.31.14.01.47;	author drs1004;	state Exp;
+branches
+	1.2.4.1;
+next	1.1;
+
+1.1
+date	95.10.16.13.31.33;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.31.33;	author rjb;	state Exp;
+branches;
+next	;
+
+1.2.4.1
+date	97.07.11.19.28.40;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.2
+log
+@First phase of hol90.8 development.  hol90 now compiles using NJSML-CM
+108.5, with separate compilation of libraries.  System dependencies
+have been isolated in the makefiles and "portable.sml".
+
+This involved a large number of enhancments to the source files,
+most of which are documented in the 7.changes file (or will be shortly).
+See also the correpsonding email corrspondence between RJB, KLS, TFM,
+JRH and DRS that happened during this development.
+@
+text
+@(*****************************************************************************)
+(* FILE          : int_extra.sml                                             *)
+(* DESCRIPTION   : Additional functions for integer arithmetic in ML.        *)
+(*                                                                           *)
+(* READS FILES   : <none>                                                    *)
+(* WRITES FILES  : <none>                                                    *)
+(*                                                                           *)
+(* AUTHOR        : R.J.Boulton, University of Cambridge                      *)
+(* DATE          : 4th March 1991                                            *)
+(*                                                                           *)
+(* TRANSLATOR    : R.J.Boulton, University of Cambridge                      *)
+(* DATE          : 4th February 1993                                         *)
+(*                                                                           *)
+(* LAST MODIFIED : R.J.Boulton                                               *)
+(* DATE          : 16th February 1993                                        *)
+(*****************************************************************************)
+
+structure Int_extra : Int_extra_sig =
+struct
+
+open Core; (* open up all of the HOL 0/1 Core - could be replaced by more *)
+           (* explicit opens to avoid endless recompilation of libraries  *)
+           (* during system development                                   *)
+
+(*---------------------------------------------------------------------------*)
+(* Function to compute the Greatest Common Divisor of two integers.          *)
+(*---------------------------------------------------------------------------*)
+
+fun gcd (i,j) =
+   let exception non_neg
+       fun gcd' (i,j) =
+          let val r = (i mod j)
+          in  if (r = 0)
+              then j
+              else gcd' (j,r)
+          end
+   in  (if ((i < 0) orelse (j < 0))
+        then raise non_neg
+        else if (i < j) then gcd' (j,i) else gcd' (i,j)
+       ) handle _ => raise HOL_ERR{origin_structure = "Arith",
+                                   origin_function = "gcd",
+                                   message = ""}
+   end;
+
+(*---------------------------------------------------------------------------*)
+(* Function to compute the Lowest Common Multiple of two integers.           *)
+(*---------------------------------------------------------------------------*)
+
+fun lcm (i,j) = (i * j) div (gcd (i,j))
+                handle _ => raise HOL_ERR{origin_structure = "Arith",
+                                          origin_function = "lcm",
+                                          message = ""};
+
+end
+@
+
+
+1.2.4.1
+log
+@Changes to accomodate CM, and also the differences between  SML'90 and SML'97.
+@
+text
+@d21 3
+a23 1
+open Exception;
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d21 4
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

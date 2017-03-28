@@ -1,0 +1,432 @@
+head	1.1;
+access;
+symbols;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	96.02.08.00.36.30;	author drs1004;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@New theory mechanism, code reorganisation and other enhancements by Don Syme.
+@
+text
+@(* ===================================================================== *)
+(* FILE          : taut_thms.sml                                         *)
+(* DESCRIPTION   : A bunch of tautologies. Commented code is due to Tom  *)
+(*                 Melham.                                               *)
+(*                                                                       *)
+(* AUTHORS       : (c) Tom Melham, University of Cambridge,              *)
+(*                     Konrad Slind, University of Calgary               *)
+(* DATE          : September 11, 1991                                    *)
+(* ===================================================================== *)
+
+
+structure Theorems : Theorems_sig =
+struct
+
+open Lib Parse Pterms;
+   infix |>
+open Tactic Tactical Conv Drule Plain_rewrite Ho_rewrite Thm_cont Rules;
+  infix THEN;
+  infix THENL;
+  infix ORELSE;
+
+
+val _ = say "Proving some fundamental theorems (theorems.sml)...";
+      
+
+fun TAUT_TAC vlist =
+   REPEAT GEN_TAC THEN
+   MAP_EVERY BOOL_CASES_TAC vlist THEN
+   REWRITE_TAC[Boolean.ETA_AX (* for COND_ABS *)];
+
+
+(* ------------------------------------------------------------------------- *)
+(* Inbuilt tautologies                                                       *)
+(* ------------------------------------------------------------------------- *)
+
+
+val OR_IMP_THM =  TAUT (--`!A B. (A = B \/ A) = (B ==> A)`--);
+	
+val NOT_IMP = TAUT (--`!A B. ~(A ==> B) = A /\ ~B`--);
+    
+val DISJ_ASSOC = TAUT (--`!A B C. A \/ (B \/ C) = (A \/ B) \/ C`--);
+    
+val DISJ_SYM = TAUT (--`!A B. A \/ B = B \/ A`--);
+    
+val DE_MORGAN_THM = 
+    TAUT (--`!A B. (~(A /\ B) = ~A \/ ~B) /\ (~(A \/ B) = ~A /\ ~B)`--);
+    
+
+val LEFT_AND_OVER_OR = TAUT
+    (--`!A B C. A /\ (B \/ C) = A /\ B \/ A /\ C`--);
+    
+val RIGHT_AND_OVER_OR = TAUT
+    (--`!A B C. (B \/ C) /\ A = B /\ A \/ C /\ A`--);
+    
+val LEFT_OR_OVER_AND = TAUT
+    (--`!A B C. A \/ B /\ C = (A \/ B) /\ (A \/ C)`--);
+    
+val RIGHT_OR_OVER_AND = TAUT
+    (--`!A B C. B /\ C \/ A = (B \/ A) /\ (C \/ A)`--);
+    
+val IMP_DISJ_THM = TAUT
+    (--`!A B. A ==> B = ~A \/ B`--);
+	
+val IMP_F_EQ_F = TAUT
+    (--`!t. t ==> F = (t = F)`--);
+	
+val AND_IMP_INTRO = TAUT
+    (--`!t1 t2 t3. t1 ==> t2 ==> t3 = t1 /\ t2 ==> t3`--);
+	
+val EQ_IMP_THM = TAUT 
+    (--`!t1 t2. (t1 = t2) = (t1 ==> t2) /\ (t2 ==> t1)`--);
+	
+val EQ_EXPAND = TAUT
+    (--`!t1 t2. (t1 = t2) = ((t1 /\ t2) \/ (~t1 /\ ~t2))`--);
+    
+val COND_RATOR = TAUT
+    (--`!b (f:'a->'b) g x. (b => f | g) x = (b => f x | g x)`--);
+	
+val COND_RAND = TAUT
+    (--`!(f:'a->'b) b x y. f (b => x | y) = (b => f x | f y)`--);
+	
+val COND_ABS = prove
+    (--`!b (f:'a->'b) g. (\x. (b => f(x) | g(x))) = (b => f | g)`--,
+	REPEAT GEN_TAC THEN
+     MAP_EVERY BOOL_CASES_TAC [(--`b:bool`--)] THEN
+     REWRITE_TAC[ETA_AX]);
+	
+
+	
+val COND_EXPAND = TAUT
+    (--`!b t1 t2. (b => t1 | t2) = ((~b \/ t1) /\ (b \/ t2))`--);
+
+(* ------------------------------------------------------------------------- *)
+(* Beta reduction                                                            *)
+(* ------------------------------------------------------------------------- *)
+
+
+val BETA_THM = prove
+ ((--`!(f:'a->'b) y. (\x. f x) y = f y`--),
+  REPEAT GEN_TAC THEN BETA_TAC THEN REFL_TAC);;
+
+val RWS = BOOL_SIMPS@@[BETA_THM];
+
+(* ------------------------------------------------------------------------- *)
+(* Universal quantifier and conjunction.                                     *)
+(* ------------------------------------------------------------------------- *)
+
+val FORALL_AND_THM = prove
+ (--`!P Q. (!x:'a. P x /\ Q x) = (!x. P x) /\ (!x. Q x)`--,
+  REPEAT(STRIP_TAC ORELSE EQ_TAC) THEN
+  TRY(POP_ASSUM(CONJUNCTS_THEN (ASSUME_TAC o GEN_ALL) o SPEC_ALL)) THEN
+  FIRST_ASSUM MATCH_ACCEPT_TAC);
+
+val AND_FORALL_THM = prove
+ (--`!P Q. (!x. P x) /\ (!x. Q x) = (!x:'a. P x /\ Q x)`--,
+  MATCH_ACCEPT_TAC(GSYM FORALL_AND_THM));
+
+val LEFT_AND_FORALL_THM = prove
+ (--`!P Q. (!x:'a. P x) /\ Q = (!x:'a. P x /\ Q)`--,
+  HO_REWRITE_TAC (RWS@@[FORALL_AND_THM]));
+
+val RIGHT_AND_FORALL_THM = prove
+ (--`!P Q. P /\ (!x:'a. Q x) = (!x. P /\ Q x)`--,
+  HO_REWRITE_TAC (RWS@@[FORALL_AND_THM]));
+
+(* ------------------------------------------------------------------------- *)
+(* Existential quantifier and disjunction.                                   *)
+(* ------------------------------------------------------------------------- *)
+
+val EXISTS_OR_THM = prove
+ (--`!P Q. (?x:'a. P x \/ Q x) = (?x. P x) \/ (?x. Q x)`--,
+  REPEAT(STRIP_TAC ORELSE EQ_TAC) THENL
+   [DISJ1_TAC, DISJ2_TAC, ALL_TAC, ALL_TAC] THEN
+  EXISTS_TAC(--`x:'a`--) THEN HO_ASM_REWRITE_TAC RWS);
+
+val OR_EXISTS_THM = prove
+ (--`!P Q. (?x. P x) \/ (?x. Q x) = (?x:'a. P x \/ Q x)`--,
+  MATCH_ACCEPT_TAC(GSYM EXISTS_OR_THM));
+
+val LEFT_OR_EXISTS_THM = prove
+ (--`!P Q. (?x. P x) \/ Q = (?x:'a. P x \/ Q)`--,
+  HO_REWRITE_TAC (RWS@@[EXISTS_OR_THM, EXISTS_SIMP]));
+
+val RIGHT_OR_EXISTS_THM = prove
+ (--`!P Q. P \/ (?x. Q x) = (?x:'a. P \/ Q x)`--,
+  HO_REWRITE_TAC (RWS@@[EXISTS_OR_THM, EXISTS_SIMP]));
+
+(* ------------------------------------------------------------------------- *)
+(* Existential quantifier and conjunction.                                   *)
+(* ------------------------------------------------------------------------- *)
+
+val LEFT_EXISTS_AND_THM = prove
+ (--`!P Q. (?x:'a. P x /\ Q) = (?x:'a. P x) /\ Q`--,
+  REPEAT(STRIP_TAC ORELSE EQ_TAC ORELSE EXISTS_TAC(--`x:'a`--)) THEN
+  FIRST_ASSUM MATCH_ACCEPT_TAC);
+
+val RIGHT_EXISTS_AND_THM = prove
+ (--`!P Q. (?x:'a. P /\ Q x) = P /\ (?x:'a. Q x)`--,
+  PURE_ONCE_REWRITE_TAC [CONJ_SYM] THEN 
+  MATCH_ACCEPT_TAC LEFT_EXISTS_AND_THM);
+
+val TRIV_EXISTS_AND_THM = prove
+ (--`!P Q. (?x:'a. P /\ Q) = (?x:'a. P) /\ (?x:'a. Q)`--,
+  HO_REWRITE_TAC (RWS@@[LEFT_EXISTS_AND_THM, EXISTS_SIMP]));
+
+val LEFT_AND_EXISTS_THM = prove
+ (--`!P Q. (?x:'a. P x) /\ Q = (?x:'a. P x /\ Q)`--,
+  MATCH_ACCEPT_TAC(GSYM LEFT_EXISTS_AND_THM));
+
+val RIGHT_AND_EXISTS_THM = prove
+ (--`!P Q. P /\ (?x:'a. Q x) = (?x:'a. P /\ Q x)`--,
+  MATCH_ACCEPT_TAC(GSYM RIGHT_EXISTS_AND_THM));
+
+val TRIV_AND_EXISTS_THM = prove
+ (--`!P Q. (?x:'a. P) /\ (?x:'a. Q) = (?x:'a. P /\ Q)`--,
+  MATCH_ACCEPT_TAC(GSYM TRIV_EXISTS_AND_THM));
+
+(* ------------------------------------------------------------------------- *)
+(* Only trivial instances of universal quantifier and disjunction.           *)
+(* ------------------------------------------------------------------------- *)
+
+val TRIV_FORALL_OR_THM = prove
+ (--`!P Q. (!x:'a. P \/ Q) = (!x:'a. P) \/ (!x:'a. Q)`--,
+  HO_REWRITE_TAC (RWS@@[FORALL_SIMP]));
+
+val TRIV_OR_FORALL_THM = prove
+ (--`!P Q. (!x:'a. P) \/ (!x:'a. Q) = (!x:'a. P \/ Q)`--,
+  MATCH_ACCEPT_TAC(GSYM TRIV_FORALL_OR_THM));
+
+(* ------------------------------------------------------------------------- *)
+(* Implication and quantifiers.                                              *)
+(* ------------------------------------------------------------------------- *)
+
+val RIGHT_IMP_FORALL_THM = prove
+ (--`!P Q. (P ==> !x:'a. Q x) = (!x. P ==> Q x)`--,
+  REPEAT(STRIP_TAC ORELSE EQ_TAC) THENL
+   [SPEC_TAC(--`x:'a`--, --`x:'a`--), ALL_TAC] THEN
+  FIRST_ASSUM MATCH_MP_TAC THEN
+  FIRST_ASSUM ACCEPT_TAC);
+
+val RIGHT_FORALL_IMP_THM = prove
+ (--`!P Q. (!x. P ==> Q x) = (P ==> !x:'a. Q x)`--,
+  MATCH_ACCEPT_TAC(GSYM RIGHT_IMP_FORALL_THM));
+
+val LEFT_IMP_EXISTS_THM = prove
+ (--`!P Q. ((?x:'a. P x) ==> Q) = (!x. P x ==> Q)`--,
+  REPEAT(STRIP_TAC ORELSE EQ_TAC) THEN
+  FIRST_ASSUM MATCH_MP_TAC THEN
+  TRY(EXISTS_TAC(--`x:'a`--)) THEN FIRST_ASSUM ACCEPT_TAC);
+
+val LEFT_FORALL_IMP_THM = prove
+ (--`!P Q. (!x. P x ==> Q) = ((?x:'a. P x) ==> Q)`--,
+  MATCH_ACCEPT_TAC(GSYM LEFT_IMP_EXISTS_THM));
+
+val TRIV_FORALL_IMP_THM = prove
+ (--`!P Q. (!x:'a. P ==> Q) = ((?x:'a. P) ==> (!x:'a. Q))`--,
+  HO_REWRITE_TAC (RWS@@[FORALL_SIMP, EXISTS_SIMP]));
+
+val TRIV_EXISTS_IMP_THM = prove
+ (--`!P Q. (?x:'a. P ==> Q) = ((!x:'a. P) ==> (?x:'a. Q))`--,
+  HO_REWRITE_TAC (RWS@@[FORALL_SIMP, EXISTS_SIMP]));
+
+
+(* ------------------------------------------------------------------------- *)
+(* Infinite de Morgan laws.                                                  *)
+(* ------------------------------------------------------------------------- *)
+
+val NOT_EXISTS_THM = prove
+ ((--`!P. ~(?x:'a. P x) = (!x. ~(P x))`--),
+  GEN_TAC THEN EQ_TAC THEN DISCH_TAC THENL
+   [GEN_TAC THEN DISCH_TAC THEN UNDISCH_TAC(--`~(?x:'a. P x)`--) THEN
+    HO_REWRITE_TAC RWS THEN EXISTS_TAC(--`x:'a`--) THEN POP_ASSUM ACCEPT_TAC,
+    DISCH_THEN(CHOOSE_THEN MP_TAC) THEN HO_ASM_REWRITE_TAC RWS]);
+
+fun TAUT tm = prove(tm,MAP_EVERY BOOL_CASES_TAC (free_vars tm) THEN HO_REWRITE_TAC RWS);
+val EXISTS_NOT_THM = prove
+ ((--`!P. (?x:'a. ~(P x)) = ~(!x. P x)`--),
+  PURE_ONCE_REWRITE_TAC[TAUT(--`(a = ~b) = (~a = b)`--)] THEN
+  HO_REWRITE_TAC (RWS@@[NOT_EXISTS_THM]));
+
+val NOT_FORALL_THM = prove
+ ((--`!P. ~(!x. P x) = (?x:'a. ~(P x))`--),
+  MATCH_ACCEPT_TAC(GSYM EXISTS_NOT_THM));
+
+val FORALL_NOT_THM = prove
+ ((--`!P. (!x. ~(P x)) = ~(?x:'a. P x)`--),
+  MATCH_ACCEPT_TAC(GSYM NOT_EXISTS_THM));
+
+(* ------------------------------------------------------------------------- *)
+(* Universal quantifier and disjunction                                      *)
+(* ------------------------------------------------------------------------- *)
+
+val LEFT_FORALL_OR_THM = prove
+ ((--`!P Q. (!x:'a. P x \/ Q) = (!x. P x) \/ Q`--),
+  REPEAT GEN_TAC THEN 
+  PURE_ONCE_REWRITE_TAC[TAUT(--`(a = b) = (~a = ~b)`--)] THEN
+  HO_REWRITE_TAC (RWS@@[NOT_FORALL_THM,DE_MORGAN_THM,LEFT_EXISTS_AND_THM]));
+
+val RIGHT_FORALL_OR_THM = prove
+ ((--`!P Q. (!x:'a. P \/ Q x) = P \/ (!x. Q x)`--),
+  REPEAT GEN_TAC THEN 
+  PURE_ONCE_REWRITE_TAC[TAUT(--`(a = b) = (~a = ~b)`--)] THEN
+  HO_REWRITE_TAC (RWS@@[NOT_FORALL_THM,DE_MORGAN_THM,RIGHT_EXISTS_AND_THM]));
+
+val LEFT_OR_FORALL_THM = prove
+ ((--`!P Q. (!x:'a. P x) \/ Q = (!x. P x \/ Q)`--),
+  MATCH_ACCEPT_TAC(GSYM LEFT_FORALL_OR_THM));
+
+val RIGHT_OR_FORALL_THM = prove
+ ((--`!P Q. P \/ (!x:'a. Q x) = (!x. P \/ Q x)`--),
+  MATCH_ACCEPT_TAC(GSYM RIGHT_FORALL_OR_THM));
+
+
+(* ------------------------------------------------------------------------- *)
+(* Implication and quantifiers.                                              *)
+(* ------------------------------------------------------------------------- *)
+
+val LEFT_IMP_FORALL_THM = prove
+ ((--`!P Q. ((!x:'a. P x) ==> Q) = (?x. P x ==> Q)`--),
+  REPEAT GEN_TAC THEN 
+  PURE_ONCE_REWRITE_TAC[TAUT(--`(a = b) = (~a = ~b)`--)] THEN
+  HO_REWRITE_TAC (RWS@@[NOT_EXISTS_THM,NOT_IMP,LEFT_AND_FORALL_THM]));
+
+val LEFT_EXISTS_IMP_THM = prove
+ ((--`!P Q. (?x. P x ==> Q) = ((!x:'a. P x) ==> Q)`--),
+  MATCH_ACCEPT_TAC(GSYM LEFT_IMP_FORALL_THM));
+
+val RIGHT_IMP_EXISTS_THM = prove
+ ((--`!P Q. (P ==> ?x:'a. Q x) = (?x:'a. P ==> Q x)`--),
+  REPEAT GEN_TAC THEN 
+  PURE_ONCE_REWRITE_TAC[TAUT(--`(a = b) = (~a = ~b)`--)] THEN
+  HO_REWRITE_TAC (RWS@@[NOT_EXISTS_THM,NOT_IMP,RIGHT_AND_FORALL_THM]));
+
+val RIGHT_EXISTS_IMP_THM = prove
+ ((--`!P Q. (?x:'a. P ==> Q x) = (P ==> ?x:'a. Q x)`--),
+  MATCH_ACCEPT_TAC(GSYM RIGHT_IMP_EXISTS_THM));
+
+
+(* ------------------------------------------------------------------------- *)
+(* for splitting over an arbitrarily chosen conditional.                     *)
+(* ------------------------------------------------------------------------- *)
+
+val COND_ELIM_THM = prove
+ ((--`(P:'a->bool) (c => x | y) = (c ==> P x) /\ (~c ==> P y)`--),
+  BOOL_CASES_TAC(--`c:bool`--) THEN HO_REWRITE_TAC RWS);
+
+(* ------------------------------------------------------------------------- *)
+(* ------------------------------------------------------------------------- *)
+
+val SELECT_THM = prove
+  ((--`!P. P (@@x. P x) = (?(x:'a). P x)`--),HO_REWRITE_TAC (RWS@@[EXISTS_DEF]));
+
+(* ------------------------------------------------------------------------- *)
+(* Skolemization.                                                            *)
+(* ------------------------------------------------------------------------- *)
+
+val SELECT_THM' = prove
+  ((--`!P. P ($@@ P:'a) = (?(x:'a). P x)`--),CONV_TAC (DEPTH_CONV ETA_CONV) THEN HO_REWRITE_TAC (RWS@@[EXISTS_DEF]));
+val SKOLEM_THM = prove
+ ((--`!P. (!x:'a. ?y:'b. P x y) = (?y. !x. P x (y x))`--),
+  REPEAT(STRIP_TAC ORELSE EQ_TAC) THENL
+   [EXISTS_TAC(--`\x:'a. ($@@ (P x):'b)`--) THEN GEN_TAC THEN
+    HO_REWRITE_TAC (RWS@@[SELECT_THM']),
+    EXISTS_TAC(--`(y:'a->'b) x`--)] THEN
+  POP_ASSUM MATCH_ACCEPT_TAC);
+
+(* ------------------------------------------------------------------------- *)
+(* ------------------------------------------------------------------------- *)
+
+val EXISTS_UNIQUE_THM = prove
+  ((--`(?!(x:'a). P x) = ((?x.P x) /\ !x y. P x /\ P y ==> (x=y))`--),
+   HO_REWRITE_TAC (RWS@@[EXISTS_UNIQUE_DEF]));
+
+val taut_thms = 
+    [("OR_IMP_THM", OR_IMP_THM ), 	
+     ("NOT_IMP", NOT_IMP ), 
+     ("DISJ_ASSOC", DISJ_ASSOC  ), 
+     ("DISJ_SYM", DISJ_SYM ), 
+     ("DE_MORGAN_THM", DE_MORGAN_THM ), 
+     ("LEFT_AND_OVER_OR", LEFT_AND_OVER_OR ), 
+     ("RIGHT_AND_OVER_OR", RIGHT_AND_OVER_OR ), 
+     ("LEFT_OR_OVER_AND", LEFT_OR_OVER_AND ), 
+     ("RIGHT_OR_OVER_AND", RIGHT_OR_OVER_AND ), 
+     ("IMP_DISJ_THM", IMP_DISJ_THM ), 
+     ("IMP_F_EQ_F", IMP_F_EQ_F ),
+     ("AND_IMP_INTRO", AND_IMP_INTRO ),
+     ("EQ_IMP_THM", EQ_IMP_THM ),
+     ("EQ_EXPAND", EQ_EXPAND ),
+     ("COND_RATOR", COND_RATOR ),
+     ("COND_RAND", COND_RAND ),
+     ("COND_ABS", COND_ABS ),
+     ("COND_EXPAND", COND_EXPAND )];
+    
+val quant_thms =
+    [("RIGHT_OR_EXISTS_THM", RIGHT_OR_EXISTS_THM),
+     ("SKOLEM_THM", SKOLEM_THM),
+     ("SELECT_THM", SELECT_THM),
+     ("EXISTS_UNIQUE_THM", EXISTS_UNIQUE_THM),
+     ("TRIV_FORALL_IMP_THM", TRIV_FORALL_IMP_THM),
+     ("EXISTS_OR_THM", EXISTS_OR_THM),
+     ("TRIV_EXISTS_AND_THM", TRIV_EXISTS_AND_THM),
+     ("LEFT_AND_FORALL_THM", LEFT_AND_FORALL_THM),
+     ("RIGHT_EXISTS_AND_THM", RIGHT_EXISTS_AND_THM),
+     ("RIGHT_IMP_FORALL_THM", RIGHT_IMP_FORALL_THM),
+     ("LEFT_IMP_EXISTS_THM", LEFT_IMP_EXISTS_THM),
+     ("NOT_EXISTS_THM", NOT_EXISTS_THM),
+     ("LEFT_FORALL_IMP_THM", LEFT_FORALL_IMP_THM),
+     ("OR_EXISTS_THM", OR_EXISTS_THM),
+     ("RIGHT_FORALL_IMP_THM", RIGHT_FORALL_IMP_THM),
+     ("TRIV_FORALL_OR_THM", TRIV_FORALL_OR_THM),
+     ("TRIV_AND_EXISTS_THM", TRIV_AND_EXISTS_THM),
+     ("COND_ELIM_THM", COND_ELIM_THM),
+     ("TRIV_OR_FORALL_THM", TRIV_OR_FORALL_THM),
+     ("FORALL_NOT_THM", FORALL_NOT_THM),
+     ("RIGHT_OR_FORALL_THM", RIGHT_OR_FORALL_THM),
+     ("LEFT_IMP_FORALL_THM", LEFT_IMP_FORALL_THM),
+     ("RIGHT_IMP_EXISTS_THM", RIGHT_IMP_EXISTS_THM),
+     ("RIGHT_AND_FORALL_THM", RIGHT_AND_FORALL_THM),
+     ("LEFT_OR_EXISTS_THM", LEFT_OR_EXISTS_THM),
+     ("TRIV_EXISTS_IMP_THM", TRIV_EXISTS_IMP_THM),
+     ("RIGHT_FORALL_OR_THM", RIGHT_FORALL_OR_THM),
+     ("RIGHT_AND_EXISTS_THM", RIGHT_AND_EXISTS_THM),
+     ("LEFT_FORALL_OR_THM", LEFT_FORALL_OR_THM),
+     ("LEFT_EXISTS_AND_THM", LEFT_EXISTS_AND_THM),
+     ("LEFT_OR_FORALL_THM", LEFT_OR_FORALL_THM),
+     ("FORALL_AND_THM", FORALL_AND_THM),
+     ("AND_FORALL_THM", AND_FORALL_THM),
+     ("RIGHT_EXISTS_IMP_THM", RIGHT_EXISTS_IMP_THM),
+     ("LEFT_EXISTS_IMP_THM", LEFT_EXISTS_IMP_THM),
+     ("NOT_FORALL_THM", NOT_FORALL_THM),
+     ("LEFT_AND_EXISTS_THM", LEFT_AND_EXISTS_THM),
+     ("EXISTS_NOT_THM", EXISTS_NOT_THM)];
+    
+val _ = say "done\n";
+
+end; (* structure *)
+
+
+
+
+
+
+
+
+
+
+
+
+
+@

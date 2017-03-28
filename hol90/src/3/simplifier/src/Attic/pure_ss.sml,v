@@ -1,0 +1,201 @@
+head	1.2;
+access;
+symbols;
+locks; strict;
+comment	@# @;
+
+
+1.2
+date	96.01.04.14.15.07;	author drs1004;	state dead;
+branches;
+next	1.1;
+
+1.1
+date	95.12.18.11.39.36;	author drs1004;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.2
+log
+@Added simplifier components, added drule files, added MK_ABS_CONV, better error messages
+@
+text
+@
+(* =====================================================================
+ * pure_ss : Depth traversal and rewrite making, nothing else.
+ * =====================================================================*)
+
+signature Pure_ss_sig =
+sig
+	structure Simplifier : Simplifier_sig
+
+	val pure_ss : Simplifier.simpset
+	val IMP_EQ_CANON : Thm.thm -> Thm.thm list
+end;
+
+
+structure Pure_ss : Pure_ss_sig = 
+struct 
+  structure Simplifier = Simplifier;
+  open Core;
+    infix |>;
+  open Trace;
+
+  open Psyntax;
+  open Simplifier;
+  infix ++
+  open Imp;
+
+  val WRAP = Exception.WRAP_ERR "Pure_ss";
+      
+
+fun loops th =
+   let val (l,r) = dest_eq (concl th)
+   in (can (find_term (fn tm => l = tm)) r)
+   end
+   handle e => WRAP("loops",e);
+
+
+(*-------------------------------------------------------------------------
+ * IMP_CONJ_THM
+ * IMP_CONJ_RULE
+ * CONJ_DISCH
+ *
+ * CONJ_DISCH discharges a list of assumptions, and conjoins them as
+ * a single antecedent.
+ *
+ * EXAMPLE
+ *
+ * CONJ_DISCH [(--`P:bool`--),(--`Q:bool`--)] (mk_thm([(--`P:bool`--),(--`Q:bool`--),(--`R:bool`--)],(--`T`--)));
+ * val it = [R] |- P /\ Q ==> T : thm
+ *------------------------------------------------------------------------*)
+
+val IMP_CONJ_THM = 
+    prove(--`!P Q R. (P ==> Q ==> R) ==> (P /\ Q ==> R)`--,
+          REPEAT STRIP_TAC 
+          THEN (ACCEPT_TAC (MP (MP (ASSUME (--`P ==> Q ==> R`--)) 
+                                   (ASSUME (--`P:bool`--))) 
+                               (ASSUME (--`Q:bool`--))))
+);
+fun IMP_CONJ_RULE th =
+    let val (p,qr) = dest_imp(concl th)
+        val (q,r) = dest_imp qr
+    in MP (SPECL [p,q,r] IMP_CONJ_THM) th
+    end;
+
+fun CONJ_DISCH asms th =
+    itlist (fn tm => (fn th => IMP_CONJ_RULE th handle _ => th) o DISCH tm) 
+           asms th;
+
+    
+
+  (* ----------------------------------------------------------------------
+   * IMP_EQ_CANON
+   *
+   * Put a theorem into canonical form as a conditional equality.
+   *
+   * Makes the set of rewrites from a given theorem.
+   * Split a theorem into a list of theorems suitable for rewriting:
+   *   1. Specialize all variables (SPEC_ALL).
+   *   2. Discharge all conditions into assumptions
+   *   3. Then do the following:
+   *     A |- t1 /\ t2     -->    [A |- t1 ; A |- t2]
+   *   4. Then A |- t --> [A |- t = T]
+   *           A |- ~(t1 = t2) -> [A |- (t1 = t2) = F; A |- (t2 = t1) = F]
+   *           A |- ~t --> A |- [t = F]
+   *           A |- F --> thrown away  (hmmm... a bit suss)
+   *           A |- T --> thrown away
+   *   5. Undischarge all conditions as one single conjoined condition.
+   *   6. Existentially quantify variables free in the conditions
+   *      but not free in the equation.
+   *
+   *   A (bad) idea:  A |- F -> A |- P = T (this loops!!)
+   *
+   * EXAMPLES 
+   *
+   * IMP_EQ_CANON [mk_thm([],--`foo (s1,s2) ==> P s2`--)];
+   * ----------------------------------------------------------------------*)
+
+
+val truth = (--`T`--);         
+val falsity = (--`F`--);         
+
+fun IMP_EQ_CANON thm = 
+   let val conditions = #1 (strip_imp (concl thm))
+       val undisch_thm = UNDISCH_ALL thm
+       val conc = concl undisch_thm
+       val undisch_rewrites = 
+        if (is_eq conc)
+        then if (loops undisch_thm)
+             then (trace_thm(0,"ignoring looping rewrite:",thm); [])
+             else [undisch_thm]
+        else if (is_conj conc)
+        then (op @@ o (IMP_EQ_CANON##IMP_EQ_CANON) o CONJ_PAIR) undisch_thm
+        else if (is_forall conc)
+        then IMP_EQ_CANON undisch_thm
+        else if (is_neg conc)
+             then if (is_eq (dest_neg conc))
+                  then [EQF_INTRO undisch_thm, EQF_INTRO (GSYM undisch_thm)]
+                  else [EQF_INTRO undisch_thm]
+        else if conc = truth
+        then (trace_thm(1,"ignoring pointless rewrite:",thm); [])
+        else if (conc = falsity)
+        then (trace_thm(1,"ignoring contradictory rewrite:",thm); [])
+        else [EQT_INTRO undisch_thm]
+   in
+      map (CONJ_DISCH conditions) undisch_rewrites
+   end;
+
+
+fun QUANTIFY_CONDITIONS thm =
+      if is_imp (concl thm) 
+      then 
+        let val free_in_eqn = (free_vars (snd(dest_imp (concl thm))))
+            val free_in_thm = (free_vars (concl thm))
+	    val free_in_hyp = free_varsl (hyp thm)
+            val free_in_conditions = 
+                 subtract (subtract free_in_thm free_in_eqn) free_in_hyp
+            fun quantify fv = CONV_RULE FORALL_IMP_CONV o GEN fv
+            val quan_thm = itlist quantify free_in_conditions thm
+        in [quan_thm]
+        end
+      else [thm]
+      handle e => WRAP("QUANTIFY_CONDITIONS",e);
+
+
+(* ---------------------------------------------------------------------
+ * pure_ss
+ * --------------------------------------------------------------------*)
+
+
+infix oo;
+fun f oo g = fn x => flatten (map f (g x));
+
+fun SPEC_CANON thm = [SPEC_ALL thm];
+
+val pure_ss =
+   empty_ss
+   |> setmkrewr (QUANTIFY_CONDITIONS oo IMP_EQ_CANON oo IMP_CANON oo SPEC_CANON);
+
+end; 
+
+
+
+
+
+
+
+@
+
+
+1.1
+log
+@Preterm and other changes, see 7.changes
+@
+text
+@@

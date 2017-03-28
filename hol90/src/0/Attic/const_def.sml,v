@@ -1,0 +1,675 @@
+head	1.7;
+access;
+symbols
+	HOL97:1.4.0.4
+	bpHOL97:1.4
+	hol90_9_alpha:1.4
+	hol90_pre8_for_multiple_compilers:1.4.0.2
+	hol90_pre8_after_donalds_separate_compilation_changes:1.3
+	hol90_8_after_merging_Konrad_Elsa:1.3
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.7
+date	96.02.08.00.30.33;	author drs1004;	state dead;
+branches;
+next	1.6;
+
+1.6
+date	96.01.04.13.44.55;	author drs1004;	state Exp;
+branches;
+next	1.5;
+
+1.5
+date	95.12.18.11.34.12;	author drs1004;	state Exp;
+branches;
+next	1.4;
+
+1.4
+date	95.11.15.13.24.12;	author rjb;	state Exp;
+branches
+	1.4.4.1;
+next	1.3;
+
+1.3
+date	95.10.18.16.36.51;	author drs1004;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	95.10.17.17.06.41;	author drs1004;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	95.10.16.13.29.50;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.29.50;	author rjb;	state Exp;
+branches
+	1.1.1.1.2.1;
+next	;
+
+1.1.1.1.2.1
+date	95.10.17.18.42.41;	author drs1004;	state Exp;
+branches;
+next	;
+
+1.4.4.1
+date	98.02.23.20.54.50;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.7
+log
+@New theory mechanism, by Donald Syme, and many other enhancements.
+@
+text
+@(* ===================================================================== *)
+(* FILE          : const_def.sml                                         *)
+(* DESCRIPTION   : Three variants on the principle of definition. The    *)
+(*                 third argument to new_infix_definition is the         *)
+(*                 precedence. Translated from hol88, except for the     *)
+(*                 precedence stuff.                                     *)
+(*                                                                       *)
+(* AUTHOR        : (c) Mike Gordon, University of Cambridge              *)
+(* TRANSLATOR    : Konrad Slind, University of Calgary                   *)
+(* DATE          : September 11, 1991                                    *)
+(* ===================================================================== *)
+
+
+functor CONST_DEF (structure Theory : Theory_sig
+                   structure Dsyntax : Dsyntax_sig
+                   structure Lexis : Lexis_sig
+                   structure Const_spec : Const_spec_sig
+                   sharing
+                     Dsyntax.Term = Theory.Thm.Term
+                   and
+                     Const_spec.Thm = Theory.Thm) : Const_def_sig =
+struct
+structure Thm = Theory.Thm;
+open Theory;
+open Thm.Term;
+open Dsyntax;
+infix 3 -->
+open Lib;
+
+val ERR = Exception.ERR "Const_def";
+val WRAP_ERR = Exception.WRAP_ERR "Const_def";
+
+
+local
+fun check_varstruct tm =
+   if (is_var tm)
+   then [tm]
+   else let val {fst,snd} = dest_pair tm
+            val l1 = check_varstruct fst
+            and l2 = check_varstruct snd
+        in if (null_intersection l1 l2)
+           then (l1@@l2)
+           else ERR("check_varstruct","bad varstruct")
+        end handle _ => ERR("check_varstruct","bad varstruct")
+in
+fun check_lhs tm =
+   if (is_var tm)
+   then [tm]
+   else if (is_const tm)
+        then ERR("check_lhs","attempt to redefine constant")
+        else if (is_comb tm)
+             then let val {Rator,Rand} = dest_comb tm
+                      val l1 = check_lhs Rator
+                      and l2 = check_varstruct Rand
+                  in if (null_intersection l1 l2)
+                     then (l1@@l2)
+                     else ERR("check_lhs","bad lhs in def")
+                  end
+             else ERR("check_lhs","bad lhs in def")
+end;
+
+
+
+(******************************************************************
+ * if `C ... = (...:ty)` then  (get_type `C ...` ty) gives the
+ *  type of C.
+ *
+ ******************************************************************)
+fun get_type tm rightty = 
+   if (is_var tm)
+   then rightty
+   else if (is_comb tm)
+        then let val {Rator,Rand} = dest_comb tm
+             in get_type Rator (type_of Rand --> rightty)
+             end
+        else ERR("get_type","bad lhs in def");
+
+
+(* The derived rule
+ *
+ *   DEF_EXISTS_RULE : term -> thm 
+ *
+ * proves that a function defined by a definitional equation exists.
+ * The implementation below uses mk_thm, but this will be changed eventually.
+ *****************************************************************************)
+fun DEF_EXISTS_RULE tm =
+ let val (vars,body) = strip_forall tm
+     val (eq as {lhs,rhs}) = dest_eq body handle _ => 
+             ERR("DEF_EXISTS_RULE","definition is not an equation")
+     val lhsvars  = check_lhs lhs
+     and ty       = get_type lhs (Term.type_of rhs)
+     and rhsvars  = Term.free_vars rhs
+ in
+ if not(set_eq (intersect lhsvars rhsvars) rhsvars)
+ then raise(ERR("DEF_EXISTS_RULE","unbound var in rhs"))
+ else if (mem (hd lhsvars) rhsvars)
+ then ERR("DEF_EXISTS_RULE", "recursive definitions not allowed")
+ else let val name = #Name(dest_var(hd lhsvars))
+	  and v    = hd lhsvars
+      in
+	  if not(null(set_diff (Term.type_vars_in_term rhs) 
+				    (Term.type_vars_in_term v)))
+	  then ERR("DEF_EXISTS_RULE",
+		       (Type.dest_vartype
+			(hd (set_diff(type_vars_in_term rhs)
+			     (type_vars_in_term v)))
+			^" is an unbound type variable in definition"))
+	  else if not(Lexis.allowed_term_constant name)
+                then ERR("DEF_EXISTS_RULE",
+                    (name^" is not allowed as a constant name"))
+                else Thm.mk_drule_thm([],mk_exists{Bvar = v,
+						   Body=list_mk_forall
+						   (union vars (tl lhsvars),
+						    mk_eq eq)})
+           end
+ end;
+
+fun new_definition(name,def) =
+   let val def_thm = DEF_EXISTS_RULE def
+       val cname = (#Name o dest_var o #Bvar o dest_exists o Thm.concl) def_thm
+   in Const_spec.new_specification (name,[cname],def_thm)
+   end
+handle e => WRAP_ERR("new_definition",e);
+    
+
+end; (* CONST_DEF *)
+@
+
+
+1.6
+log
+@Fixed types, pretypes, fixities, parsing.
+@
+text
+@@
+
+
+1.5
+log
+@Preterm and other changes, see 7.changes
+@
+text
+@d21 1
+a21 1
+                     Const_spec.Theory = Theory) : Const_def_sig =
+d23 1
+a23 1
+structure Theory = Theory
+d27 1
+d30 2
+a31 1
+val CONST_DEF_ERR = Exception.ERR "Const_def";
+a32 2
+infix 3 -->
+fun (X --> Y) = Type.mk_type{Tyop = "fun", Args = [X,Y]};
+d43 2
+a44 2
+           else CONST_DEF_ERR("check_varstruct","bad varstruct")
+        end handle _ => CONST_DEF_ERR("check_varstruct","bad varstruct")
+d50 1
+a50 1
+        then CONST_DEF_ERR("check_lhs","attempt to redefine constant")
+d57 1
+a57 1
+                     else CONST_DEF_ERR("check_lhs","bad lhs in def")
+d59 1
+a59 1
+             else CONST_DEF_ERR("check_lhs","bad lhs in def")
+d76 1
+a76 1
+        else CONST_DEF_ERR("get_type","bad lhs in def");
+d89 1
+a89 2
+                   CONST_DEF_ERR("DEF_EXISTS_RULE",
+                                    "definition is not an equation")
+d95 1
+a95 1
+ then raise(CONST_DEF_ERR("DEF_EXISTS_RULE","unbound var in rhs"))
+d97 13
+a109 14
+      then raise(CONST_DEF_ERR("DEF_EXISTS_RULE",
+                               "recursive definitions not allowed"))
+      else let val name = #Name(dest_var(hd lhsvars))
+               and v    = hd lhsvars
+           in
+           if not(Portable.List.null(set_diff (Term.type_vars_in_term rhs) 
+                                              (Term.type_vars_in_term v)))
+           then CONST_DEF_ERR("DEF_EXISTS_RULE",
+                (Type.dest_vartype
+                              (hd (set_diff(type_vars_in_term rhs)
+                                           (type_vars_in_term v)))
+                          ^" an unbound type variable in definition"))
+           else if not(Lexis.allowed_term_constant name)
+                then CONST_DEF_ERR("DEF_EXISTS_RULE",
+d112 3
+a114 3
+                        Body=list_mk_forall
+                                (union vars (Portable.List.tl lhsvars),
+				 mk_eq eq)})
+d118 1
+a118 1
+fun new_gen_definition{name,def,fixity} =
+d121 1
+a121 4
+   in Const_spec.new_specification
+                 {name = name,
+                  consts = [{fixity = fixity, const_name = cname}],
+                  sat_thm = def_thm}
+d123 2
+a124 8
+
+
+fun new_definition(name,def) = 
+    new_gen_definition{name = name, fixity = Prefix, def = def}
+fun new_infix_definition(name,def,prec) = 
+    new_gen_definition{name = name, fixity = Infix prec, def = def}
+fun new_binder_definition(name,def) = 
+    new_gen_definition{name = name, fixity = Binder, def = def}
+@
+
+
+1.4
+log
+@The HOL90 sources have been changed to allow for the use of different
+Standard ML compilers (possibly simultaneously).
+
+ * Many files in "src/0" changed to make them more portable across different
+   ML compilers. Various additions have been made to the Portable structure
+   and files changed to access identifiers in the Portable structure rather
+   than from the global environment. Worthy of special note are:
+
+   - The pointer equality used in "src/0/term.sml" has been made into a
+     function in the Portable structure.
+
+   - The ML-Lex and ML-Yacc files for the various parsers have been changed
+     to access the Portable structure. Both the source files and the SML
+     produced from them have been changed but I have not verified that the
+     source files would reproduce the new SML versions if ML-Lex and ML-Yacc
+     were to be rerun on them. The changes involve some hacks that exploit the
+     way ML-Lex and ML-Yacc work. See the sources for details.
+
+R.J.Boulton, 15th November 1995.
+@
+text
+@d14 1
+a14 2
+functor CONST_DEF ((* structure Lib : Lib_sig *)
+		   structure Theory : Theory_sig
+d29 1
+a29 4
+fun CONST_DEF_ERR{function,message} = 
+    Exception.HOL_ERR{origin_structure = "Const_def",
+		      origin_function = function,
+		      message = message}
+d43 2
+a44 4
+           else raise CONST_DEF_ERR{function = "check_varstruct",
+                                    message = "bad varstruct"}
+        end handle _ => raise CONST_DEF_ERR{function = "check_varstruct",
+                                            message = "bad varstruct"}
+d50 1
+a50 2
+        then raise CONST_DEF_ERR{function = "check_lhs",
+                                 message = "attempt to redefine constant"}
+d57 1
+a57 2
+                     else raise CONST_DEF_ERR{function = "check_lhs",
+                                              message = "bad lhs in def"}
+d59 1
+a59 2
+             else raise CONST_DEF_ERR{function = "check_lhs",
+                                      message = "bad lhs in def"}
+d76 1
+a76 1
+        else raise CONST_DEF_ERR{function="get_type",message="bad lhs in def"};
+d89 2
+a90 2
+                   raise CONST_DEF_ERR{function = "DEF_EXISTS_RULE",
+                                    message = "definition is not an equation"}
+d96 6
+a101 7
+ then raise(CONST_DEF_ERR{function = "DEF_EXISTS_RULE",
+			  message = "unbound var in rhs"})
+ else if (mem (Portable.List.hd lhsvars) rhsvars)
+      then raise(CONST_DEF_ERR{function = "DEF_EXISTS_RULE",
+                               message = "recursive definitions not allowed"})
+      else let val name = #Name(dest_var(Portable.List.hd lhsvars))
+               and v    = Portable.List.hd lhsvars
+d105 3
+a107 4
+           then raise CONST_DEF_ERR{function = "DEF_EXISTS_RULE",
+                message = (Type.dest_vartype
+                              (Portable.List.hd
+                                  (set_diff(type_vars_in_term rhs)
+d109 1
+a109 1
+                          ^" an unbound type variable in definition")}
+d111 2
+a112 2
+                then raise CONST_DEF_ERR{function = "DEF_EXISTS_RULE",
+                    message=(concat name " is not allowed as a constant name")}
+a119 1
+local
+d128 2
+a129 1
+in
+a135 1
+end;
+@
+
+
+1.4.4.1
+log
+@Addition of inference tracking for Wai Wong. Also, changed hol_pp.extensible
+so that it would compile! (It had obsolete paths to pr_list.)
+@
+text
+@d124 1
+a124 1
+                else let val thm = Thm.mk_drule_thm([],mk_exists{Bvar = v,
+a127 4
+                     in
+                     Thm.note (Thm.STEP{Name="DEFEXISTSRULE", Thm=thm,
+					Just=[Thm.JA_TERM tm]}, thm)
+                     end
+@
+
+
+1.3
+log
+@Check in after merging in Konrad's changes made after
+the release of hol90.7.  This involved creating a side branch
+in which to check in Konrad's changes, then merging in that
+side branch into the main development (which contains changes
+made by Elsa Gunter).
+
+Some other small modification have been made to the source code,
+as I begun to try to make this version into a working version:
+	- hol90 will now be compiled in an environment were no
+structures can be considered opn.  This means many structures
+now need "open Lib" and other such commands at their head.
+This has not yet been completed, but has been begun.
+	- "rotl" and "rotr" have been added to Lib, something
+which I just did impulsively.   Documentation files
+have also been added in help/90.
+@
+text
+@d107 1
+a107 1
+ else if (mem (hd lhsvars) rhsvars)
+d110 2
+a111 2
+      else let val name = #Name(dest_var(hd lhsvars))
+               and v    = hd lhsvars
+d113 2
+a114 2
+           if not(null(set_diff (Term.type_vars_in_term rhs) 
+                                (Term.type_vars_in_term v)))
+d116 4
+a119 2
+                message = (Type.dest_vartype(hd(set_diff(type_vars_in_term rhs)
+                                                        (type_vars_in_term v)))
+d125 3
+a127 1
+                        Body=list_mk_forall(union vars (tl lhsvars),mk_eq eq)})
+@
+
+
+1.2
+log
+@Keeping you up to date:
+
+I'm about to do a checkin of elsa's modifications to the hol90.7
+sources to create her hol90.pre8.  To recap what I've done:
+	- I checked out hol90 (in /usr/groups/hol/drs1004/hol90)
+		cvs co hol90
+	  (Well, to be honest, I only checked out those
+	  parts of hol90 I knew I'd be changing, e.g. not the
+	  Manual, and only parts of the library.  Checking out the
+	  entire source takes a while, mainly due to the enormous number
+	  of help files.  The limiting factor is files/second, which
+         runs at around 5 when CVS is working on nfs over a network, not
+         KB/second, which you might at first think it would be).
+
+	- By doing a recursive diff between Elsa's source and the
+	hol90.7 source I found all the changes Elsa had made to
+	source files.  I copied relevant files from Elsa's source
+	into my checked out version.  The only new files were
+		- the sml_system files in src/0
+		- some make scripts in src/.
+	Changed files were in:
+		src/{0,1,2,3}
+		library/arith/src/thm_convs.sml
+		library/list/src/list_conv1.sml
+		library/num/src/num_lib.sml
+		library/prog_logic/src/halts_logic.sml
+		library/prog_logic/src/translation.sml
+		library/prog_logic/theories/src/mk_halts.sml
+		library/real/theories/src/Make
+		library/real/theories/src/equiv.sml
+		library/real/theories/src/seq.sml
+		library/reduce/src/arithconv.sml
+		library/string/src/string_conv.sml
+		library/unity/theories/src/aux_definitions.sml
+		library/word/theories/src/*
+
+	- I will now commit these changes, with this email as the log message.
+		cvs commit
+
+	- Tomorrow I will get this version compiling
+	with NJSML 108 (I will probably add
+	the files to enable the NJSML compilation manager to make
+	this easier), then check those changes in.  I think it's
+	good to get things in a working state.
+@
+text
+@d28 1
+d35 3
+d45 6
+a50 8
+        in
+        if (Lib.null_intersection l1 l2)
+        then (l1@@l2)
+        else raise CONST_DEF_ERR{function = "check_varstruct",
+				 message = "bad varstruct"}
+        end
+        handle _ => raise CONST_DEF_ERR{function = "check_varstruct",
+					message = "bad varstruct"}
+d57 1
+a57 1
+				 message = "attempt to redefine constant"}
+d62 4
+a65 5
+                  in
+                  if (Lib.null_intersection l1 l2)
+                  then (l1@@l2)
+                  else raise CONST_DEF_ERR{function = "check_lhs",
+					   message = "bad lhs in def"}
+d68 1
+a68 1
+				      message = "bad lhs in def"}
+a72 1
+
+d83 1
+a83 2
+             in get_type Rator (Type.mk_type{Tyop ="fun", 
+                                             Args = [type_of Rand,rightty]})
+d85 1
+a85 2
+        else raise CONST_DEF_ERR{function = "get_type",
+				 message = "bad lhs in def"};
+d104 1
+a104 1
+ if not(Lib.set_eq (Lib.intersect lhsvars rhsvars) rhsvars)
+d107 1
+a107 1
+ else if (Lib.mem (hd lhsvars) rhsvars)
+d113 1
+a113 1
+           if not(null(Lib.set_diff (Term.type_vars_in_term rhs) 
+d116 3
+a118 4
+				    message = 
+                      (Type.dest_vartype(hd(Lib.set_diff(type_vars_in_term rhs) 
+                                                    (type_vars_in_term v)))^
+                       " an unbound type variable in definition")}
+d121 3
+a123 6
+					 message = 
+                            (Lib.concat name " is not allowed as a constant name")}
+                else Thm.mk_drule_thm([],
+                       mk_exists{Bvar = v,
+                                 Body = list_mk_forall(Lib.union vars (tl lhsvars),
+                                                       mk_eq eq)})
+d131 4
+a134 5
+   in
+   Const_spec.new_specification
+           {name = name,
+            consts = [{fixity = fixity, const_name = cname}],
+            sat_thm = def_thm}
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d14 2
+a15 1
+functor CONST_DEF (structure Theory : Theory_sig
+d30 3
+a32 3
+          HOL_ERR{origin_structure = "Const_def",
+                  origin_function = function,
+                  message = message}
+d42 1
+a42 1
+        if (null_intersection l1 l2)
+d61 1
+a61 1
+                  if (null_intersection l1 l2)
+d106 1
+a106 1
+ if not(set_eq (intersect lhsvars rhsvars) rhsvars)
+d109 1
+a109 1
+ else if (mem (hd lhsvars) rhsvars)
+d115 1
+a115 1
+           if not(null(set_diff (Term.type_vars_in_term rhs) 
+d119 1
+a119 1
+                      (Type.dest_vartype(hd(set_diff(type_vars_in_term rhs) 
+d125 1
+a125 1
+                            (concat name " is not allowed as a constant name")}
+d128 1
+a128 1
+                                 Body = list_mk_forall(union vars (tl lhsvars),
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@
+
+
+1.1.1.1.2.1
+log
+@Konrad's bug fixes up to start of serious
+hol90.8 devel;opment.  Checked into branch revision for
+later merging with trunk (elsa's work).  See
+doc/7.chages for a full description of what's been done.
+@
+text
+@a32 3
+infix 3 -->
+fun (X --> Y) = Type.mk_type{Tyop = "fun", Args = [X,Y]};
+
+d40 8
+a47 6
+        in if (null_intersection l1 l2)
+           then (l1@@l2)
+           else raise CONST_DEF_ERR{function = "check_varstruct",
+                                    message = "bad varstruct"}
+        end handle _ => raise CONST_DEF_ERR{function = "check_varstruct",
+                                            message = "bad varstruct"}
+d54 1
+a54 1
+                                 message = "attempt to redefine constant"}
+d59 5
+a63 4
+                  in if (null_intersection l1 l2)
+                     then (l1@@l2)
+                     else raise CONST_DEF_ERR{function = "check_lhs",
+                                              message = "bad lhs in def"}
+d66 1
+a66 1
+                                      message = "bad lhs in def"}
+d71 1
+d82 2
+a83 1
+             in get_type Rator (type_of Rand --> rightty)
+d85 2
+a86 1
+        else raise CONST_DEF_ERR{function="get_type",message="bad lhs in def"};
+d117 4
+a120 3
+                message = (Type.dest_vartype(hd(set_diff(type_vars_in_term rhs)
+                                                        (type_vars_in_term v)))
+                          ^" an unbound type variable in definition")}
+d123 6
+a128 3
+                    message=(concat name " is not allowed as a constant name")}
+                else Thm.mk_drule_thm([],mk_exists{Bvar = v,
+                        Body=list_mk_forall(union vars (tl lhsvars),mk_eq eq)})
+d136 5
+a140 4
+   in Const_spec.new_specification
+                 {name = name,
+                  consts = [{fixity = fixity, const_name = cname}],
+                  sat_thm = def_thm}
+@

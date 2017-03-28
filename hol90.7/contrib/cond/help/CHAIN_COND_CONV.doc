@@ -1,0 +1,32 @@
+\DOC CHAIN_COND_CONV
+
+\TYPE {CHAIN_COND_CONV : conv -> conv}
+
+\SYNOPSIS
+eleminates a chain of conditionals.
+
+\LIBRARY cond
+
+\DESCRIBE
+takes a term t of the form
+p1 => x1 | p2 => y2 | p3 => y3 | ... | pn => yn| yn+1 
+and a conversion cond_EQ_CONV that states a theorem |-p=T or
+|-pi=F for any pi and states a theorem |- t=yj for some yj.
+
+\EXAMPLE
+
+{
+- CHAIN_COND_CONV 
+  string_EQ_CONV
+  (--`("a" = "b") => 1 |("a" = "c") => 2|("a" ="a") => 3|("d" = "d") => 4|5`--);
+val it =
+  |- (("a" = "b")
+      => 1
+      | (("a" = "c") => 2 | (("a" = "a") => 3 | (("d" = "d") => 4 | 5)))) =
+     3 : thm
+}
+
+\SEEALSO
+CHAIN_COND_CASES_CONV
+
+\ENDDOC

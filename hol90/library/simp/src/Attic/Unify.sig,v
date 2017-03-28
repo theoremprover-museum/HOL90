@@ -1,0 +1,80 @@
+head	1.1;
+access;
+symbols
+	HOL97:1.1.2.1.0.2
+	bpHOL97:1.1.2.1
+	hol90_9_alpha:1.1.2.1
+	hol90_pre8_for_multiple_compilers:1.1.0.2;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	96.08.06.12.24.22;	author rjb;	state dead;
+branches
+	1.1.2.1;
+next	;
+
+1.1.2.1
+date	96.08.06.12.24.23;	author rjb;	state Exp;
+branches
+	1.1.2.1.2.1;
+next	;
+
+1.1.2.1.2.1
+date	97.07.14.18.08.24;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@file Unify.sig was initially added on branch hol90_pre8_for_multiple_compilers.
+@
+text
+@@
+
+
+1.1.2.1
+log
+@New library simp.
+@
+text
+@a0 19
+(*------------------------------------------------------------------------
+ *  First order unification restricted to specified "scheme" variables.
+ *
+ *----------------------------------------------------------------------*)
+
+signature Unify_sig = sig
+   (* these don't do type unification *)
+   val simp_unify_terms_in_env : 
+     term list -> term -> term -> (term * term)list -> (term * term)list
+   val simp_unify_terms : term list -> term -> term -> (term * term)list
+
+   (* use these to look up the results that are returned *)
+   val deref_tmenv : (term * term)list -> term -> term
+
+   (* discard some (local) instantiations from an environment *)
+   val restrict_tmenv : (term -> bool) -> (term * term)list -> (term * term)list 
+
+end (* sig *)
+
+@
+
+
+1.1.2.1.2.1
+log
+@The "simp" library now loads under CM.
+@
+text
+@a6 1
+ type term
+d16 1
+a16 1
+   val restrict_tmenv :(term -> bool) -> (term * term)list -> (term * term)list 
+@

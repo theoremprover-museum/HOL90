@@ -1,0 +1,102 @@
+head	1.1;
+branch	1.1.1;
+access;
+symbols
+	HOL97:1.1.1.1.0.6
+	bpHOL97:1.1.1.1
+	hol90_9_alpha:1.1.1.1
+	hol90_pre8_for_multiple_compilers:1.1.1.1.0.4
+	hol90_pre8_after_donalds_separate_compilation_changes:1.1.1.1
+	hol90_8_after_merging_Konrad_Elsa:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	95.10.16.13.35.45;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.35.45;	author rjb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@\DOC AC_CONV
+
+\TYPE {AC_CONV : ((thm # thm) -> conv)}
+
+\SYNOPSIS
+Proves equality of terms using associative and commutative laws.
+
+\KEYWORDS
+conversion,associative, commutative.
+
+\DESCRIBE
+Suppose {_} is a function, which is assumed to be infix in the following 
+syntax, and {ath} and {cth} are theorems expressing its associativity and
+commutativity; they must be of the following form, except that any free
+variables may have arbitrary names and may be universally quantified:
+{
+   ath = |- m _ (n _ p) = (m _ n) _ p
+   cth = |- m _ n = n _ m
+}
+\noindent Then the conversion {AC_CONV(ath,cth)} will prove equations whose
+left and right sides can be made identical using these associative and
+commutative laws.
+
+\FAILURE
+Fails if the associative or commutative law has an invalid form, or if the
+term is not an equation between AC-equivalent terms.
+
+\EXAMPLE
+{
+   - let val M = Parse.term_parser 
+                 `x + (SUC t) + ((3 + y) + z) = 3 + (SUC t) + x + y + z`
+     in 
+     AC_CONV(ADD_ASSOC,ADD_SYM) M
+     end;
+
+   |- (x + ((SUC t) + ((3 + y) + z)) = 3 + ((SUC t) + (x + (y + z)))) = T
+}
+
+\COMMENTS
+Note that the preproved associative and commutative laws for the operators {+},
+{*}, {/\} and {\/} are already in the right form to give to {AC_CONV}.
+
+\SEEALSO
+SYM_CONV.
+
+\ENDDOC
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

@@ -1,0 +1,37 @@
+\DOC hyp_thms
+
+\TYPE {hyp_thms : (window -> thm list)}
+
+\SYNOPSIS
+The theorems infered from the context of a window.
+
+\LIBRARY window
+
+\DESCRIBE
+{hyp_thms w} is the list of theorems which are infered from the
+context of {w}.  The conclusions of these theorems are the
+hypotheses of the window.
+
+\EXAMPLE
+{
+- BEGIN_STACK "hyp-ex" (--`($=) ((A /\ B) /\ C)`--) [] [];
+
+= * (A /\ B) /\ C
+val it = () : unit
+- DO (OPEN_WIN [RAND]);
+
+  ! B
+  ! A
+= * C
+val it = () : unit
+- hyp_thms (top_window (CURRENT_STACK ()));
+val it = [[A /\ B] |- A,[A /\ B] |- B] : thm list
+}
+
+\FAILURE
+Never fails.
+
+\SEEALSO
+all_hypothese, disp_hypotheses, hypotheses
+
+\ENDDOC

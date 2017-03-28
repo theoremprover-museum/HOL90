@@ -1,0 +1,4166 @@
+val it = () : unit
+- [opening /usr/groups/hol/hol90.10/src/1/sources.sml]
+[opening ../theories/src/min.sig]
+signature Min_sig = sig end
+val it = () : unit
+GC #0.0.0.0.1.21:   (0 ms)
+[opening ../theories/src/ld_min.sml]
+
+Loading theory "min"
+structure Min : Min_sig
+val it = () : unit
+[opening ../theories/src/exists.sig]
+signature Exists_sig = sig val EXISTS_DEF : CoreHol.Thm.thm end
+val it = () : unit
+GC #0.0.0.0.2.56:   (10 ms)
+[opening ../theories/src/ld_exists.sml]
+
+Loading theory "bool"
+
+Theory "min" already consistent with disk, hence not exported.
+structure Exists : Exists_sig
+val it = () : unit
+[opening ../theories/src/bool.sig]
+signature boolThrySig =
+  sig
+    structure Min : sig end
+    val T_DEF : CoreHol.Thm.thm
+    val FORALL_DEF : CoreHol.Thm.thm
+    val AND_DEF : CoreHol.Thm.thm
+    val OR_DEF : CoreHol.Thm.thm
+    val F_DEF : CoreHol.Thm.thm
+    val NOT_DEF : CoreHol.Thm.thm
+    val EXISTS_UNIQUE_DEF : CoreHol.Thm.thm
+    val LET_DEF : CoreHol.Thm.thm
+    val COND_DEF : CoreHol.Thm.thm
+    val ONE_ONE_DEF : CoreHol.Thm.thm
+    val ONTO_DEF : CoreHol.Thm.thm
+    val TYPE_DEFINITION : CoreHol.Thm.thm
+    val BOOL_CASES_AX : CoreHol.Thm.thm
+    val IMP_ANTISYM_AX : CoreHol.Thm.thm
+    val ETA_AX : CoreHol.Thm.thm
+    val SELECT_AX : CoreHol.Thm.thm
+    val INFINITY_AX : CoreHol.Thm.thm
+  end
+val it = () : unit
+GC #0.0.0.0.3.106:   (10 ms)
+GC #0.0.0.0.4.137:   (10 ms)
+[opening ../theories/src/ld_bool.sml]
+structure boolThry : boolThrySig
+val it = () : unit
+[opening 1/drule.sig]
+signature Drule1_sig =
+  sig
+    structure Thm :
+      sig
+        structure Term : <sig>
+        type thm
+        val reset_thm_count : unit -> unit
+        val counting_thms : bool -> unit
+        val thm_count : unit
+                        -> {ABS:int, ASSUME:int, BETA_CONV:int, DISCH:int,
+                            INST_TYPE:int, MP:int, REFL:int, SUBST:int,
+                            axiom:int, definition:int, drule:int,
+                            from_disk:int, other:int, valid_tac:int}
+        val hyp : thm -> Term.term list
+        val concl : thm -> Term.term
+        val dest_thm : thm -> Term.term list * Term.term
+        val thm_free_vars : thm -> Term.term list
+        val hyp_union : thm list -> Term.term list
+        val pp_thm : ?.PrettyPrint.ppstream -> thm -> unit
+        val thm_to_string : thm -> string
+        val print_thm : thm -> unit
+        val ASSUME : Term.term -> thm
+        val REFL : Term.term -> thm
+        val BETA_CONV : Term.term -> thm
+        val SUBST : {thm:thm, var:Term.term} list -> Term.term -> thm -> thm
+        val ABS : Term.term -> thm -> thm
+        val INST_TYPE : Term.Type.hol_type subst -> thm -> thm
+        val DISCH : Term.term -> thm -> thm
+        val MP : thm -> thm -> thm
+        val mk_axiom_thm : Term.term list * Term.term -> thm
+        val mk_definition_thm : Term.term list * Term.term -> thm
+        val mk_drule_thm : Term.term list * Term.term -> thm
+        val mk_disk_thm : Term.term list * Term.term -> thm
+        val mk_tac_thm : Term.term list * Term.term -> thm
+        val mk_thm : Term.term list * Term.term -> thm
+        datatype just_arg
+          = JA_INT of int
+          | JA_INTLIST of int list
+          | JA_PAIR of just_arg * just_arg
+          | JA_STRING of string
+          | JA_TERM of Term.term
+          | JA_THM of thm
+          | JA_TYPE of Term.Type.hol_type
+        datatype step = STEP of {Just:just_arg list, Name:string, Thm:thm}
+        val record_step : (step -> thm) ref
+        val record_proof : bool -> unit
+        val suspend_recording : unit -> unit
+        val resume_recording : unit -> unit
+        val is_recording_proof : unit -> bool
+        val note : step * thm -> thm
+      end
+    val ADD_ASSUM : Thm.Term.term -> Thm.thm -> Thm.thm
+    val UNDISCH : Thm.thm -> Thm.thm
+    val SYM : Thm.thm -> Thm.thm
+    val TRANS : Thm.thm -> Thm.thm -> Thm.thm
+    val IMP_TRANS : Thm.thm -> Thm.thm -> Thm.thm
+    val AP_TERM : Thm.Term.term -> Thm.thm -> Thm.thm
+    val AP_THM : Thm.thm -> Thm.Term.term -> Thm.thm
+    val EQ_MP : Thm.thm -> Thm.thm -> Thm.thm
+    val EQ_IMP_RULE : Thm.thm -> Thm.thm * Thm.thm
+    val TRUTH : Thm.thm
+    val EQT_ELIM : Thm.thm -> Thm.thm
+    val SPEC : Thm.Term.term -> Thm.thm -> Thm.thm
+    val SPECL : Thm.Term.term list -> Thm.thm -> Thm.thm
+    val EQT_INTRO : Thm.thm -> Thm.thm
+    val GEN : Thm.Term.term -> Thm.thm -> Thm.thm
+    val GENL : Thm.Term.term list -> Thm.thm -> Thm.thm
+    val ETA_CONV : Thm.Term.term -> Thm.thm
+    val EXT : Thm.thm -> Thm.thm
+    val SELECT_INTRO : Thm.thm -> Thm.thm
+    val SELECT_ELIM : Thm.thm -> Thm.Term.term * Thm.thm -> Thm.thm
+    val EXISTS : Thm.Term.term * Thm.Term.term -> Thm.thm -> Thm.thm
+    val disch : Thm.Term.term * Thm.Term.term list -> Thm.Term.term list
+    val CHOOSE : Thm.Term.term * Thm.thm -> Thm.thm -> Thm.thm
+    val SELECT_RULE : Thm.thm -> Thm.thm
+    val IMP_ANTISYM_RULE : Thm.thm -> Thm.thm -> Thm.thm
+    val SPEC_VAR : Thm.thm -> Thm.Term.term * Thm.thm
+    val MK_EXISTS : Thm.thm -> Thm.thm
+    val LIST_MK_EXISTS : Thm.Term.term list -> Thm.thm -> Thm.thm
+    val FORALL_EQ : Thm.Term.term -> Thm.thm -> Thm.thm
+    val EXISTS_EQ : Thm.Term.term -> Thm.thm -> Thm.thm
+    val SELECT_EQ : Thm.Term.term -> Thm.thm -> Thm.thm
+    val SUBS : Thm.thm list -> Thm.thm -> Thm.thm
+    val SUBS_OCCS : (int list * Thm.thm) list -> Thm.thm -> Thm.thm
+    val SUBST_CONV : {thm:Thm.thm, var:Thm.Term.term} list
+                     -> Thm.Term.term -> Thm.Term.term -> Thm.thm
+    val RIGHT_BETA : Thm.thm -> Thm.thm
+    val LIST_BETA_CONV : Thm.Term.term -> Thm.thm
+    val RIGHT_LIST_BETA : Thm.thm -> Thm.thm
+  end
+signature Drule2_sig =
+  sig
+    structure Thm :
+      sig
+        structure Term : <sig>
+        type thm
+        val reset_thm_count : unit -> unit
+        val counting_thms : bool -> unit
+        val thm_count : unit
+                        -> {ABS:int, ASSUME:int, BETA_CONV:int, DISCH:int,
+                            INST_TYPE:int, MP:int, REFL:int, SUBST:int,
+                            axiom:int, definition:int, drule:int,
+                            from_disk:int, other:int, valid_tac:int}
+        val hyp : thm -> Term.term list
+        val concl : thm -> Term.term
+        val dest_thm : thm -> Term.term list * Term.term
+        val thm_free_vars : thm -> Term.term list
+        val hyp_union : thm list -> Term.term list
+        val pp_thm : ?.PrettyPrint.ppstream -> thm -> unit
+        val thm_to_string : thm -> string
+        val print_thm : thm -> unit
+        val ASSUME : Term.term -> thm
+        val REFL : Term.term -> thm
+        val BETA_CONV : Term.term -> thm
+        val SUBST : {thm:thm, var:Term.term} list -> Term.term -> thm -> thm
+        val ABS : Term.term -> thm -> thm
+        val INST_TYPE : Term.Type.hol_type subst -> thm -> thm
+        val DISCH : Term.term -> thm -> thm
+        val MP : thm -> thm -> thm
+        val mk_axiom_thm : Term.term list * Term.term -> thm
+        val mk_definition_thm : Term.term list * Term.term -> thm
+        val mk_drule_thm : Term.term list * Term.term -> thm
+        val mk_disk_thm : Term.term list * Term.term -> thm
+        val mk_tac_thm : Term.term list * Term.term -> thm
+        val mk_thm : Term.term list * Term.term -> thm
+        datatype just_arg
+          = JA_INT of int
+          | JA_INTLIST of int list
+          | JA_PAIR of just_arg * just_arg
+          | JA_STRING of string
+          | JA_TERM of Term.term
+          | JA_THM of thm
+          | JA_TYPE of Term.Type.hol_type
+        datatype step = STEP of {Just:just_arg list, Name:string, Thm:thm}
+        val record_step : (step -> thm) ref
+        val record_proof : bool -> unit
+        val suspend_recording : unit -> unit
+        val resume_recording : unit -> unit
+        val is_recording_proof : unit -> bool
+        val note : step * thm -> thm
+      end
+    val ADD_ASSUM : Thm.Term.term -> Thm.thm -> Thm.thm
+    val UNDISCH : Thm.thm -> Thm.thm
+    val SYM : Thm.thm -> Thm.thm
+    val TRANS : Thm.thm -> Thm.thm -> Thm.thm
+    val IMP_TRANS : Thm.thm -> Thm.thm -> Thm.thm
+    val AP_TERM : Thm.Term.term -> Thm.thm -> Thm.thm
+    val AP_THM : Thm.thm -> Thm.Term.term -> Thm.thm
+    val EQ_MP : Thm.thm -> Thm.thm -> Thm.thm
+    val EQ_IMP_RULE : Thm.thm -> Thm.thm * Thm.thm
+    val TRUTH : Thm.thm
+    val EQT_ELIM : Thm.thm -> Thm.thm
+    val SPEC : Thm.Term.term -> Thm.thm -> Thm.thm
+    val SPECL : Thm.Term.term list -> Thm.thm -> Thm.thm
+    val EQT_INTRO : Thm.thm -> Thm.thm
+    val GEN : Thm.Term.term -> Thm.thm -> Thm.thm
+    val GENL : Thm.Term.term list -> Thm.thm -> Thm.thm
+    val ETA_CONV : Thm.Term.term -> Thm.thm
+    val EXT : Thm.thm -> Thm.thm
+    val SELECT_INTRO : Thm.thm -> Thm.thm
+    val SELECT_ELIM : Thm.thm -> Thm.Term.term * Thm.thm -> Thm.thm
+    val EXISTS : Thm.Term.term * Thm.Term.term -> Thm.thm -> Thm.thm
+    val disch : Thm.Term.term * Thm.Term.term list -> Thm.Term.term list
+    val CHOOSE : Thm.Term.term * Thm.thm -> Thm.thm -> Thm.thm
+    val SELECT_RULE : Thm.thm -> Thm.thm
+    val IMP_ANTISYM_RULE : Thm.thm -> Thm.thm -> Thm.thm
+    val SPEC_VAR : Thm.thm -> Thm.Term.term * Thm.thm
+    val MK_EXISTS : Thm.thm -> Thm.thm
+    val LIST_MK_EXISTS : Thm.Term.term list -> Thm.thm -> Thm.thm
+    val FORALL_EQ : Thm.Term.term -> Thm.thm -> Thm.thm
+    val EXISTS_EQ : Thm.Term.term -> Thm.thm -> Thm.thm
+    val SELECT_EQ : Thm.Term.term -> Thm.thm -> Thm.thm
+    val SUBS : Thm.thm list -> Thm.thm -> Thm.thm
+    val SUBS_OCCS : (int list * Thm.thm) list -> Thm.thm -> Thm.thm
+    val SUBST_CONV : {thm:Thm.thm, var:Thm.Term.term} list
+                     -> Thm.Term.term -> Thm.Term.term -> Thm.thm
+    val RIGHT_BETA : Thm.thm -> Thm.thm
+    val LIST_BETA_CONV : Thm.Term.term -> Thm.thm
+    val RIGHT_LIST_BETA : Thm.thm -> Thm.thm
+    val AND_INTRO_THM : Thm.thm
+    val CONJ : Thm.thm -> Thm.thm -> Thm.thm
+    val AND1_THM : Thm.thm
+    val CONJUNCT1 : Thm.thm -> Thm.thm
+    val AND2_THM : Thm.thm
+    val CONJUNCT2 : Thm.thm -> Thm.thm
+    val CONJ_SYM : Thm.thm
+    val CONJ_ASSOC : Thm.thm
+    val CONJUNCTS_CONV : Thm.Term.term * Thm.Term.term -> Thm.thm
+    val CONJ_SET_CONV : Thm.Term.term list -> Thm.Term.term list -> Thm.thm
+    val FRONT_CONJ_CONV : Thm.Term.term list -> Thm.Term.term -> Thm.thm
+    val CONJ_DISCH : Thm.Term.term -> Thm.thm -> Thm.thm
+    val CONJ_DISCHL : Thm.Term.term list -> Thm.thm -> Thm.thm
+    val OR_INTRO_THM1 : Thm.thm
+    val DISJ1 : Thm.thm -> Thm.Term.term -> Thm.thm
+    val OR_INTRO_THM2 : Thm.thm
+    val DISJ2 : Thm.Term.term -> Thm.thm -> Thm.thm
+    val OR_ELIM_THM : Thm.thm
+    val DISJ_CASES : Thm.thm -> Thm.thm -> Thm.thm -> Thm.thm
+    val FALSITY : Thm.thm
+    val IMP_F : Thm.thm
+    val NOT_INTRO : Thm.thm -> Thm.thm
+    val NEG_DISCH : Thm.Term.term -> Thm.thm -> Thm.thm
+    val F_IMP : Thm.thm
+    val NOT_ELIM : Thm.thm -> Thm.thm
+    val NOT_EQ_SYM : Thm.thm -> Thm.thm
+    val AND_CLAUSES : Thm.thm
+    val OR_CLAUSES : Thm.thm
+    val IMP_CLAUSES : Thm.thm
+    val CONTR : Thm.Term.term -> Thm.thm -> Thm.thm
+    val EQF_INTRO : Thm.thm -> Thm.thm
+    val EQF_ELIM : Thm.thm -> Thm.thm
+    val EXCLUDED_MIDDLE : Thm.thm
+    val CCONTR : Thm.Term.term -> Thm.thm -> Thm.thm
+    val INST : Thm.Term.term subst -> Thm.thm -> Thm.thm
+    val NOT_F : Thm.thm
+    val NOT_AND : Thm.thm
+  end
+signature Drule3_sig =
+  sig
+    structure Thm :
+      sig
+        structure Term : <sig>
+        type thm
+        val reset_thm_count : unit -> unit
+        val counting_thms : bool -> unit
+        val thm_count : unit
+                        -> {ABS:int, ASSUME:int, BETA_CONV:int, DISCH:int,
+                            INST_TYPE:int, MP:int, REFL:int, SUBST:int,
+                            axiom:int, definition:int, drule:int,
+                            from_disk:int, other:int, valid_tac:int}
+        val hyp : thm -> Term.term list
+        val concl : thm -> Term.term
+        val dest_thm : thm -> Term.term list * Term.term
+        val thm_free_vars : thm -> Term.term list
+        val hyp_union : thm list -> Term.term list
+        val pp_thm : ?.PrettyPrint.ppstream -> thm -> unit
+        val thm_to_string : thm -> string
+        val print_thm : thm -> unit
+        val ASSUME : Term.term -> thm
+        val REFL : Term.term -> thm
+        val BETA_CONV : Term.term -> thm
+        val SUBST : {thm:thm, var:Term.term} list -> Term.term -> thm -> thm
+        val ABS : Term.term -> thm -> thm
+        val INST_TYPE : Term.Type.hol_type subst -> thm -> thm
+        val DISCH : Term.term -> thm -> thm
+        val MP : thm -> thm -> thm
+        val mk_axiom_thm : Term.term list * Term.term -> thm
+        val mk_definition_thm : Term.term list * Term.term -> thm
+        val mk_drule_thm : Term.term list * Term.term -> thm
+        val mk_disk_thm : Term.term list * Term.term -> thm
+        val mk_tac_thm : Term.term list * Term.term -> thm
+        val mk_thm : Term.term list * Term.term -> thm
+        datatype just_arg
+          = JA_INT of int
+          | JA_INTLIST of int list
+          | JA_PAIR of just_arg * just_arg
+          | JA_STRING of string
+          | JA_TERM of Term.term
+          | JA_THM of thm
+          | JA_TYPE of Term.Type.hol_type
+        datatype step = STEP of {Just:just_arg list, Name:string, Thm:thm}
+        val record_step : (step -> thm) ref
+        val record_proof : bool -> unit
+        val suspend_recording : unit -> unit
+        val resume_recording : unit -> unit
+        val is_recording_proof : unit -> bool
+        val note : step * thm -> thm
+      end
+    val ADD_ASSUM : Thm.Term.term -> Thm.thm -> Thm.thm
+    val UNDISCH : Thm.thm -> Thm.thm
+    val SYM : Thm.thm -> Thm.thm
+    val TRANS : Thm.thm -> Thm.thm -> Thm.thm
+    val IMP_TRANS : Thm.thm -> Thm.thm -> Thm.thm
+    val AP_TERM : Thm.Term.term -> Thm.thm -> Thm.thm
+    val AP_THM : Thm.thm -> Thm.Term.term -> Thm.thm
+    val EQ_MP : Thm.thm -> Thm.thm -> Thm.thm
+    val EQ_IMP_RULE : Thm.thm -> Thm.thm * Thm.thm
+    val TRUTH : Thm.thm
+    val EQT_ELIM : Thm.thm -> Thm.thm
+    val SPEC : Thm.Term.term -> Thm.thm -> Thm.thm
+    val SPECL : Thm.Term.term list -> Thm.thm -> Thm.thm
+    val EQT_INTRO : Thm.thm -> Thm.thm
+    val GEN : Thm.Term.term -> Thm.thm -> Thm.thm
+    val GENL : Thm.Term.term list -> Thm.thm -> Thm.thm
+    val ETA_CONV : Thm.Term.term -> Thm.thm
+    val EXT : Thm.thm -> Thm.thm
+    val SELECT_INTRO : Thm.thm -> Thm.thm
+    val SELECT_ELIM : Thm.thm -> Thm.Term.term * Thm.thm -> Thm.thm
+    val EXISTS : Thm.Term.term * Thm.Term.term -> Thm.thm -> Thm.thm
+    val disch : Thm.Term.term * Thm.Term.term list -> Thm.Term.term list
+    val CHOOSE : Thm.Term.term * Thm.thm -> Thm.thm -> Thm.thm
+    val SELECT_RULE : Thm.thm -> Thm.thm
+    val IMP_ANTISYM_RULE : Thm.thm -> Thm.thm -> Thm.thm
+    val SPEC_VAR : Thm.thm -> Thm.Term.term * Thm.thm
+    val MK_EXISTS : Thm.thm -> Thm.thm
+    val LIST_MK_EXISTS : Thm.Term.term list -> Thm.thm -> Thm.thm
+    val FORALL_EQ : Thm.Term.term -> Thm.thm -> Thm.thm
+    val EXISTS_EQ : Thm.Term.term -> Thm.thm -> Thm.thm
+    val SELECT_EQ : Thm.Term.term -> Thm.thm -> Thm.thm
+    val SUBS : Thm.thm list -> Thm.thm -> Thm.thm
+    val SUBS_OCCS : (int list * Thm.thm) list -> Thm.thm -> Thm.thm
+    val SUBST_CONV : {thm:Thm.thm, var:Thm.Term.term} list
+                     -> Thm.Term.term -> Thm.Term.term -> Thm.thm
+    val RIGHT_BETA : Thm.thm -> Thm.thm
+    val LIST_BETA_CONV : Thm.Term.term -> Thm.thm
+    val RIGHT_LIST_BETA : Thm.thm -> Thm.thm
+    val AND_INTRO_THM : Thm.thm
+    val CONJ : Thm.thm -> Thm.thm -> Thm.thm
+    val AND1_THM : Thm.thm
+    val CONJUNCT1 : Thm.thm -> Thm.thm
+    val AND2_THM : Thm.thm
+    val CONJUNCT2 : Thm.thm -> Thm.thm
+    val CONJ_SYM : Thm.thm
+    val CONJ_ASSOC : Thm.thm
+    val CONJUNCTS_CONV : Thm.Term.term * Thm.Term.term -> Thm.thm
+    val CONJ_SET_CONV : Thm.Term.term list -> Thm.Term.term list -> Thm.thm
+    val FRONT_CONJ_CONV : Thm.Term.term list -> Thm.Term.term -> Thm.thm
+    val CONJ_DISCH : Thm.Term.term -> Thm.thm -> Thm.thm
+    val CONJ_DISCHL : Thm.Term.term list -> Thm.thm -> Thm.thm
+    val OR_INTRO_THM1 : Thm.thm
+    val DISJ1 : Thm.thm -> Thm.Term.term -> Thm.thm
+    val OR_INTRO_THM2 : Thm.thm
+    val DISJ2 : Thm.Term.term -> Thm.thm -> Thm.thm
+    val OR_ELIM_THM : Thm.thm
+    val DISJ_CASES : Thm.thm -> Thm.thm -> Thm.thm -> Thm.thm
+    val FALSITY : Thm.thm
+    val IMP_F : Thm.thm
+    val NOT_INTRO : Thm.thm -> Thm.thm
+    val NEG_DISCH : Thm.Term.term -> Thm.thm -> Thm.thm
+    val F_IMP : Thm.thm
+    val NOT_ELIM : Thm.thm -> Thm.thm
+    val NOT_EQ_SYM : Thm.thm -> Thm.thm
+    val AND_CLAUSES : Thm.thm
+    val OR_CLAUSES : Thm.thm
+    val IMP_CLAUSES : Thm.thm
+    val CONTR : Thm.Term.term -> Thm.thm -> Thm.thm
+    val EQF_INTRO : Thm.thm -> Thm.thm
+    val EQF_ELIM : Thm.thm -> Thm.thm
+    val EXCLUDED_MIDDLE : Thm.thm
+    val CCONTR : Thm.Term.term -> Thm.thm -> Thm.thm
+    val INST : Thm.Term.term subst -> Thm.thm -> Thm.thm
+    val NOT_F : Thm.thm
+    val NOT_AND : Thm.thm
+    val ISPEC : Thm.Term.term -> Thm.thm -> Thm.thm
+    val ISPECL : Thm.Term.term list -> Thm.thm -> Thm.thm
+    val SELECT_REFL : Thm.thm
+    val SELECT_UNIQUE : Thm.thm
+    val GEN_ALL : Thm.thm -> Thm.thm
+    val DISCH_ALL : Thm.thm -> Thm.thm
+    val UNDISCH_ALL : Thm.thm -> Thm.thm
+    val SPEC_ALL : Thm.thm -> Thm.thm
+    val PROVE_HYP : Thm.thm -> Thm.thm -> Thm.thm
+    val CONJ_PAIR : Thm.thm -> Thm.thm * Thm.thm
+    val LIST_CONJ : Thm.thm list -> Thm.thm
+    val CONJ_LIST : int -> Thm.thm -> Thm.thm list
+    val CONJUNCTS : Thm.thm -> Thm.thm list
+    val BODY_CONJUNCTS : Thm.thm -> Thm.thm list
+    val IMP_CANON : Thm.thm -> Thm.thm list
+    val LIST_MP : Thm.thm list -> Thm.thm -> Thm.thm
+    val CONTRAPOS : Thm.thm -> Thm.thm
+    val DISJ_IMP : Thm.thm -> Thm.thm
+    val IMP_ELIM : Thm.thm -> Thm.thm
+    val NOT_CLAUSES : Thm.thm
+    val DISJ_CASES_UNION : Thm.thm -> Thm.thm -> Thm.thm -> Thm.thm
+  end
+signature Drule_sig =
+  sig
+    structure Thm :
+      sig
+        structure Term : <sig>
+        type thm
+        val reset_thm_count : unit -> unit
+        val counting_thms : bool -> unit
+        val thm_count : unit
+                        -> {ABS:int, ASSUME:int, BETA_CONV:int, DISCH:int,
+                            INST_TYPE:int, MP:int, REFL:int, SUBST:int,
+                            axiom:int, definition:int, drule:int,
+                            from_disk:int, other:int, valid_tac:int}
+        val hyp : thm -> Term.term list
+        val concl : thm -> Term.term
+        val dest_thm : thm -> Term.term list * Term.term
+        val thm_free_vars : thm -> Term.term list
+        val hyp_union : thm list -> Term.term list
+        val pp_thm : ?.PrettyPrint.ppstream -> thm -> unit
+        val thm_to_string : thm -> string
+        val print_thm : thm -> unit
+        val ASSUME : Term.term -> thm
+        val REFL : Term.term -> thm
+        val BETA_CONV : Term.term -> thm
+        val SUBST : {thm:thm, var:Term.term} list -> Term.term -> thm -> thm
+        val ABS : Term.term -> thm -> thm
+        val INST_TYPE : Term.Type.hol_type subst -> thm -> thm
+        val DISCH : Term.term -> thm -> thm
+        val MP : thm -> thm -> thm
+        val mk_axiom_thm : Term.term list * Term.term -> thm
+        val mk_definition_thm : Term.term list * Term.term -> thm
+        val mk_drule_thm : Term.term list * Term.term -> thm
+        val mk_disk_thm : Term.term list * Term.term -> thm
+        val mk_tac_thm : Term.term list * Term.term -> thm
+        val mk_thm : Term.term list * Term.term -> thm
+        datatype just_arg
+          = JA_INT of int
+          | JA_INTLIST of int list
+          | JA_PAIR of just_arg * just_arg
+          | JA_STRING of string
+          | JA_TERM of Term.term
+          | JA_THM of thm
+          | JA_TYPE of Term.Type.hol_type
+        datatype step = STEP of {Just:just_arg list, Name:string, Thm:thm}
+        val record_step : (step -> thm) ref
+        val record_proof : bool -> unit
+        val suspend_recording : unit -> unit
+        val resume_recording : unit -> unit
+        val is_recording_proof : unit -> bool
+        val note : step * thm -> thm
+      end
+    val ADD_ASSUM : Thm.Term.term -> Thm.thm -> Thm.thm
+    val UNDISCH : Thm.thm -> Thm.thm
+    val SYM : Thm.thm -> Thm.thm
+    val TRANS : Thm.thm -> Thm.thm -> Thm.thm
+    val IMP_TRANS : Thm.thm -> Thm.thm -> Thm.thm
+    val AP_TERM : Thm.Term.term -> Thm.thm -> Thm.thm
+    val AP_THM : Thm.thm -> Thm.Term.term -> Thm.thm
+    val EQ_MP : Thm.thm -> Thm.thm -> Thm.thm
+    val EQ_IMP_RULE : Thm.thm -> Thm.thm * Thm.thm
+    val TRUTH : Thm.thm
+    val EQT_ELIM : Thm.thm -> Thm.thm
+    val SPEC : Thm.Term.term -> Thm.thm -> Thm.thm
+    val SPECL : Thm.Term.term list -> Thm.thm -> Thm.thm
+    val EQT_INTRO : Thm.thm -> Thm.thm
+    val GEN : Thm.Term.term -> Thm.thm -> Thm.thm
+    val GENL : Thm.Term.term list -> Thm.thm -> Thm.thm
+    val ETA_CONV : Thm.Term.term -> Thm.thm
+    val EXT : Thm.thm -> Thm.thm
+    val SELECT_INTRO : Thm.thm -> Thm.thm
+    val SELECT_ELIM : Thm.thm -> Thm.Term.term * Thm.thm -> Thm.thm
+    val EXISTS : Thm.Term.term * Thm.Term.term -> Thm.thm -> Thm.thm
+    val disch : Thm.Term.term * Thm.Term.term list -> Thm.Term.term list
+    val CHOOSE : Thm.Term.term * Thm.thm -> Thm.thm -> Thm.thm
+    val SELECT_RULE : Thm.thm -> Thm.thm
+    val IMP_ANTISYM_RULE : Thm.thm -> Thm.thm -> Thm.thm
+    val SPEC_VAR : Thm.thm -> Thm.Term.term * Thm.thm
+    val MK_EXISTS : Thm.thm -> Thm.thm
+    val LIST_MK_EXISTS : Thm.Term.term list -> Thm.thm -> Thm.thm
+    val FORALL_EQ : Thm.Term.term -> Thm.thm -> Thm.thm
+    val EXISTS_EQ : Thm.Term.term -> Thm.thm -> Thm.thm
+    val SELECT_EQ : Thm.Term.term -> Thm.thm -> Thm.thm
+    val SUBS : Thm.thm list -> Thm.thm -> Thm.thm
+    val SUBS_OCCS : (int list * Thm.thm) list -> Thm.thm -> Thm.thm
+    val SUBST_CONV : {thm:Thm.thm, var:Thm.Term.term} list
+                     -> Thm.Term.term -> Thm.Term.term -> Thm.thm
+    val RIGHT_BETA : Thm.thm -> Thm.thm
+    val LIST_BETA_CONV : Thm.Term.term -> Thm.thm
+    val RIGHT_LIST_BETA : Thm.thm -> Thm.thm
+    val AND_INTRO_THM : Thm.thm
+    val CONJ : Thm.thm -> Thm.thm -> Thm.thm
+    val AND1_THM : Thm.thm
+    val CONJUNCT1 : Thm.thm -> Thm.thm
+    val AND2_THM : Thm.thm
+    val CONJUNCT2 : Thm.thm -> Thm.thm
+    val CONJ_SYM : Thm.thm
+    val CONJ_ASSOC : Thm.thm
+    val CONJUNCTS_CONV : Thm.Term.term * Thm.Term.term -> Thm.thm
+    val CONJ_SET_CONV : Thm.Term.term list -> Thm.Term.term list -> Thm.thm
+    val FRONT_CONJ_CONV : Thm.Term.term list -> Thm.Term.term -> Thm.thm
+    val CONJ_DISCH : Thm.Term.term -> Thm.thm -> Thm.thm
+    val CONJ_DISCHL : Thm.Term.term list -> Thm.thm -> Thm.thm
+    val OR_INTRO_THM1 : Thm.thm
+    val DISJ1 : Thm.thm -> Thm.Term.term -> Thm.thm
+    val OR_INTRO_THM2 : Thm.thm
+    val DISJ2 : Thm.Term.term -> Thm.thm -> Thm.thm
+    val OR_ELIM_THM : Thm.thm
+    val DISJ_CASES : Thm.thm -> Thm.thm -> Thm.thm -> Thm.thm
+    val FALSITY : Thm.thm
+    val IMP_F : Thm.thm
+    val NOT_INTRO : Thm.thm -> Thm.thm
+    val NEG_DISCH : Thm.Term.term -> Thm.thm -> Thm.thm
+    val F_IMP : Thm.thm
+    val NOT_ELIM : Thm.thm -> Thm.thm
+    val NOT_EQ_SYM : Thm.thm -> Thm.thm
+    val AND_CLAUSES : Thm.thm
+    val OR_CLAUSES : Thm.thm
+    val IMP_CLAUSES : Thm.thm
+    val CONTR : Thm.Term.term -> Thm.thm -> Thm.thm
+    val EQF_INTRO : Thm.thm -> Thm.thm
+    val EQF_ELIM : Thm.thm -> Thm.thm
+    val EXCLUDED_MIDDLE : Thm.thm
+    val CCONTR : Thm.Term.term -> Thm.thm -> Thm.thm
+    val INST : Thm.Term.term subst -> Thm.thm -> Thm.thm
+    val NOT_F : Thm.thm
+    val NOT_AND : Thm.thm
+    val ISPEC : Thm.Term.term -> Thm.thm -> Thm.thm
+    val ISPECL : Thm.Term.term list -> Thm.thm -> Thm.thm
+    val SELECT_REFL : Thm.thm
+    val SELECT_UNIQUE : Thm.thm
+    val GEN_ALL : Thm.thm -> Thm.thm
+    val DISCH_ALL : Thm.thm -> Thm.thm
+    val UNDISCH_ALL : Thm.thm -> Thm.thm
+    val SPEC_ALL : Thm.thm -> Thm.thm
+    val PROVE_HYP : Thm.thm -> Thm.thm -> Thm.thm
+    val CONJ_PAIR : Thm.thm -> Thm.thm * Thm.thm
+    val LIST_CONJ : Thm.thm list -> Thm.thm
+    val CONJ_LIST : int -> Thm.thm -> Thm.thm list
+    val CONJUNCTS : Thm.thm -> Thm.thm list
+    val BODY_CONJUNCTS : Thm.thm -> Thm.thm list
+    val IMP_CANON : Thm.thm -> Thm.thm list
+    val LIST_MP : Thm.thm list -> Thm.thm -> Thm.thm
+    val CONTRAPOS : Thm.thm -> Thm.thm
+    val DISJ_IMP : Thm.thm -> Thm.thm
+    val IMP_ELIM : Thm.thm -> Thm.thm
+    val NOT_CLAUSES : Thm.thm
+    val DISJ_CASES_UNION : Thm.thm -> Thm.thm -> Thm.thm -> Thm.thm
+    val EQ_REFL : Thm.thm
+    val REFL_CLAUSE : Thm.thm
+    val EQ_SYM : Thm.thm
+    val EQ_SYM_EQ : Thm.thm
+    val EQ_EXT : Thm.thm
+    val EQ_TRANS : Thm.thm
+    val BOOL_EQ_DISTINCT : Thm.thm
+    val EQ_CLAUSES : Thm.thm
+    val MK_COMB : Thm.thm * Thm.thm -> Thm.thm
+    val MK_ABS : Thm.thm -> Thm.thm
+    val ALPHA_CONV : Thm.Term.term -> Thm.Term.term -> Thm.thm
+    val ALPHA : Thm.Term.term -> Thm.Term.term -> Thm.thm
+    val GEN_ALPHA_CONV : Thm.Term.term -> Thm.Term.term -> Thm.thm
+    val COND_CLAUSES : Thm.thm
+    val COND_ID : Thm.thm
+    val IMP_CONJ : Thm.thm -> Thm.thm -> Thm.thm
+    val EXISTS_IMP : Thm.Term.term -> Thm.thm -> Thm.thm
+    val FORALL_SIMP : Thm.thm
+    val EXISTS_SIMP : Thm.thm
+    val ABS_SIMP : Thm.thm
+  end
+val it = () : unit
+infix 5 |->
+GC #0.0.0.1.5.214:   (20 ms)
+GC #0.0.0.1.6.332:   (20 ms)
+GC #0.0.0.1.7.387:   (30 ms)
+[opening 1/drule.sml]
+1/drule.sml:327.8-327.45 Warning: binding not exhaustive
+          {Name="!",Ty=_} = ...
+GC #0.0.0.2.8.435:   (60 ms)
+GC #0.0.1.3.9.448:   (70 ms)
+GC #0.0.1.3.10.481:   (10 ms)
+GC #0.0.1.3.11.499:   (20 ms)
+GC #0.0.1.4.12.518:   (40 ms)
+GC #0.0.1.5.13.553:   (30 ms)
+GC #0.0.1.5.14.592:   (0 ms)
+GC #0.0.1.5.15.601:   (20 ms)
+GC #0.0.1.5.16.619:   (20 ms)
+GC #0.0.1.5.17.631:   (10 ms)
+GC #0.0.1.5.18.698:   (40 ms)
+GC #0.0.1.6.19.733:   (30 ms)
+GC #0.0.1.6.20.736:   (20 ms)
+GC #0.0.1.6.21.737:   (10 ms)
+GC #0.0.1.6.22.771:   (10 ms)
+GC #0.0.1.6.23.848:   (30 ms)
+GC #0.0.1.6.24.860:   (10 ms)
+structure Drule1 : Drule1_sig
+GC #0.1.2.7.25.986:   (90 ms)
+GC #0.1.2.7.26.1029:   (60 ms)
+GC #0.1.2.7.27.1081:   (30 ms)
+GC #0.1.2.7.28.1117:   (40 ms)
+GC #0.1.2.7.29.1170:   (30 ms)
+GC #0.1.2.8.30.1173:   (100 ms)
+GC #0.1.2.8.31.1188:   (20 ms)
+GC #0.1.2.8.32.1227:   (20 ms)
+GC #0.1.2.8.33.1262:   (20 ms)
+GC #0.1.2.8.34.1281:   (20 ms)
+GC #0.1.2.8.35.1308:   (40 ms)
+GC #0.1.2.8.36.1322:   (50 ms)
+GC #0.1.2.8.37.1334:   (60 ms)
+GC #0.1.3.9.38.1371:   (100 ms)
+GC #0.1.3.9.39.1397:   (30 ms)
+GC #0.1.3.9.40.1431:   (40 ms)
+GC #0.1.3.9.41.1433:   (40 ms)
+GC #0.1.3.9.42.1441:   (30 ms)
+GC #1.2.4.10.43.1467:   (330 ms)
+GC #1.2.4.10.44.1485:   (10 ms)
+GC #1.2.4.11.45.1516:   (50 ms)
+GC #1.3.5.12.46.1546:   (130 ms)
+GC #1.4.6.13.47.1564:   (90 ms)
+GC #1.5.7.14.48.1606:   (90 ms)
+GC #1.6.8.15.49.1656:   (100 ms)
+GC #1.7.9.16.50.1664:   (60 ms)
+GC #1.7.9.16.51.1683:   (10 ms)
+GC #1.8.10.17.52.1714:   (30 ms)
+GC #1.8.10.17.53.1756:   (10 ms)
+GC #1.9.11.18.54.1765:   (20 ms)
+GC #1.9.11.18.55.1776:   (0 ms)
+GC #1.10.12.19.56.1799:   (40 ms)
+GC #1.10.12.19.57.1833:   (10 ms)
+GC #1.10.12.19.58.1900:   (10 ms)
+GC #1.11.13.20.59.1962:   (40 ms)
+GC #1.11.13.20.60.2052:   (20 ms)
+GC #1.11.13.20.61.2134:   (20 ms)
+GC #1.11.13.20.62.2150:   (0 ms)
+GC #1.11.13.20.63.2169:   (10 ms)
+GC #1.12.14.21.64.2197:   (50 ms)
+GC #1.12.14.21.65.2239:   (10 ms)
+GC #1.12.14.21.66.2255:   (30 ms)
+GC #1.12.14.21.67.2260:   (50 ms)
+GC #1.13.15.22.68.2266:   (70 ms)
+GC #1.14.16.23.69.2269:   (80 ms)
+GC #1.15.17.24.70.2306:   (60 ms)
+GC #1.16.18.25.71.2314:   (60 ms)
+GC #1.16.18.25.72.2404:   (30 ms)
+GC #1.17.19.26.73.2463:   (60 ms)
+GC #1.17.19.26.74.2506:   (30 ms)
+GC #1.17.19.26.75.2535:   (20 ms)
+GC #1.18.20.27.76.2540:   (30 ms)
+GC #1.18.20.27.77.2543:   (0 ms)
+structure Drule2 : Drule2_sig
+GC #1.18.20.27.78.2573:   (10 ms)
+GC #1.18.20.27.79.2606:   (20 ms)
+GC #1.18.20.27.80.2641:   (20 ms)
+GC #1.18.20.27.81.2692:   (30 ms)
+GC #1.18.20.27.82.2698:   (20 ms)
+GC #1.18.20.27.83.2740:   (20 ms)
+GC #1.18.20.27.84.2759:   (30 ms)
+GC #1.18.20.27.85.2797:   (20 ms)
+GC #1.18.20.27.86.2802:   (10 ms)
+GC #1.18.20.27.87.2823:   (20 ms)
+GC #1.18.21.28.88.2830:   (70 ms)
+GC #1.18.21.28.89.2831:   (0 ms)
+GC #1.18.21.28.90.2864:   (10 ms)
+GC #1.18.21.28.91.2917:   (10 ms)
+GC #1.18.21.28.92.2952:   (20 ms)
+GC #1.18.21.28.93.3014:   (10 ms)
+GC #1.18.21.28.94.3016:   (10 ms)
+GC #1.18.21.28.95.3023:   (10 ms)
+GC #1.18.22.29.96.3027:   (50 ms)
+GC #1.18.22.29.97.3028:   (20 ms)
+GC #1.18.22.29.98.3074:   (20 ms)
+GC #1.18.22.29.99.3118:   (10 ms)
+GC #1.18.22.30.100.3119:   (10 ms)
+GC #1.18.22.30.101.3120:   (0 ms)
+structure Drule3 : Drule3_sig
+GC #1.18.22.30.102.3152:   (10 ms)
+GC #1.18.22.30.103.3189:   (20 ms)
+GC #1.18.22.30.104.3205:   (20 ms)
+GC #1.18.22.30.105.3261:   (20 ms)
+GC #1.18.22.30.106.3303:   (40 ms)
+GC #1.19.23.31.107.3354:   (100 ms)
+GC #1.19.23.31.108.3363:   (20 ms)
+GC #1.19.23.31.109.3408:   (10 ms)
+GC #1.19.23.31.110.3434:   (10 ms)
+GC #1.19.23.31.111.3462:   (30 ms)
+GC #1.19.23.31.112.3490:   (20 ms)
+GC #1.19.23.31.113.3527:   (10 ms)
+GC #1.19.23.31.114.3582:   (90 ms)
+GC #1.19.24.32.115.3600:   (150 ms)
+GC #1.19.24.32.116.3631:   (20 ms)
+GC #1.19.24.32.117.3679:   (10 ms)
+GC #1.19.24.32.118.3730:   (10 ms)
+GC #1.19.24.32.119.3761:   (10 ms)
+GC #1.19.24.32.120.3814:   (10 ms)
+GC #1.20.25.33.121.3872:   (190 ms)
+GC #1.20.25.33.122.3931:   (10 ms)
+GC #1.20.25.33.123.3996:   (10 ms)
+GC #1.20.25.33.124.4069:   (20 ms)
+GC #1.20.25.33.125.4142:   (30 ms)
+GC #1.20.25.33.126.4151:   (40 ms)
+GC #1.21.26.34.127.4156:   (80 ms)
+GC #1.21.26.35.128.4158:   (30 ms)
+GC #1.21.26.36.129.4187:   (20 ms)
+GC #1.21.26.37.130.4279:   (20 ms)
+GC #1.21.26.38.131.4327:   (20 ms)
+GC #1.21.26.39.132.4331:   (10 ms)
+GC #1.21.27.40.133.4332:   (0 ms)
+structure Drule : Drule_sig
+val it = () : unit
+GC #1.21.27.41.134.4357:   (0 ms)
+[opening 1/conv.sig]
+signature Conv_sig =
+  sig
+    structure Thm :
+      sig
+        structure Term : <sig>
+        type thm
+        val reset_thm_count : unit -> unit
+        val counting_thms : bool -> unit
+        val thm_count : unit
+                        -> {ABS:int, ASSUME:int, BETA_CONV:int, DISCH:int,
+                            INST_TYPE:int, MP:int, REFL:int, SUBST:int,
+                            axiom:int, definition:int, drule:int,
+                            from_disk:int, other:int, valid_tac:int}
+        val hyp : thm -> Term.term list
+        val concl : thm -> Term.term
+        val dest_thm : thm -> Term.term list * Term.term
+        val thm_free_vars : thm -> Term.term list
+        val hyp_union : thm list -> Term.term list
+        val pp_thm : ?.PrettyPrint.ppstream -> thm -> unit
+        val thm_to_string : thm -> string
+        val print_thm : thm -> unit
+        val ASSUME : Term.term -> thm
+        val REFL : Term.term -> thm
+        val BETA_CONV : Term.term -> thm
+        val SUBST : {thm:thm, var:Term.term} list -> Term.term -> thm -> thm
+        val ABS : Term.term -> thm -> thm
+        val INST_TYPE : Term.Type.hol_type subst -> thm -> thm
+        val DISCH : Term.term -> thm -> thm
+        val MP : thm -> thm -> thm
+        val mk_axiom_thm : Term.term list * Term.term -> thm
+        val mk_definition_thm : Term.term list * Term.term -> thm
+        val mk_drule_thm : Term.term list * Term.term -> thm
+        val mk_disk_thm : Term.term list * Term.term -> thm
+        val mk_tac_thm : Term.term list * Term.term -> thm
+        val mk_thm : Term.term list * Term.term -> thm
+        datatype just_arg
+          = JA_INT of int
+          | JA_INTLIST of int list
+          | JA_PAIR of just_arg * just_arg
+          | JA_STRING of string
+          | JA_TERM of Term.term
+          | JA_THM of thm
+          | JA_TYPE of Term.Type.hol_type
+        datatype step = STEP of {Just:just_arg list, Name:string, Thm:thm}
+        val record_step : (step -> thm) ref
+        val record_proof : bool -> unit
+        val suspend_recording : unit -> unit
+        val resume_recording : unit -> unit
+        val is_recording_proof : unit -> bool
+        val note : step * thm -> thm
+      end
+    val INST_TY_TERM : Thm.Term.term subst * Thm.Term.Type.hol_type subst
+                       -> Thm.thm -> Thm.thm
+    val GSPEC : Thm.thm -> Thm.thm
+    val PART_MATCH : (Thm.Term.term -> Thm.Term.term) -> Thm.thm -> conv
+    val REWR_CONV : Thm.thm -> conv
+    val MATCH_MP : Thm.thm -> Thm.thm -> Thm.thm
+    val NO_CONV : conv
+    val ALL_CONV : conv
+    val THENC : conv * conv -> conv
+    val ORELSEC : conv * conv -> conv
+    val FIRST_CONV : conv list -> conv
+    val EVERY_CONV : conv list -> conv
+    val REPEATC : conv -> conv
+    val CHANGED_CONV : conv -> conv
+    val TRY_CONV : conv -> conv
+    val SUB_CONV : conv -> conv
+    val DEPTH_CONV : conv -> conv
+    val REDEPTH_CONV : conv -> conv
+    val TOP_DEPTH_CONV : conv -> conv
+    val ONCE_DEPTH_CONV : conv -> conv
+    val CONV_RULE : conv -> Thm.thm -> Thm.thm
+    val CONV_TAC : conv -> tactic
+    val BETA_RULE : Thm.thm -> Thm.thm
+    val BETA_TAC : tactic
+    val NOT_FORALL_CONV : conv
+    val NOT_EXISTS_CONV : conv
+    val EXISTS_NOT_CONV : conv
+    val FORALL_NOT_CONV : conv
+    val FORALL_AND_CONV : conv
+    val EXISTS_OR_CONV : conv
+    val AND_FORALL_CONV : conv
+    val LEFT_AND_FORALL_CONV : conv
+    val RIGHT_AND_FORALL_CONV : conv
+    val OR_EXISTS_CONV : conv
+    val LEFT_OR_EXISTS_CONV : conv
+    val RIGHT_OR_EXISTS_CONV : conv
+    val EXISTS_AND_CONV : conv
+    val AND_EXISTS_CONV : conv
+    val LEFT_AND_EXISTS_CONV : conv
+    val RIGHT_AND_EXISTS_CONV : conv
+    val FORALL_OR_CONV : conv
+    val OR_FORALL_CONV : conv
+    val LEFT_OR_FORALL_CONV : conv
+    val RIGHT_OR_FORALL_CONV : conv
+    val FORALL_IMP_CONV : conv
+    val LEFT_IMP_EXISTS_CONV : conv
+    val RIGHT_IMP_FORALL_CONV : conv
+    val EXISTS_IMP_CONV : conv
+    val LEFT_IMP_FORALL_CONV : conv
+    val RIGHT_IMP_EXISTS_CONV : conv
+    val X_SKOLEM_CONV : Thm.Term.term -> conv
+    val SKOLEM_CONV : conv
+    val SYM_CONV : conv
+    val RIGHT_CONV_RULE : conv -> Thm.thm -> Thm.thm
+    val FUN_EQ_CONV : conv
+    val X_FUN_EQ_CONV : Thm.Term.term -> conv
+    val SELECT_CONV : conv
+    val CONTRAPOS_CONV : conv
+    val ANTE_CONJ_CONV : conv
+    val SWAP_EXISTS_CONV : conv
+    val RAND_CONV : conv -> conv
+    val RATOR_CONV : conv -> conv
+    val ABS_CONV : conv -> conv
+    val bool_EQ_CONV : conv
+    val EXISTS_UNIQUE_CONV : conv
+    val COND_CONV : conv
+    val EXISTENCE : Thm.thm -> Thm.thm
+    val AC_CONV : Thm.thm * Thm.thm -> conv
+    val GSYM : Thm.thm -> Thm.thm
+  end
+val it = () : unit
+GC #1.21.27.41.135.4407:   (10 ms)
+GC #1.21.27.42.136.4477:   (30 ms)
+GC #1.21.27.43.137.4514:   (40 ms)
+GC #1.21.28.44.138.4555:   (70 ms)
+GC #1.21.28.45.139.4591:   (50 ms)
+GC #1.22.29.46.140.4638:   (80 ms)
+GC #1.22.29.47.141.4648:   (50 ms)
+GC #1.22.29.48.142.4672:   (70 ms)
+GC #1.23.30.49.143.4727:   (60 ms)
+GC #1.23.30.50.144.4768:   (50 ms)
+GC #1.23.30.51.145.4819:   (40 ms)
+GC #1.23.30.52.146.4854:   (40 ms)
+[opening 1/conv.sml]
+1/conv.sml:1853.8-1853.42 Warning: binding not exhaustive
+          (ox :: oy :: nil,imp) = ...
+GC #1.23.31.53.147.4902:   (80 ms)
+1/conv.sml:19.1-2045.4 Warning: binding not exhaustive
+          Tb :: bT :: _ = ...
+1/conv.sml:1615.8-1615.77 Warning: binding not exhaustive
+          {Args=ty1 :: _ :: nil,Tyop="fun"} = ...
+GC #1.23.31.54.148.4956:   (30 ms)
+1/conv.sml:623.15-623.44 Warning: match nonexhaustive
+          nil => ...
+  
+GC #1.23.31.55.149.4993:   (30 ms)
+1/conv.sml:624.23-624.53 Warning: match nonexhaustive
+          th' :: nil => ...
+  
+GC #1.23.31.56.150.5018:   (30 ms)
+GC #1.23.31.57.151.5022:   (30 ms)
+GC #1.23.31.58.152.5027:   (50 ms)
+GC #1.24.32.59.153.5055:   (100 ms)
+GC #1.24.32.60.154.5076:   (30 ms)
+GC #1.24.32.60.155.5135:   (30 ms)
+GC #1.24.32.61.156.5150:   (40 ms)
+GC #1.24.32.61.157.5172:   (30 ms)
+GC #1.24.32.61.158.5196:   (40 ms)
+GC #1.24.32.62.159.5214:   (60 ms)
+GC #1.24.32.62.160.5240:   (60 ms)
+GC #1.24.32.63.161.5246:   (70 ms)
+GC #1.24.32.63.162.5249:   (50 ms)
+GC #1.25.33.64.163.5258:   (170 ms)
+GC #1.25.33.64.164.5281:   (30 ms)
+GC #1.25.33.64.165.5283:   (30 ms)
+GC #2.26.34.65.166.5294:   (420 ms)
+GC #2.26.34.65.167.5312:   (80 ms)
+GC #2.27.35.66.168.5322:   (130 ms)
+GC #2.28.36.67.169.5341:   (180 ms)
+GC #2.29.37.68.170.5345:   (140 ms)
+GC #2.30.38.69.171.5368:   (130 ms)
+GC #2.30.38.70.172.5395:   (30 ms)
+GC #3.31.39.71.173.5405:   (460 ms)
+GC #3.31.40.72.174.5418:   (40 ms)
+GC #3.31.40.72.175.5433:   (40 ms)
+GC #3.31.41.73.176.5452:   (40 ms)
+GC #3.31.41.73.177.5487:   (40 ms)
+GC #3.31.42.74.178.5516:   (80 ms)
+GC #3.31.43.75.179.5536:   (50 ms)
+GC #3.31.44.76.180.5550:   (40 ms)
+GC #3.31.44.76.181.5565:   (60 ms)
+GC #3.31.44.77.182.5586:   (50 ms)
+GC #3.31.44.77.183.5609:   (80 ms)
+GC #3.31.44.77.184.5628:   (80 ms)
+GC #3.31.44.78.185.5646:   (20 ms)
+GC #3.31.44.78.186.5663:   (60 ms)
+GC #3.31.44.78.187.5685:   (60 ms)
+GC #3.31.44.78.188.5695:   (70 ms)
+GC #3.31.44.78.189.5717:   (20 ms)
+GC #3.31.44.78.190.5750:   (40 ms)
+GC #3.31.44.78.191.5782:   (70 ms)
+GC #3.31.44.78.192.5798:   (80 ms)
+GC #3.31.44.78.193.5807:   (40 ms)
+GC #3.31.44.78.194.5820:   (50 ms)
+GC #3.31.44.78.195.5835:   (20 ms)
+GC #3.31.44.78.196.5846:   (50 ms)
+GC #3.31.44.78.197.5857:   (50 ms)
+GC #3.31.44.78.198.5873:   (40 ms)
+GC #3.32.45.79.199.5885:   (40 ms)
+GC #3.32.45.79.200.5893:   (40 ms)
+GC #3.32.45.79.201.5907:   (60 ms)
+GC #3.32.45.79.202.5922:   (50 ms)
+GC #3.32.45.80.203.5941:   (30 ms)
+GC #3.32.45.80.204.5976:   (60 ms)
+GC #3.32.45.80.205.6000:   (60 ms)
+GC #3.32.45.80.206.6023:   (40 ms)
+GC #3.32.45.80.207.6062:   (30 ms)
+GC #3.32.45.80.208.6102:   (20 ms)
+GC #3.32.45.80.209.6131:   (20 ms)
+GC #3.32.45.80.210.6163:   (20 ms)
+GC #3.32.45.80.211.6185:   (30 ms)
+GC #3.32.46.81.212.6211:   (170 ms)
+GC #3.32.46.81.213.6251:   (30 ms)
+GC #3.32.46.81.214.6282:   (20 ms)
+GC #3.32.46.81.215.6321:   (30 ms)
+GC #3.32.46.81.216.6351:   (30 ms)
+GC #3.32.46.81.217.6361:   (20 ms)
+GC #3.32.46.81.218.6387:   (20 ms)
+GC #3.32.46.81.219.6426:   (20 ms)
+GC #3.32.46.81.220.6489:   (20 ms)
+GC #3.32.46.81.221.6568:   (20 ms)
+GC #3.32.46.81.222.6658:   (10 ms)
+GC #3.32.46.81.223.6745:   (20 ms)
+GC #3.32.46.81.224.6809:   (40 ms)
+GC #3.33.47.82.225.6814:   (110 ms)
+GC #3.33.47.82.226.6830:   (90 ms)
+GC #3.33.47.83.227.6835:   (110 ms)
+GC #3.33.47.84.228.6915:   (90 ms)
+GC #3.33.47.85.229.6926:   (40 ms)
+GC #3.33.48.86.230.6929:   (100 ms)
+GC #3.33.48.87.231.7008:   (50 ms)
+GC #3.33.48.88.232.7093:   (60 ms)
+GC #3.34.49.89.233.7156:   (110 ms)
+GC #3.35.50.90.234.7170:   (110 ms)
+GC #3.35.50.90.235.7171:   (20 ms)
+GC #3.36.51.91.236.7173:   (60 ms)
+GC #3.36.51.91.237.7217:   (20 ms)
+GC #3.36.51.91.238.7254:   (20 ms)
+GC #3.37.52.92.239.7289:   (70 ms)
+GC #3.37.52.92.240.7331:   (10 ms)
+GC #3.37.52.92.241.7375:   (20 ms)
+GC #3.38.53.93.242.7377:   (130 ms)
+GC #3.39.54.94.243.7379:   (80 ms)
+GC #3.40.55.95.244.7392:   (70 ms)
+GC #3.40.56.96.245.7394:   (20 ms)
+GC #3.40.57.97.246.7395:   (0 ms)
+structure Conv : Conv_sig
+val it = () : unit
+[opening 1/tactical.sig]
+signature Tactical_sig =
+  sig
+    structure Thm :
+      sig
+        structure Term : <sig>
+        type thm
+        val reset_thm_count : unit -> unit
+        val counting_thms : bool -> unit
+        val thm_count : unit
+                        -> {ABS:int, ASSUME:int, BETA_CONV:int, DISCH:int,
+                            INST_TYPE:int, MP:int, REFL:int, SUBST:int,
+                            axiom:int, definition:int, drule:int,
+                            from_disk:int, other:int, valid_tac:int}
+        val hyp : thm -> Term.term list
+        val concl : thm -> Term.term
+        val dest_thm : thm -> Term.term list * Term.term
+        val thm_free_vars : thm -> Term.term list
+        val hyp_union : thm list -> Term.term list
+        val pp_thm : ?.PrettyPrint.ppstream -> thm -> unit
+        val thm_to_string : thm -> string
+        val print_thm : thm -> unit
+        val ASSUME : Term.term -> thm
+        val REFL : Term.term -> thm
+        val BETA_CONV : Term.term -> thm
+        val SUBST : {thm:thm, var:Term.term} list -> Term.term -> thm -> thm
+        val ABS : Term.term -> thm -> thm
+        val INST_TYPE : Term.Type.hol_type subst -> thm -> thm
+        val DISCH : Term.term -> thm -> thm
+        val MP : thm -> thm -> thm
+        val mk_axiom_thm : Term.term list * Term.term -> thm
+        val mk_definition_thm : Term.term list * Term.term -> thm
+        val mk_drule_thm : Term.term list * Term.term -> thm
+        val mk_disk_thm : Term.term list * Term.term -> thm
+        val mk_tac_thm : Term.term list * Term.term -> thm
+        val mk_thm : Term.term list * Term.term -> thm
+        datatype just_arg
+          = JA_INT of int
+          | JA_INTLIST of int list
+          | JA_PAIR of just_arg * just_arg
+          | JA_STRING of string
+          | JA_TERM of Term.term
+          | JA_THM of thm
+          | JA_TYPE of Term.Type.hol_type
+        datatype step = STEP of {Just:just_arg list, Name:string, Thm:thm}
+        val record_step : (step -> thm) ref
+        val record_proof : bool -> unit
+        val suspend_recording : unit -> unit
+        val resume_recording : unit -> unit
+        val is_recording_proof : unit -> bool
+        val note : step * thm -> thm
+      end
+    val TAC_PROOF : goal * tactic -> Thm.thm
+    val prove : Thm.Term.term * tactic -> Thm.thm
+    val store_thm : string * Thm.Term.term * tactic -> Thm.thm
+    val ASSUM_LIST : (Thm.thm list -> tactic) -> tactic
+    val POP_ASSUM : thm_tactic -> tactic
+    val POP_ASSUM_LIST : (Thm.thm list -> tactic) -> tactic
+    val THEN : tactic * tactic -> tactic
+    val THENL : tactic * tactic list -> tactic
+    val ORELSE : tactic * tactic -> tactic
+    val FAIL_TAC : string -> goal -> 'a
+    val NO_TAC : goal -> 'a
+    val ALL_TAC : tactic
+    val TRY : tactic -> tactic
+    val REPEAT : tactic -> tactic
+    val VALID : tactic -> tactic
+    val EVERY : tactic list -> tactic
+    val FIRST : tactic list -> tactic
+    val MAP_EVERY : ('a -> tactic) -> 'a list -> tactic
+    val MAP_FIRST : ('a -> tactic) -> 'a list -> tactic
+    val EVERY_ASSUM : thm_tactic -> tactic
+    val FIRST_ASSUM : thm_tactic -> tactic
+    val SUBGOAL_THEN : Thm.Term.term -> thm_tactic -> tactic
+    val CHANGED_TAC : tactic -> tactic
+  end
+val it = () : unit
+GC #3.40.57.98.247.7420:   (10 ms)
+GC #3.40.57.98.248.7453:   (0 ms)
+GC #3.40.57.98.249.7477:   (10 ms)
+[opening 1/tactical.sml]
+1/tactical.sml:290.20-290.64 Warning: match nonexhaustive
+          tha :: thl => ...
+  
+1/tactical.sml:151.20-151.31 Warning: match nonexhaustive
+          nil => ...
+  
+1/tactical.sml:142.44-142.55 Warning: match nonexhaustive
+          nil => ...
+  
+1/tactical.sml:107.44-107.55 Warning: match nonexhaustive
+          nil => ...
+  
+1/tactical.sml:113.32-113.43 Warning: match nonexhaustive
+          nil => ...
+  
+1/tactical.sml:58.24-63.11 Warning: match nonexhaustive
+          (nil,_,_) => ...
+          (n1 :: nums,f1 :: funcs,args) => ...
+  
+1/tactical.sml:52.16-52.44 Warning: match nonexhaustive
+          (thfun,(assum :: asl,w)) => ...
+  
+GC #3.40.58.99.250.7506:   (20 ms)
+GC #3.40.59.100.251.7531:   (20 ms)
+GC #3.40.59.100.252.7542:   (10 ms)
+GC #3.40.59.101.253.7565:   (20 ms)
+GC #3.40.59.101.254.7613:   (10 ms)
+structure Tactical : Tactical_sig
+val it = () : unit
+GC #3.40.59.101.255.7675:   (0 ms)
+[opening 1/thm_cont.sig]
+signature Thm_cont_sig =
+  sig
+    structure Thm :
+      sig
+        structure Term : <sig>
+        type thm
+        val reset_thm_count : unit -> unit
+        val counting_thms : bool -> unit
+        val thm_count : unit
+                        -> {ABS:int, ASSUME:int, BETA_CONV:int, DISCH:int,
+                            INST_TYPE:int, MP:int, REFL:int, SUBST:int,
+                            axiom:int, definition:int, drule:int,
+                            from_disk:int, other:int, valid_tac:int}
+        val hyp : thm -> Term.term list
+        val concl : thm -> Term.term
+        val dest_thm : thm -> Term.term list * Term.term
+        val thm_free_vars : thm -> Term.term list
+        val hyp_union : thm list -> Term.term list
+        val pp_thm : ?.PrettyPrint.ppstream -> thm -> unit
+        val thm_to_string : thm -> string
+        val print_thm : thm -> unit
+        val ASSUME : Term.term -> thm
+        val REFL : Term.term -> thm
+        val BETA_CONV : Term.term -> thm
+        val SUBST : {thm:thm, var:Term.term} list -> Term.term -> thm -> thm
+        val ABS : Term.term -> thm -> thm
+        val INST_TYPE : Term.Type.hol_type subst -> thm -> thm
+        val DISCH : Term.term -> thm -> thm
+        val MP : thm -> thm -> thm
+        val mk_axiom_thm : Term.term list * Term.term -> thm
+        val mk_definition_thm : Term.term list * Term.term -> thm
+        val mk_drule_thm : Term.term list * Term.term -> thm
+        val mk_disk_thm : Term.term list * Term.term -> thm
+        val mk_tac_thm : Term.term list * Term.term -> thm
+        val mk_thm : Term.term list * Term.term -> thm
+        datatype just_arg
+          = JA_INT of int
+          | JA_INTLIST of int list
+          | JA_PAIR of just_arg * just_arg
+          | JA_STRING of string
+          | JA_TERM of Term.term
+          | JA_THM of thm
+          | JA_TYPE of Term.Type.hol_type
+        datatype step = STEP of {Just:just_arg list, Name:string, Thm:thm}
+        val record_step : (step -> thm) ref
+        val record_proof : bool -> unit
+        val suspend_recording : unit -> unit
+        val resume_recording : unit -> unit
+        val is_recording_proof : unit -> bool
+        val note : step * thm -> thm
+      end
+    val THEN_TCL : thm_tactical * thm_tactical -> thm_tactical
+    val ORELSE_TCL : thm_tactical * thm_tactical -> thm_tactical
+    val REPEAT_TCL : thm_tactical -> thm_tactical
+    val REPEAT_GTCL : thm_tactical -> (Thm.thm -> tactic) -> thm_tactic
+    val ALL_THEN : thm_tactical
+    val NO_THEN : thm_tactical
+    val EVERY_TCL : thm_tactical list -> thm_tactical
+    val FIRST_TCL : thm_tactical list -> thm_tactical
+    val CONJUNCTS_THEN2 : thm_tactic -> thm_tactical
+    val CONJUNCTS_THEN : thm_tactical
+    val DISJ_CASES_THEN2 : thm_tactic -> thm_tactical
+    val DISJ_CASES_THEN : thm_tactical
+    val DISJ_CASES_THENL : thm_tactic list -> thm_tactic
+    val DISCH_THEN : thm_tactic -> tactic
+    val X_CHOOSE_THEN : Thm.Term.term -> thm_tactical
+    val CHOOSE_THEN : thm_tactical
+    val X_CASES_THENL : (('a list -> 'b list -> ('a * 'b) list)
+                         -> thm_tactic list
+                            -> (Thm.Term.term list * thm_tactic) list)
+                        -> thm_tactic list -> thm_tactic
+    val X_CASES_THEN : Thm.Term.term list list -> thm_tactical
+    val CASES_THENL : thm_tactic list -> thm_tactic
+    val STRIP_THM_THEN : thm_tactical
+  end
+val it = () : unit
+GC #3.40.59.101.256.7775:   (20 ms)
+GC #3.40.59.101.257.7794:   (30 ms)
+GC #3.41.60.102.258.7809:   (30 ms)
+GC #3.41.60.102.259.7831:   (10 ms)
+GC #3.41.60.102.260.7858:   (10 ms)
+GC #3.41.60.102.261.7915:   (10 ms)
+[opening 1/thm_cont.sml]
+structure Thm_cont : Thm_cont_sig
+GC #3.41.60.102.262.7959:   (0 ms)
+val it = () : unit
+[opening 1/tactic.sig]
+signature Tactic_sig =
+  sig
+    structure Thm :
+      sig
+        structure Term : <sig>
+        type thm
+        val reset_thm_count : unit -> unit
+        val counting_thms : bool -> unit
+        val thm_count : unit
+                        -> {ABS:int, ASSUME:int, BETA_CONV:int, DISCH:int,
+                            INST_TYPE:int, MP:int, REFL:int, SUBST:int,
+                            axiom:int, definition:int, drule:int,
+                            from_disk:int, other:int, valid_tac:int}
+        val hyp : thm -> Term.term list
+        val concl : thm -> Term.term
+        val dest_thm : thm -> Term.term list * Term.term
+        val thm_free_vars : thm -> Term.term list
+        val hyp_union : thm list -> Term.term list
+        val pp_thm : ?.PrettyPrint.ppstream -> thm -> unit
+        val thm_to_string : thm -> string
+        val print_thm : thm -> unit
+        val ASSUME : Term.term -> thm
+        val REFL : Term.term -> thm
+        val BETA_CONV : Term.term -> thm
+        val SUBST : {thm:thm, var:Term.term} list -> Term.term -> thm -> thm
+        val ABS : Term.term -> thm -> thm
+        val INST_TYPE : Term.Type.hol_type subst -> thm -> thm
+        val DISCH : Term.term -> thm -> thm
+        val MP : thm -> thm -> thm
+        val mk_axiom_thm : Term.term list * Term.term -> thm
+        val mk_definition_thm : Term.term list * Term.term -> thm
+        val mk_drule_thm : Term.term list * Term.term -> thm
+        val mk_disk_thm : Term.term list * Term.term -> thm
+        val mk_tac_thm : Term.term list * Term.term -> thm
+        val mk_thm : Term.term list * Term.term -> thm
+        datatype just_arg
+          = JA_INT of int
+          | JA_INTLIST of int list
+          | JA_PAIR of just_arg * just_arg
+          | JA_STRING of string
+          | JA_TERM of Term.term
+          | JA_THM of thm
+          | JA_TYPE of Term.Type.hol_type
+        datatype step = STEP of {Just:just_arg list, Name:string, Thm:thm}
+        val record_step : (step -> thm) ref
+        val record_proof : bool -> unit
+        val suspend_recording : unit -> unit
+        val resume_recording : unit -> unit
+        val is_recording_proof : unit -> bool
+        val note : step * thm -> thm
+      end
+    val ACCEPT_TAC : thm_tactic
+    val DISCARD_TAC : Thm.thm -> tactic
+    val CONTR_TAC : thm_tactic
+    val CCONTR_TAC : tactic
+    val ASSUME_TAC : thm_tactic
+    val FREEZE_THEN : thm_tactical
+    val CONJ_TAC : tactic
+    val DISJ1_TAC : tactic
+    val DISJ2_TAC : tactic
+    val MP_TAC : thm_tactic
+    val EQ_TAC : tactic
+    val X_GEN_TAC : Thm.Term.term -> tactic
+    val GEN_TAC : tactic
+    val SPEC_TAC : Thm.Term.term * Thm.Term.term -> tactic
+    val EXISTS_TAC : Thm.Term.term -> tactic
+    val GSUBST_TAC : (Thm.Term.term subst -> Thm.Term.term -> Thm.Term.term)
+                     -> Thm.thm list -> tactic
+    val SUBST_TAC : Thm.thm list -> tactic
+    val SUBST_OCCS_TAC : (int list * Thm.thm) list -> tactic
+    val SUBST1_TAC : Thm.thm -> tactic
+    val RULE_ASSUM_TAC : (Thm.thm -> Thm.thm) -> tactic
+    val SUBST_ALL_TAC : Thm.thm -> tactic
+    val CHECK_ASSUME_TAC : thm_tactic
+    val STRIP_ASSUME_TAC : thm_tactic
+    val STRUCT_CASES_TAC : thm_tactic
+    val COND_CASES_TAC : tactic
+    val BOOL_CASES_TAC : Thm.Term.term -> tactic
+    val STRIP_GOAL_THEN : thm_tactic -> tactic
+    val FILTER_GEN_TAC : Thm.Term.term -> tactic
+    val FILTER_DISCH_THEN : thm_tactic -> Thm.Term.term -> tactic
+    val FILTER_STRIP_THEN : thm_tactic -> Thm.Term.term -> tactic
+    val DISCH_TAC : tactic
+    val DISJ_CASES_TAC : thm_tactic
+    val CHOOSE_TAC : thm_tactic
+    val X_CHOOSE_TAC : Thm.Term.term -> thm_tactic
+    val STRIP_TAC : tactic
+    val FILTER_DISCH_TAC : Thm.Term.term -> tactic
+    val FILTER_STRIP_TAC : Thm.Term.term -> tactic
+    val ASM_CASES_TAC : Thm.Term.term -> tactic
+    val REFL_TAC : tactic
+    val UNDISCH_TAC : Thm.Term.term -> tactic
+    val AP_TERM_TAC : tactic
+    val AP_THM_TAC : tactic
+  end
+val it = () : unit
+GC #3.41.60.102.263.8043:   (10 ms)
+GC #3.41.61.103.264.8067:   (20 ms)
+GC #3.41.61.103.265.8107:   (30 ms)
+[opening 1/tactic.sml]
+1/tactic.sml:302.36-302.67 Warning: match nonexhaustive
+          th :: nil => ...
+  
+1/tactic.sml:280.6-280.32 Warning: match nonexhaustive
+          th :: nil => ...
+  
+1/tactic.sml:264.6-264.26 Warning: match nonexhaustive
+          th :: nil => ...
+  
+1/tactic.sml:233.29-233.49 Warning: match nonexhaustive
+          th :: nil => ...
+  
+1/tactic.sml:235.14-239.28 Warning: match nonexhaustive
+          th :: nil => ...
+  
+1/tactic.sml:189.5-189.45 Warning: match nonexhaustive
+          th1 :: th2 :: nil => ...
+  
+1/tactic.sml:181.5-181.31 Warning: match nonexhaustive
+          thimp :: nil => ...
+  
+1/tactic.sml:165.23-165.50 Warning: match nonexhaustive
+          thb :: nil => ...
+  
+1/tactic.sml:151.23-151.48 Warning: match nonexhaustive
+          th :: nil => ...
+  
+1/tactic.sml:134.33-134.61 Warning: match nonexhaustive
+          th1 :: th2 :: nil => ...
+  
+1/tactic.sml:107.6-107.33 Warning: match nonexhaustive
+          th :: nil => ...
+  
+1/tactic.sml:93.30-93.52 Warning: match nonexhaustive
+          th :: nil => ...
+  
+1/tactic.sml:79.9-79.20 Warning: match nonexhaustive
+          nil => ...
+  
+1/tactic.sml:51.14-51.25 Warning: match nonexhaustive
+          nil => ...
+  
+GC #3.41.61.104.266.8170:   (50 ms)
+GC #3.41.61.104.267.8180:   (20 ms)
+GC #3.41.62.105.268.8227:   (40 ms)
+GC #3.41.62.105.269.8242:   (20 ms)
+GC #3.41.62.105.270.8255:   (40 ms)
+GC #3.41.62.106.271.8265:   (40 ms)
+GC #3.41.62.106.272.8298:   (10 ms)
+GC #3.41.62.106.273.8342:   (10 ms)
+GC #3.41.62.106.274.8372:   (0 ms)
+GC #3.41.62.106.275.8464:   (20 ms)
+GC #3.41.62.106.276.8523:   (30 ms)
+GC #3.41.62.106.277.8581:   (20 ms)
+GC #3.42.63.107.278.8586:   (50 ms)
+structure Tactic : Tactic_sig
+val it = () : unit
+[opening 1/rewrite.sig]
+signature Rewrite_sig =
+  sig
+    structure Thm :
+      sig
+        structure Term : <sig>
+        type thm
+        val reset_thm_count : unit -> unit
+        val counting_thms : bool -> unit
+        val thm_count : unit
+                        -> {ABS:int, ASSUME:int, BETA_CONV:int, DISCH:int,
+                            INST_TYPE:int, MP:int, REFL:int, SUBST:int,
+                            axiom:int, definition:int, drule:int,
+                            from_disk:int, other:int, valid_tac:int}
+        val hyp : thm -> Term.term list
+        val concl : thm -> Term.term
+        val dest_thm : thm -> Term.term list * Term.term
+        val thm_free_vars : thm -> Term.term list
+        val hyp_union : thm list -> Term.term list
+        val pp_thm : ?.PrettyPrint.ppstream -> thm -> unit
+        val thm_to_string : thm -> string
+        val print_thm : thm -> unit
+        val ASSUME : Term.term -> thm
+        val REFL : Term.term -> thm
+        val BETA_CONV : Term.term -> thm
+        val SUBST : {thm:thm, var:Term.term} list -> Term.term -> thm -> thm
+        val ABS : Term.term -> thm -> thm
+        val INST_TYPE : Term.Type.hol_type subst -> thm -> thm
+        val DISCH : Term.term -> thm -> thm
+        val MP : thm -> thm -> thm
+        val mk_axiom_thm : Term.term list * Term.term -> thm
+        val mk_definition_thm : Term.term list * Term.term -> thm
+        val mk_drule_thm : Term.term list * Term.term -> thm
+        val mk_disk_thm : Term.term list * Term.term -> thm
+        val mk_tac_thm : Term.term list * Term.term -> thm
+        val mk_thm : Term.term list * Term.term -> thm
+        datatype just_arg
+          = JA_INT of int
+          | JA_INTLIST of int list
+          | JA_PAIR of just_arg * just_arg
+          | JA_STRING of string
+          | JA_TERM of Term.term
+          | JA_THM of thm
+          | JA_TYPE of Term.Type.hol_type
+        datatype step = STEP of {Just:just_arg list, Name:string, Thm:thm}
+        val record_step : (step -> thm) ref
+        val record_proof : bool -> unit
+        val suspend_recording : unit -> unit
+        val resume_recording : unit -> unit
+        val is_recording_proof : unit -> bool
+        val note : step * thm -> thm
+      end
+    type rewrites
+    val mk_rewrites : Thm.thm -> Thm.thm list
+    val add_rewrites : rewrites -> Thm.thm list -> rewrites
+    val dest_rewrites : rewrites -> Thm.thm list
+    val empty_rewrites : rewrites
+    val implicit_rewrites : unit -> rewrites
+    val set_implicit_rewrites : rewrites -> unit
+    val add_implicit_rewrites : Thm.thm list -> unit
+    val pp_rewrites : ?.PrettyPrint.ppstream -> rewrites -> unit
+    val bool_rewrites : rewrites
+    val REWRITES_CONV : rewrites -> conv
+    val GEN_REWRITE_CONV : (conv -> conv) -> rewrites -> Thm.thm list -> conv
+    val GEN_REWRITE_RULE : (conv -> conv)
+                           -> rewrites -> Thm.thm list -> Thm.thm -> Thm.thm
+    val GEN_REWRITE_TAC : (conv -> conv) -> rewrites -> Thm.thm list -> tactic
+    val PURE_REWRITE_CONV : Thm.thm list -> conv
+    val REWRITE_CONV : Thm.thm list -> conv
+    val PURE_ONCE_REWRITE_CONV : Thm.thm list -> conv
+    val ONCE_REWRITE_CONV : Thm.thm list -> conv
+    val PURE_REWRITE_RULE : Thm.thm list -> Thm.thm -> Thm.thm
+    val REWRITE_RULE : Thm.thm list -> Thm.thm -> Thm.thm
+    val PURE_ONCE_REWRITE_RULE : Thm.thm list -> Thm.thm -> Thm.thm
+    val ONCE_REWRITE_RULE : Thm.thm list -> Thm.thm -> Thm.thm
+    val PURE_ASM_REWRITE_RULE : Thm.thm list -> Thm.thm -> Thm.thm
+    val ASM_REWRITE_RULE : Thm.thm list -> Thm.thm -> Thm.thm
+    val PURE_ONCE_ASM_REWRITE_RULE : Thm.thm list -> Thm.thm -> Thm.thm
+    val ONCE_ASM_REWRITE_RULE : Thm.thm list -> Thm.thm -> Thm.thm
+    val PURE_REWRITE_TAC : Thm.thm list -> tactic
+    val REWRITE_TAC : Thm.thm list -> tactic
+    val PURE_ONCE_REWRITE_TAC : Thm.thm list -> tactic
+    val ONCE_REWRITE_TAC : Thm.thm list -> tactic
+    val PURE_ASM_REWRITE_TAC : Thm.thm list -> tactic
+    val ASM_REWRITE_TAC : Thm.thm list -> tactic
+    val PURE_ONCE_ASM_REWRITE_TAC : Thm.thm list -> tactic
+    val ONCE_ASM_REWRITE_TAC : Thm.thm list -> tactic
+    val FILTER_PURE_ASM_REWRITE_RULE : (Thm.Term.term -> bool)
+                                       -> Thm.thm list -> Thm.thm -> Thm.thm
+    val FILTER_ASM_REWRITE_RULE : (Thm.Term.term -> bool)
+                                  -> Thm.thm list -> Thm.thm -> Thm.thm
+    val FILTER_PURE_ONCE_ASM_REWRITE_RULE : (Thm.Term.term -> bool)
+                                            -> Thm.thm list
+                                               -> Thm.thm -> Thm.thm
+    val FILTER_ONCE_ASM_REWRITE_RULE : (Thm.Term.term -> bool)
+                                       -> Thm.thm list -> Thm.thm -> Thm.thm
+    val FILTER_PURE_ASM_REWRITE_TAC : (Thm.Term.term -> bool)
+                                      -> Thm.thm list -> tactic
+    val FILTER_ASM_REWRITE_TAC : (Thm.Term.term -> bool)
+                                 -> Thm.thm list -> tactic
+    val FILTER_PURE_ONCE_ASM_REWRITE_TAC : (Thm.Term.term -> bool)
+                                           -> Thm.thm list -> tactic
+    val FILTER_ONCE_ASM_REWRITE_TAC : (Thm.Term.term -> bool)
+                                      -> Thm.thm list -> tactic
+    val SUBST_MATCH : Thm.thm -> Thm.thm -> Thm.thm
+  end
+val it = () : unit
+GC #3.42.63.107.279.8698:   (30 ms)
+GC #3.42.63.107.280.8722:   (20 ms)
+GC #3.42.63.107.281.8740:   (20 ms)
+GC #3.42.63.107.282.8772:   (10 ms)
+GC #3.42.63.107.283.8775:   (0 ms)
+GC #3.42.63.107.284.8821:   (20 ms)
+GC #3.42.64.108.285.8830:   (30 ms)
+GC #3.42.64.108.286.8875:   (10 ms)
+GC #3.42.64.108.287.8895:   (10 ms)
+[opening 1/rewrite.sml]
+structure Rewrite : Rewrite_sig
+val it = () : unit
+[opening 1/resolve.sig]
+signature Resolve_sig =
+  sig
+    structure Thm :
+      sig
+        structure Term : <sig>
+        type thm
+        val reset_thm_count : unit -> unit
+        val counting_thms : bool -> unit
+        val thm_count : unit
+                        -> {ABS:int, ASSUME:int, BETA_CONV:int, DISCH:int,
+                            INST_TYPE:int, MP:int, REFL:int, SUBST:int,
+                            axiom:int, definition:int, drule:int,
+                            from_disk:int, other:int, valid_tac:int}
+        val hyp : thm -> Term.term list
+        val concl : thm -> Term.term
+        val dest_thm : thm -> Term.term list * Term.term
+        val thm_free_vars : thm -> Term.term list
+        val hyp_union : thm list -> Term.term list
+        val pp_thm : ?.PrettyPrint.ppstream -> thm -> unit
+        val thm_to_string : thm -> string
+        val print_thm : thm -> unit
+        val ASSUME : Term.term -> thm
+        val REFL : Term.term -> thm
+        val BETA_CONV : Term.term -> thm
+        val SUBST : {thm:thm, var:Term.term} list -> Term.term -> thm -> thm
+        val ABS : Term.term -> thm -> thm
+        val INST_TYPE : Term.Type.hol_type subst -> thm -> thm
+        val DISCH : Term.term -> thm -> thm
+        val MP : thm -> thm -> thm
+        val mk_axiom_thm : Term.term list * Term.term -> thm
+        val mk_definition_thm : Term.term list * Term.term -> thm
+        val mk_drule_thm : Term.term list * Term.term -> thm
+        val mk_disk_thm : Term.term list * Term.term -> thm
+        val mk_tac_thm : Term.term list * Term.term -> thm
+        val mk_thm : Term.term list * Term.term -> thm
+        datatype just_arg
+          = JA_INT of int
+          | JA_INTLIST of int list
+          | JA_PAIR of just_arg * just_arg
+          | JA_STRING of string
+          | JA_TERM of Term.term
+          | JA_THM of thm
+          | JA_TYPE of Term.Type.hol_type
+        datatype step = STEP of {Just:just_arg list, Name:string, Thm:thm}
+        val record_step : (step -> thm) ref
+        val record_proof : bool -> unit
+        val suspend_recording : unit -> unit
+        val resume_recording : unit -> unit
+        val is_recording_proof : unit -> bool
+        val note : step * thm -> thm
+      end
+    val MATCH_ACCEPT_TAC : thm_tactic
+    val ANTE_RES_THEN : thm_tactical
+    val RES_CANON : Thm.thm -> Thm.thm list
+    val IMP_RES_THEN : thm_tactic -> Thm.thm -> tactic
+    val RES_THEN : thm_tactic -> tactic
+    val IMP_RES_TAC : thm_tactic
+    val RES_TAC : tactic
+    val MATCH_MP_TAC : thm_tactic
+  end
+val it = () : unit
+GC #3.42.64.108.288.8984:   (10 ms)
+GC #3.42.64.108.289.9019:   (10 ms)
+GC #3.42.64.108.290.9037:   (20 ms)
+GC #3.42.64.108.291.9064:   (10 ms)
+GC #3.42.64.108.292.9077:   (10 ms)
+GC #3.42.64.108.293.9103:   (0 ms)
+GC #3.42.64.108.294.9107:   (0 ms)
+GC #3.42.64.108.295.9145:   (10 ms)
+GC #3.42.64.108.296.9166:   (20 ms)
+GC #3.42.64.108.297.9207:   (10 ms)
+[opening 1/resolve.sml]
+structure Resolve : Resolve_sig
+GC #3.42.64.108.298.9223:   (0 ms)
+val it = () : unit
+[opening 1/prim_rec.sig]
+signature Prim_rec_sig =
+  sig
+    structure Thm :
+      sig
+        structure Term : <sig>
+        type thm
+        val reset_thm_count : unit -> unit
+        val counting_thms : bool -> unit
+        val thm_count : unit
+                        -> {ABS:int, ASSUME:int, BETA_CONV:int, DISCH:int,
+                            INST_TYPE:int, MP:int, REFL:int, SUBST:int,
+                            axiom:int, definition:int, drule:int,
+                            from_disk:int, other:int, valid_tac:int}
+        val hyp : thm -> Term.term list
+        val concl : thm -> Term.term
+        val dest_thm : thm -> Term.term list * Term.term
+        val thm_free_vars : thm -> Term.term list
+        val hyp_union : thm list -> Term.term list
+        val pp_thm : ?.PrettyPrint.ppstream -> thm -> unit
+        val thm_to_string : thm -> string
+        val print_thm : thm -> unit
+        val ASSUME : Term.term -> thm
+        val REFL : Term.term -> thm
+        val BETA_CONV : Term.term -> thm
+        val SUBST : {thm:thm, var:Term.term} list -> Term.term -> thm -> thm
+        val ABS : Term.term -> thm -> thm
+        val INST_TYPE : Term.Type.hol_type subst -> thm -> thm
+        val DISCH : Term.term -> thm -> thm
+        val MP : thm -> thm -> thm
+        val mk_axiom_thm : Term.term list * Term.term -> thm
+        val mk_definition_thm : Term.term list * Term.term -> thm
+        val mk_drule_thm : Term.term list * Term.term -> thm
+        val mk_disk_thm : Term.term list * Term.term -> thm
+        val mk_tac_thm : Term.term list * Term.term -> thm
+        val mk_thm : Term.term list * Term.term -> thm
+        datatype just_arg
+          = JA_INT of int
+          | JA_INTLIST of int list
+          | JA_PAIR of just_arg * just_arg
+          | JA_STRING of string
+          | JA_TERM of Term.term
+          | JA_THM of thm
+          | JA_TYPE of Term.Type.hol_type
+        datatype step = STEP of {Just:just_arg list, Name:string, Thm:thm}
+        val record_step : (step -> thm) ref
+        val record_proof : bool -> unit
+        val suspend_recording : unit -> unit
+        val resume_recording : unit -> unit
+        val is_recording_proof : unit -> bool
+        val note : step * thm -> thm
+      end
+    val prove_rec_fn_exists : Thm.thm -> Thm.Term.term -> Thm.thm
+    val new_recursive_definition : {def:Thm.Term.term, fixity:Thm.Term.fixity,
+                                    name:string, rec_axiom:Thm.thm}
+                                   -> Thm.thm
+  end
+val it = () : unit
+GC #3.42.64.108.299.9275:   (20 ms)
+GC #3.42.64.108.300.9284:   (20 ms)
+GC #3.42.64.108.301.9353:   (20 ms)
+GC #3.42.65.109.302.9402:   (40 ms)
+[opening 1/prim_rec.sml]
+1/prim_rec.sml:144.8-144.83 Warning: binding not exhaustive
+          lcl :: lclvars = ...
+1/prim_rec.sml:84.8-92.58 Warning: match nonexhaustive
+          h :: t => ...
+  
+GC #3.42.65.109.303.9426:   (20 ms)
+GC #3.42.65.109.304.9439:   (10 ms)
+GC #3.42.65.109.305.9473:   (10 ms)
+GC #3.42.65.109.306.9488:   (20 ms)
+GC #3.42.65.109.307.9496:   (30 ms)
+GC #3.42.65.109.308.9506:   (30 ms)
+GC #3.42.66.110.309.9541:   (50 ms)
+GC #3.42.66.110.310.9584:   (10 ms)
+GC #3.42.66.110.311.9597:   (0 ms)
+GC #3.42.66.110.312.9658:   (40 ms)
+GC #3.42.66.110.313.9720:   (40 ms)
+GC #3.42.66.110.314.9753:   (30 ms)
+GC #3.42.66.110.315.9757:   (30 ms)
+GC #3.43.67.111.316.9758:   (30 ms)
+GC #3.43.67.111.317.9812:   (20 ms)
+GC #3.43.67.111.318.9871:   (20 ms)
+GC #3.43.67.111.319.9874:   (10 ms)
+structure Prim_rec : Prim_rec_sig
+val it = () : unit
+GC #3.43.68.112.320.9875:   (10 ms)
+[opening 1/taut_thms.sig]
+signature Taut_thms_sig =
+  sig
+    structure Thm :
+      sig
+        structure Term : <sig>
+        type thm
+        val reset_thm_count : unit -> unit
+        val counting_thms : bool -> unit
+        val thm_count : unit
+                        -> {ABS:int, ASSUME:int, BETA_CONV:int, DISCH:int,
+                            INST_TYPE:int, MP:int, REFL:int, SUBST:int,
+                            axiom:int, definition:int, drule:int,
+                            from_disk:int, other:int, valid_tac:int}
+        val hyp : thm -> Term.term list
+        val concl : thm -> Term.term
+        val dest_thm : thm -> Term.term list * Term.term
+        val thm_free_vars : thm -> Term.term list
+        val hyp_union : thm list -> Term.term list
+        val pp_thm : ?.PrettyPrint.ppstream -> thm -> unit
+        val thm_to_string : thm -> string
+        val print_thm : thm -> unit
+        val ASSUME : Term.term -> thm
+        val REFL : Term.term -> thm
+        val BETA_CONV : Term.term -> thm
+        val SUBST : {thm:thm, var:Term.term} list -> Term.term -> thm -> thm
+        val ABS : Term.term -> thm -> thm
+        val INST_TYPE : Term.Type.hol_type subst -> thm -> thm
+        val DISCH : Term.term -> thm -> thm
+        val MP : thm -> thm -> thm
+        val mk_axiom_thm : Term.term list * Term.term -> thm
+        val mk_definition_thm : Term.term list * Term.term -> thm
+        val mk_drule_thm : Term.term list * Term.term -> thm
+        val mk_disk_thm : Term.term list * Term.term -> thm
+        val mk_tac_thm : Term.term list * Term.term -> thm
+        val mk_thm : Term.term list * Term.term -> thm
+        datatype just_arg
+          = JA_INT of int
+          | JA_INTLIST of int list
+          | JA_PAIR of just_arg * just_arg
+          | JA_STRING of string
+          | JA_TERM of Term.term
+          | JA_THM of thm
+          | JA_TYPE of Term.Type.hol_type
+        datatype step = STEP of {Just:just_arg list, Name:string, Thm:thm}
+        val record_step : (step -> thm) ref
+        val record_proof : bool -> unit
+        val suspend_recording : unit -> unit
+        val resume_recording : unit -> unit
+        val is_recording_proof : unit -> bool
+        val note : step * thm -> thm
+      end
+    val OR_IMP_THM : Thm.thm
+    val NOT_IMP : Thm.thm
+    val DISJ_ASSOC : Thm.thm
+    val DISJ_SYM : Thm.thm
+    val DE_MORGAN_THM : Thm.thm
+    val LEFT_AND_OVER_OR : Thm.thm
+    val RIGHT_AND_OVER_OR : Thm.thm
+    val LEFT_OR_OVER_AND : Thm.thm
+    val RIGHT_OR_OVER_AND : Thm.thm
+    val IMP_DISJ_THM : Thm.thm
+    val IMP_F_EQ_F : Thm.thm
+    val AND_IMP_INTRO : Thm.thm
+    val EQ_IMP_THM : Thm.thm
+    val EQ_EXPAND : Thm.thm
+    val COND_RATOR : Thm.thm
+    val COND_RAND : Thm.thm
+    val COND_ABS : Thm.thm
+    val COND_EXPAND : Thm.thm
+  end
+val it = () : unit
+GC #3.43.68.112.321.9967:   (10 ms)
+GC #3.43.68.112.322.9976:   (0 ms)
+GC #3.43.68.112.323.10007:   (10 ms)
+GC #3.43.68.112.324.10031:   (20 ms)
+GC #3.43.68.112.325.10041:   (10 ms)
+GC #3.43.68.112.326.10092:   (10 ms)
+[opening 1/taut_thms.sml]
+structure Taut_thms : Taut_thms_sig
+GC #3.43.68.113.327.10206:   (0 ms)
+val it = () : unit
+[opening 1/induct_then.sig]
+signature Induct_then_sig =
+  sig
+    structure Thm :
+      sig
+        structure Term : <sig>
+        type thm
+        val reset_thm_count : unit -> unit
+        val counting_thms : bool -> unit
+        val thm_count : unit
+                        -> {ABS:int, ASSUME:int, BETA_CONV:int, DISCH:int,
+                            INST_TYPE:int, MP:int, REFL:int, SUBST:int,
+                            axiom:int, definition:int, drule:int,
+                            from_disk:int, other:int, valid_tac:int}
+        val hyp : thm -> Term.term list
+        val concl : thm -> Term.term
+        val dest_thm : thm -> Term.term list * Term.term
+        val thm_free_vars : thm -> Term.term list
+        val hyp_union : thm list -> Term.term list
+        val pp_thm : ?.PrettyPrint.ppstream -> thm -> unit
+        val thm_to_string : thm -> string
+        val print_thm : thm -> unit
+        val ASSUME : Term.term -> thm
+        val REFL : Term.term -> thm
+        val BETA_CONV : Term.term -> thm
+        val SUBST : {thm:thm, var:Term.term} list -> Term.term -> thm -> thm
+        val ABS : Term.term -> thm -> thm
+        val INST_TYPE : Term.Type.hol_type subst -> thm -> thm
+        val DISCH : Term.term -> thm -> thm
+        val MP : thm -> thm -> thm
+        val mk_axiom_thm : Term.term list * Term.term -> thm
+        val mk_definition_thm : Term.term list * Term.term -> thm
+        val mk_drule_thm : Term.term list * Term.term -> thm
+        val mk_disk_thm : Term.term list * Term.term -> thm
+        val mk_tac_thm : Term.term list * Term.term -> thm
+        val mk_thm : Term.term list * Term.term -> thm
+        datatype just_arg
+          = JA_INT of int
+          | JA_INTLIST of int list
+          | JA_PAIR of just_arg * just_arg
+          | JA_STRING of string
+          | JA_TERM of Term.term
+          | JA_THM of thm
+          | JA_TYPE of Term.Type.hol_type
+        datatype step = STEP of {Just:just_arg list, Name:string, Thm:thm}
+        val record_step : (step -> thm) ref
+        val record_proof : bool -> unit
+        val suspend_recording : unit -> unit
+        val resume_recording : unit -> unit
+        val is_recording_proof : unit -> bool
+        val note : step * thm -> thm
+      end
+    val INDUCT_THEN : Thm.thm -> thm_tactic -> tactic
+  end
+val it = () : unit
+GC #3.43.68.113.328.10282:   (10 ms)
+[opening 1/induct_then.sml]
+1/induct_then.sml:259.8-259.41 Warning: binding not exhaustive
+          (asm :: nil,con) = ...
+GC #3.43.68.113.329.10328:   (30 ms)
+1/induct_then.sml:239.24-244.11 Warning: match nonexhaustive
+          (nil,_,_) => ...
+          (n1 :: nums,f1 :: funcs,args) => ...
+  
+1/induct_then.sml:79.5-79.65 Warning: match nonexhaustive
+          th :: nil => ...
+  
+GC #3.43.68.113.330.10346:   (30 ms)
+GC #3.43.68.114.331.10377:   (40 ms)
+GC #3.43.68.114.332.10394:   (20 ms)
+GC #3.43.68.114.333.10417:   (20 ms)
+GC #3.43.68.114.334.10419:   (10 ms)
+GC #3.43.68.114.335.10440:   (10 ms)
+GC #3.43.68.114.336.10526:   (10 ms)
+structure Induct_then : Induct_then_sig
+val it = () : unit
+GC #3.43.68.114.337.10540:   (0 ms)
+[opening 1/type_def_support.sig]
+signature Type_def_support_sig =
+  sig
+    structure Thm :
+      sig
+        structure Term : <sig>
+        type thm
+        val reset_thm_count : unit -> unit
+        val counting_thms : bool -> unit
+        val thm_count : unit
+                        -> {ABS:int, ASSUME:int, BETA_CONV:int, DISCH:int,
+                            INST_TYPE:int, MP:int, REFL:int, SUBST:int,
+                            axiom:int, definition:int, drule:int,
+                            from_disk:int, other:int, valid_tac:int}
+        val hyp : thm -> Term.term list
+        val concl : thm -> Term.term
+        val dest_thm : thm -> Term.term list * Term.term
+        val thm_free_vars : thm -> Term.term list
+        val hyp_union : thm list -> Term.term list
+        val pp_thm : ?.PrettyPrint.ppstream -> thm -> unit
+        val thm_to_string : thm -> string
+        val print_thm : thm -> unit
+        val ASSUME : Term.term -> thm
+        val REFL : Term.term -> thm
+        val BETA_CONV : Term.term -> thm
+        val SUBST : {thm:thm, var:Term.term} list -> Term.term -> thm -> thm
+        val ABS : Term.term -> thm -> thm
+        val INST_TYPE : Term.Type.hol_type subst -> thm -> thm
+        val DISCH : Term.term -> thm -> thm
+        val MP : thm -> thm -> thm
+        val mk_axiom_thm : Term.term list * Term.term -> thm
+        val mk_definition_thm : Term.term list * Term.term -> thm
+        val mk_drule_thm : Term.term list * Term.term -> thm
+        val mk_disk_thm : Term.term list * Term.term -> thm
+        val mk_tac_thm : Term.term list * Term.term -> thm
+        val mk_thm : Term.term list * Term.term -> thm
+        datatype just_arg
+          = JA_INT of int
+          | JA_INTLIST of int list
+          | JA_PAIR of just_arg * just_arg
+          | JA_STRING of string
+          | JA_TERM of Term.term
+          | JA_THM of thm
+          | JA_TYPE of Term.Type.hol_type
+        datatype step = STEP of {Just:just_arg list, Name:string, Thm:thm}
+        val record_step : (step -> thm) ref
+        val record_proof : bool -> unit
+        val suspend_recording : unit -> unit
+        val resume_recording : unit -> unit
+        val is_recording_proof : unit -> bool
+        val note : step * thm -> thm
+      end
+    val ABS_REP_THM : Thm.thm
+    val define_new_type_bijections : {ABS:string, REP:string, name:string,
+                                      tyax:Thm.thm}
+                                     -> Thm.thm
+    val prove_rep_fn_one_one : Thm.thm -> Thm.thm
+    val prove_rep_fn_onto : Thm.thm -> Thm.thm
+    val prove_abs_fn_onto : Thm.thm -> Thm.thm
+    val prove_abs_fn_one_one : Thm.thm -> Thm.thm
+  end
+val it = () : unit
+GC #3.43.68.114.338.10592:   (20 ms)
+GC #3.43.68.114.339.10604:   (10 ms)
+GC #3.43.68.114.340.10642:   (20 ms)
+[opening 1/type_def_support.sml]
+1/type_def_support.sml:306.8-306.36 Warning: binding not exhaustive
+          th1 :: th2 :: nil = ...
+1/type_def_support.sml:264.8-264.36 Warning: binding not exhaustive
+          th1 :: th2 :: nil = ...
+1/type_def_support.sml:222.8-222.36 Warning: binding not exhaustive
+          th1 :: th2 :: nil = ...
+1/type_def_support.sml:186.8-186.63 Warning: binding not exhaustive
+          {Args=aty :: rty :: nil,Tyop=_} = ...
+1/type_def_support.sml:142.33-143.77 Warning: binding not exhaustive
+          {Args=a :: r :: nil,Tyop=_} = ...
+1/type_def_support.sml:139.33-141.76 Warning: binding not exhaustive
+          (_,P :: rep :: nil) = ...
+GC #3.43.68.114.341.10688:   (30 ms)
+GC #3.43.68.114.342.10697:   (10 ms)
+GC #3.43.68.114.343.10736:   (10 ms)
+GC #3.43.68.115.344.10752:   (50 ms)
+GC #3.43.68.115.345.10786:   (20 ms)
+GC #3.43.68.115.346.10890:   (20 ms)
+GC #3.43.68.115.347.10933:   (20 ms)
+GC #3.43.68.115.348.10965:   (0 ms)
+structure Type_def_support : Type_def_support_sig
+val it = () : unit
+val it = () : unit
+[opening /usr/groups/hol/hol90.10/src/1/hol1.sml]
+GC #3.43.69.116.349.11031:   (20 ms)
+GC #3.43.69.116.350.11072:   (20 ms)
+GC #3.43.69.117.351.11100:   (50 ms)
+GC #3.43.69.117.352.11126:   (20 ms)
+GC #3.43.69.117.353.11158:   (10 ms)
+GC #3.43.69.117.354.11245:   (10 ms)
+opening CoreHol
+  structure Type :
+    sig
+      datatype hol_type = ...
+      val fresh_tyvar_stream : unit -> (int,hol_type) istream
+      val type_subst : hol_type subst -> hol_type -> hol_type
+      val type_vars : hol_type -> hol_type list
+      val type_varsl : hol_type list -> hol_type list
+      val mk_type : {Args:hol_type list, Tyop:string} -> hol_type
+      val dest_type : hol_type -> {Args:hol_type list, Tyop:string}
+      val mk_vartype : string -> hol_type
+      val dest_vartype : hol_type -> string
+      val is_vartype : hol_type -> bool
+      val type_lt : hol_type -> hol_type -> bool
+      val type_decl : string -> {arity:int, theory:string, tyc:hol_type}
+    end
+  structure Term :
+    sig
+      structure Type : <sig>
+      datatype fixity = Binder | Infix of int | Prefix
+      datatype term = ...
+      val const_decl : string -> {const:term, place:fixity, theory:string}
+      val fixity_of_term : string -> fixity
+      val fixity_to_string : fixity -> string
+      val prec_of_term : string -> int
+      val is_binder : string -> bool
+      val is_infix : string -> bool
+      val is_polymorphic : string -> bool
+      datatype lambda
+        = COMB of {Rand:term, Rator:term}
+        | CONST of {Name:string, Ty:Type.hol_type}
+        | LAMB of {Body:term, Bvar:term}
+        | VAR of {Name:string, Ty:Type.hol_type}
+      val ty_antiq : Type.hol_type -> term
+      val free_vars : term -> term list
+      val free_in : term -> term -> bool
+      val all_vars : term -> term list
+      val free_varsl : term list -> term list
+      val all_varsl : term list -> term list
+      val term_lt : term -> term -> bool
+      val genvar : Type.hol_type -> term
+      val genvars : Type.hol_type -> int -> term list
+      val variant : term list -> term -> term
+      val type_of : term -> Type.hol_type
+      val type_vars_in_term : term -> Type.hol_type list
+      val mk_var : {Name:string, Ty:Type.hol_type} -> term
+      val mk_primed_var : {Name:string, Ty:Type.hol_type} -> term
+      val list_mk_comb : term * term list -> term
+      val mk_comb : {Rand:term, Rator:term} -> term
+      val mk_abs : {Body:term, Bvar:term} -> term
+      val dest_var : term -> {Name:string, Ty:Type.hol_type}
+      val dest_const : term -> {Name:string, Ty:Type.hol_type}
+      val dest_comb : term -> {Rand:term, Rator:term}
+      val dest_abs : term -> {Body:term, Bvar:term}
+      val is_var : term -> bool
+      val is_const : term -> bool
+      val is_comb : term -> bool
+      val is_abs : term -> bool
+      val dest_term : term -> lambda
+      val rator : term -> term
+      val rand : term -> term
+      val bvar : term -> term
+      val body : term -> term
+      val aconv : term -> term -> bool
+      val subst : term subst -> term -> term
+      val inst : Type.hol_type subst -> term -> term
+      val beta_conv : term -> term
+    end
+  structure Match :
+    sig
+      structure Term : <sig>
+      val match_type : Term.Type.hol_type
+                       -> Term.Type.hol_type -> Term.Type.hol_type subst
+      val match_term : Term.term
+                       -> Term.term
+                          -> Term.term subst * Term.Type.hol_type subst
+    end
+  structure Net :
+    sig
+      structure Term : <sig>
+      datatype 'a net = ...
+      val empty_net : 'a net
+      val enter : Term.term * 'a -> 'a net -> 'a net
+      val lookup : Term.term -> 'a net -> 'a list
+    end
+  structure Preterm :
+    sig
+      structure Term : <sig>
+      datatype preterm
+        = Abs of {Body:preterm, Bvar:preterm}
+        | Antiq of Term.term
+        | Comb of {Rand:preterm, Rator:preterm}
+        | Const of {Name:string, Ty:Term.Type.hol_type}
+        | Constrained of preterm * Term.Type.hol_type
+        | Var of {Name:string, Ty:Term.Type.hol_type}
+      val TC : (int,Term.Type.hol_type) istream -> preterm -> unit
+      val shrink_type : (Term.Type.hol_type * Term.Type.hol_type) list
+                        -> Term.Type.hol_type -> Term.Type.hol_type
+      val tyVars : preterm -> Term.Type.hol_type list
+      val cleanup : preterm -> Term.term
+      val typecheck : (int,Term.Type.hol_type) istream -> preterm -> Term.term
+      val preterm_to_term : preterm -> Term.term
+    end
+  structure Dsyntax :
+    sig
+      structure Term : <sig>
+      val mk_const : {Name:string, Ty:Term.Type.hol_type} -> Term.term
+      val mk_eq : {lhs:Term.term, rhs:Term.term} -> Term.term
+      val mk_imp : {ant:Term.term, conseq:Term.term} -> Term.term
+      val mk_select : {Body:Term.term, Bvar:Term.term} -> Term.term
+      val mk_forall : {Body:Term.term, Bvar:Term.term} -> Term.term
+      val mk_exists : {Body:Term.term, Bvar:Term.term} -> Term.term
+      val mk_neg : Term.term -> Term.term
+      val mk_conj : {conj1:Term.term, conj2:Term.term} -> Term.term
+      val mk_disj : {disj1:Term.term, disj2:Term.term} -> Term.term
+      val mk_cond : {cond:Term.term, larm:Term.term, rarm:Term.term}
+                    -> Term.term
+      val mk_pair : {fst:Term.term, snd:Term.term} -> Term.term
+      val mk_let : {arg:Term.term, func:Term.term} -> Term.term
+      val mk_cons : {hd:Term.term, tl:Term.term} -> Term.term
+      val mk_list : {els:Term.term list, ty:Term.Type.hol_type} -> Term.term
+      val mk_pabs : {body:Term.term, varstruct:Term.term} -> Term.term
+      val dest_eq : Term.term -> {lhs:Term.term, rhs:Term.term}
+      val lhs : Term.term -> Term.term
+      val rhs : Term.term -> Term.term
+      val dest_imp : Term.term -> {ant:Term.term, conseq:Term.term}
+      val dest_select : Term.term -> {Body:Term.term, Bvar:Term.term}
+      val dest_forall : Term.term -> {Body:Term.term, Bvar:Term.term}
+      val dest_exists : Term.term -> {Body:Term.term, Bvar:Term.term}
+      val dest_neg : Term.term -> Term.term
+      val dest_conj : Term.term -> {conj1:Term.term, conj2:Term.term}
+      val dest_disj : Term.term -> {disj1:Term.term, disj2:Term.term}
+      val dest_cond : Term.term
+                      -> {cond:Term.term, larm:Term.term, rarm:Term.term}
+      val dest_pair : Term.term -> {fst:Term.term, snd:Term.term}
+      val dest_let : Term.term -> {arg:Term.term, func:Term.term}
+      val dest_cons : Term.term -> {hd:Term.term, tl:Term.term}
+      val dest_list : Term.term -> {els:Term.term list, ty:Term.Type.hol_type}
+      val dest_pabs : Term.term -> {body:Term.term, varstruct:Term.term}
+      val is_eq : Term.term -> bool
+      val is_imp : Term.term -> bool
+      val is_select : Term.term -> bool
+      val is_forall : Term.term -> bool
+      val is_exists : Term.term -> bool
+      val is_neg : Term.term -> bool
+      val is_conj : Term.term -> bool
+      val is_disj : Term.term -> bool
+      val is_cond : Term.term -> bool
+      val is_pair : Term.term -> bool
+      val is_let : Term.term -> bool
+      val is_cons : Term.term -> bool
+      val is_list : Term.term -> bool
+      val is_pabs : Term.term -> bool
+      val list_mk_abs : Term.term list * Term.term -> Term.term
+      val list_mk_imp : Term.term list * Term.term -> Term.term
+      val list_mk_forall : Term.term list * Term.term -> Term.term
+      val gen_all : Term.term -> Term.term
+      val list_mk_exists : Term.term list * Term.term -> Term.term
+      val list_mk_conj : Term.term list -> Term.term
+      val list_mk_disj : Term.term list -> Term.term
+      val list_mk_pair : Term.term list -> Term.term
+      val strip_comb : Term.term -> Term.term * Term.term list
+      val strip_abs : Term.term -> Term.term list * Term.term
+      val strip_imp : Term.term -> Term.term list * Term.term
+      val strip_forall : Term.term -> Term.term list * Term.term
+      val strip_exists : Term.term -> Term.term list * Term.term
+      val strip_conj : Term.term -> Term.term list
+      val strip_disj : Term.term -> Term.term list
+      val strip_pair : Term.term -> Term.term list
+      val infix_ty : Term.Type.hol_type
+                     -> Term.Type.hol_type -> Term.Type.hol_type
+      val bool : Term.Type.hol_type
+      val de_abs : Term.term -> Term.term list * Term.term
+      val find_term : (Term.term -> bool) -> Term.term -> Term.term
+      val find_terms : (Term.term -> bool) -> Term.term -> Term.term list
+      val subst_occs : int list list
+                       -> Term.term subst -> Term.term -> Term.term
+      val binder_restrictions : unit -> (string * string) list
+      val associate_restriction : string * string -> unit
+      val delete_restriction : string -> unit
+    end
+  structure Hol_pp :
+    sig
+      structure Term : <sig>
+      val pp_type : ?.PrettyPrint.ppstream -> Term.Type.hol_type -> int -> unit
+      val pp_term : ?.PrettyPrint.ppstream -> Term.term -> unit
+      val pp_self_parsing_type : ?.PrettyPrint.ppstream
+                                 -> Term.Type.hol_type -> unit
+      val pp_self_parsing_term : ?.PrettyPrint.ppstream -> Term.term -> unit
+      val type_to_string : Term.Type.hol_type -> string
+      val term_to_string : Term.term -> string
+      val print_type : Term.Type.hol_type -> unit
+      val print_term : Term.term -> unit
+      structure Extend_hol_pp : <sig>
+    end
+  structure Thm :
+    sig
+      structure Term : <sig>
+      datatype thm = ...
+      val reset_thm_count : unit -> unit
+      val counting_thms : bool -> unit
+      val thm_count : unit
+                      -> {ABS:int, ASSUME:int, BETA_CONV:int, DISCH:int,
+                          INST_TYPE:int, MP:int, REFL:int, SUBST:int,
+                          axiom:int, definition:int, drule:int, from_disk:int,
+                          other:int, valid_tac:int}
+      val hyp : thm -> Term.term list
+      val concl : thm -> Term.term
+      val dest_thm : thm -> Term.term list * Term.term
+      val thm_free_vars : thm -> Term.term list
+      val hyp_union : thm list -> Term.term list
+      val pp_thm : ?.PrettyPrint.ppstream -> thm -> unit
+      val thm_to_string : thm -> string
+      val print_thm : thm -> unit
+      val ASSUME : Term.term -> thm
+      val REFL : Term.term -> thm
+      val BETA_CONV : Term.term -> thm
+      val SUBST : {thm:thm, var:Term.term} list -> Term.term -> thm -> thm
+      val ABS : Term.term -> thm -> thm
+      val INST_TYPE : Term.Type.hol_type subst -> thm -> thm
+      val DISCH : Term.term -> thm -> thm
+      val MP : thm -> thm -> thm
+      val mk_axiom_thm : Term.term list * Term.term -> thm
+      val mk_definition_thm : Term.term list * Term.term -> thm
+      val mk_drule_thm : Term.term list * Term.term -> thm
+      val mk_disk_thm : Term.term list * Term.term -> thm
+      val mk_tac_thm : Term.term list * Term.term -> thm
+      val mk_thm : Term.term list * Term.term -> thm
+      datatype just_arg
+        = JA_INT of int
+        | JA_INTLIST of int list
+        | JA_PAIR of just_arg * just_arg
+        | JA_STRING of string
+        | JA_TERM of Term.term
+        | JA_THM of thm
+        | JA_TYPE of Term.Type.hol_type
+      datatype step = STEP of {Just:just_arg list, Name:string, Thm:thm}
+      val record_step : (step -> thm) ref
+      val record_proof : bool -> unit
+      val suspend_recording : unit -> unit
+      val resume_recording : unit -> unit
+      val is_recording_proof : unit -> bool
+      val note : step * thm -> thm
+    end
+  structure Theory :
+    sig
+      structure Thm : <sig>
+      val new_parent : string -> unit
+      val new_type : {Arity:int, Name:string} -> unit
+      val new_constant : {Name:string, Ty:Thm.Term.Type.hol_type} -> unit
+      val new_infix : {Name:string, Prec:int, Ty:Thm.Term.Type.hol_type}
+                      -> unit
+      val new_binder : {Name:string, Ty:Thm.Term.Type.hol_type} -> unit
+      val new_open_axiom : string * Thm.Term.term -> Thm.thm
+      val store_definition : string * Thm.Term.term -> Thm.thm
+      val save_thm : string * Thm.thm -> Thm.thm
+      val arity : string -> int
+      val fixity : string -> Thm.Term.fixity
+      val precedence : string -> int
+      val const_decl : string
+                       -> {const:Thm.Term.term, place:Thm.Term.fixity,
+                           theory:string}
+      val is_constant : string -> bool
+      val is_type : string -> bool
+      val is_binder : string -> bool
+      val is_infix : string -> bool
+      val draft_mode : unit -> bool
+      val current_theory : unit -> string
+      val parents : string -> string list
+      val ancestry : string -> string list
+      val types : string -> {Arity:int, Name:string} list
+      val constants : string -> Thm.Term.term list
+      val infixes : string -> Thm.Term.term list
+      val binders : string -> Thm.Term.term list
+      val axioms : string -> (string * Thm.thm) list
+      val axiom : string -> string -> Thm.thm
+      val definitions : string -> (string * Thm.thm) list
+      val definition : string -> string -> Thm.thm
+      val theorems : string -> (string * Thm.thm) list
+      val theorem : string -> string -> Thm.thm
+      val print_theory_to_outstream : {outstream:Portable.outstream,
+                                       theory:string}
+                                      -> Portable.outstream
+      val print_theory_to_file : {file:string, theory:string} -> unit
+      val print_theory : string -> unit
+      val html_theory : string -> unit
+      val new_theory : string -> unit
+      val close_theory : unit -> unit
+      val load_theory : string -> unit
+      val extend_theory : string -> unit
+      val export_theory : unit -> unit
+      val close : unit -> unit
+      val delete_cache : unit -> unit
+      val delete_theory_from_cache : string -> unit
+      val theories_in_cache : unit -> string list
+      val perform_atomic_theory_op : (unit -> 'a) -> 'a
+      val loadLibThry : string -> string -> unit
+    end
+  structure Const_spec :
+    sig
+      structure Theory : <sig>
+      val new_specification : {consts:{const_name:string,
+                                       fixity:Theory.Thm.Term.fixity} list,
+                               name:string, sat_thm:Theory.Thm.thm}
+                              -> Theory.Thm.thm
+    end
+  structure Type_def :
+    sig
+      structure Theory : <sig>
+      val new_type_definition : {inhab_thm:Theory.Thm.thm, name:string,
+                                 pred:Theory.Thm.Term.term}
+                                -> Theory.Thm.thm
+    end
+  structure Const_def :
+    sig
+      structure Theory : <sig>
+      val new_definition : string * Theory.Thm.Term.term -> Theory.Thm.thm
+      val new_infix_definition : string * Theory.Thm.Term.term * int
+                                 -> Theory.Thm.thm
+      val new_binder_definition : string * Theory.Thm.Term.term
+                                  -> Theory.Thm.thm
+    end
+opening Save_hol
+  val print_banner : string -> unit
+  val save_hol : string -> unit
+opening Prim_rec
+  structure Thm :
+    sig
+      structure Term : <sig>
+      datatype thm = ...
+      val reset_thm_count : unit -> unit
+      val counting_thms : bool -> unit
+      val thm_count : unit
+                      -> {ABS:int, ASSUME:int, BETA_CONV:int, DISCH:int,
+                          INST_TYPE:int, MP:int, REFL:int, SUBST:int,
+                          axiom:int, definition:int, drule:int, from_disk:int,
+                          other:int, valid_tac:int}
+      val hyp : thm -> Term.term list
+      val concl : thm -> Term.term
+      val dest_thm : thm -> Term.term list * Term.term
+      val thm_free_vars : thm -> Term.term list
+      val hyp_union : thm list -> Term.term list
+      val pp_thm : ?.PrettyPrint.ppstream -> thm -> unit
+      val thm_to_string : thm -> string
+      val print_thm : thm -> unit
+      val ASSUME : Term.term -> thm
+      val REFL : Term.term -> thm
+      val BETA_CONV : Term.term -> thm
+      val SUBST : {thm:thm, var:Term.term} list -> Term.term -> thm -> thm
+      val ABS : Term.term -> thm -> thm
+      val INST_TYPE : Term.Type.hol_type subst -> thm -> thm
+      val DISCH : Term.term -> thm -> thm
+      val MP : thm -> thm -> thm
+      val mk_axiom_thm : Term.term list * Term.term -> thm
+      val mk_definition_thm : Term.term list * Term.term -> thm
+      val mk_drule_thm : Term.term list * Term.term -> thm
+      val mk_disk_thm : Term.term list * Term.term -> thm
+      val mk_tac_thm : Term.term list * Term.term -> thm
+      val mk_thm : Term.term list * Term.term -> thm
+      datatype just_arg
+        = JA_INT of int
+        | JA_INTLIST of int list
+        | JA_PAIR of just_arg * just_arg
+        | JA_STRING of string
+        | JA_TERM of Term.term
+        | JA_THM of thm
+        | JA_TYPE of Term.Type.hol_type
+      datatype step = STEP of {Just:just_arg list, Name:string, Thm:thm}
+      val record_step : (step -> thm) ref
+      val record_proof : bool -> unit
+      val suspend_recording : unit -> unit
+      val resume_recording : unit -> unit
+      val is_recording_proof : unit -> bool
+      val note : step * thm -> thm
+    end
+  val prove_rec_fn_exists : Thm.thm -> Thm.Term.term -> Thm.thm
+  val new_recursive_definition : {def:Thm.Term.term, fixity:Thm.Term.fixity,
+                                  name:string, rec_axiom:Thm.thm}
+                                 -> Thm.thm
+opening Induct_then
+  structure Thm :
+    sig
+      structure Term : <sig>
+      datatype thm = ...
+      val reset_thm_count : unit -> unit
+      val counting_thms : bool -> unit
+      val thm_count : unit
+                      -> {ABS:int, ASSUME:int, BETA_CONV:int, DISCH:int,
+                          INST_TYPE:int, MP:int, REFL:int, SUBST:int,
+                          axiom:int, definition:int, drule:int, from_disk:int,
+                          other:int, valid_tac:int}
+      val hyp : thm -> Term.term list
+      val concl : thm -> Term.term
+      val dest_thm : thm -> Term.term list * Term.term
+      val thm_free_vars : thm -> Term.term list
+      val hyp_union : thm list -> Term.term list
+      val pp_thm : ?.PrettyPrint.ppstream -> thm -> unit
+      val thm_to_string : thm -> string
+      val print_thm : thm -> unit
+      val ASSUME : Term.term -> thm
+      val REFL : Term.term -> thm
+      val BETA_CONV : Term.term -> thm
+      val SUBST : {thm:thm, var:Term.term} list -> Term.term -> thm -> thm
+      val ABS : Term.term -> thm -> thm
+      val INST_TYPE : Term.Type.hol_type subst -> thm -> thm
+      val DISCH : Term.term -> thm -> thm
+      val MP : thm -> thm -> thm
+      val mk_axiom_thm : Term.term list * Term.term -> thm
+      val mk_definition_thm : Term.term list * Term.term -> thm
+      val mk_drule_thm : Term.term list * Term.term -> thm
+      val mk_disk_thm : Term.term list * Term.term -> thm
+      val mk_tac_thm : Term.term list * Term.term -> thm
+      val mk_thm : Term.term list * Term.term -> thm
+      datatype just_arg
+        = JA_INT of int
+        | JA_INTLIST of int list
+        | JA_PAIR of just_arg * just_arg
+        | JA_STRING of string
+        | JA_TERM of Term.term
+        | JA_THM of thm
+        | JA_TYPE of Term.Type.hol_type
+      datatype step = STEP of {Just:just_arg list, Name:string, Thm:thm}
+      val record_step : (step -> thm) ref
+      val record_proof : bool -> unit
+      val suspend_recording : unit -> unit
+      val resume_recording : unit -> unit
+      val is_recording_proof : unit -> bool
+      val note : step * thm -> thm
+    end
+  val INDUCT_THEN : Thm.thm -> thm_tactic -> tactic
+opening Type_def_support
+  structure Thm :
+    sig
+      structure Term : <sig>
+      datatype thm = ...
+      val reset_thm_count : unit -> unit
+      val counting_thms : bool -> unit
+      val thm_count : unit
+                      -> {ABS:int, ASSUME:int, BETA_CONV:int, DISCH:int,
+                          INST_TYPE:int, MP:int, REFL:int, SUBST:int,
+                          axiom:int, definition:int, drule:int, from_disk:int,
+                          other:int, valid_tac:int}
+      val hyp : thm -> Term.term list
+      val concl : thm -> Term.term
+      val dest_thm : thm -> Term.term list * Term.term
+      val thm_free_vars : thm -> Term.term list
+      val hyp_union : thm list -> Term.term list
+      val pp_thm : ?.PrettyPrint.ppstream -> thm -> unit
+      val thm_to_string : thm -> string
+      val print_thm : thm -> unit
+      val ASSUME : Term.term -> thm
+      val REFL : Term.term -> thm
+      val BETA_CONV : Term.term -> thm
+      val SUBST : {thm:thm, var:Term.term} list -> Term.term -> thm -> thm
+      val ABS : Term.term -> thm -> thm
+      val INST_TYPE : Term.Type.hol_type subst -> thm -> thm
+      val DISCH : Term.term -> thm -> thm
+      val MP : thm -> thm -> thm
+      val mk_axiom_thm : Term.term list * Term.term -> thm
+      val mk_definition_thm : Term.term list * Term.term -> thm
+      val mk_drule_thm : Term.term list * Term.term -> thm
+      val mk_disk_thm : Term.term list * Term.term -> thm
+      val mk_tac_thm : Term.term list * Term.term -> thm
+      val mk_thm : Term.term list * Term.term -> thm
+      datatype just_arg
+        = JA_INT of int
+        | JA_INTLIST of int list
+        | JA_PAIR of just_arg * just_arg
+        | JA_STRING of string
+        | JA_TERM of Term.term
+        | JA_THM of thm
+        | JA_TYPE of Term.Type.hol_type
+      datatype step = STEP of {Just:just_arg list, Name:string, Thm:thm}
+      val record_step : (step -> thm) ref
+      val record_proof : bool -> unit
+      val suspend_recording : unit -> unit
+      val resume_recording : unit -> unit
+      val is_recording_proof : unit -> bool
+      val note : step * thm -> thm
+    end
+  val ABS_REP_THM : Thm.thm
+  val define_new_type_bijections : {ABS:string, REP:string, name:string,
+                                    tyax:Thm.thm}
+                                   -> Thm.thm
+  val prove_rep_fn_one_one : Thm.thm -> Thm.thm
+  val prove_rep_fn_onto : Thm.thm -> Thm.thm
+  val prove_abs_fn_onto : Thm.thm -> Thm.thm
+  val prove_abs_fn_one_one : Thm.thm -> Thm.thm
+opening Resolve
+  structure Thm :
+    sig
+      structure Term : <sig>
+      datatype thm = ...
+      val reset_thm_count : unit -> unit
+      val counting_thms : bool -> unit
+      val thm_count : unit
+                      -> {ABS:int, ASSUME:int, BETA_CONV:int, DISCH:int,
+                          INST_TYPE:int, MP:int, REFL:int, SUBST:int,
+                          axiom:int, definition:int, drule:int, from_disk:int,
+                          other:int, valid_tac:int}
+      val hyp : thm -> Term.term list
+      val concl : thm -> Term.term
+      val dest_thm : thm -> Term.term list * Term.term
+      val thm_free_vars : thm -> Term.term list
+      val hyp_union : thm list -> Term.term list
+      val pp_thm : ?.PrettyPrint.ppstream -> thm -> unit
+      val thm_to_string : thm -> string
+      val print_thm : thm -> unit
+      val ASSUME : Term.term -> thm
+      val REFL : Term.term -> thm
+      val BETA_CONV : Term.term -> thm
+      val SUBST : {thm:thm, var:Term.term} list -> Term.term -> thm -> thm
+      val ABS : Term.term -> thm -> thm
+      val INST_TYPE : Term.Type.hol_type subst -> thm -> thm
+      val DISCH : Term.term -> thm -> thm
+      val MP : thm -> thm -> thm
+      val mk_axiom_thm : Term.term list * Term.term -> thm
+      val mk_definition_thm : Term.term list * Term.term -> thm
+      val mk_drule_thm : Term.term list * Term.term -> thm
+      val mk_disk_thm : Term.term list * Term.term -> thm
+      val mk_tac_thm : Term.term list * Term.term -> thm
+      val mk_thm : Term.term list * Term.term -> thm
+      datatype just_arg
+        = JA_INT of int
+        | JA_INTLIST of int list
+        | JA_PAIR of just_arg * just_arg
+        | JA_STRING of string
+        | JA_TERM of Term.term
+        | JA_THM of thm
+        | JA_TYPE of Term.Type.hol_type
+      datatype step = STEP of {Just:just_arg list, Name:string, Thm:thm}
+      val record_step : (step -> thm) ref
+      val record_proof : bool -> unit
+      val suspend_recording : unit -> unit
+      val resume_recording : unit -> unit
+      val is_recording_proof : unit -> bool
+      val note : step * thm -> thm
+    end
+  val MATCH_ACCEPT_TAC : thm_tactic
+  val ANTE_RES_THEN : thm_tactical
+  val RES_CANON : Thm.thm -> Thm.thm list
+  val IMP_RES_THEN : thm_tactic -> Thm.thm -> tactic
+  val RES_THEN : thm_tactic -> tactic
+  val IMP_RES_TAC : thm_tactic
+  val RES_TAC : tactic
+  val MATCH_MP_TAC : thm_tactic
+opening Taut_thms
+  structure Thm :
+    sig
+      structure Term : <sig>
+      datatype thm = ...
+      val reset_thm_count : unit -> unit
+      val counting_thms : bool -> unit
+      val thm_count : unit
+                      -> {ABS:int, ASSUME:int, BETA_CONV:int, DISCH:int,
+                          INST_TYPE:int, MP:int, REFL:int, SUBST:int,
+                          axiom:int, definition:int, drule:int, from_disk:int,
+                          other:int, valid_tac:int}
+      val hyp : thm -> Term.term list
+      val concl : thm -> Term.term
+      val dest_thm : thm -> Term.term list * Term.term
+      val thm_free_vars : thm -> Term.term list
+      val hyp_union : thm list -> Term.term list
+      val pp_thm : ?.PrettyPrint.ppstream -> thm -> unit
+      val thm_to_string : thm -> string
+      val print_thm : thm -> unit
+      val ASSUME : Term.term -> thm
+      val REFL : Term.term -> thm
+      val BETA_CONV : Term.term -> thm
+      val SUBST : {thm:thm, var:Term.term} list -> Term.term -> thm -> thm
+      val ABS : Term.term -> thm -> thm
+      val INST_TYPE : Term.Type.hol_type subst -> thm -> thm
+      val DISCH : Term.term -> thm -> thm
+      val MP : thm -> thm -> thm
+      val mk_axiom_thm : Term.term list * Term.term -> thm
+      val mk_definition_thm : Term.term list * Term.term -> thm
+      val mk_drule_thm : Term.term list * Term.term -> thm
+      val mk_disk_thm : Term.term list * Term.term -> thm
+      val mk_tac_thm : Term.term list * Term.term -> thm
+      val mk_thm : Term.term list * Term.term -> thm
+      datatype just_arg
+        = JA_INT of int
+        | JA_INTLIST of int list
+        | JA_PAIR of just_arg * just_arg
+        | JA_STRING of string
+        | JA_TERM of Term.term
+        | JA_THM of thm
+        | JA_TYPE of Term.Type.hol_type
+      datatype step = STEP of {Just:just_arg list, Name:string, Thm:thm}
+      val record_step : (step -> thm) ref
+      val record_proof : bool -> unit
+      val suspend_recording : unit -> unit
+      val resume_recording : unit -> unit
+      val is_recording_proof : unit -> bool
+      val note : step * thm -> thm
+    end
+  val OR_IMP_THM : Thm.thm
+  val NOT_IMP : Thm.thm
+  val DISJ_ASSOC : Thm.thm
+  val DISJ_SYM : Thm.thm
+  val DE_MORGAN_THM : Thm.thm
+  val LEFT_AND_OVER_OR : Thm.thm
+  val RIGHT_AND_OVER_OR : Thm.thm
+  val LEFT_OR_OVER_AND : Thm.thm
+  val RIGHT_OR_OVER_AND : Thm.thm
+  val IMP_DISJ_THM : Thm.thm
+  val IMP_F_EQ_F : Thm.thm
+  val AND_IMP_INTRO : Thm.thm
+  val EQ_IMP_THM : Thm.thm
+  val EQ_EXPAND : Thm.thm
+  val COND_RATOR : Thm.thm
+  val COND_RAND : Thm.thm
+  val COND_ABS : Thm.thm
+  val COND_EXPAND : Thm.thm
+opening Tactic
+  structure Thm :
+    sig
+      structure Term : <sig>
+      datatype thm = ...
+      val reset_thm_count : unit -> unit
+      val counting_thms : bool -> unit
+      val thm_count : unit
+                      -> {ABS:int, ASSUME:int, BETA_CONV:int, DISCH:int,
+                          INST_TYPE:int, MP:int, REFL:int, SUBST:int,
+                          axiom:int, definition:int, drule:int, from_disk:int,
+                          other:int, valid_tac:int}
+      val hyp : thm -> Term.term list
+      val concl : thm -> Term.term
+      val dest_thm : thm -> Term.term list * Term.term
+      val thm_free_vars : thm -> Term.term list
+      val hyp_union : thm list -> Term.term list
+      val pp_thm : ?.PrettyPrint.ppstream -> thm -> unit
+      val thm_to_string : thm -> string
+      val print_thm : thm -> unit
+      val ASSUME : Term.term -> thm
+      val REFL : Term.term -> thm
+      val BETA_CONV : Term.term -> thm
+      val SUBST : {thm:thm, var:Term.term} list -> Term.term -> thm -> thm
+      val ABS : Term.term -> thm -> thm
+      val INST_TYPE : Term.Type.hol_type subst -> thm -> thm
+      val DISCH : Term.term -> thm -> thm
+      val MP : thm -> thm -> thm
+      val mk_axiom_thm : Term.term list * Term.term -> thm
+      val mk_definition_thm : Term.term list * Term.term -> thm
+      val mk_drule_thm : Term.term list * Term.term -> thm
+      val mk_disk_thm : Term.term list * Term.term -> thm
+      val mk_tac_thm : Term.term list * Term.term -> thm
+      val mk_thm : Term.term list * Term.term -> thm
+      datatype just_arg
+        = JA_INT of int
+        | JA_INTLIST of int list
+        | JA_PAIR of just_arg * just_arg
+        | JA_STRING of string
+        | JA_TERM of Term.term
+        | JA_THM of thm
+        | JA_TYPE of Term.Type.hol_type
+      datatype step = STEP of {Just:just_arg list, Name:string, Thm:thm}
+      val record_step : (step -> thm) ref
+      val record_proof : bool -> unit
+      val suspend_recording : unit -> unit
+      val resume_recording : unit -> unit
+      val is_recording_proof : unit -> bool
+      val note : step * thm -> thm
+    end
+  val ACCEPT_TAC : thm_tactic
+  val DISCARD_TAC : Thm.thm -> tactic
+  val CONTR_TAC : thm_tactic
+  val CCONTR_TAC : tactic
+  val ASSUME_TAC : thm_tactic
+  val FREEZE_THEN : thm_tactical
+  val CONJ_TAC : tactic
+  val DISJ1_TAC : tactic
+  val DISJ2_TAC : tactic
+  val MP_TAC : thm_tactic
+  val EQ_TAC : tactic
+  val X_GEN_TAC : Thm.Term.term -> tactic
+  val GEN_TAC : tactic
+  val SPEC_TAC : Thm.Term.term * Thm.Term.term -> tactic
+  val EXISTS_TAC : Thm.Term.term -> tactic
+  val GSUBST_TAC : (Thm.Term.term subst -> Thm.Term.term -> Thm.Term.term)
+                   -> Thm.thm list -> tactic
+  val SUBST_TAC : Thm.thm list -> tactic
+  val SUBST_OCCS_TAC : (int list * Thm.thm) list -> tactic
+  val SUBST1_TAC : Thm.thm -> tactic
+  val RULE_ASSUM_TAC : (Thm.thm -> Thm.thm) -> tactic
+  val SUBST_ALL_TAC : Thm.thm -> tactic
+  val CHECK_ASSUME_TAC : thm_tactic
+  val STRIP_ASSUME_TAC : thm_tactic
+  val STRUCT_CASES_TAC : thm_tactic
+  val COND_CASES_TAC : tactic
+  val BOOL_CASES_TAC : Thm.Term.term -> tactic
+  val STRIP_GOAL_THEN : thm_tactic -> tactic
+  val FILTER_GEN_TAC : Thm.Term.term -> tactic
+  val FILTER_DISCH_THEN : thm_tactic -> Thm.Term.term -> tactic
+  val FILTER_STRIP_THEN : thm_tactic -> Thm.Term.term -> tactic
+  val DISCH_TAC : tactic
+  val DISJ_CASES_TAC : thm_tactic
+  val CHOOSE_TAC : thm_tactic
+  val X_CHOOSE_TAC : Thm.Term.term -> thm_tactic
+  val STRIP_TAC : tactic
+  val FILTER_DISCH_TAC : Thm.Term.term -> tactic
+  val FILTER_STRIP_TAC : Thm.Term.term -> tactic
+  val ASM_CASES_TAC : Thm.Term.term -> tactic
+  val REFL_TAC : tactic
+  val UNDISCH_TAC : Thm.Term.term -> tactic
+  val AP_TERM_TAC : tactic
+  val AP_THM_TAC : tactic
+opening Thm_cont
+  structure Thm :
+    sig
+      structure Term : <sig>
+      datatype thm = ...
+      val reset_thm_count : unit -> unit
+      val counting_thms : bool -> unit
+      val thm_count : unit
+                      -> {ABS:int, ASSUME:int, BETA_CONV:int, DISCH:int,
+                          INST_TYPE:int, MP:int, REFL:int, SUBST:int,
+                          axiom:int, definition:int, drule:int, from_disk:int,
+                          other:int, valid_tac:int}
+      val hyp : thm -> Term.term list
+      val concl : thm -> Term.term
+      val dest_thm : thm -> Term.term list * Term.term
+      val thm_free_vars : thm -> Term.term list
+      val hyp_union : thm list -> Term.term list
+      val pp_thm : ?.PrettyPrint.ppstream -> thm -> unit
+      val thm_to_string : thm -> string
+      val print_thm : thm -> unit
+      val ASSUME : Term.term -> thm
+      val REFL : Term.term -> thm
+      val BETA_CONV : Term.term -> thm
+      val SUBST : {thm:thm, var:Term.term} list -> Term.term -> thm -> thm
+      val ABS : Term.term -> thm -> thm
+      val INST_TYPE : Term.Type.hol_type subst -> thm -> thm
+      val DISCH : Term.term -> thm -> thm
+      val MP : thm -> thm -> thm
+      val mk_axiom_thm : Term.term list * Term.term -> thm
+      val mk_definition_thm : Term.term list * Term.term -> thm
+      val mk_drule_thm : Term.term list * Term.term -> thm
+      val mk_disk_thm : Term.term list * Term.term -> thm
+      val mk_tac_thm : Term.term list * Term.term -> thm
+      val mk_thm : Term.term list * Term.term -> thm
+      datatype just_arg
+        = JA_INT of int
+        | JA_INTLIST of int list
+        | JA_PAIR of just_arg * just_arg
+        | JA_STRING of string
+        | JA_TERM of Term.term
+        | JA_THM of thm
+        | JA_TYPE of Term.Type.hol_type
+      datatype step = STEP of {Just:just_arg list, Name:string, Thm:thm}
+      val record_step : (step -> thm) ref
+      val record_proof : bool -> unit
+      val suspend_recording : unit -> unit
+      val resume_recording : unit -> unit
+      val is_recording_proof : unit -> bool
+      val note : step * thm -> thm
+    end
+  val THEN_TCL : thm_tactical * thm_tactical -> thm_tactical
+  val ORELSE_TCL : thm_tactical * thm_tactical -> thm_tactical
+  val REPEAT_TCL : thm_tactical -> thm_tactical
+  val REPEAT_GTCL : thm_tactical -> (Thm.thm -> tactic) -> thm_tactic
+  val ALL_THEN : thm_tactical
+  val NO_THEN : thm_tactical
+  val EVERY_TCL : thm_tactical list -> thm_tactical
+  val FIRST_TCL : thm_tactical list -> thm_tactical
+  val CONJUNCTS_THEN2 : thm_tactic -> thm_tactical
+  val CONJUNCTS_THEN : thm_tactical
+  val DISJ_CASES_THEN2 : thm_tactic -> thm_tactical
+  val DISJ_CASES_THEN : thm_tactical
+  val DISJ_CASES_THENL : thm_tactic list -> thm_tactic
+  val DISCH_THEN : thm_tactic -> tactic
+  val X_CHOOSE_THEN : Thm.Term.term -> thm_tactical
+  val CHOOSE_THEN : thm_tactical
+  val X_CASES_THENL : (('a list -> 'b list -> ('a * 'b) list)
+                       -> thm_tactic list
+                          -> (Thm.Term.term list * thm_tactic) list)
+                      -> thm_tactic list -> thm_tactic
+  val X_CASES_THEN : Thm.Term.term list list -> thm_tactical
+  val CASES_THENL : thm_tactic list -> thm_tactic
+  val STRIP_THM_THEN : thm_tactical
+infix THEN_TCL
+infix ORELSE_TCL
+opening Rewrite
+  structure Thm :
+    sig
+      structure Term : <sig>
+      datatype thm = ...
+      val reset_thm_count : unit -> unit
+      val counting_thms : bool -> unit
+      val thm_count : unit
+                      -> {ABS:int, ASSUME:int, BETA_CONV:int, DISCH:int,
+                          INST_TYPE:int, MP:int, REFL:int, SUBST:int,
+                          axiom:int, definition:int, drule:int, from_disk:int,
+                          other:int, valid_tac:int}
+      val hyp : thm -> Term.term list
+      val concl : thm -> Term.term
+      val dest_thm : thm -> Term.term list * Term.term
+      val thm_free_vars : thm -> Term.term list
+      val hyp_union : thm list -> Term.term list
+      val pp_thm : ?.PrettyPrint.ppstream -> thm -> unit
+      val thm_to_string : thm -> string
+      val print_thm : thm -> unit
+      val ASSUME : Term.term -> thm
+      val REFL : Term.term -> thm
+      val BETA_CONV : Term.term -> thm
+      val SUBST : {thm:thm, var:Term.term} list -> Term.term -> thm -> thm
+      val ABS : Term.term -> thm -> thm
+      val INST_TYPE : Term.Type.hol_type subst -> thm -> thm
+      val DISCH : Term.term -> thm -> thm
+      val MP : thm -> thm -> thm
+      val mk_axiom_thm : Term.term list * Term.term -> thm
+      val mk_definition_thm : Term.term list * Term.term -> thm
+      val mk_drule_thm : Term.term list * Term.term -> thm
+      val mk_disk_thm : Term.term list * Term.term -> thm
+      val mk_tac_thm : Term.term list * Term.term -> thm
+      val mk_thm : Term.term list * Term.term -> thm
+      datatype just_arg
+        = JA_INT of int
+        | JA_INTLIST of int list
+        | JA_PAIR of just_arg * just_arg
+        | JA_STRING of string
+        | JA_TERM of Term.term
+        | JA_THM of thm
+        | JA_TYPE of Term.Type.hol_type
+      datatype step = STEP of {Just:just_arg list, Name:string, Thm:thm}
+      val record_step : (step -> thm) ref
+      val record_proof : bool -> unit
+      val suspend_recording : unit -> unit
+      val resume_recording : unit -> unit
+      val is_recording_proof : unit -> bool
+      val note : step * thm -> thm
+    end
+  type rewrites
+  val mk_rewrites : Thm.thm -> Thm.thm list
+  val add_rewrites : rewrites -> Thm.thm list -> rewrites
+  val dest_rewrites : rewrites -> Thm.thm list
+  val empty_rewrites : rewrites
+  val implicit_rewrites : unit -> rewrites
+  val set_implicit_rewrites : rewrites -> unit
+  val add_implicit_rewrites : Thm.thm list -> unit
+  val pp_rewrites : ?.PrettyPrint.ppstream -> rewrites -> unit
+  val bool_rewrites : rewrites
+  val REWRITES_CONV : rewrites -> conv
+  val GEN_REWRITE_CONV : (conv -> conv) -> rewrites -> Thm.thm list -> conv
+  val GEN_REWRITE_RULE : (conv -> conv)
+                         -> rewrites -> Thm.thm list -> Thm.thm -> Thm.thm
+  val GEN_REWRITE_TAC : (conv -> conv) -> rewrites -> Thm.thm list -> tactic
+  val PURE_REWRITE_CONV : Thm.thm list -> conv
+  val REWRITE_CONV : Thm.thm list -> conv
+  val PURE_ONCE_REWRITE_CONV : Thm.thm list -> conv
+  val ONCE_REWRITE_CONV : Thm.thm list -> conv
+  val PURE_REWRITE_RULE : Thm.thm list -> Thm.thm -> Thm.thm
+  val REWRITE_RULE : Thm.thm list -> Thm.thm -> Thm.thm
+  val PURE_ONCE_REWRITE_RULE : Thm.thm list -> Thm.thm -> Thm.thm
+  val ONCE_REWRITE_RULE : Thm.thm list -> Thm.thm -> Thm.thm
+  val PURE_ASM_REWRITE_RULE : Thm.thm list -> Thm.thm -> Thm.thm
+  val ASM_REWRITE_RULE : Thm.thm list -> Thm.thm -> Thm.thm
+  val PURE_ONCE_ASM_REWRITE_RULE : Thm.thm list -> Thm.thm -> Thm.thm
+  val ONCE_ASM_REWRITE_RULE : Thm.thm list -> Thm.thm -> Thm.thm
+  val PURE_REWRITE_TAC : Thm.thm list -> tactic
+  val REWRITE_TAC : Thm.thm list -> tactic
+  val PURE_ONCE_REWRITE_TAC : Thm.thm list -> tactic
+  val ONCE_REWRITE_TAC : Thm.thm list -> tactic
+  val PURE_ASM_REWRITE_TAC : Thm.thm list -> tactic
+  val ASM_REWRITE_TAC : Thm.thm list -> tactic
+  val PURE_ONCE_ASM_REWRITE_TAC : Thm.thm list -> tactic
+  val ONCE_ASM_REWRITE_TAC : Thm.thm list -> tactic
+  val FILTER_PURE_ASM_REWRITE_RULE : (Thm.Term.term -> bool)
+                                     -> Thm.thm list -> Thm.thm -> Thm.thm
+  val FILTER_ASM_REWRITE_RULE : (Thm.Term.term -> bool)
+                                -> Thm.thm list -> Thm.thm -> Thm.thm
+  val FILTER_PURE_ONCE_ASM_REWRITE_RULE : (Thm.Term.term -> bool)
+                                          -> Thm.thm list -> Thm.thm -> Thm.thm
+  val FILTER_ONCE_ASM_REWRITE_RULE : (Thm.Term.term -> bool)
+                                     -> Thm.thm list -> Thm.thm -> Thm.thm
+  val FILTER_PURE_ASM_REWRITE_TAC : (Thm.Term.term -> bool)
+                                    -> Thm.thm list -> tactic
+  val FILTER_ASM_REWRITE_TAC : (Thm.Term.term -> bool)
+                               -> Thm.thm list -> tactic
+  val FILTER_PURE_ONCE_ASM_REWRITE_TAC : (Thm.Term.term -> bool)
+                                         -> Thm.thm list -> tactic
+  val FILTER_ONCE_ASM_REWRITE_TAC : (Thm.Term.term -> bool)
+                                    -> Thm.thm list -> tactic
+  val SUBST_MATCH : Thm.thm -> Thm.thm -> Thm.thm
+opening Tactical
+  structure Thm :
+    sig
+      structure Term : <sig>
+      datatype thm = ...
+      val reset_thm_count : unit -> unit
+      val counting_thms : bool -> unit
+      val thm_count : unit
+                      -> {ABS:int, ASSUME:int, BETA_CONV:int, DISCH:int,
+                          INST_TYPE:int, MP:int, REFL:int, SUBST:int,
+                          axiom:int, definition:int, drule:int, from_disk:int,
+                          other:int, valid_tac:int}
+      val hyp : thm -> Term.term list
+      val concl : thm -> Term.term
+      val dest_thm : thm -> Term.term list * Term.term
+      val thm_free_vars : thm -> Term.term list
+      val hyp_union : thm list -> Term.term list
+      val pp_thm : ?.PrettyPrint.ppstream -> thm -> unit
+      val thm_to_string : thm -> string
+      val print_thm : thm -> unit
+      val ASSUME : Term.term -> thm
+      val REFL : Term.term -> thm
+      val BETA_CONV : Term.term -> thm
+      val SUBST : {thm:thm, var:Term.term} list -> Term.term -> thm -> thm
+      val ABS : Term.term -> thm -> thm
+      val INST_TYPE : Term.Type.hol_type subst -> thm -> thm
+      val DISCH : Term.term -> thm -> thm
+      val MP : thm -> thm -> thm
+      val mk_axiom_thm : Term.term list * Term.term -> thm
+      val mk_definition_thm : Term.term list * Term.term -> thm
+      val mk_drule_thm : Term.term list * Term.term -> thm
+      val mk_disk_thm : Term.term list * Term.term -> thm
+      val mk_tac_thm : Term.term list * Term.term -> thm
+      val mk_thm : Term.term list * Term.term -> thm
+      datatype just_arg
+        = JA_INT of int
+        | JA_INTLIST of int list
+        | JA_PAIR of just_arg * just_arg
+        | JA_STRING of string
+        | JA_TERM of Term.term
+        | JA_THM of thm
+        | JA_TYPE of Term.Type.hol_type
+      datatype step = STEP of {Just:just_arg list, Name:string, Thm:thm}
+      val record_step : (step -> thm) ref
+      val record_proof : bool -> unit
+      val suspend_recording : unit -> unit
+      val resume_recording : unit -> unit
+      val is_recording_proof : unit -> bool
+      val note : step * thm -> thm
+    end
+  val TAC_PROOF : goal * tactic -> Thm.thm
+  val prove : Thm.Term.term * tactic -> Thm.thm
+  val store_thm : string * Thm.Term.term * tactic -> Thm.thm
+  val ASSUM_LIST : (Thm.thm list -> tactic) -> tactic
+  val POP_ASSUM : thm_tactic -> tactic
+  val POP_ASSUM_LIST : (Thm.thm list -> tactic) -> tactic
+  val THEN : tactic * tactic -> tactic
+  val THENL : tactic * tactic list -> tactic
+  val ORELSE : tactic * tactic -> tactic
+  val FAIL_TAC : string -> goal -> 'a
+  val NO_TAC : goal -> 'a
+  val ALL_TAC : tactic
+  val TRY : tactic -> tactic
+  val REPEAT : tactic -> tactic
+  val VALID : tactic -> tactic
+  val EVERY : tactic list -> tactic
+  val FIRST : tactic list -> tactic
+  val MAP_EVERY : ('a -> tactic) -> 'a list -> tactic
+  val MAP_FIRST : ('a -> tactic) -> 'a list -> tactic
+  val EVERY_ASSUM : thm_tactic -> tactic
+  val FIRST_ASSUM : thm_tactic -> tactic
+  val SUBGOAL_THEN : Thm.Term.term -> thm_tactic -> tactic
+  val CHANGED_TAC : tactic -> tactic
+infix THEN
+infix THENL
+infix ORELSE
+opening Conv
+  structure Thm :
+    sig
+      structure Term : <sig>
+      datatype thm = ...
+      val reset_thm_count : unit -> unit
+      val counting_thms : bool -> unit
+      val thm_count : unit
+                      -> {ABS:int, ASSUME:int, BETA_CONV:int, DISCH:int,
+                          INST_TYPE:int, MP:int, REFL:int, SUBST:int,
+                          axiom:int, definition:int, drule:int, from_disk:int,
+                          other:int, valid_tac:int}
+      val hyp : thm -> Term.term list
+      val concl : thm -> Term.term
+      val dest_thm : thm -> Term.term list * Term.term
+      val thm_free_vars : thm -> Term.term list
+      val hyp_union : thm list -> Term.term list
+      val pp_thm : ?.PrettyPrint.ppstream -> thm -> unit
+      val thm_to_string : thm -> string
+      val print_thm : thm -> unit
+      val ASSUME : Term.term -> thm
+      val REFL : Term.term -> thm
+      val BETA_CONV : Term.term -> thm
+      val SUBST : {thm:thm, var:Term.term} list -> Term.term -> thm -> thm
+      val ABS : Term.term -> thm -> thm
+      val INST_TYPE : Term.Type.hol_type subst -> thm -> thm
+      val DISCH : Term.term -> thm -> thm
+      val MP : thm -> thm -> thm
+      val mk_axiom_thm : Term.term list * Term.term -> thm
+      val mk_definition_thm : Term.term list * Term.term -> thm
+      val mk_drule_thm : Term.term list * Term.term -> thm
+      val mk_disk_thm : Term.term list * Term.term -> thm
+      val mk_tac_thm : Term.term list * Term.term -> thm
+      val mk_thm : Term.term list * Term.term -> thm
+      datatype just_arg
+        = JA_INT of int
+        | JA_INTLIST of int list
+        | JA_PAIR of just_arg * just_arg
+        | JA_STRING of string
+        | JA_TERM of Term.term
+        | JA_THM of thm
+        | JA_TYPE of Term.Type.hol_type
+      datatype step = STEP of {Just:just_arg list, Name:string, Thm:thm}
+      val record_step : (step -> thm) ref
+      val record_proof : bool -> unit
+      val suspend_recording : unit -> unit
+      val resume_recording : unit -> unit
+      val is_recording_proof : unit -> bool
+      val note : step * thm -> thm
+    end
+  val INST_TY_TERM : Thm.Term.term subst * Thm.Term.Type.hol_type subst
+                     -> Thm.thm -> Thm.thm
+  val GSPEC : Thm.thm -> Thm.thm
+  val PART_MATCH : (Thm.Term.term -> Thm.Term.term) -> Thm.thm -> conv
+  val REWR_CONV : Thm.thm -> conv
+  val MATCH_MP : Thm.thm -> Thm.thm -> Thm.thm
+  val NO_CONV : conv
+  val ALL_CONV : conv
+  val THENC : conv * conv -> conv
+  val ORELSEC : conv * conv -> conv
+  val FIRST_CONV : conv list -> conv
+  val EVERY_CONV : conv list -> conv
+  val REPEATC : conv -> conv
+  val CHANGED_CONV : conv -> conv
+  val TRY_CONV : conv -> conv
+  val SUB_CONV : conv -> conv
+  val DEPTH_CONV : conv -> conv
+  val REDEPTH_CONV : conv -> conv
+  val TOP_DEPTH_CONV : conv -> conv
+  val ONCE_DEPTH_CONV : conv -> conv
+  val CONV_RULE : conv -> Thm.thm -> Thm.thm
+  val CONV_TAC : conv -> tactic
+  val BETA_RULE : Thm.thm -> Thm.thm
+  val BETA_TAC : tactic
+  val NOT_FORALL_CONV : conv
+  val NOT_EXISTS_CONV : conv
+  val EXISTS_NOT_CONV : conv
+  val FORALL_NOT_CONV : conv
+  val FORALL_AND_CONV : conv
+  val EXISTS_OR_CONV : conv
+  val AND_FORALL_CONV : conv
+  val LEFT_AND_FORALL_CONV : conv
+  val RIGHT_AND_FORALL_CONV : conv
+  val OR_EXISTS_CONV : conv
+  val LEFT_OR_EXISTS_CONV : conv
+  val RIGHT_OR_EXISTS_CONV : conv
+  val EXISTS_AND_CONV : conv
+  val AND_EXISTS_CONV : conv
+  val LEFT_AND_EXISTS_CONV : conv
+  val RIGHT_AND_EXISTS_CONV : conv
+  val FORALL_OR_CONV : conv
+  val OR_FORALL_CONV : conv
+  val LEFT_OR_FORALL_CONV : conv
+  val RIGHT_OR_FORALL_CONV : conv
+  val FORALL_IMP_CONV : conv
+  val LEFT_IMP_EXISTS_CONV : conv
+  val RIGHT_IMP_FORALL_CONV : conv
+  val EXISTS_IMP_CONV : conv
+  val LEFT_IMP_FORALL_CONV : conv
+  val RIGHT_IMP_EXISTS_CONV : conv
+  val X_SKOLEM_CONV : Thm.Term.term -> conv
+  val SKOLEM_CONV : conv
+  val SYM_CONV : conv
+  val RIGHT_CONV_RULE : conv -> Thm.thm -> Thm.thm
+  val FUN_EQ_CONV : conv
+  val X_FUN_EQ_CONV : Thm.Term.term -> conv
+  val SELECT_CONV : conv
+  val CONTRAPOS_CONV : conv
+  val ANTE_CONJ_CONV : conv
+  val SWAP_EXISTS_CONV : conv
+  val RAND_CONV : conv -> conv
+  val RATOR_CONV : conv -> conv
+  val ABS_CONV : conv -> conv
+  val bool_EQ_CONV : conv
+  val EXISTS_UNIQUE_CONV : conv
+  val COND_CONV : conv
+  val EXISTENCE : Thm.thm -> Thm.thm
+  val AC_CONV : Thm.thm * Thm.thm -> conv
+  val GSYM : Thm.thm -> Thm.thm
+infix THENC
+infix ORELSEC
+opening Drule
+  structure Thm :
+    sig
+      structure Term : <sig>
+      datatype thm = ...
+      val reset_thm_count : unit -> unit
+      val counting_thms : bool -> unit
+      val thm_count : unit
+                      -> {ABS:int, ASSUME:int, BETA_CONV:int, DISCH:int,
+                          INST_TYPE:int, MP:int, REFL:int, SUBST:int,
+                          axiom:int, definition:int, drule:int, from_disk:int,
+                          other:int, valid_tac:int}
+      val hyp : thm -> Term.term list
+      val concl : thm -> Term.term
+      val dest_thm : thm -> Term.term list * Term.term
+      val thm_free_vars : thm -> Term.term list
+      val hyp_union : thm list -> Term.term list
+      val pp_thm : ?.PrettyPrint.ppstream -> thm -> unit
+      val thm_to_string : thm -> string
+      val print_thm : thm -> unit
+      val ASSUME : Term.term -> thm
+      val REFL : Term.term -> thm
+      val BETA_CONV : Term.term -> thm
+      val SUBST : {thm:thm, var:Term.term} list -> Term.term -> thm -> thm
+      val ABS : Term.term -> thm -> thm
+      val INST_TYPE : Term.Type.hol_type subst -> thm -> thm
+      val DISCH : Term.term -> thm -> thm
+      val MP : thm -> thm -> thm
+      val mk_axiom_thm : Term.term list * Term.term -> thm
+      val mk_definition_thm : Term.term list * Term.term -> thm
+      val mk_drule_thm : Term.term list * Term.term -> thm
+      val mk_disk_thm : Term.term list * Term.term -> thm
+      val mk_tac_thm : Term.term list * Term.term -> thm
+      val mk_thm : Term.term list * Term.term -> thm
+      datatype just_arg
+        = JA_INT of int
+        | JA_INTLIST of int list
+        | JA_PAIR of just_arg * just_arg
+        | JA_STRING of string
+        | JA_TERM of Term.term
+        | JA_THM of thm
+        | JA_TYPE of Term.Type.hol_type
+      datatype step = STEP of {Just:just_arg list, Name:string, Thm:thm}
+      val record_step : (step -> thm) ref
+      val record_proof : bool -> unit
+      val suspend_recording : unit -> unit
+      val resume_recording : unit -> unit
+      val is_recording_proof : unit -> bool
+      val note : step * thm -> thm
+    end
+  val ADD_ASSUM : Thm.Term.term -> Thm.thm -> Thm.thm
+  val UNDISCH : Thm.thm -> Thm.thm
+  val SYM : Thm.thm -> Thm.thm
+  val TRANS : Thm.thm -> Thm.thm -> Thm.thm
+  val IMP_TRANS : Thm.thm -> Thm.thm -> Thm.thm
+  val AP_TERM : Thm.Term.term -> Thm.thm -> Thm.thm
+  val AP_THM : Thm.thm -> Thm.Term.term -> Thm.thm
+  val EQ_MP : Thm.thm -> Thm.thm -> Thm.thm
+  val EQ_IMP_RULE : Thm.thm -> Thm.thm * Thm.thm
+  val TRUTH : Thm.thm
+  val EQT_ELIM : Thm.thm -> Thm.thm
+  val SPEC : Thm.Term.term -> Thm.thm -> Thm.thm
+  val SPECL : Thm.Term.term list -> Thm.thm -> Thm.thm
+  val EQT_INTRO : Thm.thm -> Thm.thm
+  val GEN : Thm.Term.term -> Thm.thm -> Thm.thm
+  val GENL : Thm.Term.term list -> Thm.thm -> Thm.thm
+  val ETA_CONV : Thm.Term.term -> Thm.thm
+  val EXT : Thm.thm -> Thm.thm
+  val SELECT_INTRO : Thm.thm -> Thm.thm
+  val SELECT_ELIM : Thm.thm -> Thm.Term.term * Thm.thm -> Thm.thm
+  val EXISTS : Thm.Term.term * Thm.Term.term -> Thm.thm -> Thm.thm
+  val disch : Thm.Term.term * Thm.Term.term list -> Thm.Term.term list
+  val CHOOSE : Thm.Term.term * Thm.thm -> Thm.thm -> Thm.thm
+  val SELECT_RULE : Thm.thm -> Thm.thm
+  val IMP_ANTISYM_RULE : Thm.thm -> Thm.thm -> Thm.thm
+  val SPEC_VAR : Thm.thm -> Thm.Term.term * Thm.thm
+  val MK_EXISTS : Thm.thm -> Thm.thm
+  val LIST_MK_EXISTS : Thm.Term.term list -> Thm.thm -> Thm.thm
+  val FORALL_EQ : Thm.Term.term -> Thm.thm -> Thm.thm
+  val EXISTS_EQ : Thm.Term.term -> Thm.thm -> Thm.thm
+  val SELECT_EQ : Thm.Term.term -> Thm.thm -> Thm.thm
+  val SUBS : Thm.thm list -> Thm.thm -> Thm.thm
+  val SUBS_OCCS : (int list * Thm.thm) list -> Thm.thm -> Thm.thm
+  val SUBST_CONV : {thm:Thm.thm, var:Thm.Term.term} list
+                   -> Thm.Term.term -> Thm.Term.term -> Thm.thm
+  val RIGHT_BETA : Thm.thm -> Thm.thm
+  val LIST_BETA_CONV : Thm.Term.term -> Thm.thm
+  val RIGHT_LIST_BETA : Thm.thm -> Thm.thm
+  val AND_INTRO_THM : Thm.thm
+  val CONJ : Thm.thm -> Thm.thm -> Thm.thm
+  val AND1_THM : Thm.thm
+  val CONJUNCT1 : Thm.thm -> Thm.thm
+  val AND2_THM : Thm.thm
+  val CONJUNCT2 : Thm.thm -> Thm.thm
+  val CONJ_SYM : Thm.thm
+  val CONJ_ASSOC : Thm.thm
+  val CONJUNCTS_CONV : Thm.Term.term * Thm.Term.term -> Thm.thm
+  val CONJ_SET_CONV : Thm.Term.term list -> Thm.Term.term list -> Thm.thm
+  val FRONT_CONJ_CONV : Thm.Term.term list -> Thm.Term.term -> Thm.thm
+  val CONJ_DISCH : Thm.Term.term -> Thm.thm -> Thm.thm
+  val CONJ_DISCHL : Thm.Term.term list -> Thm.thm -> Thm.thm
+  val OR_INTRO_THM1 : Thm.thm
+  val DISJ1 : Thm.thm -> Thm.Term.term -> Thm.thm
+  val OR_INTRO_THM2 : Thm.thm
+  val DISJ2 : Thm.Term.term -> Thm.thm -> Thm.thm
+  val OR_ELIM_THM : Thm.thm
+  val DISJ_CASES : Thm.thm -> Thm.thm -> Thm.thm -> Thm.thm
+  val FALSITY : Thm.thm
+  val IMP_F : Thm.thm
+  val NOT_INTRO : Thm.thm -> Thm.thm
+  val NEG_DISCH : Thm.Term.term -> Thm.thm -> Thm.thm
+  val F_IMP : Thm.thm
+  val NOT_ELIM : Thm.thm -> Thm.thm
+  val NOT_EQ_SYM : Thm.thm -> Thm.thm
+  val AND_CLAUSES : Thm.thm
+  val OR_CLAUSES : Thm.thm
+  val IMP_CLAUSES : Thm.thm
+  val CONTR : Thm.Term.term -> Thm.thm -> Thm.thm
+  val EQF_INTRO : Thm.thm -> Thm.thm
+  val EQF_ELIM : Thm.thm -> Thm.thm
+  val EXCLUDED_MIDDLE : Thm.thm
+  val CCONTR : Thm.Term.term -> Thm.thm -> Thm.thm
+  val INST : Thm.Term.term subst -> Thm.thm -> Thm.thm
+  val NOT_F : Thm.thm
+  val NOT_AND : Thm.thm
+  val ISPEC : Thm.Term.term -> Thm.thm -> Thm.thm
+  val ISPECL : Thm.Term.term list -> Thm.thm -> Thm.thm
+  val SELECT_REFL : Thm.thm
+  val SELECT_UNIQUE : Thm.thm
+  val GEN_ALL : Thm.thm -> Thm.thm
+  val DISCH_ALL : Thm.thm -> Thm.thm
+  val UNDISCH_ALL : Thm.thm -> Thm.thm
+  val SPEC_ALL : Thm.thm -> Thm.thm
+  val PROVE_HYP : Thm.thm -> Thm.thm -> Thm.thm
+  val CONJ_PAIR : Thm.thm -> Thm.thm * Thm.thm
+  val LIST_CONJ : Thm.thm list -> Thm.thm
+  val CONJ_LIST : int -> Thm.thm -> Thm.thm list
+  val CONJUNCTS : Thm.thm -> Thm.thm list
+  val BODY_CONJUNCTS : Thm.thm -> Thm.thm list
+  val IMP_CANON : Thm.thm -> Thm.thm list
+  val LIST_MP : Thm.thm list -> Thm.thm -> Thm.thm
+  val CONTRAPOS : Thm.thm -> Thm.thm
+  val DISJ_IMP : Thm.thm -> Thm.thm
+  val IMP_ELIM : Thm.thm -> Thm.thm
+  val NOT_CLAUSES : Thm.thm
+  val DISJ_CASES_UNION : Thm.thm -> Thm.thm -> Thm.thm -> Thm.thm
+  val EQ_REFL : Thm.thm
+  val REFL_CLAUSE : Thm.thm
+  val EQ_SYM : Thm.thm
+  val EQ_SYM_EQ : Thm.thm
+  val EQ_EXT : Thm.thm
+  val EQ_TRANS : Thm.thm
+  val BOOL_EQ_DISTINCT : Thm.thm
+  val EQ_CLAUSES : Thm.thm
+  val MK_COMB : Thm.thm * Thm.thm -> Thm.thm
+  val MK_ABS : Thm.thm -> Thm.thm
+  val ALPHA_CONV : Thm.Term.term -> Thm.Term.term -> Thm.thm
+  val ALPHA : Thm.Term.term -> Thm.Term.term -> Thm.thm
+  val GEN_ALPHA_CONV : Thm.Term.term -> Thm.Term.term -> Thm.thm
+  val COND_CLAUSES : Thm.thm
+  val COND_ID : Thm.thm
+  val IMP_CONJ : Thm.thm -> Thm.thm -> Thm.thm
+  val EXISTS_IMP : Thm.Term.term -> Thm.thm -> Thm.thm
+  val FORALL_SIMP : Thm.thm
+  val EXISTS_SIMP : Thm.thm
+  val ABS_SIMP : Thm.thm
+opening Parse
+  structure Parse_support :
+    sig
+      type preterm_in_env =
+        ?.Parse_support.env -> Preterm.preterm * ?.Parse_support.env
+      type binder_in_env = string -> ?.Parse_support.bvar_in_env
+      structure Preterm : <sig>
+      datatype arg = Hty of Preterm.Term.Type.hol_type | Rec_occ
+      datatype parse
+        = PTM of Preterm.preterm
+        | TY of Preterm.Term.Type.hol_type
+        | TY_SPEC of {clauses:{args:arg list, constructor:string} list,
+                      ty_name:string}
+      val make_preterm : preterm_in_env -> Preterm.preterm
+      val make_aq : Preterm.Term.term -> preterm_in_env
+      val make_binding_occ : (int,Preterm.Term.Type.hol_type) istream
+                             -> string -> binder_in_env
+      val make_aq_binding_occ : (int,Preterm.Term.Type.hol_type) istream
+                                -> Preterm.Term.term -> binder_in_env
+      val make_atom : (int,Preterm.Term.Type.hol_type) istream
+                      -> string -> preterm_in_env
+      val make_string : string -> preterm_in_env
+      val list_make_comb : preterm_in_env list -> preterm_in_env
+      val bind_term : string
+                      -> binder_in_env list -> preterm_in_env -> preterm_in_env
+      val bind_restr_term : (int,Preterm.Term.Type.hol_type) istream
+                            -> string
+                               -> binder_in_env list
+                                  -> preterm_in_env
+                                     -> preterm_in_env -> preterm_in_env
+      val make_vstruct : (int,Preterm.Term.Type.hol_type) istream
+                         -> binder_in_env list -> binder_in_env
+      val make_constrained_vstruct : binder_in_env
+                                     -> Preterm.Term.Type.hol_type
+                                        -> binder_in_env
+      val make_constrained : preterm_in_env
+                             -> Preterm.Term.Type.hol_type -> preterm_in_env
+      val make_let : (int,Preterm.Term.Type.hol_type) istream
+                     -> (binder_in_env list * preterm_in_env) list
+                        -> preterm_in_env -> preterm_in_env
+      val make_list : (int,Preterm.Term.Type.hol_type) istream
+                      -> preterm_in_env list -> preterm_in_env
+      val make_set : (int,Preterm.Term.Type.hol_type) istream
+                     -> preterm_in_env list -> preterm_in_env
+      val make_set_abs : (int,Preterm.Term.Type.hol_type) istream
+                         -> preterm_in_env * preterm_in_env -> preterm_in_env
+      val make_atomic_type : string * string option
+                             -> Preterm.Term.Type.hol_type
+      val make_type_app : string * Preterm.Term.Type.hol_type list
+                          -> Preterm.Term.Type.hol_type
+      val make_type_clause : {args:Preterm.Term.Type.hol_type list,
+                              constructor:string}
+                             -> {args:arg list, constructor:string}
+      val rec_occ : Preterm.Term.Type.hol_type
+      val prec_parse : preterm_in_env list -> preterm_in_env
+      val is_binder : string -> bool
+      val extract_type_antiq : Preterm.Term.term -> Preterm.Term.Type.hol_type
+    end
+  val parse0 : (int,Parse_support.Preterm.Term.Type.hol_type) istream
+               -> string
+                  -> Parse_support.Preterm.Term.term list
+                     -> Parse_support.parse
+  val type_parser : Parse_support.Preterm.Term.term SMLofNJ.frag list
+                    -> Parse_support.Preterm.Term.Type.hol_type
+  val term_parser : Parse_support.Preterm.Term.term SMLofNJ.frag list
+                    -> Parse_support.Preterm.Term.term
+  val preterm_parser : (int,Parse_support.Preterm.Term.Type.hol_type) istream
+                       -> Parse_support.Preterm.Term.term SMLofNJ.frag list
+                          -> Parse_support.Preterm.preterm
+  val -- : Parse_support.Preterm.Term.term SMLofNJ.frag list
+           -> 'a -> Parse_support.Preterm.Term.term
+  val == : Parse_support.Preterm.Term.term SMLofNJ.frag list
+           -> 'a -> Parse_support.Preterm.Term.Type.hol_type
+  val string_to_type : string -> Parse_support.Preterm.Term.Type.hol_type
+  val string_to_preterm : (int,Parse_support.Preterm.Term.Type.hol_type) 
+                            istream
+                          -> string -> Parse_support.Preterm.preterm
+  val string_to_term : string -> Parse_support.Preterm.Term.term
+  val type_spec_parser : Parse_support.Preterm.Term.term SMLofNJ.frag list
+                         -> {clauses:{args:Parse_support.arg list,
+                                      constructor:string} list, ty_name:string}
+  val string_to_type_spec : string
+                            -> {clauses:{args:Parse_support.arg list,
+                                         constructor:string} list,
+                                ty_name:string}
+opening Hol_pp
+  structure Term :
+    sig
+      structure Type : <sig>
+      datatype fixity = Binder | Infix of int | Prefix
+      datatype term = ...
+      val const_decl : string -> {const:term, place:fixity, theory:string}
+      val fixity_of_term : string -> fixity
+      val fixity_to_string : fixity -> string
+      val prec_of_term : string -> int
+      val is_binder : string -> bool
+      val is_infix : string -> bool
+      val is_polymorphic : string -> bool
+      datatype lambda
+        = COMB of {Rand:term, Rator:term}
+        | CONST of {Name:string, Ty:Type.hol_type}
+        | LAMB of {Body:term, Bvar:term}
+        | VAR of {Name:string, Ty:Type.hol_type}
+      val ty_antiq : Type.hol_type -> term
+      val free_vars : term -> term list
+      val free_in : term -> term -> bool
+      val all_vars : term -> term list
+      val free_varsl : term list -> term list
+      val all_varsl : term list -> term list
+      val term_lt : term -> term -> bool
+      val genvar : Type.hol_type -> term
+      val genvars : Type.hol_type -> int -> term list
+      val variant : term list -> term -> term
+      val type_of : term -> Type.hol_type
+      val type_vars_in_term : term -> Type.hol_type list
+      val mk_var : {Name:string, Ty:Type.hol_type} -> term
+      val mk_primed_var : {Name:string, Ty:Type.hol_type} -> term
+      val list_mk_comb : term * term list -> term
+      val mk_comb : {Rand:term, Rator:term} -> term
+      val mk_abs : {Body:term, Bvar:term} -> term
+      val dest_var : term -> {Name:string, Ty:Type.hol_type}
+      val dest_const : term -> {Name:string, Ty:Type.hol_type}
+      val dest_comb : term -> {Rand:term, Rator:term}
+      val dest_abs : term -> {Body:term, Bvar:term}
+      val is_var : term -> bool
+      val is_const : term -> bool
+      val is_comb : term -> bool
+      val is_abs : term -> bool
+      val dest_term : term -> lambda
+      val rator : term -> term
+      val rand : term -> term
+      val bvar : term -> term
+      val body : term -> term
+      val aconv : term -> term -> bool
+      val subst : term subst -> term -> term
+      val inst : Type.hol_type subst -> term -> term
+      val beta_conv : term -> term
+    end
+  val pp_type : ?.PrettyPrint.ppstream -> Term.Type.hol_type -> int -> unit
+  val pp_term : ?.PrettyPrint.ppstream -> Term.term -> unit
+  val pp_self_parsing_type : ?.PrettyPrint.ppstream
+                             -> Term.Type.hol_type -> unit
+  val pp_self_parsing_term : ?.PrettyPrint.ppstream -> Term.term -> unit
+  val type_to_string : Term.Type.hol_type -> string
+  val term_to_string : Term.term -> string
+  val print_type : Term.Type.hol_type -> unit
+  val print_term : Term.term -> unit
+  structure Extend_hol_pp :
+    sig
+      datatype gravity = APPL | BOTTOM | INFIX of int | TOP | WEAK
+      val gravity_geq : gravity -> gravity -> bool
+      val extend_pp_type : (({depth:int, gravity:gravity}
+                             -> Term.Type.hol_type
+                                -> ?.PrettyPrint.ppstream -> unit)
+                            -> {depth:int, gravity:gravity}
+                               -> Term.Type.hol_type
+                                  -> ?.PrettyPrint.ppstream -> unit)
+                           -> unit
+      val extend_pp_term : (({boundvars:Term.term list, depth:int,
+                              gravity:gravity}
+                             -> Term.term -> ?.PrettyPrint.ppstream -> unit)
+                            -> {boundvars:Term.term list, depth:int,
+                                gravity:gravity}
+                               -> Term.term -> ?.PrettyPrint.ppstream -> unit)
+                           -> unit
+      val reset_pp_type : unit -> unit
+      val reset_pp_term : unit -> unit
+    end
+opening boolThry
+  structure Min : sig end
+  val T_DEF : thm
+  val FORALL_DEF : thm
+  val AND_DEF : thm
+  val OR_DEF : thm
+  val F_DEF : thm
+  val NOT_DEF : thm
+  val EXISTS_UNIQUE_DEF : thm
+  val LET_DEF : thm
+  val COND_DEF : thm
+  val ONE_ONE_DEF : thm
+  val ONTO_DEF : thm
+  val TYPE_DEFINITION : thm
+  val BOOL_CASES_AX : thm
+  val IMP_ANTISYM_AX : thm
+  val ETA_AX : thm
+  val SELECT_AX : thm
+  val INFINITY_AX : thm
+opening Exists
+  val EXISTS_DEF : thm
+opening Min
+opening Const_def
+  structure Theory :
+    sig
+      structure Thm : <sig>
+      val new_parent : string -> unit
+      val new_type : {Arity:int, Name:string} -> unit
+      val new_constant : {Name:string, Ty:Thm.Term.Type.hol_type} -> unit
+      val new_infix : {Name:string, Prec:int, Ty:Thm.Term.Type.hol_type}
+                      -> unit
+      val new_binder : {Name:string, Ty:Thm.Term.Type.hol_type} -> unit
+      val new_open_axiom : string * Thm.Term.term -> Thm.thm
+      val store_definition : string * Thm.Term.term -> Thm.thm
+      val save_thm : string * Thm.thm -> Thm.thm
+      val arity : string -> int
+      val fixity : string -> Thm.Term.fixity
+      val precedence : string -> int
+      val const_decl : string
+                       -> {const:Thm.Term.term, place:Thm.Term.fixity,
+                           theory:string}
+      val is_constant : string -> bool
+      val is_type : string -> bool
+      val is_binder : string -> bool
+      val is_infix : string -> bool
+      val draft_mode : unit -> bool
+      val current_theory : unit -> string
+      val parents : string -> string list
+      val ancestry : string -> string list
+      val types : string -> {Arity:int, Name:string} list
+      val constants : string -> Thm.Term.term list
+      val infixes : string -> Thm.Term.term list
+      val binders : string -> Thm.Term.term list
+      val axioms : string -> (string * Thm.thm) list
+      val axiom : string -> string -> Thm.thm
+      val definitions : string -> (string * Thm.thm) list
+      val definition : string -> string -> Thm.thm
+      val theorems : string -> (string * Thm.thm) list
+      val theorem : string -> string -> Thm.thm
+      val print_theory_to_outstream : {outstream:Portable.outstream,
+                                       theory:string}
+                                      -> Portable.outstream
+      val print_theory_to_file : {file:string, theory:string} -> unit
+      val print_theory : string -> unit
+      val html_theory : string -> unit
+      val new_theory : string -> unit
+      val close_theory : unit -> unit
+      val load_theory : string -> unit
+      val extend_theory : string -> unit
+      val export_theory : unit -> unit
+      val close : unit -> unit
+      val delete_cache : unit -> unit
+      val delete_theory_from_cache : string -> unit
+      val theories_in_cache : unit -> string list
+      val perform_atomic_theory_op : (unit -> 'a) -> 'a
+      val loadLibThry : string -> string -> unit
+    end
+  val new_definition : string * Theory.Thm.Term.term -> Theory.Thm.thm
+  val new_infix_definition : string * Theory.Thm.Term.term * int
+                             -> Theory.Thm.thm
+  val new_binder_definition : string * Theory.Thm.Term.term -> Theory.Thm.thm
+opening Type_def
+  structure Theory :
+    sig
+      structure Thm : <sig>
+      val new_parent : string -> unit
+      val new_type : {Arity:int, Name:string} -> unit
+      val new_constant : {Name:string, Ty:Thm.Term.Type.hol_type} -> unit
+      val new_infix : {Name:string, Prec:int, Ty:Thm.Term.Type.hol_type}
+                      -> unit
+      val new_binder : {Name:string, Ty:Thm.Term.Type.hol_type} -> unit
+      val new_open_axiom : string * Thm.Term.term -> Thm.thm
+      val store_definition : string * Thm.Term.term -> Thm.thm
+      val save_thm : string * Thm.thm -> Thm.thm
+      val arity : string -> int
+      val fixity : string -> Thm.Term.fixity
+      val precedence : string -> int
+      val const_decl : string
+                       -> {const:Thm.Term.term, place:Thm.Term.fixity,
+                           theory:string}
+      val is_constant : string -> bool
+      val is_type : string -> bool
+      val is_binder : string -> bool
+      val is_infix : string -> bool
+      val draft_mode : unit -> bool
+      val current_theory : unit -> string
+      val parents : string -> string list
+      val ancestry : string -> string list
+      val types : string -> {Arity:int, Name:string} list
+      val constants : string -> Thm.Term.term list
+      val infixes : string -> Thm.Term.term list
+      val binders : string -> Thm.Term.term list
+      val axioms : string -> (string * Thm.thm) list
+      val axiom : string -> string -> Thm.thm
+      val definitions : string -> (string * Thm.thm) list
+      val definition : string -> string -> Thm.thm
+      val theorems : string -> (string * Thm.thm) list
+      val theorem : string -> string -> Thm.thm
+      val print_theory_to_outstream : {outstream:Portable.outstream,
+                                       theory:string}
+                                      -> Portable.outstream
+      val print_theory_to_file : {file:string, theory:string} -> unit
+      val print_theory : string -> unit
+      val html_theory : string -> unit
+      val new_theory : string -> unit
+      val close_theory : unit -> unit
+      val load_theory : string -> unit
+      val extend_theory : string -> unit
+      val export_theory : unit -> unit
+      val close : unit -> unit
+      val delete_cache : unit -> unit
+      val delete_theory_from_cache : string -> unit
+      val theories_in_cache : unit -> string list
+      val perform_atomic_theory_op : (unit -> 'a) -> 'a
+      val loadLibThry : string -> string -> unit
+    end
+  val new_type_definition : {inhab_thm:Theory.Thm.thm, name:string,
+                             pred:Theory.Thm.Term.term}
+                            -> Theory.Thm.thm
+opening Const_spec
+  structure Theory :
+    sig
+      structure Thm : <sig>
+      val new_parent : string -> unit
+      val new_type : {Arity:int, Name:string} -> unit
+      val new_constant : {Name:string, Ty:Thm.Term.Type.hol_type} -> unit
+      val new_infix : {Name:string, Prec:int, Ty:Thm.Term.Type.hol_type}
+                      -> unit
+      val new_binder : {Name:string, Ty:Thm.Term.Type.hol_type} -> unit
+      val new_open_axiom : string * Thm.Term.term -> Thm.thm
+      val store_definition : string * Thm.Term.term -> Thm.thm
+      val save_thm : string * Thm.thm -> Thm.thm
+      val arity : string -> int
+      val fixity : string -> Thm.Term.fixity
+      val precedence : string -> int
+      val const_decl : string
+                       -> {const:Thm.Term.term, place:Thm.Term.fixity,
+                           theory:string}
+      val is_constant : string -> bool
+      val is_type : string -> bool
+      val is_binder : string -> bool
+      val is_infix : string -> bool
+      val draft_mode : unit -> bool
+      val current_theory : unit -> string
+      val parents : string -> string list
+      val ancestry : string -> string list
+      val types : string -> {Arity:int, Name:string} list
+      val constants : string -> Thm.Term.term list
+      val infixes : string -> Thm.Term.term list
+      val binders : string -> Thm.Term.term list
+      val axioms : string -> (string * Thm.thm) list
+      val axiom : string -> string -> Thm.thm
+      val definitions : string -> (string * Thm.thm) list
+      val definition : string -> string -> Thm.thm
+      val theorems : string -> (string * Thm.thm) list
+      val theorem : string -> string -> Thm.thm
+      val print_theory_to_outstream : {outstream:Portable.outstream,
+                                       theory:string}
+                                      -> Portable.outstream
+      val print_theory_to_file : {file:string, theory:string} -> unit
+      val print_theory : string -> unit
+      val html_theory : string -> unit
+      val new_theory : string -> unit
+      val close_theory : unit -> unit
+      val load_theory : string -> unit
+      val extend_theory : string -> unit
+      val export_theory : unit -> unit
+      val close : unit -> unit
+      val delete_cache : unit -> unit
+      val delete_theory_from_cache : string -> unit
+      val theories_in_cache : unit -> string list
+      val perform_atomic_theory_op : (unit -> 'a) -> 'a
+      val loadLibThry : string -> string -> unit
+    end
+  val new_specification : {consts:{const_name:string,
+                                   fixity:Theory.Thm.Term.fixity} list,
+                           name:string, sat_thm:Theory.Thm.thm}
+                          -> Theory.Thm.thm
+opening Install
+  val install_system_theory : string -> unit
+  val install : string -> unit
+opening Add_to_sml
+  val L : (string * thm) list ref
+  val parser : thm SMLofNJ.frag list -> thm
+  val add_to_sml : (string * thm) list -> unit
+  val add_axioms_to_sml : string -> unit
+  val add_definitions_to_sml : string -> unit
+  val add_theorems_to_sml : string -> unit
+  val add_theory_to_sml : string -> unit
+  val add_theory_structure_to_sml : {structure_name:string, theory_name:string}
+                                    -> unit
+  type autoload_info =
+    {Axioms:string list, Definitions:string list, Theorems:string list,
+     Theory:string}
+  val set_autoloads : autoload_info -> unit
+  val get_autoloads : string -> autoload_info option
+opening Library
+  type lib
+  val loaded_cell : (unit -> unit) ref
+  val lib_eq : lib -> lib -> bool
+  val new_library : {code:string list, doc:string, help:string list,
+                     loaded:string, name:string, parents:lib list, path:string,
+                     theories:string list}
+                    -> lib
+  val dest_library : lib
+                     -> {code:string list, doc:string, help:string list,
+                         name:string, parents:lib list, path:string,
+                         theories:string list}
+  val prim_load_library' : (string list -> unit)
+                           -> {lib:lib, theory:string} -> unit
+  val prim_load_library : (string -> unit) -> {lib:lib, theory:string} -> unit
+  val load_library : {lib:lib, theory:string} -> unit
+  val load_library_in_place : lib -> unit
+  val find_library : string -> lib
+  val get_library_from_disk : string -> lib
+  val move_library : lib * string -> unit
+  val delete_library : lib -> unit
+  val known_libraries : unit -> lib list
+  val loaded_libraries : unit -> lib list
+  val pp_library : ?.PrettyPrint.ppstream -> lib -> unit
+  val lib_help : {lib:lib, topic:string} -> unit
+opening Theory
+  structure Thm :
+    sig
+      structure Term : <sig>
+      datatype thm = ...
+      val reset_thm_count : unit -> unit
+      val counting_thms : bool -> unit
+      val thm_count : unit
+                      -> {ABS:int, ASSUME:int, BETA_CONV:int, DISCH:int,
+                          INST_TYPE:int, MP:int, REFL:int, SUBST:int,
+                          axiom:int, definition:int, drule:int, from_disk:int,
+                          other:int, valid_tac:int}
+      val hyp : thm -> Term.term list
+      val concl : thm -> Term.term
+      val dest_thm : thm -> Term.term list * Term.term
+      val thm_free_vars : thm -> Term.term list
+      val hyp_union : thm list -> Term.term list
+      val pp_thm : ?.PrettyPrint.ppstream -> thm -> unit
+      val thm_to_string : thm -> string
+      val print_thm : thm -> unit
+      val ASSUME : Term.term -> thm
+      val REFL : Term.term -> thm
+      val BETA_CONV : Term.term -> thm
+      val SUBST : {thm:thm, var:Term.term} list -> Term.term -> thm -> thm
+      val ABS : Term.term -> thm -> thm
+      val INST_TYPE : Term.Type.hol_type subst -> thm -> thm
+      val DISCH : Term.term -> thm -> thm
+      val MP : thm -> thm -> thm
+      val mk_axiom_thm : Term.term list * Term.term -> thm
+      val mk_definition_thm : Term.term list * Term.term -> thm
+      val mk_drule_thm : Term.term list * Term.term -> thm
+      val mk_disk_thm : Term.term list * Term.term -> thm
+      val mk_tac_thm : Term.term list * Term.term -> thm
+      val mk_thm : Term.term list * Term.term -> thm
+      datatype just_arg
+        = JA_INT of int
+        | JA_INTLIST of int list
+        | JA_PAIR of just_arg * just_arg
+        | JA_STRING of string
+        | JA_TERM of Term.term
+        | JA_THM of thm
+        | JA_TYPE of Term.Type.hol_type
+      datatype step = STEP of {Just:just_arg list, Name:string, Thm:thm}
+      val record_step : (step -> thm) ref
+      val record_proof : bool -> unit
+      val suspend_recording : unit -> unit
+      val resume_recording : unit -> unit
+      val is_recording_proof : unit -> bool
+      val note : step * thm -> thm
+    end
+  val new_parent : string -> unit
+  val new_type : {Arity:int, Name:string} -> unit
+  val new_constant : {Name:string, Ty:Thm.Term.Type.hol_type} -> unit
+  val new_infix : {Name:string, Prec:int, Ty:Thm.Term.Type.hol_type} -> unit
+  val new_binder : {Name:string, Ty:Thm.Term.Type.hol_type} -> unit
+  val new_open_axiom : string * Thm.Term.term -> Thm.thm
+  val store_definition : string * Thm.Term.term -> Thm.thm
+  val save_thm : string * Thm.thm -> Thm.thm
+  val arity : string -> int
+  val fixity : string -> Thm.Term.fixity
+  val precedence : string -> int
+  val const_decl : string
+                   -> {const:Thm.Term.term, place:Thm.Term.fixity,
+                       theory:string}
+  val is_constant : string -> bool
+  val is_type : string -> bool
+  val is_binder : string -> bool
+  val is_infix : string -> bool
+  val draft_mode : unit -> bool
+  val current_theory : unit -> string
+  val parents : string -> string list
+  val ancestry : string -> string list
+  val types : string -> {Arity:int, Name:string} list
+  val constants : string -> Thm.Term.term list
+  val infixes : string -> Thm.Term.term list
+  val binders : string -> Thm.Term.term list
+  val axioms : string -> (string * Thm.thm) list
+  val axiom : string -> string -> Thm.thm
+  val definitions : string -> (string * Thm.thm) list
+  val definition : string -> string -> Thm.thm
+  val theorems : string -> (string * Thm.thm) list
+  val theorem : string -> string -> Thm.thm
+  val print_theory_to_outstream : {outstream:Portable.outstream, theory:string}
+                                  -> Portable.outstream
+  val print_theory_to_file : {file:string, theory:string} -> unit
+  val print_theory : string -> unit
+  val html_theory : string -> unit
+  val new_theory : string -> unit
+  val close_theory : unit -> unit
+  val load_theory : string -> unit
+  val extend_theory : string -> unit
+  val export_theory : unit -> unit
+  val close : unit -> unit
+  val delete_cache : unit -> unit
+  val delete_theory_from_cache : string -> unit
+  val theories_in_cache : unit -> string list
+  val perform_atomic_theory_op : (unit -> 'a) -> 'a
+  val loadLibThry : string -> string -> unit
+opening Thm
+  structure Term :
+    sig
+      structure Type : <sig>
+      datatype fixity = Binder | Infix of int | Prefix
+      datatype term = ...
+      val const_decl : string -> {const:term, place:fixity, theory:string}
+      val fixity_of_term : string -> fixity
+      val fixity_to_string : fixity -> string
+      val prec_of_term : string -> int
+      val is_binder : string -> bool
+      val is_infix : string -> bool
+      val is_polymorphic : string -> bool
+      datatype lambda
+        = COMB of {Rand:term, Rator:term}
+        | CONST of {Name:string, Ty:Type.hol_type}
+        | LAMB of {Body:term, Bvar:term}
+        | VAR of {Name:string, Ty:Type.hol_type}
+      val ty_antiq : Type.hol_type -> term
+      val free_vars : term -> term list
+      val free_in : term -> term -> bool
+      val all_vars : term -> term list
+      val free_varsl : term list -> term list
+      val all_varsl : term list -> term list
+      val term_lt : term -> term -> bool
+      val genvar : Type.hol_type -> term
+      val genvars : Type.hol_type -> int -> term list
+      val variant : term list -> term -> term
+      val type_of : term -> Type.hol_type
+      val type_vars_in_term : term -> Type.hol_type list
+      val mk_var : {Name:string, Ty:Type.hol_type} -> term
+      val mk_primed_var : {Name:string, Ty:Type.hol_type} -> term
+      val list_mk_comb : term * term list -> term
+      val mk_comb : {Rand:term, Rator:term} -> term
+      val mk_abs : {Body:term, Bvar:term} -> term
+      val dest_var : term -> {Name:string, Ty:Type.hol_type}
+      val dest_const : term -> {Name:string, Ty:Type.hol_type}
+      val dest_comb : term -> {Rand:term, Rator:term}
+      val dest_abs : term -> {Body:term, Bvar:term}
+      val is_var : term -> bool
+      val is_const : term -> bool
+      val is_comb : term -> bool
+      val is_abs : term -> bool
+      val dest_term : term -> lambda
+      val rator : term -> term
+      val rand : term -> term
+      val bvar : term -> term
+      val body : term -> term
+      val aconv : term -> term -> bool
+      val subst : term subst -> term -> term
+      val inst : Type.hol_type subst -> term -> term
+      val beta_conv : term -> term
+    end
+  datatype thm = ...
+  val reset_thm_count : unit -> unit
+  val counting_thms : bool -> unit
+  val thm_count : unit
+                  -> {ABS:int, ASSUME:int, BETA_CONV:int, DISCH:int,
+                      INST_TYPE:int, MP:int, REFL:int, SUBST:int, axiom:int,
+                      definition:int, drule:int, from_disk:int, other:int,
+                      valid_tac:int}
+  val hyp : thm -> Term.term list
+  val concl : thm -> Term.term
+  val dest_thm : thm -> Term.term list * Term.term
+  val thm_free_vars : thm -> Term.term list
+  val hyp_union : thm list -> Term.term list
+  val pp_thm : ?.PrettyPrint.ppstream -> thm -> unit
+  val thm_to_string : thm -> string
+  val print_thm : thm -> unit
+  val ASSUME : Term.term -> thm
+  val REFL : Term.term -> thm
+  val BETA_CONV : Term.term -> thm
+  val SUBST : {thm:thm, var:Term.term} list -> Term.term -> thm -> thm
+  val ABS : Term.term -> thm -> thm
+  val INST_TYPE : Term.Type.hol_type subst -> thm -> thm
+  val DISCH : Term.term -> thm -> thm
+  val MP : thm -> thm -> thm
+  val mk_axiom_thm : Term.term list * Term.term -> thm
+  val mk_definition_thm : Term.term list * Term.term -> thm
+  val mk_drule_thm : Term.term list * Term.term -> thm
+  val mk_disk_thm : Term.term list * Term.term -> thm
+  val mk_tac_thm : Term.term list * Term.term -> thm
+  val mk_thm : Term.term list * Term.term -> thm
+  datatype just_arg
+    = JA_INT of int
+    | JA_INTLIST of int list
+    | JA_PAIR of just_arg * just_arg
+    | JA_STRING of string
+    | JA_TERM of Term.term
+    | JA_THM of thm
+    | JA_TYPE of Term.Type.hol_type
+  datatype step = STEP of {Just:just_arg list, Name:string, Thm:thm}
+  val record_step : (step -> thm) ref
+  val record_proof : bool -> unit
+  val suspend_recording : unit -> unit
+  val resume_recording : unit -> unit
+  val is_recording_proof : unit -> bool
+  val note : step * thm -> thm
+opening Dsyntax
+  structure Term :
+    sig
+      structure Type : <sig>
+      datatype fixity = Binder | Infix of int | Prefix
+      datatype term = ...
+      val const_decl : string -> {const:term, place:fixity, theory:string}
+      val fixity_of_term : string -> fixity
+      val fixity_to_string : fixity -> string
+      val prec_of_term : string -> int
+      val is_binder : string -> bool
+      val is_infix : string -> bool
+      val is_polymorphic : string -> bool
+      datatype lambda
+        = COMB of {Rand:term, Rator:term}
+        | CONST of {Name:string, Ty:Type.hol_type}
+        | LAMB of {Body:term, Bvar:term}
+        | VAR of {Name:string, Ty:Type.hol_type}
+      val ty_antiq : Type.hol_type -> term
+      val free_vars : term -> term list
+      val free_in : term -> term -> bool
+      val all_vars : term -> term list
+      val free_varsl : term list -> term list
+      val all_varsl : term list -> term list
+      val term_lt : term -> term -> bool
+      val genvar : Type.hol_type -> term
+      val genvars : Type.hol_type -> int -> term list
+      val variant : term list -> term -> term
+      val type_of : term -> Type.hol_type
+      val type_vars_in_term : term -> Type.hol_type list
+      val mk_var : {Name:string, Ty:Type.hol_type} -> term
+      val mk_primed_var : {Name:string, Ty:Type.hol_type} -> term
+      val list_mk_comb : term * term list -> term
+      val mk_comb : {Rand:term, Rator:term} -> term
+      val mk_abs : {Body:term, Bvar:term} -> term
+      val dest_var : term -> {Name:string, Ty:Type.hol_type}
+      val dest_const : term -> {Name:string, Ty:Type.hol_type}
+      val dest_comb : term -> {Rand:term, Rator:term}
+      val dest_abs : term -> {Body:term, Bvar:term}
+      val is_var : term -> bool
+      val is_const : term -> bool
+      val is_comb : term -> bool
+      val is_abs : term -> bool
+      val dest_term : term -> lambda
+      val rator : term -> term
+      val rand : term -> term
+      val bvar : term -> term
+      val body : term -> term
+      val aconv : term -> term -> bool
+      val subst : term subst -> term -> term
+      val inst : Type.hol_type subst -> term -> term
+      val beta_conv : term -> term
+    end
+  val mk_const : {Name:string, Ty:Term.Type.hol_type} -> Term.term
+  val mk_eq : {lhs:Term.term, rhs:Term.term} -> Term.term
+  val mk_imp : {ant:Term.term, conseq:Term.term} -> Term.term
+  val mk_select : {Body:Term.term, Bvar:Term.term} -> Term.term
+  val mk_forall : {Body:Term.term, Bvar:Term.term} -> Term.term
+  val mk_exists : {Body:Term.term, Bvar:Term.term} -> Term.term
+  val mk_neg : Term.term -> Term.term
+  val mk_conj : {conj1:Term.term, conj2:Term.term} -> Term.term
+  val mk_disj : {disj1:Term.term, disj2:Term.term} -> Term.term
+  val mk_cond : {cond:Term.term, larm:Term.term, rarm:Term.term} -> Term.term
+  val mk_pair : {fst:Term.term, snd:Term.term} -> Term.term
+  val mk_let : {arg:Term.term, func:Term.term} -> Term.term
+  val mk_cons : {hd:Term.term, tl:Term.term} -> Term.term
+  val mk_list : {els:Term.term list, ty:Term.Type.hol_type} -> Term.term
+  val mk_pabs : {body:Term.term, varstruct:Term.term} -> Term.term
+  val dest_eq : Term.term -> {lhs:Term.term, rhs:Term.term}
+  val lhs : Term.term -> Term.term
+  val rhs : Term.term -> Term.term
+  val dest_imp : Term.term -> {ant:Term.term, conseq:Term.term}
+  val dest_select : Term.term -> {Body:Term.term, Bvar:Term.term}
+  val dest_forall : Term.term -> {Body:Term.term, Bvar:Term.term}
+  val dest_exists : Term.term -> {Body:Term.term, Bvar:Term.term}
+  val dest_neg : Term.term -> Term.term
+  val dest_conj : Term.term -> {conj1:Term.term, conj2:Term.term}
+  val dest_disj : Term.term -> {disj1:Term.term, disj2:Term.term}
+  val dest_cond : Term.term -> {cond:Term.term, larm:Term.term, rarm:Term.term}
+  val dest_pair : Term.term -> {fst:Term.term, snd:Term.term}
+  val dest_let : Term.term -> {arg:Term.term, func:Term.term}
+  val dest_cons : Term.term -> {hd:Term.term, tl:Term.term}
+  val dest_list : Term.term -> {els:Term.term list, ty:Term.Type.hol_type}
+  val dest_pabs : Term.term -> {body:Term.term, varstruct:Term.term}
+  val is_eq : Term.term -> bool
+  val is_imp : Term.term -> bool
+  val is_select : Term.term -> bool
+  val is_forall : Term.term -> bool
+  val is_exists : Term.term -> bool
+  val is_neg : Term.term -> bool
+  val is_conj : Term.term -> bool
+  val is_disj : Term.term -> bool
+  val is_cond : Term.term -> bool
+  val is_pair : Term.term -> bool
+  val is_let : Term.term -> bool
+  val is_cons : Term.term -> bool
+  val is_list : Term.term -> bool
+  val is_pabs : Term.term -> bool
+  val list_mk_abs : Term.term list * Term.term -> Term.term
+  val list_mk_imp : Term.term list * Term.term -> Term.term
+  val list_mk_forall : Term.term list * Term.term -> Term.term
+  val gen_all : Term.term -> Term.term
+  val list_mk_exists : Term.term list * Term.term -> Term.term
+  val list_mk_conj : Term.term list -> Term.term
+  val list_mk_disj : Term.term list -> Term.term
+  val list_mk_pair : Term.term list -> Term.term
+  val strip_comb : Term.term -> Term.term * Term.term list
+  val strip_abs : Term.term -> Term.term list * Term.term
+  val strip_imp : Term.term -> Term.term list * Term.term
+  val strip_forall : Term.term -> Term.term list * Term.term
+  val strip_exists : Term.term -> Term.term list * Term.term
+  val strip_conj : Term.term -> Term.term list
+  val strip_disj : Term.term -> Term.term list
+  val strip_pair : Term.term -> Term.term list
+  val infix_ty : Term.Type.hol_type -> Term.Type.hol_type -> Term.Type.hol_type
+  val bool : Term.Type.hol_type
+  val de_abs : Term.term -> Term.term list * Term.term
+  val find_term : (Term.term -> bool) -> Term.term -> Term.term
+  val find_terms : (Term.term -> bool) -> Term.term -> Term.term list
+  val subst_occs : int list list -> Term.term subst -> Term.term -> Term.term
+  val binder_restrictions : unit -> (string * string) list
+  val associate_restriction : string * string -> unit
+  val delete_restriction : string -> unit
+opening Match
+  structure Term :
+    sig
+      structure Type : <sig>
+      datatype fixity = Binder | Infix of int | Prefix
+      datatype term = ...
+      val const_decl : string -> {const:term, place:fixity, theory:string}
+      val fixity_of_term : string -> fixity
+      val fixity_to_string : fixity -> string
+      val prec_of_term : string -> int
+      val is_binder : string -> bool
+      val is_infix : string -> bool
+      val is_polymorphic : string -> bool
+      datatype lambda
+        = COMB of {Rand:term, Rator:term}
+        | CONST of {Name:string, Ty:Type.hol_type}
+        | LAMB of {Body:term, Bvar:term}
+        | VAR of {Name:string, Ty:Type.hol_type}
+      val ty_antiq : Type.hol_type -> term
+      val free_vars : term -> term list
+      val free_in : term -> term -> bool
+      val all_vars : term -> term list
+      val free_varsl : term list -> term list
+      val all_varsl : term list -> term list
+      val term_lt : term -> term -> bool
+      val genvar : Type.hol_type -> term
+      val genvars : Type.hol_type -> int -> term list
+      val variant : term list -> term -> term
+      val type_of : term -> Type.hol_type
+      val type_vars_in_term : term -> Type.hol_type list
+      val mk_var : {Name:string, Ty:Type.hol_type} -> term
+      val mk_primed_var : {Name:string, Ty:Type.hol_type} -> term
+      val list_mk_comb : term * term list -> term
+      val mk_comb : {Rand:term, Rator:term} -> term
+      val mk_abs : {Body:term, Bvar:term} -> term
+      val dest_var : term -> {Name:string, Ty:Type.hol_type}
+      val dest_const : term -> {Name:string, Ty:Type.hol_type}
+      val dest_comb : term -> {Rand:term, Rator:term}
+      val dest_abs : term -> {Body:term, Bvar:term}
+      val is_var : term -> bool
+      val is_const : term -> bool
+      val is_comb : term -> bool
+      val is_abs : term -> bool
+      val dest_term : term -> lambda
+      val rator : term -> term
+      val rand : term -> term
+      val bvar : term -> term
+      val body : term -> term
+      val aconv : term -> term -> bool
+      val subst : term subst -> term -> term
+      val inst : Type.hol_type subst -> term -> term
+      val beta_conv : term -> term
+    end
+  val match_type : Term.Type.hol_type
+                   -> Term.Type.hol_type -> Term.Type.hol_type subst
+  val match_term : Term.term
+                   -> Term.term -> Term.term subst * Term.Type.hol_type subst
+opening Term
+  structure Type :
+    sig
+      datatype hol_type = ...
+      val fresh_tyvar_stream : unit -> (int,hol_type) istream
+      val type_subst : hol_type subst -> hol_type -> hol_type
+      val type_vars : hol_type -> hol_type list
+      val type_varsl : hol_type list -> hol_type list
+      val mk_type : {Args:hol_type list, Tyop:string} -> hol_type
+      val dest_type : hol_type -> {Args:hol_type list, Tyop:string}
+      val mk_vartype : string -> hol_type
+      val dest_vartype : hol_type -> string
+      val is_vartype : hol_type -> bool
+      val type_lt : hol_type -> hol_type -> bool
+      val type_decl : string -> {arity:int, theory:string, tyc:hol_type}
+    end
+  datatype fixity = Binder | Infix of int | Prefix
+  datatype term = ...
+  val const_decl : string -> {const:term, place:fixity, theory:string}
+  val fixity_of_term : string -> fixity
+  val fixity_to_string : fixity -> string
+  val prec_of_term : string -> int
+  val is_binder : string -> bool
+  val is_infix : string -> bool
+  val is_polymorphic : string -> bool
+  datatype lambda
+    = COMB of {Rand:term, Rator:term}
+    | CONST of {Name:string, Ty:Type.hol_type}
+    | LAMB of {Body:term, Bvar:term}
+    | VAR of {Name:string, Ty:Type.hol_type}
+  val ty_antiq : Type.hol_type -> term
+  val free_vars : term -> term list
+  val free_in : term -> term -> bool
+  val all_vars : term -> term list
+  val free_varsl : term list -> term list
+  val all_varsl : term list -> term list
+  val term_lt : term -> term -> bool
+  val genvar : Type.hol_type -> term
+  val genvars : Type.hol_type -> int -> term list
+  val variant : term list -> term -> term
+  val type_of : term -> Type.hol_type
+  val type_vars_in_term : term -> Type.hol_type list
+  val mk_var : {Name:string, Ty:Type.hol_type} -> term
+  val mk_primed_var : {Name:string, Ty:Type.hol_type} -> term
+  val list_mk_comb : term * term list -> term
+  val mk_comb : {Rand:term, Rator:term} -> term
+  val mk_abs : {Body:term, Bvar:term} -> term
+  val dest_var : term -> {Name:string, Ty:Type.hol_type}
+  val dest_const : term -> {Name:string, Ty:Type.hol_type}
+  val dest_comb : term -> {Rand:term, Rator:term}
+  val dest_abs : term -> {Body:term, Bvar:term}
+  val is_var : term -> bool
+  val is_const : term -> bool
+  val is_comb : term -> bool
+  val is_abs : term -> bool
+  val dest_term : term -> lambda
+  val rator : term -> term
+  val rand : term -> term
+  val bvar : term -> term
+  val body : term -> term
+  val aconv : term -> term -> bool
+  val subst : term subst -> term -> term
+  val inst : Type.hol_type subst -> term -> term
+  val beta_conv : term -> term
+opening Type
+  datatype hol_type = ...
+  val fresh_tyvar_stream : unit -> (int,hol_type) istream
+  val type_subst : hol_type subst -> hol_type -> hol_type
+  val type_vars : hol_type -> hol_type list
+  val type_varsl : hol_type list -> hol_type list
+  val mk_type : {Args:hol_type list, Tyop:string} -> hol_type
+  val dest_type : hol_type -> {Args:hol_type list, Tyop:string}
+  val mk_vartype : string -> hol_type
+  val dest_vartype : hol_type -> string
+  val is_vartype : hol_type -> bool
+  val type_lt : hol_type -> hol_type -> bool
+  val type_decl : string -> {arity:int, theory:string, tyc:hol_type}
+opening Lib
+  val curry : ('a * 'b -> 'c) -> 'a -> 'b -> 'c
+  val uncurry : ('a -> 'b -> 'c) -> 'a * 'b -> 'c
+  val append : 'a list -> 'a list -> 'a list
+  val concat : string -> string -> string
+  val equal : ''a -> ''a -> bool
+  val ## : ('a -> 'c) * ('b -> 'd) -> 'a * 'b -> 'c * 'd
+  val A : ('a -> 'b) -> 'a -> 'b
+  val B : ('a -> 'c) -> ('b -> 'a) -> 'b -> 'c
+  val C : ('b -> 'a -> 'c) -> 'a -> 'b -> 'c
+  val I : 'a -> 'a
+  val K : 'b -> 'a -> 'b
+  val S : ('b -> 'a -> 'c) -> ('b -> 'a) -> 'b -> 'c
+  val W : ('a -> 'a -> 'b) -> 'a -> 'b
+  val fst : 'b * 'a -> 'b
+  val snd : 'a * 'b -> 'b
+  val can : ('b -> 'a) -> 'b -> bool
+  val try : ('a -> 'b) -> 'a -> 'b
+  val assert : ('a -> bool) -> 'a -> 'a
+  val tryfind : ('a -> 'b) -> 'a list -> 'b
+  val el : int -> 'a list -> 'a
+  val map2 : ('a -> 'b -> 'c) -> 'a list -> 'b list -> 'c list
+  val all : ('a -> bool) -> 'a list -> bool
+  val all2 : ('a -> 'b -> bool) -> 'a list -> 'b list -> bool
+  val exists : ('a -> bool) -> 'a list -> bool
+  val first : ('a -> bool) -> 'a list -> 'a
+  val split_after : int -> 'a list -> 'a list * 'a list
+  val partition : ('a -> bool) -> 'a list -> 'a list * 'a list
+  val gather : ('a -> bool) -> 'a list -> 'a list
+  val filter : ('a -> bool) -> 'a list -> 'a list
+  val itlist : ('a -> 'b -> 'b) -> 'a list -> 'b -> 'b
+  val itlist2 : ('a -> 'b -> 'c -> 'c) -> 'a list -> 'b list -> 'c -> 'c
+  val rev_itlist : ('a -> 'b -> 'b) -> 'a list -> 'b -> 'b
+  val rev_itlist2 : ('a -> 'b -> 'c -> 'c) -> 'a list -> 'b list -> 'c -> 'c
+  val end_itlist : ('a -> 'a -> 'a) -> 'a list -> 'a
+  val zip : 'a list -> 'b list -> ('a * 'b) list
+  val combine : 'a list * 'b list -> ('a * 'b) list
+  val unzip : ('a * 'b) list -> 'a list * 'b list
+  val split : ('a * 'b) list -> 'a list * 'b list
+  val mapfilter : ('a -> 'b) -> 'a list -> 'b list
+  val flatten : 'a list list -> 'a list
+  exception NOT_FOUND
+  exception NO_CHANGE
+  val assoc : ''a -> (''a * 'b) list -> 'b
+  val assoc1 : ''a -> (''a * 'b) list -> (''a * 'b) option
+  val assoc2 : ''b -> ('a * ''b) list -> ('a * ''b) option
+  type 'a subst = {redex:'a, residue:'a} list
+  val subst_assoc : ('a -> bool) -> 'a subst -> 'a option
+  val |-> : 'a * 'a -> {redex:'a, residue:'a}
+  val mem : ''a -> ''a list -> bool
+  val insert : ''a -> ''a list -> ''a list
+  val mk_set : ''a list -> ''a list
+  val union : ''a list -> ''a list -> ''a list
+  val U : ''a list list -> ''a list
+  val set_diff : ''a list -> ''a list -> ''a list
+  val subtract : ''a list -> ''a list -> ''a list
+  val intersect : ''a list -> ''a list -> ''a list
+  val null_intersection : ''a list -> ''a list -> bool
+  val set_eq : ''a list -> ''a list -> bool
+  val op_mem : ('a -> 'b -> bool) -> 'a -> 'b list -> bool
+  val op_union : ('a -> 'a -> bool) -> 'a list -> 'a list -> 'a list
+  val op_U : ('a -> 'a -> bool) -> 'a list list -> 'a list
+  val op_intersect : ('a -> 'a -> bool) -> 'a list -> 'a list -> 'a list
+  val for : int -> int -> (int -> 'a) -> 'a list
+  val for_se : int -> int -> (int -> 'a) -> unit
+  val list_of_array : 'a array -> 'a list
+  val int_to_string : int -> string
+  val string_to_int : string -> int
+  val sort : ('a -> 'a -> bool) -> 'a list -> 'a list
+  val int_sort : int list -> int list
+  val clean_directory : string -> unit
+  val file_exists_for_reading : string -> bool
+  val find_path : string list -> string -> string
+  val cons_path : string -> string list ref -> unit
+  val append_path : string -> string list ref -> unit
+  type time = Time.time
+  val timestamp : unit -> time
+  val time_eq : time -> time -> bool
+  val time_lt : time -> time -> bool
+  val time : ('a -> 'b) -> 'a -> 'b
+  val compile : string -> unit
+  val interpret : string -> unit
+  type ('a,'b) istream
+  val mk_istream : ('a -> 'a) -> 'a -> ('a -> 'b) -> ('a,'b) istream
+  val next : ('a,'b) istream -> ('a,'b) istream
+  val state : ('a,'b) istream -> 'b
+  val reset : ('a,'b) istream -> ('a,'b) istream
+  val use_string : string -> unit
+  val say : string -> unit
+  val quote : string -> string
+  val words2 : string -> string -> string list
+  val front_last : 'a list -> 'a list * 'a
+  val last : 'a list -> 'a
+  val funpow : int -> ('a -> 'a) -> 'a -> 'a
+  val ordof : string * int -> int
+  val mesg : bool -> string -> unit
+  val with_flag : 'a ref -> 'a -> ('c -> 'b) -> 'c -> unit
+infix 3 ##
+opening Exception
+  exception HOL_ERR of {message:string, origin_function:string,
+                        origin_structure:string}
+  val print_HOL_ERR : exn -> unit
+  val Raise : exn -> 'a
+opening Globals
+  val version_number : string
+  val neg_defined : unit -> bool
+  val nums_defined : unit -> bool
+  val strings_defined : unit -> bool
+  val assert_neg_defined : unit -> unit
+  val assert_nums_defined : unit -> unit
+  val assert_strings_defined : unit -> unit
+  val in_type_spec : string option ref
+  val print_exceptions : bool ref
+  val show_assums : bool ref
+  val allow_theorems_with_assumptions : bool ref
+  val use_init_file : bool ref
+  val max_print_depth : int ref
+  val type_pp_prefix : string ref
+  val type_pp_suffix : string ref
+  val term_pp_prefix : string ref
+  val term_pp_suffix : string ref
+  val linewidth : int ref
+  val interp : bool ref
+  val paths : {HOLdir:string ref, help_path:string list ref,
+               library_path:string list ref, theory_path:string list ref}
+  val HOLdir : string ref
+  val theory_path : string list ref
+  val library_path : string list ref
+  val help_path : string list ref
+  val output_HOL_ERR : ({message:string, origin_function:string,
+                         origin_structure:string}
+                        -> unit) ref
+  val output_help : string ref
+  val tilde_symbols : string list ref
+  val pp_flags : {in_at_end:bool ref, infix_at_front:bool ref,
+                  show_dB:bool ref, show_restrict:bool ref,
+                  show_types:bool ref, stack_infixes:bool ref}
+  val show_dB : bool ref
+  val show_restrict : bool ref
+  val show_types : bool ref
+  val infix_at_front : bool ref
+  val stack_infixes : bool ref
+  val in_at_end : bool ref
+  val reserved_identifiers : {alphanumeric:string list, symbolic:string list}
+  val goal_line : string ref
+  val notify_on_tyvar_guess : bool ref
+signature EMPTY = sig end
+signature EMPTY = sig end
+signature EMPTY = sig end
+signature EMPTY = sig end
+signature EMPTY = sig end
+signature EMPTY = sig end
+signature EMPTY = sig end
+signature EMPTY = sig end
+signature EMPTY = sig end
+signature EMPTY = sig end
+signature EMPTY = sig end
+signature EMPTY = sig end
+GC #3.43.69.117.355.11417:   (10 ms)
+signature EMPTY = sig end
+signature EMPTY = sig end
+val it = () : unit
+GC #4.44.70.118.356.11424:   (320 ms)
+write 1,0: 2396 bytes [0x42ad0000..0x42ad095c) @ 0x2000
+write 1,1: 3560 bytes [0x42b20008..0x42b20df0) @ 0x3000
+write 1,2: 2084 bytes [0x42b70000..0x42b70824) @ 0x4000
+write 1,3: 348 bytes [0x42bc0000..0x42bc015c) @ 0x5000
+write 2,0: 48784 bytes [0x42e60000..0x42e6be90) @ 0x6000
+write 2,1: 60664 bytes [0x42e90008..0x42e9ed00) @ 0x12000
+write 2,2: 248 bytes [0x42ee0000..0x42ee00f8) @ 0x21000
+write 2,3: 11940 bytes [0x42ef0000..0x42ef2ea4) @ 0x22000
+write 2,0: 2 big objects (12 pages) @ 0x25000
+write 3,0: 14468 bytes [0x40460000..0x40463884) @ 0x28020
+write 3,1: 86832 bytes [0x40480008..0x40495338) @ 0x2c020
+write 3,2: 220 bytes [0x404c0000..0x404c00dc) @ 0x42020
+write 3,3: 1332 bytes [0x404d0000..0x404d0534) @ 0x43020
+write 3,0: 1 big objects (40 pages) @ 0x44020
+write 4,0: 3336 bytes [0x40340000..0x40340d08) @ 0x4e030
+write 4,1: 57232 bytes [0x40350008..0x4035df98) @ 0x4f030
+write 4,2: 1528 bytes [0x40380000..0x403805f8) @ 0x5d030
+write 4,3: 17808 bytes [0x40390000..0x40394590) @ 0x5e030
+write 4,0: 2 big objects (79 pages) @ 0x63030
+write 5,0: 835864 bytes [0x41260000..0x4132c118) @ 0x76c50
+write 5,1: 1583112 bytes [0x41510008..0x41692810) @ 0x143c50
+write 5,2: 369944 bytes [0x41960000..0x419ba518) @ 0x2c6c50
+write 5,3: 161652 bytes [0x41a30000..0x41a57774) @ 0x321c50
+write 5,0: 405 big objects (8448 pages) @ 0x349c50
+val it = () : unit
+- 

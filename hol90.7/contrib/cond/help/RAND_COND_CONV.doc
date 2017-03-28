@@ -1,0 +1,45 @@
+\DOC RAND_COND_CONV
+
+\TYPE {RAND_COND_CONV: conv}
+
+\SYNOPSIS
+moves a rand inward through a conditonal.
+
+\LIBRARY cond
+
+\DESCRIBE 
+moves a rand inward through a conditonal.
+
+{
+   |- f (A => x|y)
+  ================== 
+   |- A => f x|f y
+}
+
+\EXAMPLE
+
+{
+- RAND_COND_CONV (--`(A => SUC|PRE) 6`--);
+val it = |- (A => SUC | PRE) 6 = (A => (SUC 6) | (PRE 6)) : thm
+}
+
+\FAILURE
+
+if the term has not the form f (A => x|y)
+
+{
+- (RAND_COND_CONV (--`A => SUC|PRE`--);()) handle e => print_HOL_ERR e;
+Exception raised at cond.FILTER_RAND_COND_CONV:
+term
+A => SUC | PRE
+has not the form: (A => f|g) x
+}
+
+\SEEALSO
+
+RAND_COND_RULE RAND_COND_TAC FILTER_RAND_COND_CONV FILTER_RAND_COND_RULE
+FILTER_RAND_COND_TAC COND_RAND_CONV COND_RAND_RULE COND_RAND_TAC
+FILTER_COND_RAND_CONV FILTER_COND_RAND_RULE FILTER_COND_RAND_TAC
+
+\ENDDOC
+

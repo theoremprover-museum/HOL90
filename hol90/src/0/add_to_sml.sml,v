@@ -1,0 +1,153 @@
+head	1.1;
+access;
+symbols;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	96.02.08.00.30.18;	author drs1004;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@New theory mechanism, by Donald Syme, and many other enhancements.
+@
+text
+@(* ===================================================================== *)
+(* FILE          : add_to_sml.sml                                        *)
+(* DESCRIPTION   : Routines that allow theory-level bindings to become   *)
+(*                 SML bindings. Intended to serve as a replacement for  *)
+(*                 auto-loading.                                         *)
+(*                                                                       *)
+(* AUTHOR        : Konrad Slind, University of Calgary                   *)
+(* DATE          : September 15, 1991                                    *)
+(* ===================================================================== *)
+
+
+structure Add_to_sml : Add_to_sml_sig =
+struct
+
+open Manager0
+open Lib;
+type thm = Theory.Thm.thm
+
+val ERR = Exception.ERR "Add_to_sml";
+val WRAP_ERR = Exception.WRAP_ERR "Add_to_sml";
+    
+val L = ref ([]:(string*thm) list);
+fun parser [QUOTE "",ANTIQUOTE th, QUOTE ""] = th
+  | parser _ = ERR("parser","bad format");
+
+
+fun install() =
+   if (Portable.List.null (!L))
+   then ()
+   else let val (n,_) = Portable.List.hd (!L)
+        in 
+          if (Lexis.ok_sml_identifier n)
+           then ( Portable.use_string
+                  ("val "^n^" = Add_to_sml.parser`^(snd(Portable.List.hd(!Add_to_sml.L)))`");
+                  ())
+           else say ("\n"^quote n^" can not be a variable in SML, so\
+                         \ skipping its binding.\n")
+           ;
+           L := Portable.List.tl (!L)
+           ;
+           install ()
+        end;
+
+fun add_to_sml alist = 
+   ( L := alist;
+     install()
+   )
+   handle e => (L := []; WRAP_ERR("add_to_sml",e));
+  
+val add_axioms_to_sml      = add_to_sml o axioms
+and add_definitions_to_sml = add_to_sml o definitions
+and add_theorems_to_sml    = add_to_sml o theorems;
+
+fun add_theory str =
+   ( add_axioms_to_sml str;
+     add_definitions_to_sml str;
+     add_theorems_to_sml str
+   );
+
+
+type autoload_info = {Theory : string,
+                      Axioms : string list,
+                      Definitions : string list,
+                      Theorems : string list}
+
+val autoloads = ref ([]: autoload_info list);
+    
+
+
+fun find_th s [] = NONE
+  | find_th s ((ainfo as {Theory, ...}:autoload_info)::rst) = 
+      if (s = Theory)
+      then SOME ainfo
+      else find_th s rst
+
+fun set_autoloads r = autoloads := r::(!autoloads);
+
+fun get_autoloads thy = find_th thy (!autoloads)
+
+fun add_theory_to_sml str =
+  case (find_th str (!autoloads))
+    of NONE => add_theory str
+     | (SOME {Axioms, Definitions, Theorems, ...}) =>
+        ( add_to_sml((gather (fn (s,_) => mem s Axioms) (axioms str)) @@
+                     (gather (fn (s,_) => mem s Definitions)
+		                 (definitions str))@@
+                     (gather (fn (s,_) => mem s Theorems)
+		                 (theorems str)))
+        );
+
+
+local
+fun mk_entry thy kind name =
+      Portable.String.concat ["val ",name," = Theory.",kind," \"",thy,
+	       "\" \"",name,"\"\n"]
+
+fun mk_axiom_entries thy name_list =
+    Portable.String.concat (map (mk_entry thy "axiom") name_list)
+
+fun mk_definition_entries thy name_list =
+    Portable.String.concat (map (mk_entry thy "definition") name_list)
+
+fun mk_theorem_entries thy name_list =
+    Portable.String.concat (map (mk_entry thy "theorem") name_list)
+
+fun mk_theory_structure thy str =
+    let
+	val (Axioms, Definitions, Theorems) = 
+	    (case (find_th thy (!autoloads))
+	       of NONE => (map fst (axioms thy),
+			   map fst (definitions thy),
+			   map fst (theorems thy))
+		| SOME {Axioms, Definitions, Theorems, ...} =>
+		 (Axioms, Definitions, Theorems))
+    in
+	Portable.String.concat ["structure ",str," =\nstruct\n",
+		 (mk_axiom_entries thy Axioms),
+		 (mk_definition_entries thy Definitions),
+		 (mk_theorem_entries thy Theorems),"end\n"]
+    end
+in
+fun add_theory_structure_to_sml {structure_name,theory_name} =
+    let val command = mk_theory_structure theory_name structure_name
+	(*val _ = print command*)
+    in 
+    Portable.use_string command
+    end
+end
+
+end; (* Add_to_sml *)
+@

@@ -1,0 +1,838 @@
+<TITLE>HOL90 USER MANUAL</TITLE>
+
+<H1><PRE>  <IMG ALIGN=MIDDLE SRC = "hol.xbm" ALT = "hol90 logo"> <A NAME = "Beginning">  <STRONG>HOL90 USER MANUAL</STRONG><A/></PRE></H1>
+
+The <STRONG>hol90</STRONG> system is a re-implementation in SML/NJ of
+the Cambridge HOL system (<STRONG>hol88</STRONG>). The proof support of
+hol90 (term manipulation, axioms, inference rules, tactics, conversions,
+theories, libraries, <EM>etc.</EM>) is intended to be a replacement for
+that of hol88.  The major difference between the two systems is that
+they have been implemented in two different dialects of ML; a host of
+minor differences are discussed throughout this document. 
+<P>
+
+<STRONG>Note.</STRONG>It would be surprising if you could learn HOL only
+through this user manual. The Gordon and Melham book
+(<STRONG>Introduction to HOL</STRONG>, Cambridge University Press, 1993)
+provides a good place to start. Alternatively, you might consider a
+hol90 training course: contact 
+<A HREF = "http://www.dcs.glasgow.ac.uk/~tfm/">Tom Melham</A> for details.
+
+
+<H1><A NAME = "Table of Contents">Table of Contents</A></H1>
+
+<UL>
+<LI><A HREF = "beginner.html"><STRONG>Getting started with hol90</STRONG></A>
+<LI><A HREF = "gstack.html"><STRONG>Goal-directed proof</STRONG></A>
+<LI><A HREF = "#Examples"><STRONG>Examples</STRONG></A>
+<LI><A HREF = "syntax.html"><STRONG>The syntax of HOL expressions</STRONG></A>
+<LI><A HREF = "theory.html"><STRONG>Theories</STRONG></A>
+<LI><A HREF = "library.html"><STRONG>Libraries</STRONG></A>
+<LI><A HREF = "#FAQ"><STRONG>Common questions and problems</STRONG></A>
+<LI><A HREF = "#Surf the source"><STRONG>Surf the source!</STRONG></A>
+<LI><A HREF = "8/8.changes"><STRONG>Changes since the last release</STRONG></A>
+<LI><A HREF = "#Using SML"><STRONG>Using SML</STRONG></A>
+<LI><A HREF = "#Compatibility with hol88"><STRONG>Compatibility with hol88</STRONG></A>
+<LI><STRONG>Miscellaneous</STRONG>
+    <UL>
+    <LI><A HREF = "#Types">Introduced types</A>
+    <LI><A HREF = "#Exceptions">Exceptions</A>
+    <LI><A HREF = "#Help">Help</A>
+    <LI><A HREF = "theory.html#Autoloading">Autoloading</A>
+    <LI><A HREF = "#Paths">Paths</A>
+    <LI><A HREF = "#Flags">Flags</A>
+    <LI><A HREF = "#hol-init files">HOL start-up files</A>
+    </UL>
+<LI><A HREF = "install.html">
+    <STRONG>hol90 installation instructions</STRONG></A>
+</UL>
+<P>
+<A HREF = "#Beginning">Beginning of hol90 user manual</A>
+
+<HR>
+
+<H1><A NAME = "Examples">Examples</A></H1>
+
+In the following list you can find some detailed examples of the use of
+hol90. 
+
+   <UL>
+   <LI> <A HREF = "../examples/flt4.sml">
+        Fermat's last theorem (n = 4)</A>
+   <LI> <A HREF = "../examples/bmark/run.sml">
+         Verification of a hardware multiplier</A>
+   <LI> Inductive definitions
+        <UL>
+        <LI><A HREF = "../examples/inductive_def/opsem.sml">
+            The operational semantics of a small imperative language</A>
+        <LI><A HREF = "../examples/inductive_def/cl.sml">
+            Combinatory logic</A>
+
+        <LI><A HREF = "../examples/inductive_def/mil.sml">
+            Minimal intuitionistic logic, plus proof of Curry-Howard 
+            isomorphism with combinatory logic</A>
+        <LI><A HREF = "../examples/inductive_def/algebra.sml">
+            A small process algebra</A>
+        </UL>
+   <LI> Abstract theories
+       <UL> 
+        <LI>Documentation - somewhat dated, but still useful!
+           <A HREF = "../examples/abs_theory/abs_theory.ps">(Postscript)</A> or
+           <A HREF = "../examples/abs_theory/abs_theory.dvi">(DVI)</A>
+        <LI><A HREF = "../examples/abs_theory/monoid_def.sml">
+            Abstract theory of monoids</A>
+        <LI><A HREF = "../examples/abs_theory/group_def.sml">
+            Abstract theory of groups</A>
+        <LI><A HREF = "../examples/abs_theory/exorgroup.sml">
+            An instantiation of groups with <EM>xor</EM></A>
+       </UL>
+   <LI> Chandy and Misra's UNITY formalism
+       <UL> 
+        <LI><A HREF = "../examples/unity/mk_example01.sml">
+            dining philosophers</A>
+        <LI><A HREF = "../examples/unity/mk_example02.sml">
+            readers and writers</A>
+        <LI><A HREF = "../examples/unity/mk_example03.sml">
+            Staunstrup and Loevengreen's 2-Arbiter example</A>
+       </UL>
+   <LI> Window inference
+       <UL>
+       <LI><A HREF = "../examples/window_inference/simple.sml">
+           Basic examples</A>
+       <LI><A HREF = "../examples/window_inference/parity.sml">
+           A parity circuit</A>
+       </UL>
+
+   <LI> Applying a database query language to theories
+       <UL>
+        <LI>Documentation
+           <A HREF = "../examples/orsml/manual.ps">(Postscript)</A> or
+           <A HREF = "../examples/orsml/manual.dvi">(DVI)</A>
+       <LI><A HREF = "../examples/orsml/ex1.sml">
+           Basic examples</A>
+       <LI><A HREF = "../examples/orsml/test.sml">
+           A more complex example</A>
+       </UL>
+
+   <LI> Use of co-operating decision procedures
+       <UL>
+       <LI><A HREF = "../examples/decision/READ-ME">Documentation</A>
+       <LI><A HREF = "../examples/decision/examples.sml">Examples</A>
+       </UL>
+
+   <LI> Well-founded recursive function definitions
+       <UL>
+       <LI><A HREF = "../examples/tfl/">Examples</A>
+       </UL>
+
+   </UL>
+<P>
+<A HREF = "#Table of Contents">Table of Contents</A>
+<HR>
+
+<H1><A NAME = "FAQ">Common questions and problems</A></H1>
+
+The following are some common questions and problems that might arise
+when one is dealing with hol90.
+
+<DL>
+  
+<DT><STRONG>Why all these type annotations?</STRONG>
+
+<DD>People new to HOL systems often ask why they have to add type
+annotations to their terms. This was a design decision made by Robin
+Milner for the original LCF system, and we have not found reason to
+change. hol90 performs full Hindley-Milner type inference, inferring
+most general types, and then fails if any type variable is still
+unconstrained. If this wasn't done, inference rules would have to
+normalize types at runtime. For example, in
+<PRE>
+    ABS `x` (REFL `x`)
+</PRE>
+<KBD>ABS</KBD> would in general need to unify the types of the two
+<KBD>x</KBD>s, in order to make the types in the argument term and the
+occurrences in the theorem agree. In any case, those who want to
+experiment with type inference can write their own typechecker and use
+it in parsing, since the kernel of the system is independent of the
+particular type checker used.
+
+<DT><STRONG>My library take ages to load!</STRONG>
+<DD>
+A current shortcoming of hol90 libraries is that any code loaded will be
+source, not object, so loading will be slower. As soon as SML/NJ's
+separate compilation facility settles down, this will be fixed. In the mean
+time, there is a function <STRONG>prim_load_library</STRONG> of type
+<PRE>
+    (string -> unit) -> {lib:lib, theory:string} -> unit
+</PRE>
+The first argument is a <EM>code_loader</EM> function - it is invoked on each
+file in the <KBD>code</KBD> section of a library. Two possible ways to use
+this are to: compile the code of a library or to intepret the code. The 
+first option is already present in the functionality of the derived form 
+<KBD>load_library</KBD>, <EM>i.e.</EM>,
+<PRE>
+    val load_library = prim_load_library Lib.compile;
+</PRE>
+Another specialization of <KBD>prim_load_library</KBD> would load 
+the code quickly, but execution of that code would be slow. It would 
+be appropriate for small memory machines and it would be defined:
+<PRE>
+    val fast_load_library = prim_load_library Lib.interpret
+</PRE>
+This has not, however, been installed in the system. Another solution
+would be for users to load commonly used libraries and then
+dump the image with <KBD>save_hol</KBD>.
+
+<DT><STRONG>My theory (or library) doesn't load and fails with a strange error 
+            message!</STRONG>
+<DD>In an improperly installed hol90 system, the following behaviour 
+can sometimes occur:
+<PRE>
+    - load_library {lib=set_lib, theory="foo"} handle e => Raise e;
+
+    Loading the library "set".
+      ... < many loading messages >
+    Exception raised at Library.add_new_parent:
+    Theory.new_parent.install_new_parent.get_file_by_key: 
+       unable to get the file "HOL.holsig"
+</PRE>
+
+Here the problem is probably that the theory <KBD>set</KBD> found in the
+<EM>set</EM> library is out-of-date with respect to the <KBD>HOL</KBD>
+theory. The source of the problem is that hol90 uses unique ids (name +
+timestamp) to implement theories securely.  When <KBD>load_library</KBD>
+is asked to load <EM>set_lib</EM>, it declares the theory <KBD>foo</KBD>
+and attempts to do a <KBD>new_parent</KBD> on the theory
+<KBD>set</KBD>. The theory <KBD>set</KBD> is found on disk. Its parents
+(name + timestamp) are used to chain back in the theory graph until the
+frontier of the existing theory graph is found.
+
+<P>
+
+When looking for the parents of a theory, first they are looked for in
+the internally held graph representing the loaded HOL theories. The
+equality test involves both the theory names and the timestamps. If not
+found, then the search goes to disk, using
+<KBD>Globals.theory_path</KBD> as denoting the places to look.  When the
+parents of <KBD>set</KBD>, i.e., the <KBD>HOL</KBD> theory, is not
+found, that means the particular <KBD>HOL</KBD> theory being searched
+for does not exist in the internal graph structure. Since we know that
+<EM>a</EM> <KBD>HOL</KBD> theory is certainly there, the theory
+<KBD>set</KBD> and hence the library <KBD>set</KBD> is out-of-date with
+respect to the core HOL system.  The typical reason for this is that the
+core HOL system has been made by invoking
+
+<PRE>
+    make_hol <sml> -n
+</PRE>
+
+but that the libraries were not subsequently remade. By the way, a
+simple test of whether the theory <KBD>set</KBD> is up-to-date, is to
+attempt to do a
+
+<PRE>
+    load_theory "set" handle e => Raise e;
+</PRE>
+
+
+<DT><STRONG>Why have both</STRONG> <KBD>Psyntax</KBD> <STRONG>and</STRONG> <KBD>Rsyntax</KBD>?
+
+<DD> That is, why have two copies of the same thing? There are good
+arguments for and against both styles, so the hol90 implementors decided
+to make both syntaxes available. The argument for records? Record types
+often give better information about what the arguments of a function
+are. Compare
+<PRE>
+   Psyntax.new_specification 
+       :string->(string*string*int) list -> thm -> thm
+</PRE>
+with
+<PRE>
+   Rsyntax.new_specification : 
+       {name :string,  sat_thm : Thm.thm,
+        consts:{const_name:string, fixity:Term.fixity} list} -> Thm.thm
+</PRE>
+Furthermore, code written with records can be more readable when
+intensive term manipulations are being performed. Alternatively, it can
+be much clumsier to write such code, since the syntax of records entails
+more verbosity.
+
+<DT> <STRONG>Autoloading failure.</STRONG>
+
+<DD>Some derived principles of definition may define symbolic constants, 
+    and need to generate a name to store the definition with on a theory 
+    file. Usually this name generation is done by prepending the name of
+    the constant being defined to "_DEF". This can give us strange names,
+    like 
+    <PRE>
+       ;;_DEF
+    </PRE>
+    which is half symbolic identifier and half ordinary identifier. This 
+    strangeness is not a problem when loading the theory, but such theory
+    bindings will not be autoloadable; the system will issue a warning 
+    message when autoloading such a binding and skip over it.
+
+<DT> <STRONG>Problems in parsing symbolic identifiers.</STRONG>
+
+<DD>The inclusion of ":" in the "symbolics" means that some constraints may
+    need to be separated by white space. For example
+    <PRE>
+        $=:bool->bool->bool
+    </PRE>
+    will be broken up by the lexer as
+    <PRE>
+        $=: bool -> bool -> bool
+    </PRE>
+    and parsed as an application of the symbolic identifier "$=:" to
+    the term argument list ["bool", "->", "bool", "->", "bool"]. But
+    <PRE>
+        $= :bool->bool->bool
+    </PRE>
+    is OK, being parsed as the symbolic identifier "=" constrained by a type.
+    Another example involves the comma, which is also a symbolic identifier:
+    <PRE>
+       ($+,T)
+    </PRE>
+    the intended pairing of the addition function with the constant "T" will 
+    fail to typecheck because the phrase will be broken up as 
+    <PRE>
+        (  $+,  T  )
+    </PRE>
+    and interpreted as a variable "+," applied to "T". The intended parse is 
+    achieved by inserting a space before the comma.
+
+<DT> <STRONG>Non-confluence in rewriting</STRONG>
+
+<DD> In both hol88 and hol90, the rewriting process will occasionally
+    encounter a term to which more than one rewrite will be applicable. 
+    The first match will be the one used to rewrite the term. It can happen
+    (rarely) that hol90 will choose a different first match than hol88, and
+    that the result will be different. This is an example of non-confluence.
+    Some proofs from hol88 may break as a result.
+
+<DT> <STRONG>Renaming</STRONG>
+
+<DD>The basic hol90 term operations "subst" and "inst" do the least 
+    possible variable renaming within the bounds given by certain strictures 
+    (such as being able to re-parse prettyprinted terms to themselves). 
+    hol88 will sometimes rename unnecessarily, and this can, at times, cause 
+    a proof not to port. This typically occurs in the case of supplying 
+    witnesses to EXISTS_TAC. A sure tip off is a proof that won't port 
+    because there is a primed existential witness in the tactic, e.g.,
+    <PRE>
+        EXISTS_TAC "x'"
+    </PRE>
+    Often, removing the prime will enable the proof to go through.
+
+</UL>
+<P>
+<A HREF = "#Table of Contents">Table of Contents</A>
+<HR>
+
+<H1><A NAME = "Surf the source">Surf the source!</A></H1>
+
+The hol90 distribution is organized into the following directories:
+<UL>
+<LI> <A HREF = "../contrib/"> contrib - libraries contributed by users</A>
+<LI> <A HREF = "../doc/"> doc - system documentation</A>
+<LI> <A HREF = "../examples/"> examples - examples of using hol90</A>
+<LI> <A HREF = "../help/"> help - the system online help files</A>
+<LI> <A HREF = "../src/"> src - the hol90 sources</A>
+<LI> <A HREF = "../library/"> library - the standard libraries</A>
+<LI> <A HREF = "../theories/"> theories - the system theories</A>
+<LI> <A HREF = "../tools/"> tools - some useful tools</A>
+</UL>
+
+<P>
+<A HREF = "#Table of Contents">Table of Contents</A>
+<P>
+The hol90 executable comprises a set of about 40 structures, all loaded
+into the SML image, plus a collection of theories. All the structures
+are open, so the system appears to be totally without form. However, the
+form is there: if you wish to browse around, or have to track down a
+bug, a quick reference to the structures follows.
+
+<P>
+<UL>
+<LI> Sys_params - system building options. 
+     <UL>
+     <LI> <A HREF = "../src/0/sys_params.sig">Specification</A>
+     <LI> <A HREF = "../src/0/sys_params.sml">Implementation</A>
+     </UL>
+<LI> Globals - global flags
+     <UL>
+     <LI> <A HREF = "../src/0/globals.sig">Specification</A>
+     <LI> <A HREF = "../src/0/globals.sml">Implementation</A>
+     </UL>
+<LI> Exception - HOL_ERR defined
+     <UL>
+     <LI> <A HREF = "../src/0/exception.sig">Specification</A>
+     <LI> <A HREF = "../src/0/exception.sml">Implementation</A>
+     </UL>
+<LI> Lib - utility routines
+     <UL>
+     <LI> <A HREF = "../src/0/lib.sig">Specification</A>
+     <LI> <A HREF = "../src/0/lib.sml">Implementation</A>
+     </UL>
+<LI> Uid - unique identifiers
+     <UL>
+     <LI> <A HREF = "../src/0/uid.sig">Specification</A>
+     <LI> <A HREF = "../src/0/uid.sml">Implementation</A>
+     </UL>
+<LI> File - file operations along a path
+     <UL>
+     <LI> <A HREF = "../src/0/file.sig">Specification</A>
+     <LI> <A HREF = "../src/0/file.sml">Implementation</A>
+     </UL>
+<LI> Help - a simple interface to system documentation
+     <UL>
+     <LI> <A HREF = "../src/0/help.sig">Specification</A>
+     <LI> <A HREF = "../src/0/help.sml">Implementation</A>
+     </UL>
+<LI> <A NAME = "Type">Type - HOL types</A>
+     <UL>
+     <LI> <A HREF = "../src/0/type.sig">Specification</A>
+     <LI> <A HREF = "../src/0/type.sml">Implementation</A>
+     </UL>
+<LI> <A NAME = "Term">Term - HOL terms</A>
+     <UL>
+     <LI> <A HREF = "../src/0/term.sig">Specification</A>
+     <LI> <A HREF = "../src/0/term.sml">Implementation</A>
+     </UL>
+<LI> Match - matching for types and terms
+     <UL>
+     <LI> <A HREF = "../src/0/match.sig">Specification</A>
+     <LI> <A HREF = "../src/0/match.sml">Implementation</A>
+     </UL>
+<LI> <A NAME = "Dsyntax">Dsyntax - derived syntax for terms</A>
+     <UL>
+     <LI> <A HREF = "../src/0/dsyntax.sig">Specification</A>
+     <LI> <A HREF = "../src/0/dsyntax.sml">Implementation</A>
+     </UL>
+<LI> Parse_support - interface to preterm construction
+     <UL>
+     <LI> <A HREF = "../src/0/parse_support.sig">Specification</A>
+     <LI> <A HREF = "../src/0/parse_support.sml">Implementation</A>
+     </UL>
+<LI><A NAME = "Parse">Parse - parsing of types and terms</A>
+     <UL>
+     <LI> <A HREF = "../src/0/parse.sig">Specification</A>
+     <LI> <A HREF = "../src/0/parse.sml">Implementation</A>
+     </UL>
+<LI> Hol_pp - prettyprinting of types and terms
+     <UL>
+     <LI> <A HREF = "../src/0/hol_pp.sig">Specification</A>
+     <LI> <A HREF = "../src/0/hol_pp.sml">Implementation</A>
+     </UL>
+<LI> Thm - the primitive rules of inference of the HOL logic
+     <UL>
+     <LI> <A HREF = "../src/0/thm.sig">Specification</A>
+     <LI> <A HREF = "../src/0/thm.sml">Implementation</A>
+     </UL>
+<LI> Theory - theory operations
+     <UL>
+     <LI> <A HREF = "../src/0/theory/theory.sig">Specification</A>
+     <LI> <A HREF = "../src/0/theory/theory.sml">Implementation</A>
+     </UL>
+<LI> Add_to_sml - a form of autoloading
+     <UL>
+     <LI> <A HREF = "../src/0/theory/add_to_sml.sig">Specification</A>
+     <LI> <A HREF = "../src/0/theory/add_to_sml.sml">Implementation</A>
+     </UL>
+<LI> Library - functions for interacting with libraries
+     <UL>
+     <LI> <A HREF = "../src/0/library/lib.sig">Specification</A>
+     <LI> <A HREF = "../src/0/library/lib.sml">Implementation</A>
+     </UL>
+<LI> Install - relocating hol90 to a new directory
+     <UL>
+     <LI> <A HREF = "../src/0/install.sig">Specification</A>
+     <LI> <A HREF = "../src/0/install.sml">Implementation</A>
+     </UL>
+<LI> Const_spec - principle of constant specification
+     <UL>
+     <LI> <A HREF = "../src/0/const_spec.sig">Specification</A>
+     <LI> <A HREF = "../src/0/const_spec.sml">Implementation</A>
+     </UL>
+<LI> Type_def - principle of type definition
+     <UL>
+     <LI> <A HREF = "../src/0/type_def.sig">Specification</A>
+     <LI> <A HREF = "../src/0/type_def.sml">Implementation</A>
+     </UL>
+<LI> Const_def - principle of constant definition
+     <UL>
+     <LI> <A HREF = "../src/0/const_def.sig">Specification</A>
+     <LI> <A HREF = "../src/0/const_def.sml">Implementation</A>
+     </UL>
+<LI> Drule - derived rules of inference and theorems
+     <UL>
+     <LI> <A HREF = "../src/1/drule.sig">Specification</A>
+     <LI> <A HREF = "../src/1/drule.sml">Implementation</A>
+     </UL>
+<LI> Conv - conversions
+     <UL>
+     <LI> <A HREF = "../src/1/conv.sig">Specification</A>
+     <LI> <A HREF = "../src/1/conv.sml">Implementation</A>
+     </UL>
+<LI> Tactical - tacticals
+     <UL>
+     <LI> <A HREF = "../src/1/tactical.sig">Specification</A>
+     <LI> <A HREF = "../src/1/tactical.sml">Implementation</A>
+     </UL>
+<LI> Net - discrimination nets for terms
+     <UL>
+     <LI> <A HREF = "../src/0/net.sig">Specification</A>
+     <LI> <A HREF = "../src/0/net.sml">Implementation</A>
+     </UL>
+<LI> Rewrite - rewriting functions
+     <UL>
+     <LI> <A HREF = "../src/1/rewrite.sig">Specification</A>
+     <LI> <A HREF = "../src/1/rewrite.sml">Implementation</A>
+     </UL>
+<LI> Thm_cont - theorem continuations
+     <UL>
+     <LI> <A HREF = "../src/1/thm_cont.sig">Specification</A>
+     <LI> <A HREF = "../src/1/thm_cont.sml">Implementation</A>
+     </UL>
+<LI> Tactic - tactics
+     <UL>
+     <LI> <A HREF = "../src/1/tactic.sig">Specification</A>
+     <LI> <A HREF = "../src/1/tactic.sml">Implementation</A>
+     </UL>
+<LI> Taut_thms - some tautologies
+     <UL>
+     <LI> <A HREF = "../src/1/taut_thms.sig">Specification</A>
+     <LI> <A HREF = "../src/1/taut_thms.sml">Implementation</A>
+     </UL>
+<LI> Resolve - HOL-style resolution rules of inference
+     <UL>
+     <LI> <A HREF = "../src/1/resolve.sig">Specification</A>
+     <LI> <A HREF = "../src/1/resolve.sml">Implementation</A>
+     </UL>
+<LI> Type_def_support - helps prove useful thms from a type definition
+     <UL>
+     <LI> <A HREF = "../src/1/type_def_support.sig">Specification</A>
+     <LI> <A HREF = "../src/1/type_def_support.sml">Implementation</A>
+     </UL>
+<LI> Induct_then - generalized induction tactic
+     <UL>
+     <LI> <A HREF = "../src/1/induct_then.sig">Specification</A>
+     <LI> <A HREF = "../src/1/induct_then.sml">Implementation</A>
+     </UL>
+<LI> Prim_rec - generalized primitive recursive definition
+     <UL>
+     <LI> <A HREF = "../src/1/prim_rec.sig">Specification</A>
+     <LI> <A HREF = "../src/1/prim_rec.sml">Implementation</A>
+     </UL>
+<LI> Num_conv - num_CONV
+     <UL>
+     <LI> <A HREF = "../src/2/num_conv.sig">Specification</A>
+     <LI> <A HREF = "../src/2/num_conv.sml">Implementation</A>
+     </UL>
+<LI> Let_conv - let_CONV and PAIRED_BETA_CONV
+     <UL>
+     <LI> <A HREF = "../src/2/let_conv.sig">Specification</A>
+     <LI> <A HREF = "../src/2/let_conv.sml">Implementation</A>
+     </UL>
+<LI> Num_induct - INDUCT and INDUCT_TAC
+     <UL>
+     <LI> <A HREF = "../src/2/num_induct.sig">Specification</A>
+     <LI> <A HREF = "../src/2/num_induct.sml">Implementation</A>
+     </UL>
+<LI> Rec_type_support - helps prove useful thms from a "define_type" definition
+     <UL>
+     <LI> <A HREF = "../src/2/rec_type_support.sig">Specification</A>
+     <LI> <A HREF = "../src/2/rec_type_support.sml">Implementation</A>
+     </UL>
+<LI> Define_type - derived principle of definition for concrete recursive types
+     <UL>
+     <LI> <A HREF = "../src/3/define_type.sig">Specification</A>
+     <LI> <A HREF = "../src/3/define_type.sml">Implementation</A>
+     </UL>
+<LI>Goalstack - goal-directed proof manager
+     <UL>
+     <LI> <A HREF = "../src/3/gstack.sig">Specification</A>
+     <LI> <A HREF = "../src/3/gstack.sml">Implementation</A>
+     </UL>
+<LI> Sys_lib - descriptions of the predefined libraries of the system
+     <UL>
+     <LI> <A HREF = "../src/3/sys_lib.sig">Specification</A>
+     <LI> <A HREF = "../src/3/sys_lib.sml">Implementation</A>
+     </UL>
+<LI> <A NAME = "Psyntax">Psyntax - support for paired syntax</A>
+     <UL>
+     <LI> <A HREF = "../src/3/psyntax.sig">Specification</A>
+     <LI> <A HREF = "../src/3/psyntax.sml">Implementation</A>
+     </UL>
+<LI> <A NAME = "Rsyntax">Rsyntax - support for record-style syntax</A>
+     <UL>
+     <LI> <A HREF = "../src/3/rsyntax.sig">Specification</A>
+     <LI> <A HREF = "../src/3/rsyntax.sml">Implementation</A>
+     </UL>
+</UL>
+
+Every bound identifier that is not in the pervasive environment of SML/NJ
+should be in one of the above structures.
+<P>
+<A HREF = "#Table of Contents">Table of Contents</A>
+<HR>
+
+<H1><A NAME = "Using SML">Using SML</A></H1>
+
+We provide <A HREF = "sml.html">a simple guide</A> to the local
+installation of SML/NJ. A list of answers to 
+<A HREF = "http://www.cs.cmu.edu:8001/afs/cs.cmu.edu/user/jgmorris/web/sml-faq.html">frequently asked questions</A>
+
+about the ML family of languages is also accessible.
+
+<P>
+
+For those hol88 users migrating to hol90, SML has a Core language subset
+that is quite close to ML Classic. A comparative reading of the hol88
+and hol90 sources will go a long way towards making one "Core
+SML-fluent". One might start by reading the 
+
+<A HREF ="../src/0/lib.sml">hol90 "standard prelude"</A>, 
+
+which provides many utility functions used in building the system. 
+<P>
+
+The formal semantics of SML is found in <STRONG>The Definition of
+Standard ML</STRONG> (MIT Press 1990) and some discussion of the
+semantics can be found in <STRONG>Commentary on Standard ML</STRONG>
+(MIT Press 1990). These books are for reference, and are by no means
+introductory texts. A gentler introduction is Larry Paulson's textbook,
+<STRONG>ML for the Working Programmer</STRONG> (Cambridge University
+Press, 1991).
+
+<P>
+<A HREF = "#Table of Contents">Table of Contents</A>
+<HR>
+
+<H1><A NAME = "Compatibility with hol88">Compatibility with hol88</A></H1>
+
+As stated in the introduction to this manual, there are few differences
+between hol88 and hol90, at least at the level of theorem
+proving. However, there is a host of differences in the support for
+theorem proving and so a straghtforward compatibility package is not
+possible. We have, however, made a minor effort at supporting those who
+are used to hol88: in conjunction with the built-in structure
+<KBD>Psyntax</KBD>, <KBD>hol88_lib</KBD> gives hol90 some ability to
+mimic hol88. Therefore, to operate as much as possible in a hol88-like
+environment, one would do the following:
+
+<PRE>
+    load_library{lib = hol88_lib, theory = "-"};
+    open Psyntax Compat;
+</PRE>
+
+<P>
+<STRONG>Warning</STRONG>: <KBD>hol88_lib</KBD> is by no means complete!
+If you have additions you want made, please send them to the author of
+this document.
+
+<H2>Lacunae</H2>
+
+The following hol88 facilities do not appear in hol90.
+
+<UL>
+<LI> Interface maps and constant hiding. 
+<LI> Type abbreviations (for the logic).
+</UL>
+
+As well, there are still a few libraries have not yet been
+ported. Finally, the <KBD>contrib</KBD> directory is much smaller than
+that of hol88.
+
+
+<H2>Conversion between the two systems</H2>
+
+Currently, there are no good tools for converting between the two
+systems. A set of gnuemacs functions for doing elementary conversions
+between Classic ML and SML files is provided with the release, in the
+"tools" directory. They work best on files that are mainly proofs; files
+of general ML code really need a more comprehensive solution. In spite
+of that, any gmacs hackers who want to expand the capabilities of these
+functions are warmly encouraged!
+<P>
+
+<A HREF = "#Table of Contents">Table of Contents</A>
+<HR>
+
+<H2><A NAME = "Types">Introduced types</A></H1>
+
+Here we give a listing of all types defined by hol90 on top of SML. The
+definitions of type abbreviations are given. Most of the other types are
+abstract, and have specially installed prettyprinters so that users can
+"see" values of these opaque types.
+
+<UL>
+<LI> <STRONG>hol_type</STRONG> -  Abstract type of HOL types
+<LI> <STRONG>term</STRONG> - Abstract type of HOL terms
+<LI> <STRONG>thm</STRONG> - Abstract type of theorems
+<LI> <STRONG>lib</STRONG> - Abstract type of library descriptions
+<LI> <STRONG>fixity</STRONG> - Parsing status of constants
+<LI> <STRONG>subst = {redex:'a, residue:'a} list</STRONG> - Substitutions for types and terms
+<LI> <STRONG>conv = term -> thm</STRONG> - Equality reasoners
+<LI> <STRONG>goal = term list * term</STRONG>
+<LI> <STRONG>validation = thm list -> thm</STRONG>
+<LI> <STRONG>tactic = goal -> goal list * validation</STRONG>
+<LI> <STRONG>thm_tactic = thm -> tactic</STRONG>
+<LI> <STRONG>thm_tactical = thm_tactic -> thm_tactic</STRONG>
+<LI> <STRONG>rewrites</STRONG> - Rewrite rule databases
+<LI> <STRONG>'a net</STRONG> - "Hash tables" indexed by terms
+<LI> <STRONG>preterm</STRONG> - Terms that haven't been typechecked yet
+<LI> <STRONG>goalstack</STRONG> - Backwards proof managers
+<LI> <STRONG>proofs</STRONG> - Collections of backwards proof managers
+<LI> <STRONG>arg</STRONG>
+<LI> <STRONG>parse</STRONG>
+</PRE>
+
+</UL>
+<P>
+
+The special-purpose types <STRONG>arg</STRONG> and
+<STRONG>parse</STRONG> are used locally in the parser and might change
+or disappear.
+
+<P>
+<A HREF = "#Table of Contents">Table of Contents</A>
+<HR>
+
+<H2><A NAME = "Exceptions">Exceptions</A></H2>
+
+The multitude of exceptions that hol90 can raise have been shepherded
+into one:
+<PRE>
+    exception HOL_ERR of {origin_structure : string,
+                          origin_function : string,
+                          message :string}
+</PRE>
+
+The three fields are, in order: the name of the structure that the
+raising routine inhabits; the name of the raising routine; and the
+message. Any exception that propagates to the top level should either be
+HOL_ERR or defined in the SML/NJ pervasive environment.
+<P>
+Unfortunately, SML/NJ does not automatically print the values of
+exceptions that propagate to the top level. To help in this, the
+structure Exception (where HOL_ERR is defined) provides the routines
+<PRE>
+    print_HOL_ERR: exn -> unit
+    Raise : exn -> 'a
+</PRE>
+The first prints out HOL_ERR in a fashion prescribed by the (assignable)
+function Globals.output_HOL_ERR. The second does the same (provided
+Globals.print_exceptions is set to true), but also raises the exception
+again. This feature is handy for debugging and also for reporting
+HOL_ERR, since it saves on finding a value of the proper type to return:
+<PRE>
+    el 3 ["foo","bar"] handle e => (print_HOL_ERR e; "blag");
+    el 3 ["foo","bar"] handle e => Raise e;
+</PRE>
+<P>
+<A HREF = "#Table of Contents">Table of Contents</A>
+<HR>
+
+<H2><A NAME = "Help">Help</A></H2>
+
+A primitive on-line help system exists: an invocation of "help" on the 
+subject of interest, e.g.,
+<P>
+<PRE>
+    help "X"
+</PRE>
+
+follows the help_path until it finds a file X.doc. Then it makes a
+system call to process the file and print the results to std_out. An
+assignable string interpreted as an operating system function is used
+for printing: it is the variable
+<P>
+<PRE>
+       Globals.output_help : string ref
+</PRE>
+<P>
+which is initially set to "/bin/cat". If you find that "help" fails
+because the system call fails, you should try the auxiliary help
+function "help1", which produces TeX-annotated, but still readable,
+output.
+<P>
+
+Unhappily, hol90 is not as yet self-sufficient in the area of help
+files: it relies primarily on the hol88 documentation. This is not that
+bad, since most of the functionality in the two systems is identical,
+particularly in the area of proof functions. However, at times the help is
+deficient or downright unhelpful!
+<P>
+
+It can happen that you will able to get help for a function that doesn't
+exist in the system, e.g., "dest_pred". To ease your puzzlement, there is
+"meta-help" for this: do
+<PRE>
+    help "hol88_extras";
+</PRE>
+which will return a complete listing of all entry points of hol88 that
+aren't also in hol90. Each entry has a one-line explanation; often the
+entry point, if it is useful, has a different name in hol90. Many
+entries in the list are not useful and should in fact be deleted from
+hol88.
+<P>
+<A HREF = "#Table of Contents">Table of Contents</A>
+<HR>
+
+<H2><A NAME = "Paths">Paths</A></H2>
+
+The following paths exist in the structure Globals:
+<PRE>
+    theory_path : string list ref
+    library_path : string list ref
+    help_path : string list ref
+</PRE>
+These are used to find theories, libraries, and help. The three paths
+are independent. Each path begins with an empty path (""), so that help,
+theories and libraries can be designated by absolute pathnames. The
+paths are used primarily to find files to read, load, or print; however,
+the theory and library paths are also used to determine where to write a
+theory or library, respectively. In this case, the first member of the
+list is taken as the prefix of the pathname of the file to be written.
+If the write fails, no further attempts are made using other members of
+the list.
+<P>
+There are some functions for manipulating paths:
+<PRE>
+    Lib.cons_path : string -> string list ref -> unit
+    Lib.append_path : string -> string list ref -> unit
+</PRE>
+In "cons_path", an attempt is made to keep the empty path first in the
+path list. This is helpful for developing local versions of system
+theories, help, and libraries.
+<P>
+<A HREF = "#Table of Contents">Table of Contents</A>
+<HR>
+
+<H2><A NAME = "Flags">Flags</A></H2>
+
+
+All assignable variables in the system are held in the structure
+<A HREF = "../src/0/globals.sml">Globals</A>. Most of them are 
+directly assignable, for example
+<PRE>
+    Globals.show_types := true;
+</PRE>
+
+<HR>
+
+<H2><A NAME = "hol-init files">HOL start-up files</A></H2>
+
+
+When hol90 is invoked, it looks for a file called "hol-init.sml", first
+in the current directory, then in the user's home directory. A "use" is
+performed on the first hol-init.sml found. This support is extended to
+all binaries resulting from an invocation of "save_hol". This service
+can be disabled by assigning Globals.use_init_file to false.
+
+<HR>
+<A HREF = "#Table of Contents">Table of Contents</A>
+<BR>
+<A HREF="http://www.cl.cam.ac.uk/users/kxs/">Konrad Slind</A>,
+kxs@cl.cam.ac.uk<P>

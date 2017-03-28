@@ -1,0 +1,37 @@
+#!/bin/sh
+
+# make_hol <path-to-sml-or-exene-or-whatever> [-b|-o|-n] [-d<path>]
+# in the default case, automatically figures out where it is building 
+# the system and what architecture it is on. The -d option allows
+# the specification of the hol90 system root directory (the one that
+# has src,doc,theories,library,tools etc. as subdirectories).
+
+$* < sys01.sml
+
+echo 'Install.install_system_theory "restr_binder"'  | ./hol90.01
+echo 'Install.install_system_theory "pair"'          | ./hol90.01
+echo 'Install.install_system_theory "combin"'        | ./hol90.01
+echo 'Install.install_system_theory "one"'           | ./hol90.01
+echo 'Install.install_system_theory "sum"'           | ./hol90.01
+echo 'Install.install_system_theory "num"'           | ./hol90.01
+
+./hol90.01 < sys2.sml
+/bin/rm ./hol90.01
+
+echo 'Install.install_system_theory "prim_rec"'   | ./hol90.2
+echo 'Install.install_system_theory "arithmetic"' | ./hol90.2
+echo 'Install.install_system_theory "list"'       | ./hol90.2
+
+echo 'if Globals.remake_theory_files'\
+     ' then let val base_dir = !Globals.HOLdir '\
+     '          val file = base_dir^"theories/src/mk_list_thms.sml" '\
+     '      in use file end '\
+     ' else ()' | ./hol90.2
+
+echo 'Install.install_system_theory "tree"'     | ./hol90.2
+echo 'Install.install_system_theory "ltree"'    | ./hol90.2
+echo 'Install.install_system_theory "rec_type"' | ./hol90.2
+
+./hol90.2 < sys3.sml
+
+/bin/rm ./hol90.2

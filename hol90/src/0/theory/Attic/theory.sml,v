@@ -1,0 +1,1635 @@
+head	1.8;
+access;
+symbols
+	HOL97:1.4.2.1.0.2
+	bpHOL97:1.4.2.1
+	hol90_9_alpha:1.4.2.1
+	hol90_pre8_for_multiple_compilers:1.4.0.2
+	last_edition:1.7
+	hol90_pre8_after_donalds_separate_compilation_changes:1.3
+	hol90_8_after_merging_Konrad_Elsa:1.2
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.8
+date	96.02.08.00.24.10;	author drs1004;	state dead;
+branches;
+next	1.7;
+
+1.7
+date	96.02.08.00.18.58;	author drs1004;	state Exp;
+branches;
+next	1.6;
+
+1.6
+date	96.01.04.14.07.46;	author drs1004;	state Exp;
+branches;
+next	1.5;
+
+1.5
+date	95.12.18.11.22.38;	author drs1004;	state Exp;
+branches;
+next	1.4;
+
+1.4
+date	95.11.15.13.31.00;	author rjb;	state Exp;
+branches
+	1.4.2.1;
+next	1.3;
+
+1.3
+date	95.10.31.15.06.32;	author drs1004;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	95.10.18.16.37.59;	author drs1004;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	95.10.16.13.30.12;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.30.12;	author rjb;	state Exp;
+branches
+	1.1.1.1.2.1;
+next	;
+
+1.1.1.1.2.1
+date	95.10.18.10.09.16;	author drs1004;	state Exp;
+branches;
+next	;
+
+1.4.2.1
+date	96.08.23.14.11.25;	author rjb;	state Exp;
+branches
+	1.4.2.1.2.1;
+next	;
+
+1.4.2.1.2.1
+date	97.06.11.17.26.15;	author kxs;	state Exp;
+branches;
+next	1.4.2.1.2.2;
+
+1.4.2.1.2.2
+date	97.07.10.18.39.06;	author kxs;	state Exp;
+branches;
+next	1.4.2.1.2.3;
+
+1.4.2.1.2.3
+date	98.02.23.20.55.11;	author kxs;	state Exp;
+branches;
+next	1.4.2.1.2.4;
+
+1.4.2.1.2.4
+date	98.04.09.15.29.51;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.8
+log
+@New theory mechanism, by Donald Syme
+@
+text
+@(* ===================================================================== *)
+(* FILE          : theory.sml                                            *)
+(* DESCRIPTION   : Provides management of logical theories.              *)
+(*                                                                       *)
+(* AUTHOR        : Konrad Slind, University of Calgary                   *)
+(* DATE          : September 11, 1991                                    *)
+(* ===================================================================== *)
+
+
+functor THEORY (structure Thm : Thm_sig
+                structure PrivateTerm : Private_term_sig
+                structure Globals : Globals_sig
+                structure Hol_pp : Hol_pp_sig
+                structure Theory_ops : Theory_ops_sig
+                sharing
+                  Theory_ops.Theory_data.Thm = Thm
+                sharing
+                  Thm.Term = PrivateTerm = Hol_pp.Term
+                sharing type
+                  Theory_ops.Theory_graph.node_id = 
+                  Theory_ops.Theory_data.theory_id
+                sharing type
+                  Theory_ops.Theory_cache.key = string)
+                : Theory_sig =
+struct
+structure Thm = Thm;
+open Theory_ops;
+open Theory_data;
+open Lib;
+open Thm;
+open Thm.Term;
+    
+
+val WRAP_ERR = Exception.WRAP_ERR "Theory";
+val ERR = Exception.ERR "Theory";
+    
+ 
+(*--------------------------------------------------------------------
+ * Adding into the current theory 
+ *-------------------------------------------------------------------*)
+
+local
+fun augment_ct f arg = 
+   make_current(set_consistency_with_disk false (f arg (the_current_theory())))
+in
+val add_parent_to_current_theory = augment_ct add_parent
+val add_type_to_current_theory = augment_ct add_type
+val add_term_to_current_theory = augment_ct add_term
+val add_axiom_to_current_theory = augment_ct add_axiom
+val add_definition_to_current_theory = augment_ct add_definition
+val add_theorem_to_current_theory = augment_ct add_theorem
+fun set_current_theory_draft_mode b =
+       make_current(set_draft_mode b (the_current_theory()))
+fun set_current_theory_disk_consistency b =
+       make_current(set_consistency_with_disk b (the_current_theory()))
+end;
+
+val draft_mode = Theory_data.theory_draft_mode o the_current_theory
+val current_theory_id = theory_id o the_current_theory;
+val current_theory_name = theory_id_name o current_theory_id;
+
+(*--------------------------------------------------------------------
+ * new_type
+ *-------------------------------------------------------------------*)
+
+fun new_type {Name,Arity} = 
+   if (draft_mode())
+   then if (Lexis.allowed_type_constant Name)  
+        then let val tyr = {name=Name, arity = Arity,
+                                 theory = current_theory_name()}
+	     in (PrivateTerm.Type.add_type_const tyr;
+		 add_type_to_current_theory tyr)
+	     end
+        else ERR("new_type", quote Name^" is not an allowed type name")
+   else ERR("new_type", "not in draft mode")
+   handle e => WRAP_ERR("new_type",e);
+       
+
+
+(*--------------------------------------------------------------------
+ * Adding constants (to both theory and symbol table)
+ *
+ * Old code (fixities)
+ * fun infixx s ty =
+ *    let val{Tyop = "fun", Args = [_,ty2]} = Type.dest_type ty
+ *        val{Tyop = "fun", Args = [_,_]} = Type.dest_type ty2
+ *    in   ()
+ *    end
+ *    handle _ => ERR (s,  "not an infix type")
+ * fun binder s ty =
+ *    let val {Tyop = "fun", Args = [ty1,_]} = Type.dest_type ty
+ *        val {Tyop = "fun", Args = [_,_]} = Type.dest_type ty1
+ *    in   ()
+ *    end
+ *    handle _ => ERR (s,  "not a binder type")
+ * case fixity
+ *      of Prefix => ()
+ *       | (Infix prec) => 
+ *          (infixx err_str Ty;
+ *           if (prec < 0)
+ *           then ERR (err_str,"precedence must be positive")
+ *           else ())
+ *       | Binder => binder err_str Ty; 
+*            val dollared_trec = { const = Const{Name = "$"^Name, Ty=Ty},
+                                  theory = current_theory_name(), place=Prefix}
+           add_term_to_current_theory dollared_trec 
+val new_binder = write_constant "new_binder" Binder
+fun new_infix{Name,Ty,Prec} = write_constant "new_infix" (Infix Prec) 
+                                             {Name=Name,Ty=Ty}
+ *-------------------------------------------------------------------*)
+
+
+
+fun new_constant (c as {Name,Ty}) =
+ ( if (Lexis.allowed_term_constant Name)
+   then ()
+   else ERR ("new_constant", quote Name^ " is not an allowed constant name");
+   if (not (draft_mode())) then ERR ("new_constant", "not in draft mode")
+   else ();
+       
+   let val trec = { const = PrivateTerm.Const c, theory = current_theory_name() }
+   in PrivateTerm.add_term_const trec; 
+      add_term_to_current_theory trec 
+   end)
+       handle e => WRAP_ERR("new_constant",e);
+	   
+
+    
+
+(*--------------------------------------------------------------------
+ * WRITING AXIOMS, DEFINITIONS, AND THEOREMS 
+ * 
+ *
+ *-------------------------------------------------------------------*)
+
+fun check_draft_mode s = 
+   if (draft_mode())
+   then () 
+   else ERR(s, "not in draft mode");
+fun check_bool s tm = 
+   if (type_of tm = Type.mk_type{Tyop = "bool", Args = []}) 
+   then () 
+   else ERR (s, "not a formula");
+fun check_name (fname, "") = ERR (fname, "empty string not allowed as name")
+  | check_name _ = ()
+fun empty_hyp th = 
+   if (null (hyp th)) 
+   then () 
+   else ERR("save_thm", "non empty assumption set")
+
+
+(* change genvar'ed names to normal names *)
+fun new_open_axiom (name,tm) = 
+   let val ax = mk_axiom_thm([],tm)
+   in 
+     check_name ("new_open_axiom",name);
+     check_draft_mode "new_open_axiom";
+     check_bool "new_open_axiom" tm;
+     let val opt_ax = optimize_thm ax
+     in (add_axiom_to_current_theory(name,opt_ax); opt_ax)
+     end
+   end
+
+fun store_definition(name,tycons,tmcons,thmf) =
+   ( check_name ("store_definition",name);
+     check_draft_mode "store_definition";
+     let val _ = map new_type tycons
+         val _ = map new_constant tmcons
+         val def = optimize_thm (thmf ())
+     in add_definition_to_current_theory(name,def);  def
+     end
+   )
+
+(*--------------------------------------------------------------------
+ * save_thm
+ * The check_bool is for mk_thm'd things; mk_thm doesn't check that its 
+ * args are of type :bool
+ *-------------------------------------------------------------------*)
+
+fun save_thm (name,th) =
+   ( check_name ("save_thm",name);
+     check_bool "save_thm" (concl th);
+     if (!Globals.allow_theorems_with_assumptions)
+     then ()
+     else empty_hyp th;
+     let val opt_th = optimize_thm th 
+     in (add_theorem_to_current_theory(name,opt_th); opt_th)
+     end )
+
+
+(*--------------------------------------------------------------------
+ * INFORMATION ON CONSTANTS 
+ * val is_constant = Term.is_st_term_const
+ * and is_type = Type.is_st_type_const;
+ * 
+ * val const_decl = Term.const_decl
+ * val arity = Type.arity_of_type;
+ *-------------------------------------------------------------------*)
+
+
+(*---------------------------------------------------------------------
+ * Removed to Fixity (fixity.sml)
+ * 
+ * val fixity = Term.fixity_of_term
+ * and precedence = Term.prec_of_term;
+ * 
+ * 
+ * val is_binder = Term.is_binder
+ * val is_infix = Term.is_infix
+ *--------------------------------------------------------------------*)
+
+
+(*--------------------------------------------------------------------
+ * READING INFORMATION FROM A THEORY 
+ *
+ *-------------------------------------------------------------------*)
+
+local
+(* val infixed = is_infix o #Name o Thm.Term.dest_const *)
+ (* val bindered = is_binder o #Name o Thm.Term.dest_const *)
+fun convert_from_type_record{name, arity, theory} = 
+           {Name = name, Arity = arity}
+fun convert_from_term_record({const,theory (* ,place *)}) = const
+fun grab_item style name alist =
+    (case (assoc1 name alist)
+	 of (SOME (_,th)) => th
+       | NONE => ERR(style, "couldn't find "^style^" named "^quote name))
+(*     handle e => Exception.Raise e; *)
+		
+in
+fun parents "-" = parents (current_theory_name())
+  | parents str = map theory_id_name(Theory_graph.parents str)
+                  handle NOT_FOUND
+                  => ERR("parents",
+                               quote str^" not in theory graph.")
+val types = map convert_from_type_record o 
+            theory_type_constants o Theory_ops.grab_ances_theory
+val constants = map convert_from_term_record o 
+                theory_term_constants o Theory_ops.grab_ances_theory
+(* val infixes = gather infixed o constants
+   and binders = gather bindered o constants *)
+val axioms = theory_axioms o Theory_ops.grab_ances_theory
+and definitions = theory_definitions o Theory_ops.grab_ances_theory
+and theorems = theory_theorems o Theory_ops.grab_ances_theory
+fun axiom thry_str name = grab_item "axiom" name (axioms thry_str)
+and definition thry name = grab_item "definition" name (definitions thry)
+and theorem thry_str name = grab_item "theorem" name (theorems thry_str)
+end;
+
+fun print_theory_to_outstream {outstream, theory} =
+    let	val def_Cons = PP.defaultConsumer()
+	val consumer = {consumer = curry output outstream,
+			flush = #flush def_Cons,
+			linewidth = #linewidth def_Cons}
+	val _ = Theory_data.pp_theory (PP.mk_ppstream consumer)
+	                              (Theory_ops.grab_ances_theory theory)
+	val _ = Portable.flush_out outstream
+    in outstream end
+
+fun print_theory_to_file {file, theory} =
+    let val outfile = open_out file
+    in close_out (print_theory_to_outstream {outstream = outfile,
+					     theory = theory})
+    end
+
+
+fun print_theory s = 
+   Theory_data.pp_theory (PP.mk_ppstream(PP.defaultConsumer()))
+                         (Theory_ops.grab_ances_theory s)
+
+fun ancestry "-" = ancestry(current_theory_name())
+  | ancestry s = map Theory_data.theory_id_name (Theory_graph.ancestry s);
+
+
+(* THEORY OPERATIONS *)
+
+fun new_parent "" = ERR("new_parent", "empty theory name not allowed")
+  | new_parent "-" = ERR("new_parent",
+                         "\"-\" denotes current theory; a theory \
+                                 \ cannot be a parent of itself")
+  | new_parent str =
+    if (draft_mode())
+    then if (str = current_theory_name())
+         then ERR("new_parent", "self-parenting is not allowed")
+         else if (mem str (ancestry "-"))
+            then ()
+          else 
+       Theory_ops.perform_atomic_theory_op
+       (fn () =>
+        let val {data = hol_sig,...} = Theory_io.get_hol_sig_by_name
+                                         (!Globals.theory_path) str
+            val {thid,...} = Theory_io.dest_hol_sig hol_sig
+        in
+           Theory_ops.install_new_parent (current_theory_name(),hol_sig)
+           handle e => WRAP_ERR("new_parent.install_new_parent",e)
+           ;
+           add_parent_to_current_theory thid
+           ;
+           Theory_graph.add_parent (current_theory_id()) thid
+        end)
+    else ERR("new_parent","not in draft mode");
+
+
+local
+fun check str =
+   if (mem str (current_theory_name()::ancestry"-"))
+   then ERR("new_theoryn","theory: "^quote str^" already exists.")
+   else 
+   if Lexis.ok_identifier str
+   then ()
+   else ERR("new_theory",
+       "proposed theory name "^quote str^" is not an identifier")
+in
+fun new_theory "" = ERR("new_theory", "empty theory name not allowed")
+  | new_theory "-" = ERR("new_theory",
+                  quote"-"^" is not allowed as a new theory name")
+  | new_theory "min" = 
+       ( make_current(fresh_theory "min");
+         Theory_graph.add_node (current_theory_id()) [];
+         say ("\nTheory "^quote "min"^" declared.\n")
+       )
+  | new_theory str =
+       ( check str;
+         say ("\nDeclaring theory "^quote str^".\n");
+         Theory_ops.export_theory();
+         let val p = current_theory_id()
+         in  make_current(fresh_theory str);
+             add_parent_to_current_theory p;
+             Theory_graph.add_node (current_theory_id()) [p]
+         end
+       )
+end;
+
+
+
+fun close_theory() = 
+   ( set_current_theory_draft_mode false;
+     say ("\nTheory "^quote(current_theory_name())^" closed.\n"));
+
+
+fun print_load_message s thry_str= 
+   let val info_str = if (s = "load_theory") then "Loading" else "Extending"
+   in say ("\n"^info_str^" theory "^quote thry_str^"\n")
+   end;
+
+
+(* Brings a an entire theory in, not just the hol_sig.  *)
+fun haul_in str load_or_extend =
+   (print_load_message load_or_extend str;
+    if (str = "min")  (* only when reusing theory files *)
+    then ()
+    else Theory_ops.export_theory();     (* May have stored a thm *)
+    Theory_data.make_current             (* Make the leap *)
+       (Theory_ops.perform_atomic_theory_op
+           (fn () => (Theory_ops.goto_theory str (current_theory_id()))));
+    set_current_theory_draft_mode (load_or_extend = "extend_theory"))
+
+
+(**************************************************************************
+ * load_theory is a "goto" statement in the theory graph. But you can 
+ * only prove theorems when you get there. Not allowed to load a parent.
+ **************************************************************************)
+fun load_theory "" = ERR("load_theory",
+			       "empty theory name not allowed")
+  | load_theory "-" = ERR("load_theory",
+              "\"-\" denotes current theory. You are already there.")
+  | load_theory str =
+      if (draft_mode())
+      then ERR("load_theory",
+                             "no theory is the descendant of a draft")
+      else if (str = current_theory_name())
+           then ERR("load_theory",
+				  "cannot load self")
+           else haul_in str "load_theory";
+
+(**************************************************************************
+ * extend_theory is a "goto" statement in the theory graph. You can 
+ * do anything you want when you get there.
+ *********************************************************************)
+fun extend_theory "" = ERR("extend_theory",
+                                      "empty theory name not allowed")
+  | extend_theory "-" = extend_theory (current_theory_name())
+  | extend_theory str =
+      if (draft_mode())
+      then ERR("extend_theory",
+                             "no theory is the descendant of a draft")
+      else if (str = current_theory_name())
+           then (say ("\nExtending theory "^quote str^"\n");
+                 set_current_theory_draft_mode true)
+           else haul_in str "extend_theory";
+
+
+val draft_mode = Theory_data.theory_draft_mode o the_current_theory
+val current_theory = current_theory_name;
+
+val export_theory = Theory_ops.export_theory;
+val close = Theory_ops.close;
+
+val delete_theory_from_cache = Theory_cache.delete_object_from_cache;
+val delete_cache = Theory_cache.delete_cache;
+val theories_in_cache = Theory_cache.objects_in_cache;
+
+val perform_atomic_theory_op = Theory_ops.perform_atomic_theory_op;
+
+
+(****************************************************************************
+ * HTML view of a theory. Assumes that "-" has already been expanded, since
+ * "-.html" is hard for Unix commands like "rm" to deal with
+ ****************************************************************************)
+fun theory_to_html ppstrm theory_name =
+   let val {parents,type_constants,term_constants,axioms,definitions,theorems}
+            = {parents = parents theory_name,
+               type_constants = types theory_name,
+               term_constants = constants theory_name,
+               axioms = axioms theory_name,
+               definitions = definitions theory_name,
+               theorems = theorems theory_name}
+       val {add_string,add_break,begin_block,end_block,
+            add_newline,flush_ppstream,...} = PP.with_ppstream ppstrm
+       fun is_dollared s = (Portable.String.ordof(s,0) = Portable.String.ordof("$",0))
+       fun strong s = (add_string"<STRONG>"; add_string s; 
+                       add_string"</STRONG>")
+       fun title s = add_string("<H1>"^s^"</H1>");
+       fun link (l,s) = (add_string("<A HREF = "^quote l^">");
+                         strong s;
+                         add_string"</A>")
+       fun HR() = (add_newline();add_string"<HR>";add_newline());
+
+       fun vblock(header, ob_pr, obs) =
+             ( begin_block PP.CONSISTENT 4;
+               title header;
+               add_newline();
+               add_string"<UL>"; add_newline();
+               PP.pr_list (fn x => (add_string"<LI>"; ob_pr x))
+                          (fn () => ()) add_newline obs;
+               add_newline();
+               add_string"</UL>";
+               end_block();
+               add_newline();
+               add_newline())
+
+       fun dl_block(header, ob_pr, obs) =
+             ( begin_block PP.CONSISTENT 0;
+               title header;
+               add_newline();
+               add_string"<DL>"; add_newline();
+               PP.pr_list 
+                (fn (x,ob) => 
+                     (begin_block PP.CONSISTENT 0;
+                      add_string"<DT>"; strong x; add_newline();
+                      add_string"<DD>"; add_newline();
+                      ob_pr ob;
+                      end_block()))
+                (fn () => ()) add_newline obs;
+               add_newline();
+               add_string"</DL>";
+               end_block();
+               add_newline();
+               add_newline())
+
+       val pp_type = Hol_pp.pp_type ppstrm
+(*       fun fixity_to_string(Thm.Term.Infix i)  = "Infix "^(int_to_string i)
+         | fixity_to_string Thm.Term.Prefix = "Prefix"
+         | fixity_to_string Thm.Term.Binder = "Binder" *)
+       val pp_thm = Thm.pp_thm ppstrm
+       fun pr_thm (heading, ths) = dl_block(heading, 
+           (fn th => (begin_block PP.CONSISTENT 0;
+                      add_string"<PRE>";
+                      add_newline();
+                      pp_thm th;
+                      add_newline();
+                      add_string"</PRE>";
+                      add_newline();
+                      end_block())),    ths)
+   in begin_block PP.CONSISTENT 0;
+         add_string("<TITLE>Theory: "^theory_name^"</TITLE>");
+         add_newline();
+         add_string("<H1>Theory: "^theory_name^"</H1>");
+         add_newline()
+         ;
+         vblock ("Parents", (fn n => link(n^".html",n)), parents)
+         ; HR();
+         vblock ("Types", 
+                 (fn {Name,Arity} => (strong Name; 
+                            add_string("(Arity = "^
+				       int_to_string Arity^")"))),
+                 (rev type_constants))
+         ; HR();
+         let val consts = gather (not o is_dollared o #Name o Term.dest_const)
+                                 (rev term_constants)
+(*             val binders = gather (is_binder o #Name o Term.dest_const) consts
+             val infixes = gather (is_infix  o #Name o Term.dest_const) consts *)
+         in vblock("Constants", (fn const => 
+                let val {Name,Ty} = Term.dest_const const
+(*                    val place = (fixity_to_string o fixity) Name *)
+                in begin_block PP.CONSISTENT 0;
+                   strong Name;
+                   add_string"<EM>";
+                   add_string ":";
+                   pp_type Ty ~1;
+                   add_string"</EM>";
+                   end_block()
+                end),     consts)
+(*            ;
+            if (null infixes) 
+            then ()
+            else vblock("Infixes", (fn const => 
+                  let val {Name,...} = Term.dest_const const
+                      val infix_str = case(fixity Name) 
+                                      of (Infix i) => int_to_string i
+                             | _ => ERR("theory_to_html",
+                                          "Non-infix in infix block")
+                  in begin_block PP.CONSISTENT 0;
+                     strong (Name^"{");
+                     add_string("fixity = "^infix_str);
+                     strong"}";
+                     end_block()
+                  end),     infixes)
+            ;
+            if (null binders)
+            then ()
+            else vblock("Binders", (fn const => 
+              let val {Name,...} = Term.dest_const const
+              in begin_block PP.CONSISTENT 0;
+                 strong Name;
+                 end_block()
+              end),     binders)
+*)
+         end
+         ; HR();
+         pr_thm ("Axioms", rev axioms)
+         ; HR()
+         ;
+         pr_thm ("Definitions", rev definitions)
+         ; HR()
+         ;
+         pr_thm ("Theorems", rev theorems);
+         HR();
+       end_block()
+   end;
+
+fun html_theory s = 
+   let val name = (case s of "-" => current_theory_name() |    _ => s)
+       val ostrm = open_out (name^".html")
+       val consumer =  {consumer = (fn s => output(ostrm,s)),
+                        linewidth = 78,
+                        flush = fn () => Portable.flush_out ostrm}
+   in
+     PP.with_pp consumer (C theory_to_html name) 
+     handle e => (close_out ostrm; raise e);
+     close_out ostrm
+   end;
+
+end; (* THEORY *)
+
+@
+
+
+1.7
+log
+@updates for latest ML Lex and Yacc
+@
+text
+@@
+
+
+1.6
+log
+@Added simplifier components, added drule files, added MK_ABS_CONV, better error messages
+@
+text
+@a14 1
+                structure Lexis : Lexis_sig
+@
+
+
+1.5
+log
+@Preterm and other changes, see 7.changes
+@
+text
+@d11 1
+a11 1
+                structure Term : Private_term_sig
+d19 1
+a19 1
+                  Thm.Term = Term = Hol_pp.Term
+a27 1
+open Term;
+d31 4
+d36 1
+a36 1
+val THEORY_ERR = Exception.ERR "Theory";
+d39 3
+a41 1
+(* Adding into the current theory *)
+d63 3
+a65 1
+(* WRITING CONSTANTS *)
+d67 1
+a67 2
+local
+fun write_type_constant {Name,Arity} = 
+d72 1
+a72 1
+	     in (Type.add_type_const tyr;
+d75 37
+a111 7
+        else THEORY_ERR("new_type.write_type_constant",
+                       Lib.quote Name^" is not an allowed type name")
+   else THEORY_ERR("new_type.write_type_constant",
+                          "not in draft mode")
+in
+val new_type = write_type_constant
+end;
+a113 23
+local
+fun infixx s ty =
+   let val{Tyop = "fun", Args = [_,ty2]} = Type.dest_type ty
+       val{Tyop = "fun", Args = [_,_]} = Type.dest_type ty2
+   in   ()
+   end
+   handle _ => THEORY_ERR (s,  "not an infix type")
+fun binder s ty =
+   let val {Tyop = "fun", Args = [ty1,_]} = Type.dest_type ty
+       val {Tyop = "fun", Args = [_,_]} = Type.dest_type ty1
+   in   ()
+   end
+   handle _ => THEORY_ERR (s,  "not a binder type")
+fun write_constant err_str fixity (c as {Name,Ty}) =
+ ( case fixity
+     of Prefix => ()
+      | (Infix prec) => 
+         (infixx err_str Ty;
+          if (prec < 0)
+          then THEORY_ERR (err_str,
+                                  "precedence must be positive")
+          else ())
+      | Binder => binder err_str Ty;
+d115 2
+a116 1
+   if (Lexis.allowed_term_constant Name)
+d118 2
+a119 4
+   else THEORY_ERR (err_str,
+                  Lib.quote Name^ " is not an allowed constant name");
+   if (not (draft_mode()))
+   then THEORY_ERR (err_str, "not in draft mode")
+d121 9
+a129 19
+   if (Term.is_st_term_const Name)
+   then THEORY_ERR(err_str,
+                        Lib.quote Name^" is already in symbol table")
+   else let val trec = { const = Const c, theory = current_theory_name(),
+                         place = fixity }
+            val dollared_trec = { const = Const{Name = "$"^Name, Ty=Ty},
+                                  theory = current_theory_name(), place=Prefix}
+        in (* Add to symtab *)
+           Term.add_term_const Term.Defining trec; 
+           (* Add to current theory *)
+           add_term_to_current_theory trec;
+           add_term_to_current_theory dollared_trec
+        end)
+in
+val new_constant = write_constant "new_constant" Prefix
+val new_binder = write_constant "new_binder" Binder
+fun new_infix{Name,Ty,Prec} = write_constant "new_infix" (Infix Prec) 
+                                             {Name=Name,Ty=Ty}
+end;
+d131 5
+a136 2
+(* WRITING AXIOMS, DEFINITIONS, AND THEOREMS  *)
+local
+d140 1
+a140 1
+   else THEORY_ERR(s, "not in draft mode");
+d144 2
+a145 3
+   else THEORY_ERR (s, "not a formula");
+fun check_name (fname, "") = THEORY_ERR (fname,
+                                   "empty string not allowed as name")
+d148 1
+a148 1
+   if (Portable.List.null (Thm.hyp th)) 
+d150 3
+a152 1
+   else THEORY_ERR("save_thm", "non empty assumption set")
+a153 1
+in
+d155 1
+a155 1
+   let val ax = Thm.mk_axiom_thm([],tm)
+d160 1
+a160 1
+     let val opt_ax = Thm.optimize_thm ax
+d164 2
+a165 1
+fun store_definition(name,tm) =
+d168 4
+a171 4
+     check_bool "store_definition" tm;
+     let val def = Thm.optimize_thm(Thm.mk_definition_thm([],tm))
+     in
+       add_definition_to_current_theory(name,def);  def
+d174 4
+a177 1
+(* The check_bool is for mk_thm'd things; mk_thm doesn't check that its 
+d179 2
+a180 1
+ **********************************************************************)
+d183 1
+a183 1
+     check_bool "save_thm" (Thm.concl th);
+d187 1
+a187 1
+     let val opt_th = Thm.optimize_thm th 
+a189 11
+end;
+
+
+(* INFORMATION ON CONSTANTS *)
+val arity = Type.arity_of_type;
+
+val fixity = Term.fixity_of_term
+and precedence = Term.prec_of_term;
+
+val is_constant = Term.is_st_term_const
+and is_type = Type.is_st_type_const;
+a190 2
+val is_binder = Term.is_binder
+val is_infix = Term.is_infix
+d192 26
+a217 1
+val const_decl = Term.const_decl
+a218 2
+
+(* READING INFORMATION FROM A THEORY *)
+d220 2
+a221 2
+val infixed = is_infix o #Name o Thm.Term.dest_const
+val bindered = is_binder o #Name o Thm.Term.dest_const
+d224 1
+a224 1
+fun convert_from_term_record({const,theory,place}) = const
+d226 5
+a230 4
+   case (Lib.assoc1 name alist)
+     of (SOME (_,th)) => th
+      | NONE => THEORY_ERR(style,
+                      "couldn't find "^style^" named "^Lib.quote name)
+d235 2
+a236 2
+                  => THEORY_ERR("parents",
+                               Lib.quote str^" not in theory graph.")
+d241 2
+a242 2
+val infixes = Lib.gather infixed o constants
+and binders = Lib.gather bindered o constants
+d278 2
+a279 3
+fun new_parent "" = THEORY_ERR("new_parent",
+                                      "empty theory name not allowed")
+  | new_parent "-" = THEORY_ERR("new_parent",
+d285 2
+a286 3
+         then THEORY_ERR("new_parent",
+                                "self-parenting is not allowed")
+         else if (Lib.mem str (ancestry "-"))
+d302 1
+a302 1
+    else THEORY_ERR("new_parent","not in draft mode");
+d308 1
+a308 2
+   then THEORY_ERR("new_theoryn",
+			  "theory: "^Lib.quote str^" already exists.")
+d312 2
+a313 2
+   else THEORY_ERR("new_theory",
+       "proposed theory name "^Lib.quote str^" is not an identifier")
+d315 3
+a317 4
+fun new_theory "" = THEORY_ERR("new_theory",
+                                      "empty theory name not allowed")
+  | new_theory "-" = THEORY_ERR("new_theory",
+                  Lib.quote"-"^" is not allowed as a new theory name")
+d321 1
+a321 1
+         Lib.say ("\nTheory "^Lib.quote "min"^" declared.\n")
+d325 1
+a325 1
+         Lib.say ("\nDeclaring theory "^Lib.quote str^".\n");
+d339 1
+a339 1
+     Lib.say ("\nTheory "^Lib.quote(current_theory_name())^" closed.\n"));
+d344 1
+a344 1
+   in Lib.say ("\n"^info_str^" theory "^Lib.quote thry_str^"\n")
+d364 1
+a364 1
+fun load_theory "" = THEORY_ERR("load_theory",
+d366 1
+a366 1
+  | load_theory "-" = THEORY_ERR("load_theory",
+d370 1
+a370 1
+      then THEORY_ERR("load_theory",
+d373 1
+a373 1
+           then THEORY_ERR("load_theory",
+d381 1
+a381 1
+fun extend_theory "" = THEORY_ERR("extend_theory",
+d386 1
+a386 1
+      then THEORY_ERR("extend_theory",
+d389 1
+a389 1
+           then (Lib.say ("\nExtending theory "^Lib.quote str^"\n");
+d425 1
+a425 1
+       fun link (l,s) = (add_string("<A HREF = "^Lib.quote l^">");
+d463 1
+a463 1
+       fun fixity_to_string(Thm.Term.Infix i)  = "Infix "^(Lib.int_to_string i)
+d465 1
+a465 1
+         | fixity_to_string Thm.Term.Binder = "Binder"
+d487 1
+a487 1
+				       Lib.int_to_string Arity^")"))),
+d492 2
+a493 2
+             val binders = gather (is_binder o #Name o Term.dest_const) consts
+             val infixes = gather (is_infix  o #Name o Term.dest_const) consts
+d496 1
+a496 1
+                    val place = (fixity_to_string o fixity) Name
+d505 2
+a506 2
+            ;
+            if (Portable.List.null infixes) 
+d511 2
+a512 2
+                                      of (Infix i) => Lib.int_to_string i
+                             | _ => THEORY_ERR("theory_to_html",
+d521 1
+a521 1
+            if (Portable.List.null binders)
+d529 1
+d550 1
+a550 1
+     PP.with_pp consumer (Lib.C theory_to_html name) 
+@
+
+
+1.4
+log
+@The HOL90 sources have been changed to allow for the use of different
+Standard ML compilers (possibly simultaneously).
+
+ * Many files in "src/0" changed to make them more portable across different
+   ML compilers. Various additions have been made to the Portable structure
+   and files changed to access identifiers in the Portable structure rather
+   than from the global environment. Worthy of special note are:
+
+   - The pointer equality used in "src/0/term.sml" has been made into a
+     function in the Portable structure.
+
+   - The ML-Lex and ML-Yacc files for the various parsers have been changed
+     to access the Portable structure. Both the source files and the SML
+     produced from them have been changed but I have not verified that the
+     source files would reproduce the new SML versions if ML-Lex and ML-Yacc
+     were to be rerun on them. The changes involve some hacks that exploit the
+     way ML-Lex and ML-Yacc work. See the sources for details.
+
+R.J.Boulton, 15th November 1995.
+@
+text
+@d10 2
+a11 3
+functor THEORY ((* structure Lib : Lib_sig *)
+		structure Thm : Thm_sig
+                structure Term : Term_sig
+d32 3
+a34 6
+open Exception;
+fun THEORY_ERR{function,message} =
+    HOL_ERR{origin_structure = "Theory",
+		      origin_function = function,
+		      message = message}
+
+d64 1
+a64 4
+        then if (Type.is_st_type_const Name)
+             then raise THEORY_ERR{function = "new_type.write_type_constant", 
+                            message = Lib.quote Name^" already in symtab"}
+             else let val tyr = {tyc = Type.Tyc Name, arity = Arity,
+d66 7
+a72 7
+                  in Type.add_entry tyr;
+                     add_type_to_current_theory tyr
+                  end
+        else raise THEORY_ERR{function = "new_type.write_type_constant",
+                      message = Lib.quote Name^" is not an allowed type name"}
+   else raise THEORY_ERR{function = "new_type.write_type_constant",
+                         message = "not in draft mode"}
+d84 1
+a84 1
+   handle _ => raise THEORY_ERR {function = s, message = "not an infix type"}
+d90 1
+a90 1
+   handle _ => raise THEORY_ERR {function = s, message = "not a binder type"}
+d97 2
+a98 2
+          then raise THEORY_ERR {function = err_str,
+                                 message = "precedence must be positive"}
+d104 2
+a105 2
+   else raise THEORY_ERR {function = err_str,
+                 message = Lib.quote Name^ " is not an allowed constant name"};
+d107 1
+a107 2
+   then raise THEORY_ERR {function = err_str,
+			  message = "not in draft mode"}
+d110 2
+a111 2
+   then raise THEORY_ERR{function = err_str,
+                       message = Lib.quote Name^" is already in symbol table"}
+d135 1
+a135 1
+   else raise THEORY_ERR{function = s,message = "not in draft mode"};
+d139 3
+a141 3
+   else raise THEORY_ERR {function = s,message = "not a formula"};
+fun check_name (fname, "") = raise THEORY_ERR {function = fname,
+                                  message = "empty string not allowed as name"}
+d146 1
+a146 2
+   else raise THEORY_ERR{function = "save_thm",
+                         message = "non empty assumption set"}
+d155 3
+a157 2
+     add_axiom_to_current_theory(name,ax);
+     ax 
+d163 1
+a163 1
+     let val def = Thm.mk_definition_thm([],tm)
+d177 3
+a179 2
+     add_theorem_to_current_theory(name,th);
+     th )
+d202 1
+a202 1
+fun convert_from_type_record{tyc = Type.Tyc name, arity, theory} = 
+d208 2
+a209 2
+      | NONE => raise THEORY_ERR{function = style,
+                     message = "couldn't find "^style^" named "^Lib.quote name}
+d214 2
+a215 2
+                  => raise THEORY_ERR{function = "parents",
+                              message = Lib.quote str^" not in theory graph."}
+d257 5
+a261 5
+fun new_parent "" = raise THEORY_ERR{function = "new_parent",
+                                     message = "empty theory name not allowed"}
+  | new_parent "-" = raise THEORY_ERR{function = "new_parent",
+                        message= "\"-\" denotes current theory; a theory \
+                                 \ cannot be a parent of itself"}
+d265 2
+a266 2
+         then raise THEORY_ERR{function = "new_parent",
+                               message = "self-parenting is not allowed"}
+d277 1
+a277 4
+           handle HOL_ERR{origin_function = function,message,...}
+           => raise THEORY_ERR
+                    {function = "new_parent.install_new_parent."^function,
+                     message = message}
+d283 1
+a283 1
+    else raise THEORY_ERR{function = "new_parent",message="not in draft mode"};
+d289 2
+a290 2
+   then raise THEORY_ERR{function = "new_theoryn",
+			 message = "theory: "^Lib.quote str^" already exists."}
+d294 2
+a295 2
+   else raise THEORY_ERR{function = "new_theory",
+      message = "proposed theory name "^Lib.quote str^" is not an identifier"}
+d297 4
+a300 4
+fun new_theory "" = raise THEORY_ERR{function = "new_theory",
+                                     message = "empty theory name not allowed"}
+  | new_theory "-" = raise THEORY_ERR{function = "new_theory",
+                 message = Lib.quote"-"^" is not allowed as a new theory name"}
+d347 4
+a350 4
+fun load_theory "" = raise THEORY_ERR{function = "load_theory",
+			      message = "empty theory name not allowed"}
+  | load_theory "-" = raise THEORY_ERR{function = "load_theory",
+             message = "\"-\" denotes current theory. You are already there."}
+d353 2
+a354 2
+      then raise THEORY_ERR{function = "load_theory",
+                            message = "no theory is the descendant of a draft"}
+d356 2
+a357 2
+           then raise THEORY_ERR{function = "load_theory",
+				 message = "cannot load self"}
+d364 2
+a365 2
+fun extend_theory "" = raise THEORY_ERR{function = "extend_theory",
+                                     message = "empty theory name not allowed"}
+d369 2
+a370 2
+      then raise THEORY_ERR{function = "extend_theory",
+                            message = "no theory is the descendant of a draft"}
+d495 2
+a496 2
+                             | _ => raise THEORY_ERR{function="theory_to_html",
+                                         message = "Non-infix in infix block"}
+d528 1
+a528 2
+       val consumer = PP.mk_consumer
+                       {consumer = (fn s => output(ostrm,s)),
+@
+
+
+1.4.2.1
+log
+@Bugfix.
+@
+text
+@d148 3
+a150 4
+fun check_name (fname,s) = 
+     if (Lexis.ok_thy_index s) then ()
+     else raise THEORY_ERR {function = fname,
+                            message = Lib.quote s^" not allowed as name"}
+@
+
+
+1.4.2.1.2.1
+log
+@Removed files are parse files and portability files that have
+effectively been moved elsewhere.
+
+Modified files are up to date for ML 109.26.
+@
+text
+@d10 2
+a11 1
+functor THEORY (structure Thm : Thm_sig
+d16 1
+d240 1
+a240 1
+	val consumer = {consumer = Portable.outputc outstream,
+d249 2
+a250 2
+    let val outfile = Portable.open_out file
+    in Portable.close_out (print_theory_to_outstream {outstream = outfile,
+d401 1
+a401 1
+(*---------------------------------------------------------------------------
+d404 1
+a404 1
+ *---------------------------------------------------------------------------*)
+d415 1
+a415 2
+       fun is_dollared s = (Portable.String.ordof(s,0) 
+                            = Portable.String.ordof("$",0))
+d538 1
+a538 1
+       val ostrm = Portable.open_out (name^".html")
+d540 1
+a540 1
+                       {consumer = Portable.outputc ostrm,
+d545 2
+a546 2
+     handle e => (Portable.close_out ostrm; raise e);
+     Portable.close_out ostrm
+@
+
+
+1.4.2.1.2.2
+log
+@Closing up HOL so it is CM-friendly.
+@
+text
+@d14 1
+a14 2
+                structure Theory_ops : sig include Theory_ops_sig end
+                                       where type Theory_cache.key = string
+d21 4
+a24 2
+                  Theory_ops.Theory_data.theory_id)
+            : Theory_sig =
+a26 1
+
+a31 1
+
+d175 1
+a175 2
+(*---------------------------------------------------------------------------
+ * The check_bool is for mk_thm'd things; mk_thm doesn't check that its 
+d177 1
+a177 1
+ *---------------------------------------------------------------------------*)
+d352 1
+a352 1
+(*---------------------------------------------------------------------------
+d355 1
+a355 1
+ *---------------------------------------------------------------------------*)
+d369 1
+a369 1
+(*---------------------------------------------------------------------------
+d372 1
+a372 1
+ *---------------------------------------------------------------------------*)
+d548 1
+a548 1
+
+a549 23
+local val std_out = Portable.std_out
+      val output = Portable.output
+      val flush_out = Portable.flush_out
+      val concat = Portable.String.concat
+in 
+fun loadLibThry libname thyname =
+  let val thy_dir = concat[!Globals.HOLdir, "library/", libname, "/theories/",
+                           SysParams.theory_file_type, "/"]
+      val () = if (Lib.mem thy_dir (!Globals.theory_path))
+                then ()
+               else Lib.cons_path thy_dir Globals.theory_path
+  in
+  if (Lib.mem thyname (current_theory()::ancestry"-")) 
+      then (output(std_out, concat 
+             ["Theory ", Lib.quote thyname, " is already present.\n"]);
+            flush_out std_out)
+      else if draft_mode() 
+            then Lib.try new_parent thyname
+           else Lib.try load_theory thyname
+  end
+end;
+
+end; (* THEORY *)
+@
+
+
+1.4.2.1.2.3
+log
+@Addition of inference tracking for Wai Wong.
+@
+text
+@a32 14
+local structure Recorder 
+  :sig
+    datatype just_arg = JA_THM of Thm.thm
+                    | JA_TERM of Thm.Term.term
+                    | JA_TYPE of Thm.Term.Type.hol_type
+                    | JA_STRING of string
+                    | JA_INT of int
+                    | JA_INTLIST of int list
+                    | JA_PAIR of just_arg * just_arg
+    val note : Thm.step * Thm.thm -> Thm.thm
+   end = Thm
+in open Recorder end;
+
+
+a60 6
+(* For tracking proofs *)
+fun note s = if Thm.is_recording_proof() then (!Thm.record_step s; ()) else ();
+
+fun dummy() = Thm.mk_thm
+   ([],Term.mk_var{Name="x", Ty=Type.mk_type{Args=[],Tyop="bool"}});
+
+a63 3
+fun step (Arity,Name) = 
+  Thm.STEP{Name="NEWTYPE", Just=[Thm.JA_INT Arity, Thm.JA_STRING Name],
+          Thm = dummy()}
+d72 1
+a72 2
+                  in note (step (Arity,Name));
+                     Type.add_entry tyr;
+a84 2
+fun step (Name,Ty) = Thm.STEP{Name="NEWCONSTANT", Thm=dummy(),
+                         Just = [Thm.JA_STRING Name, Thm.JA_TYPE Ty]}
+d123 1
+a123 2
+        in note (step (Name,Ty));
+           (* Add to symtab *)
+d165 1
+a165 2
+     Thm.note (Thm.STEP{Name="NEWAXIOM", Thm=ax,
+                        Just = [JA_STRING name, JA_TERM tm]}, ax)
+d173 1
+a173 3
+       add_definition_to_current_theory(name,def);
+       Thm.note (Thm.STEP{Name="STOREDEFINITION", Thm=def,
+                        Just = [JA_STRING name, JA_TERM tm]}, def)
+a207 8
+fun strtoUpper s =
+ let fun toUpper c =
+   if (c >= #"a") andalso (c <= #"z") then
+     Char.chr((Char.ord c - Char.ord #"a") + Char.ord #"A")
+   else c
+  in
+    implode (map toUpper (explode s))
+ end
+d213 1
+a213 1
+fun grab_item style name alist thry =
+d215 2
+a216 1
+     of NONE => raise THEORY_ERR{function = style,
+a217 2
+     | SOME (_,th) => Thm.note (Thm.STEP{Name=strtoUpper style, Thm=th,
+                         Just=[Thm.JA_STRING thry, Thm.JA_STRING name]},th)
+d233 3
+a235 3
+fun axiom thry name = grab_item "axiom" name (axioms thry) thry
+and definition thry name = grab_item "definition" name (definitions thry) thry
+and theorem thry name = grab_item "theorem" name (theorems thry) thry
+@
+
+
+1.4.2.1.2.4
+log
+@Fixed "dummy" so that it doesn't die when invoked in empty theory.
+@
+text
+@d78 2
+a79 1
+fun dummy() = Thm.mk_thm ([],Term.mk_var{Name="x", Ty=Type.Tyc"bool"});
+@
+
+
+1.3
+log
+@First phase of hol90.8 development.  hol90 now compiles using NJSML-CM
+108.5, with separate compilation of libraries.  System dependencies
+have been isolated in the makefiles and "portable.sml".
+
+This involved a large number of enhancments to the source files,
+most of which are documented in the 7.changes file (or will be shortly).
+See also the correpsonding email corrspondence between RJB, KLS, TFM,
+JRH and DRS that happened during this development.
+@
+text
+@d152 1
+a152 1
+   if (null (Thm.hyp th)) 
+d239 1
+a239 1
+	val consumer = {consumer = IO.outputc outstream,
+d244 1
+a244 1
+	val _ = IO.flush_out outstream
+d248 3
+a250 3
+    let val outfile = IO.open_out file
+    in IO.close_out (print_theory_to_outstream {outstream = outfile,
+						theory = theory})
+d499 1
+a499 1
+            if (null infixes) 
+d514 1
+a514 1
+            if (null binders)
+d541 1
+a541 1
+                        flush = fn () => flush_out ostrm}
+@
+
+
+1.2
+log
+@Check in after merging in Konrad's changes made after
+the release of hol90.7.  This involved creating a side branch
+in which to check in Konrad's changes, then merging in that
+side branch into the main development (which contains changes
+made by Elsa Gunter).
+
+Some other small modification have been made to the source code,
+as I begun to try to make this version into a working version:
+	- hol90 will now be compiled in an environment were no
+structures can be considered opn.  This means many structures
+now need "open Lib" and other such commands at their head.
+This has not yet been completed, but has been begun.
+	- "rotl" and "rotr" have been added to Lib, something
+which I just did impulsively.   Documentation files
+have also been added in help/90.
+@
+text
+@d33 1
+d35 1
+a35 1
+    Exception.HOL_ERR{origin_structure = "Theory",
+d414 1
+a414 1
+       fun is_dollared s = (Sml_system.String.ordof(s,0) = Sml_system.String.ordof("$",0))
+d549 1
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d10 2
+a11 1
+functor THEORY (structure Thm : Thm_sig
+d32 5
+a37 4
+fun THEORY_ERR{function,message} = HOL_ERR{origin_structure = "Theory",
+					   origin_function = function,
+					   message = message}
+
+d100 6
+a105 5
+      | (Infix prec) => (infixx err_str Ty;
+                         if (prec < 0)
+                         then raise THEORY_ERR {function = err_str,
+			              message = "precedence must be positive"}
+                         else ())
+d212 1
+a212 1
+   case (assoc1 name alist)
+d226 2
+a227 2
+val infixes = gather infixed o constants
+and binders = gather bindered o constants
+d236 17
+d273 1
+a273 1
+         else if (mem str (ancestry "-"))
+d276 16
+a291 14
+       let val {data = hol_sig,...} = Theory_io.get_hol_sig_by_name
+                                        (!Globals.theory_path) str
+           val {thid,...} = Theory_io.dest_hol_sig hol_sig
+       in
+          Theory_ops.install_new_parent (current_theory_name(),hol_sig)
+          handle HOL_ERR{origin_function = function,message,...}
+          => raise THEORY_ERR
+                   {function = "new_parent.install_new_parent."^function,
+                    message = message}
+          ;
+          add_parent_to_current_theory thid
+          ;
+          Theory_graph.add_parent (current_theory_id()) thid
+       end
+d294 1
+d298 1
+a298 1
+   then raise THEORY_ERR{function = "new_theory",
+d331 1
+a331 1
+     Lib.say ("\nTheory "^quote(current_theory_name())^" closed.\n"));
+d399 2
+a400 1
+(* HTML view of a theory. Assumes that "-" has already been expanded, since
+d402 1
+a402 1
+ ************************************************************************** *)
+d413 1
+a413 1
+       fun is_dollared s = (ordof(s,0) = ordof("$",0))
+d459 9
+a467 9
+       fun pr_thm (heading, ths) =
+          dl_block(heading, (fn th => (begin_block PP.CONSISTENT 0;
+                                       add_string"<PRE>";
+                                       add_newline();
+                                       pp_thm th;
+                                       add_newline();
+                                       add_string"</PRE>";
+                                       add_newline();
+                                       end_block())),  ths)
+d476 1
+a476 1
+         vblock ("Type constants", 
+d478 2
+a479 1
+                            add_string("(Arity = "^int_to_string Arity^")"))),
+d482 40
+a521 18
+         vblock ("Term constants", 
+                 (fn const
+                  => let val {Name,Ty} = Term.dest_const const
+                         val place = (fixity_to_string o fixity) Name
+                     in begin_block PP.CONSISTENT 0;
+                        strong Name;
+                        add_string"<EM>";
+                        add_string ":";
+                        pp_type Ty ~1;
+                        add_string"</EM>";
+                        add_newline();
+                        strong"{";
+                        add_string("fixity  = "^place);
+                        strong "}";
+                        end_block()
+                     end),
+                 gather (not o is_dollared o #Name o Term.dest_const)
+                        (rev term_constants))
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@
+
+
+1.1.1.1.2.1
+log
+@	Konrad's bug fixes and further development to hol90.7 after it's release.
+	Checked n on a side branch for later merging with the main trunk
+	(Elsa's revisions).  See doc/7.changes for details.
+@
+text
+@d98 5
+a102 6
+      | (Infix prec) => 
+         (infixx err_str Ty;
+          if (prec < 0)
+          then raise THEORY_ERR {function = err_str,
+                                 message = "precedence must be positive"}
+          else ())
+d256 14
+a269 16
+       Theory_ops.perform_atomic_theory_op
+       (fn () =>
+        let val {data = hol_sig,...} = Theory_io.get_hol_sig_by_name
+                                         (!Globals.theory_path) str
+            val {thid,...} = Theory_io.dest_hol_sig hol_sig
+        in
+           Theory_ops.install_new_parent (current_theory_name(),hol_sig)
+           handle HOL_ERR{origin_function = function,message,...}
+           => raise THEORY_ERR
+                    {function = "new_parent.install_new_parent."^function,
+                     message = message}
+           ;
+           add_parent_to_current_theory thid
+           ;
+           Theory_graph.add_parent (current_theory_id()) thid
+        end)
+a271 1
+
+d275 1
+a275 1
+   then raise THEORY_ERR{function = "new_theoryn",
+d376 1
+a376 2
+(****************************************************************************
+ * HTML view of a theory. Assumes that "-" has already been expanded, since
+d378 1
+a378 1
+ ****************************************************************************)
+d435 9
+a443 9
+       fun pr_thm (heading, ths) = dl_block(heading, 
+           (fn th => (begin_block PP.CONSISTENT 0;
+                      add_string"<PRE>";
+                      add_newline();
+                      pp_thm th;
+                      add_newline();
+                      add_string"</PRE>";
+                      add_newline();
+                      end_block())),    ths)
+d452 1
+a452 1
+         vblock ("Types", 
+d457 18
+a474 40
+         let val consts = gather (not o is_dollared o #Name o Term.dest_const)
+                                 (rev term_constants)
+             val binders = gather (is_binder o #Name o Term.dest_const) consts
+             val infixes = gather (is_infix  o #Name o Term.dest_const) consts
+         in vblock("Constants", (fn const => 
+                let val {Name,Ty} = Term.dest_const const
+                    val place = (fixity_to_string o fixity) Name
+                in begin_block PP.CONSISTENT 0;
+                   strong Name;
+                   add_string"<EM>";
+                   add_string ":";
+                   pp_type Ty ~1;
+                   add_string"</EM>";
+                   end_block()
+                end),     consts)
+            ;
+            if (null infixes) 
+            then ()
+            else vblock("Infixes", (fn const => 
+                  let val {Name,...} = Term.dest_const const
+                      val infix_str = case(fixity Name) 
+                                      of (Infix i) => Lib.int_to_string i
+                             | _ => raise THEORY_ERR{function="theory_to_html",
+                                         message = "Non-infix in infix block"}
+                  in begin_block PP.CONSISTENT 0;
+                     strong (Name^"{");
+                     add_string("fixity = "^infix_str);
+                     strong"}";
+                     end_block()
+                  end),     infixes)
+            ;
+            if (null binders)
+            then ()
+            else vblock("Binders", (fn const => 
+              let val {Name,...} = Term.dest_const const
+              in begin_block PP.CONSISTENT 0;
+                 strong Name;
+                 end_block()
+              end),     binders)
+         end
+@

@@ -1,0 +1,155 @@
+head	1.1;
+access;
+symbols;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	96.02.08.00.45.10;	author drs1004;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@New theory mechanism, code reorganisation and other enhancements by Don Syme.
+@
+text
+@(*------------------------------------------------------------------------
+ * Satisfy
+ *
+ * Try to satisfy a set of goals by unifying against a set of facts.
+ * 
+ * NOTE
+ *
+ * In principle will be able to work for quantified type variables
+ * as well.
+ *
+ * EXAMPLES
+ *
+open Satisfy;
+val a = (--`a:'a`--);
+val b = (--`b:'a`--);
+val c = (--`c:'a`--);
+val e = (--`e:'a`--);
+val g = (--`g:'a`--);
+val m = (--`m:num`--);
+val n = (--`n:num`--);
+val x = (--`x:'a`--);
+val y = (--`y:'a`--);
+val z = (--`z:'a`--);
+val P = (--`(P:'a->'a->'a->bool)`--);
+
+list_of_s (satisfyl [(--`^(P) a b c`--,([a,b,c],[]))] [(--`^(P) g e f`--,([],[]))]);
+list_of_s (satisfyl [(--`^(P) a b c`--,([a,b],[]))] [(--`^(P) g e f`--,([],[]))]);
+list_of_s (satisfyl 
+            [(--`^(P) a b c`--,([a,b,c],[]))] 
+            [(--`^(P) g e f`--,([],[])),
+             (--`^(P) x y z`--,([],[]))]);
+list_of_s (satisfyl 
+            [(--`^(P) a b a`--,([a,b],[]))] 
+            [(--`^(P) g e g`--,([],[])),
+             (--`^(P) x y z`--,([],[]))]);
+list_of_s (satisfyl 
+            [(--`^(P) a b a`--,([a,b],[]))] 
+            [(--`^(P) g e g`--,([],[])),
+             (--`^(P) x y z`--,([z],[]))]);
+
+(* this one's a bit odd - the substitutions returned are empty because
+neither a nor b need get bound. 
+*)
+list_of_s (satisfyl 
+            [(--`^(P) a b a`--,([a,b],[]))] 
+            [(--`^(P) g e g`--,([g,e,g],[])),
+             (--`^(P) x y z`--,([x,y,z],[]))]); 
+list_of_s (satisfyl 
+            [(--`^(P) a b a`--,([a,b],[])),
+             (--`^(Pnum) 1 2 n`--,([n],[]))] 
+            [(--`^(P) g e g`--,([g,e,g],[])),
+             (--`^(P) x y z`--,([x,y,z],[]))]); 
+
+list_of_s (satisfyl 
+            [(--`^(P) a b a`--,([a,b],[])),
+             (--`^(Pnum) 1 2 n`--,([n],[]))] 
+            [(--`^(P) g e g`--,([],[])),
+             (--`^(Pnum) 1 2 m`--,([],[]))]); 
+
+ *-------------------------------------------------------------------------*)
+
+signature Satisfy_sig = sig
+    structure Sequence : Sequence_sig
+    structure Unify : Unify_sig;
+
+   type typ sharing type typ = Type.typ
+   type term sharing type term = Term.term
+   type conv sharing type conv = Abbrev.conv
+   type tactic sharing type tactic = Abbrev.tactic
+
+    val satisfy_in_envs : (term * (term list * typ list)) Sequence.seq
+                    -> (term * (term list * typ list))
+                         * (term Lib.subst * typ Lib.subst) Sequence.seq
+                    -> (term Lib.subst * typ Lib.subst) Sequence.seq
+
+    val satisfyl_in_envs : (term * (term list * typ list)) list
+                   -> (term * (term list * typ list)) list
+                     -> (term Lib.subst * typ Lib.subst) Sequence.seq
+                     -> (term Lib.subst * typ Lib.subst) Sequence.seq
+
+    val satisfyl : (term * (term list * typ list)) list
+                  -> (term * (term list * typ list)) list
+                     -> (term Lib.subst * typ Lib.subst) Sequence.seq
+
+end;
+
+
+  (*--------------------------------------------------------------------
+   * val tac = VALID (SATISFY_THEN ALL_TAC);
+   * tac ([(--`3 + 1 = 6`--)], --`?a b. a + 1 = b`--) ;
+   * tac ([(--`!x. x + 1 = 6`--)], --`?a b. a + 1 = b`--) ;
+   * tac ([(--`!P:'b. P = b`--)], --`?a b. Q (a:'a) = (b:'b)`--) ;
+   * tac ([(--`!P. P`--)], --`?a b. a + 1 = b`--) ;
+   * new_constant {Name="KKK",Ty=(==`:'a->'a->bool`==)} handle _ => (); 
+   * tac ([(--`!a:'a. KKK a a`--)], --`?(x:'a). KKK x x`--) ;
+   * tac ([(--`!a:'a. KKK a a`--),(--`(Q:'a -> 'a -> bool) n m`--)], 
+   *        --`?x y. KKK x x /\ (Q:'a->'a->bool) x y`--) ;
+   * tac ([(--`(P1:num->num->bool) e f`--),
+           (--`(P2:num->num->bool) f g`--),
+           (--`!g. (P3:num->num->bool) e g`--)], 
+           --`?a b c. (P1:num->num->bool) a b /\
+                      (P2:num->num->bool) b c /\
+                      (P3:num->num->bool) a b`--);
+   * 
+   * SATISFY_PROVE [ASSUME (--`(T /\ F) = T`--)] (--`?a b. (a /\ F) = b`--) ;
+   * SATISFY_PROVE [(--`!x. x + 1 = 6`--)] (--`?a b. a + 1 = b`--) ;
+   * SATISFY_PROVE [(--`!P:'b. P = b`--)] (--`?a b. Q (a:'a) = (b:'b)`--) ;
+   * SATISFY_PROVE [(--`!P. P`--)] (--`?a b. a + 1 = b`--) ;
+   * SATISFY_PROVE [(--`!a:num. KKK a a`--)] (--`?(x:num). KKK x x`--) ;
+   * SATISFY_PROVE [(--`!a:'a. KKK a a`--),(--`(Q:'a -> 'a -> bool) n m`--)]
+            (--`?x y. KKK x x /\ (Q:'a->'a->bool) x y`--) ;
+   * SATISFY_PROVE (map ASSUME [--`KKK 3 4`--]) (--`?y. KKK 3 y`--) ;
+   * SATISFY_CONV (map ASSUME [--`KKK 3 4`--]) (--`?y. KKK 3 y`--) ;
+   * ASM_SIMP_RULE SATISFY_ss (mk_thm([--`KKK 3 4`--],--`?y. KKK 3 y`--));
+   *
+   *--------------------------------------------------------------------*)
+
+signature Satisfy_existentials_sig = sig
+   
+   type conv sharing type conv = conv;
+   type term sharing type term = Term.term;
+   type thm sharing type thm = Thm.thm;
+   type tactic sharing type tactic = Abbrev.tactic;
+
+   val SATISFY_PROVE : thm list -> term -> thm
+   val SATISFY_CONV : thm list -> conv
+   val SEQ_FIRST : tactic Sequence.seq -> tactic
+   val SATISFY_THEN : tactic -> tactic
+   val SATISFY_TAC : tactic
+
+end;
+
+@

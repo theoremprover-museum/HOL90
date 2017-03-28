@@ -1,0 +1,210 @@
+head	1.1;
+branch	1.1.1;
+access;
+symbols
+	HOL97:1.1.1.1.4.2.0.2
+	bpHOL97:1.1.1.1.4.2
+	hol90_9_alpha:1.1.1.1.4.2
+	hol90_pre8_for_multiple_compilers:1.1.1.1.0.4
+	hol90_pre8_after_donalds_separate_compilation_changes:1.1.1.1
+	hol90_8_after_merging_Konrad_Elsa:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	95.10.16.13.33.30;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.33.30;	author rjb;	state Exp;
+branches
+	1.1.1.1.4.1;
+next	;
+
+1.1.1.1.4.1
+date	96.08.23.11.09.29;	author rjb;	state Exp;
+branches;
+next	1.1.1.1.4.2;
+
+1.1.1.1.4.2
+date	96.09.03.15.57.10;	author rjb;	state Exp;
+branches
+	1.1.1.1.4.2.2.1;
+next	;
+
+1.1.1.1.4.2.2.1
+date	97.06.11.18.48.31;	author kxs;	state Exp;
+branches;
+next	1.1.1.1.4.2.2.2;
+
+1.1.1.1.4.2.2.2
+date	97.06.27.16.25.53;	author mn200;	state Exp;
+branches;
+next	1.1.1.1.4.2.2.3;
+
+1.1.1.1.4.2.2.3
+date	97.07.15.13.14.09;	author kxs;	state Exp;
+branches;
+next	1.1.1.1.4.2.2.4;
+
+1.1.1.1.4.2.2.4
+date	97.07.18.14.35.51;	author mn200;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@#!/bin/sh
+
+(cd theories/src; Make $1)
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@
+
+
+1.1.1.1.4.1
+log
+@Now uses full hol command including options. Exits on failure.
+@
+text
+@d3 1
+a3 10
+#Old version: (cd theories/src; Make $*)
+pre_load='use "base.sml";'
+cd theories/src
+echo $pre_load 'use_and_exit print_HOL_ERR "mk_word_base.sml";'   | $* &&
+echo $pre_load 'use_and_exit print_HOL_ERR "mk_word_bitop.sml";'  | $* &&
+echo $pre_load 'use_and_exit print_HOL_ERR "mk_word_num.sml";'    | $* &&
+echo $pre_load 'use_and_exit print_HOL_ERR "mk_bword_bitop.sml";' | $* &&
+echo $pre_load 'use_and_exit print_HOL_ERR "mk_bword_num.sml";'   | $* &&
+echo $pre_load 'use_and_exit print_HOL_ERR "mk_bword_arith.sml";' | $* &&
+echo $pre_load 'use_and_exit print_HOL_ERR "mk_word.sml";'        | $*
+@
+
+
+1.1.1.1.4.2
+log
+@Modified library make file to create the target directory for the theory files
+if it does not already exist.
+@
+text
+@a2 3
+if test -z "$THEORY_TYPE"; then THEORY_TYPE=ascii; fi
+
+mkdir theories/$THEORY_TYPE 2>/dev/null || true
+@
+
+
+1.1.1.1.4.2.2.1
+log
+@Changes to accomodate move to SML/NJ 109.26.
+@
+text
+@d7 9
+a15 19
+(cd theories/src; Make $*)
+
+#pre_load='use "base.sml";'
+#cd theories/src
+
+#echo $pre_load 'Portable.use_and_exit print_HOL_ERR "mk_word_base.sml";' 
+#     | $* &&
+#echo $pre_load 'Portable.use_and_exit print_HOL_ERR "mk_word_bitop.sml";' 
+#     | $* &&
+#echo $pre_load 'Portable.use_and_exit print_HOL_ERR "mk_word_num.sml";' 
+#     | $* &&
+#echo $pre_load 'Portable.use_and_exit print_HOL_ERR "mk_bword_bitop.sml";' 
+#     | $* &&
+#echo $pre_load 'Portable.use_and_exit print_HOL_ERR "mk_bword_num.sml";' 
+#     | $* &&
+#echo $pre_load 'Portable.use_and_exit print_HOL_ERR "mk_bword_arith.sml";' 
+#     | $* &&
+#echo $pre_load 'Portable.use_and_exit print_HOL_ERR "mk_word.sml";' 
+#     | $*
+@
+
+
+1.1.1.1.4.2.2.2
+log
+@Removed assumption that PATH included .
+@
+text
+@d7 1
+a7 1
+(cd theories/src; ./Make $*)
+d12 1
+a12 1
+#echo $pre_load 'Portable.use_and_exit print_HOL_ERR "mk_word_base.sml";'
+d14 1
+a14 1
+#echo $pre_load 'Portable.use_and_exit print_HOL_ERR "mk_word_bitop.sml";'
+d16 1
+a16 1
+#echo $pre_load 'Portable.use_and_exit print_HOL_ERR "mk_word_num.sml";'
+d18 1
+a18 1
+#echo $pre_load 'Portable.use_and_exit print_HOL_ERR "mk_bword_bitop.sml";'
+d20 1
+a20 1
+#echo $pre_load 'Portable.use_and_exit print_HOL_ERR "mk_bword_num.sml";'
+d22 1
+a22 1
+#echo $pre_load 'Portable.use_and_exit print_HOL_ERR "mk_bword_arith.sml";'
+d24 1
+a24 1
+#echo $pre_load 'Portable.use_and_exit print_HOL_ERR "mk_word.sml";'
+@
+
+
+1.1.1.1.4.2.2.3
+log
+@The word library now loads under CM.
+@
+text
+@d7 1
+d9 2
+a10 1
+(cd theories/src; Make $*)
+d12 14
+@
+
+
+1.1.1.1.4.2.2.4
+log
+@Needed to re-remove assumption that PATH included .
+(oh the pain of divergent paths and conflicts during merges &c)
+@
+text
+@d8 1
+a8 1
+(cd theories/src; ./Make $*)
+@

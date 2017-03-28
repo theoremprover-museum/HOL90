@@ -1,0 +1,155 @@
+head	1.2;
+access;
+symbols;
+locks; strict;
+comment	@# @;
+
+
+1.2
+date	96.02.08.00.45.20;	author drs1004;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	96.01.04.14.06.22;	author drs1004;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.2
+log
+@New theory mechanism, code reorganisation and other enhancements by Don Syme.
+@
+text
+@signature Cond_rewr_sig = sig
+
+   (* ----------------------------------------------------------------------
+    * COND_REWR_CONV : thm -> (term -> thm) -> conv
+    * 
+    * Build a conversion based on a conditional rewrite theorem.  
+    * The theorem must be of the form
+    *       A |- P1 ==> ... Pm ==> (Q[x1,...,xn] = R[x1,...,xn])
+    * The conversion matches the input term against Q, using limited
+    * higher order matching.  This instantiates
+    * x1 ... xn, which the conversion then solves with the solver provided.
+    * If any of the conditions are not solved COND_REWR_CONV fails.
+    *
+    * The theorem can be a permutative rewrite, such as
+    *      |- (x = y) = (y = x)
+    *      |- (x + y) = (y + x)
+    * In these cases the rewrite will only get applied if the ordering
+    * of the variables in the term is not in strictly ascending order,
+    * according to a term_lt function which places a total ordering
+    * on terms.  (Nb. term_lt is broken in hol90.7, so I have to
+    * work with my own version here, which is not so efficient.  Also,
+    * the term ordering needs to be "AC" compatible - see Termord).
+    *
+    * FAILURE CONDITIONS
+    *
+    * Fails if any of the assumptions cannot be solved by the solver,
+    * or if the term does not match the rewrite in the first place.
+    * Never actually fails with UNCHANGED despite its name.
+    * ---------------------------------------------------------------------*)
+
+   val COND_REWR_CONV : Thm.thm -> (Term.term -> Thm.thm) -> Abbrev.conv
+
+end;
+
+
+structure Cond_rewr : Cond_rewr_sig = struct
+
+open Lib Trace Termord Pterms;
+open Drule Ho_match
+
+val WRAP = Exception.WRAP_ERR "Cond_rewr";
+val ERR = Exception.ERR "Cond_rewr";
+
+   (* ---------------------------------------------------------------------
+    * COND_REWR_CONV
+    * ---------------------------------------------------------------------*)
+
+   fun vperm(tm1,tm2) = 
+      case (dest_term tm1, dest_term tm2) of 
+         (VAR(Name,Ty),VAR(Name2,Ty2)) => (Ty=Ty2)
+       | (LAMB(Bvar,Body),LAMB(Bvar2,Body2)) => vperm(Body,Body2)
+       | (COMB(Rator,Rand),COMB(Rator2,Rand2)) => vperm(Rator,Rator2) andalso vperm(Rand,Rand2)
+       | (x,y) => (x = y)
+
+   fun is_var_perm(tm1,tm2) = vperm(tm1,tm2) andalso set_eq (free_vars tm1) (free_vars tm2)
+
+   fun COND_REWR_CONV th =
+      let val eqn = snd (Imp.strip_imp (concl th))
+          val isperm = is_var_perm (dest_eq eqn)
+          val instth = HO_PART_MATCH (lhs o snd o Imp.strip_imp) th 
+                       handle _ => ERR("COND_REWR_CONV",
+                          "bad theorem argument (not an conditional equation)")
+      in
+      fn solver => fn tm => 
+       (let val conditional_eqn = instth tm
+            val _ = trace_tm_thm(if isperm then 2 else 1,
+                                 "Rewriting",tm,"with",th)
+            val (conditions,eqn) = Imp.strip_imp (concl conditional_eqn)
+            val (l,r) = dest_eq eqn
+            val _ = if (isperm andalso not (termlt(r,l))) 
+                    then (trace_thm(2,"permutative rewrite not applied:",th); 
+                          ERR("permutative rewr","not applied")) else ()
+
+            fun solver' condition = 
+                (trace_tm(1,"trying to solve",condition); 
+                 let val res = solver condition
+                           handle UNCHANGED => 
+                            (trace_tm(1,"-- made no progress on:",condition); 
+                             ERR("COND_REWR_CONV","condition not solved"))
+                             | e =>  (trace_tm(1,"couldn't solve:",condition);
+                                       raise e)
+                     val _ = trace_thm(1,"solved!",res)
+                 in res
+                 end)
+            val condition_thms = map solver' conditions
+            val disch_eqn = rev_itlist (C MP) condition_thms conditional_eqn
+            val final_thm = 
+               if (l = tm) 
+               then disch_eqn 
+               else TRANS (ALPHA tm l) disch_eqn
+        in trace_production(if isperm then 2 else 1,tm,"rewrite",final_thm)
+        end 
+        handle e => WRAP("COND_REWR_CONV (application)",e))
+      end
+      handle e => WRAP("COND_REWR_CONV (construction) ",e);
+   
+
+end;
+@
+
+
+1.1
+log
+@Added simplifier components, added drule files, added MK_ABS_CONV, better error messages
+@
+text
+@d38 2
+a39 5
+open Ho_match;
+open Core;
+open Trace;
+open Termord;
+open Pterms;
+d50 3
+a52 3
+         (VAR{Name,Ty},VAR{Name=Name2,Ty=Ty2}) => (Ty=Ty2)
+       | (LAMB{Bvar,Body},LAMB{Bvar=Bvar2,Body=Body2}) => vperm(Body,Body2)
+       | (COMB{Rator,Rand},COMB{Rator=Rator2,Rand=Rand2}) => vperm(Rator,Rator2) andalso vperm(Rand,Rand2)
+d58 1
+a58 1
+      let val eqn = snd (strip_imp (concl th))
+d60 1
+a60 1
+          val instth = HO_PART_MATCH (lhs o snd o strip_imp) th 
+d68 1
+a68 1
+            val (conditions,eqn) = strip_imp (concl conditional_eqn)
+@

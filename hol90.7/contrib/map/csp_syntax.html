@@ -1,0 +1,300 @@
+<TITLE>Theory: csp_syntax</TITLE>
+<H1>Theory: csp_syntax</H1>
+<H1>Parents</H1>
+    <UL>
+    <LI><A HREF = "process.html"><STRONG>process</STRONG></A>
+    <LI><A HREF = "CSP_base.html"><STRONG>CSP_base</STRONG></A>
+    </UL>
+
+
+<HR>
+<H1>Type constants</H1>
+    <UL>
+    <LI><STRONG>Event</STRONG>(Arity = 0)
+    <LI><STRONG>CSP</STRONG>(Arity = 0)
+    </UL>
+
+
+<HR>
+<H1>Term constants</H1>
+    <UL>
+    <LI><STRONG>REP_Event</STRONG><EM>:Event -> (string + string) ltree</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>ABS_Event</STRONG><EM>:(string + string) ltree -> Event</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>econst</STRONG><EM>:string -> Event</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>evar</STRONG><EM>:string -> Event</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>ES</STRONG><EM>:Event -> (string -> string + process) ->
+                                string</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>REP_CSP</STRONG><EM>:CSP ->
+                                     (string set + string set + string +
+                                     Event + string # string set + one +
+                                     string list + string # string set +
+                                     Event # Event) ltree</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>ABS_CSP</STRONG><EM>:(string set + string set + string +
+                                     Event + string # string set + one +
+                                     string list + string # string set +
+                                     Event # Event) ltree -> CSP</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>stop</STRONG><EM>:string set -> CSP</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>run</STRONG><EM>:string set -> CSP</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>var</STRONG><EM>:string -> CSP</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>pref</STRONG><EM>:Event -> CSP -> CSP</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>Choice</STRONG><EM>:string -> string set -> CSP -> CSP</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>par</STRONG><EM>:CSP -> CSP -> CSP</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>after</STRONG><EM>:CSP -> string list -> CSP</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>mu</STRONG><EM>:string -> string set -> CSP -> CSP</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>cond</STRONG><EM>:Event -> Event -> CSP -> CSP -> CSP</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>Bnd</STRONG><EM>:string -> string + process ->
+                                 (string -> string + process) -> string ->
+                                 string + process</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>TS</STRONG><EM>:CSP -> (string -> string + process) ->
+                                process</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    </UL>
+
+
+<HR>
+<H1>Axioms</H1>
+<DL>
+
+</DL>
+
+
+<HR>
+<H1>Definitions</H1>
+<DL>
+<DT><STRONG>Event_TY_DEF</STRONG>
+<DD>
+<PRE>
+|- ?rep.
+     TYPE_DEFINITION
+       (TRP
+         (\v tl.
+           (?s. v = INL s) /\ (LENGTH tl = 0) \/
+           (?s. v = INR s) /\ (LENGTH tl = 0)))
+       rep
+</PRE>
+
+<DT><STRONG>Event_ISO_DEF</STRONG>
+<DD>
+<PRE>
+|- (!a. ABS_Event (REP_Event a) = a) /\
+   (!r.
+     TRP
+       (\v tl.
+         (?s. v = INL s) /\ (LENGTH tl = 0) \/
+         (?s. v = INR s) /\ (LENGTH tl = 0))
+       r =
+     REP_Event (ABS_Event r) =
+     r)
+</PRE>
+
+<DT><STRONG>econst_DEF</STRONG>
+<DD>
+<PRE>
+|- !s. econst s = ABS_Event (Node (INL s) [])
+</PRE>
+
+<DT><STRONG>evar_DEF</STRONG>
+<DD>
+<PRE>
+|- !s. evar s = ABS_Event (Node (INR s) [])
+</PRE>
+
+<DT><STRONG>ES</STRONG>
+<DD>
+<PRE>
+|- (!s E. ES (econst s) E = s) /\ (!s E. ES (evar s) E = OUTL (E s))
+</PRE>
+
+<DT><STRONG>CSP_TY_DEF</STRONG>
+<DD>
+<PRE>
+|- ?rep.
+     TYPE_DEFINITION
+       (TRP
+         (\v tl.
+           (?s. v = INL s) /\ (LENGTH tl = 0) \/
+           (?s. v = INR (INL s)) /\ (LENGTH tl = 0) \/
+           (?s. v = INR (INR (INL s))) /\ (LENGTH tl = 0) \/
+           (?E. v = INR (INR (INR (INL E)))) /\ (LENGTH tl = SUC 0) \/
+           (?s0 s1. v = INR (INR (INR (INR (INL (s0,s1)))))) /\
+           (LENGTH tl = SUC 0) \/
+           (v = INR (INR (INR (INR (INR (INL one)))))) /\
+           (LENGTH tl = SUC (SUC 0)) \/
+           (?l. v = INR (INR (INR (INR (INR (INR (INL l))))))) /\
+           (LENGTH tl = SUC 0) \/
+           (?s0 s1.
+             v = INR (INR (INR (INR (INR (INR (INR (INL (s0,s1))))))))) /\
+           (LENGTH tl = SUC 0) \/
+           (?E0 E1.
+             v = INR (INR (INR (INR (INR (INR (INR (INR (E0,E1))))))))) /\
+           (LENGTH tl = SUC (SUC 0))))
+       rep
+</PRE>
+
+<DT><STRONG>CSP_ISO_DEF</STRONG>
+<DD>
+<PRE>
+|- (!a. ABS_CSP (REP_CSP a) = a) /\
+   (!r.
+     TRP
+       (\v tl.
+         (?s. v = INL s) /\ (LENGTH tl = 0) \/
+         (?s. v = INR (INL s)) /\ (LENGTH tl = 0) \/
+         (?s. v = INR (INR (INL s))) /\ (LENGTH tl = 0) \/
+         (?E. v = INR (INR (INR (INL E)))) /\ (LENGTH tl = SUC 0) \/
+         (?s0 s1. v = INR (INR (INR (INR (INL (s0,s1)))))) /\
+         (LENGTH tl = SUC 0) \/
+         (v = INR (INR (INR (INR (INR (INL one)))))) /\
+         (LENGTH tl = SUC (SUC 0)) \/
+         (?l. v = INR (INR (INR (INR (INR (INR (INL l))))))) /\
+         (LENGTH tl = SUC 0) \/
+         (?s0 s1.
+           v = INR (INR (INR (INR (INR (INR (INR (INL (s0,s1))))))))) /\
+         (LENGTH tl = SUC 0) \/
+         (?E0 E1.
+           v = INR (INR (INR (INR (INR (INR (INR (INR (E0,E1))))))))) /\
+         (LENGTH tl = SUC (SUC 0)))
+       r =
+     REP_CSP (ABS_CSP r) =
+     r)
+</PRE>
+
+<DT><STRONG>stop_DEF</STRONG>
+<DD>
+<PRE>
+|- !s. stop s = ABS_CSP (Node (INL s) [])
+</PRE>
+
+<DT><STRONG>run_DEF</STRONG>
+<DD>
+<PRE>
+|- !s. run s = ABS_CSP (Node (INR (INL s)) [])
+</PRE>
+
+<DT><STRONG>var_DEF</STRONG>
+<DD>
+<PRE>
+|- !s. var s = ABS_CSP (Node (INR (INR (INL s))) [])
+</PRE>
+
+<DT><STRONG>pref_DEF</STRONG>
+<DD>
+<PRE>
+|- !E C. pref E C = ABS_CSP (Node (INR (INR (INR (INL E)))) [REP_CSP C])
+</PRE>
+
+<DT><STRONG>Choice_DEF</STRONG>
+<DD>
+<PRE>
+|- !s0 s1 C.
+     Choice s0 s1 C =
+     ABS_CSP (Node (INR (INR (INR (INR (INL (s0,s1)))))) [REP_CSP C])
+</PRE>
+
+<DT><STRONG>par_DEF</STRONG>
+<DD>
+<PRE>
+|- !C1 C2.
+     par C1 C2 =
+     ABS_CSP
+       (Node (INR (INR (INR (INR (INR (INL one)))))) [REP_CSP C1; REP_CSP C2])
+</PRE>
+
+<DT><STRONG>after_DEF</STRONG>
+<DD>
+<PRE>
+|- !C l'.
+     after C l' =
+     ABS_CSP (Node (INR (INR (INR (INR (INR (INR (INL l'))))))) [REP_CSP C])
+</PRE>
+
+<DT><STRONG>mu_DEF</STRONG>
+<DD>
+<PRE>
+|- !s0 s1 C.
+     mu s0 s1 C =
+     ABS_CSP
+       (Node (INR (INR (INR (INR (INR (INR (INR (INL (s0,s1)))))))))
+         [REP_CSP C])
+</PRE>
+
+<DT><STRONG>cond_DEF</STRONG>
+<DD>
+<PRE>
+|- !E0 E1 C1 C2.
+     cond E0 E1 C1 C2 =
+     ABS_CSP
+       (Node (INR (INR (INR (INR (INR (INR (INR (INR (E0,E1)))))))))
+         [REP_CSP C1; REP_CSP C2])
+</PRE>
+
+<DT><STRONG>Bnd</STRONG>
+<DD>
+<PRE>
+|- !s exp env. Bnd s exp env = (\s'. (s' = s) => exp | (env s))
+</PRE>
+
+<DT><STRONG>TS</STRONG>
+<DD>
+<PRE>
+|- (!A E. TS (stop A) E = STOP A) /\
+   (!A E. TS (run A) E = RUN A) /\
+   (!s E. TS (var s) E = OUTR (E s)) /\
+   (!a P E. TS (pref a P) E = ES a E --> TS P E) /\
+   (!s A P E. TS (Choice s A P) E = choice A (\x. TS P (Bnd s (INL x) E))) /\
+   (!P Q E. TS (par P Q) E = TS P E PAR TS Q E) /\
+   (!P tr E. TS (after P tr) E = TS P E / tr) /\
+   (!s A P E. TS (mu s A P) E = MU A (\x. TS P (Bnd s (INR x) E))) /\
+   (!e1 e2 P Q E.
+     TS (cond e1 e2 P Q) E = ((ES e1 E = ES e2 E) => (TS P E) | (TS Q E)))
+</PRE>
+
+</DL>
+
+
+<HR>
+<H1>Theorems</H1>
+<DL>
+<DT><STRONG>Event</STRONG>
+<DD>
+<PRE>
+|- !f0 f1. ?!fn. (!s. fn (econst s) = f0 s) /\ (!s. fn (evar s) = f1 s)
+</PRE>
+
+<DT><STRONG>CSP</STRONG>
+<DD>
+<PRE>
+|- !f0 f1 f2 f3 f4 f5 f6 f7 f8.
+     ?!fn.
+       (!s. fn (stop s) = f0 s) /\
+       (!s. fn (run s) = f1 s) /\
+       (!s. fn (var s) = f2 s) /\
+       (!E C. fn (pref E C) = f3 (fn C) E C) /\
+       (!s0 s1 C. fn (Choice s0 s1 C) = f4 (fn C) s0 s1 C) /\
+       (!C1 C2. fn (par C1 C2) = f5 (fn C1) (fn C2) C1 C2) /\
+       (!C l'. fn (after C l') = f6 (fn C) l' C) /\
+       (!s0 s1 C. fn (mu s0 s1 C) = f7 (fn C) s0 s1 C) /\
+       (!E0 E1 C1 C2. fn (cond E0 E1 C1 C2) = f8 (fn C1) (fn C2) E0 E1 C1 C2)
+</PRE>
+
+</DL>
+
+
+<HR>

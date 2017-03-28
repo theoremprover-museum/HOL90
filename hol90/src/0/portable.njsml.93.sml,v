@@ -1,0 +1,1125 @@
+head	1.3;
+access;
+symbols
+	HOL97:1.1.2.2.0.2
+	bpHOL97:1.1.2.2
+	hol90_9_alpha:1.1.2.2
+	hol90_pre8_for_multiple_compilers:1.1.0.2
+	hol90_pre8_after_donalds_separate_compilation_changes:1.1;
+locks; strict;
+comment	@# @;
+
+
+1.3
+date	96.01.04.13.45.39;	author drs1004;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	95.12.18.11.35.02;	author drs1004;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	95.10.31.13.56.25;	author drs1004;	state Exp;
+branches
+	1.1.2.1;
+next	;
+
+1.1.2.1
+date	96.06.25.15.41.44;	author rjb;	state Exp;
+branches;
+next	1.1.2.2;
+
+1.1.2.2
+date	96.08.23.14.53.51;	author rjb;	state Exp;
+branches
+	1.1.2.2.2.1;
+next	;
+
+1.1.2.2.2.1
+date	97.06.11.17.24.27;	author kxs;	state dead;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.3
+log
+@Fixed types, pretypes, fixities, parsing.
+@
+text
+@(* ===================================================================== *)
+(* FILE          : sml_system.pre100.sml                                 *)
+(* DESCRIPTION   : Structure for SML System dependent functions.         *)
+(*                                                                       *)
+(* AUTHOR        : Elsa L. Gunter, AT&T Bell Laboratories                *)
+(* DATE          : 7 October, 1993                                       *)
+(* ===================================================================== *)
+
+(* Copyright 1993 by AT&T Bell Laboratories *)
+
+(* Share and Enjoy *)
+
+structure Portable : Portable_sig =
+struct
+
+(* Set system variables relavent to the interactive mode of hol90 *)
+
+val _ = (System.Control.Print.printLength := 1000;
+         System.Control.Print.printDepth := 350;
+         System.Control.Print.stringDepth := 250;
+         System.Control.Print.signatures := 2;
+         System.Control.quotation := true);
+
+(*--------------------------------------------------------------------
+ *
+ *-------------------------------------------------------------------*)
+
+structure General =
+    struct
+	exception Bind = Bind
+	exception Match = Match
+	exception Subscript
+	exception Size
+	exception Overflow
+	exception Div = Div
+	exception Ln = Ln
+	exception Sqrt = Sqrt
+	exception Fail = Fail
+
+	open Bool
+
+	datatype ordering = LESS | EQUAL | GREATER
+
+	val op <> = op <>
+
+	val ! = !
+	val op := = op :=
+
+	val op o = op o
+	val op before = op before
+	val ignore = fn _ => ()
+    end
+
+(*--------------------------------------------------------------------
+ *
+ *-------------------------------------------------------------------*)
+
+structure List =
+    struct
+	open List
+	open General
+	exception Empty
+	val hd = fn l => hd l handle Hd => raise Empty
+	val tl = fn l => tl l handle Tl => raise Empty
+	fun last [] = raise Empty
+	  | last [x] = x
+	  | last (_::r) = last r
+
+	fun nth (l,n) =
+	    let
+		fun loop ((e::_),0) = e
+		  | loop ([],_) = raise Subscript
+		  | loop ((_::t),n) = loop(t,n-1)
+	    in
+		if n >= 0 then loop (l,n) else raise Subscript
+	    end
+
+	fun take (l, n) =
+	    let
+		fun loop (l, 0) = []
+		  | loop ([], _) = raise Subscript
+		  | loop ((x::t), n) = x :: loop (t, n-1)
+	    in
+		if n >= 0 then loop (l, n) else raise Subscript
+	    end
+
+	fun drop (l, n) =
+	    let
+		fun loop (l,0) = l
+		  | loop ([],_) = raise Subscript
+		  | loop ((_::t),n) = loop(t,n-1)
+	    in
+		if n >= 0 then loop (l,n) else raise Subscript
+	    end
+
+	fun concat [] = []
+	  | concat (l::r) = l @@ concat r
+
+	fun revAppend ([],l) = l
+	  | revAppend (h::t,l) = revAppend(t,h::l)
+
+	fun mapPartial pred l =
+	    let
+		fun mapp ([], l) = rev l
+		  | mapp (x::r, l) = (case (pred x)
+					  of SOME y => mapp(r, y::l)
+					| NONE => mapp(r, l)
+	    (* end case *))
+	    in
+		mapp (l, [])
+	    end
+
+	fun find pred [] = NONE
+	  | find pred (a::rest) = if pred a then SOME a else (find pred rest)
+
+	fun filter pred [] = []
+	  | filter pred (a::rest) = if pred a then a::(filter pred rest) 
+				    else (filter pred rest)
+
+	fun partition pred l =
+	    let
+		fun loop ([],trueList,falseList) =
+		    (rev trueList, rev falseList)
+		  | loop (h::t,trueList,falseList) = 
+		    if pred h then loop(t, h::trueList, falseList)
+		    else loop(t, trueList, h::falseList)
+	    in loop (l,[],[])
+	    end
+
+	fun foldr f b =
+	    let
+		fun f2 [] = b
+		  | f2 (a::t) = f(a,f2 t)
+	    in f2
+	    end
+
+	fun foldl f b l =
+	    let
+		fun f2 ([],b) = b
+		  | f2 (a::r,b) = f2(r,f(a,b))
+	    in f2 (l,b)
+	    end
+
+	fun all pred =
+	    let 
+		fun f [] = true
+		  | f (h::t) = pred h andalso f t
+	    in f
+	    end
+
+	fun tabulate (len, genfn) = 
+	    if len < 0 then raise Size
+	    else let
+		     fun loop n = if n = len then []
+				  else (genfn n)::(loop(n+1))
+		 in loop 0
+		 end
+
+    end
+
+(*--------------------------------------------------------------------
+ *
+ *-------------------------------------------------------------------*)
+
+structure Ref = struct open Ref end
+
+(*--------------------------------------------------------------------
+ *
+ *-------------------------------------------------------------------*)
+
+structure Vector =
+    struct
+	open Vector
+	val maxLen = 33554431
+	val fromList = vector
+	fun listofvector {start_index,length = 0,vector,list} = list
+	  | listofvector {start_index,length,vector,list} =
+	    let val new_length = length - 1
+	    in listofvector {start_index = start_index,
+			    length = new_length,
+			    vector = vector,
+			    list = Vector.sub(vector,start_index + new_length)
+			           :: list}
+	    end
+	fun extract (a,start_index,length) =
+	    Vector.vector (listofvector{vector = a,
+				       start_index = start_index,
+				       length = length,
+				       list = []})
+	val concat =
+	    fn vector_list => 
+	    Vector.vector
+	    (fold (fn (vector,list) =>
+		      listofvector{vector = vector,
+				   start_index = 0,
+				   length = Vector.length vector,
+				   list = list})
+		     vector_list
+		     [])
+    end
+
+(*--------------------------------------------------------------------
+ *
+ *-------------------------------------------------------------------*)
+
+structure Array =
+    struct
+	open Array
+	val maxLen = 33554431
+	val fromList = arrayoflist
+	fun listofarray {start_index,length = 0,array,list} = list
+	  | listofarray {start_index,length,array,list} =
+	    let val new_length = length - 1
+	    in listofarray {start_index = start_index,
+			    length = new_length,
+			    array = array,
+			    list = Array.sub(array,start_index + new_length)
+			           :: list}
+	    end
+	fun extract (a,start_index,length) =
+	    Vector.vector (listofarray{array = a,
+				       start_index = start_index,
+				       length = length,
+				       list = []})
+    end
+
+
+(*--------------------------------------------------------------------
+ *
+ *-------------------------------------------------------------------*)
+
+structure Char =
+    struct
+	type char = String.string
+	exception Chr
+	val maxOrd = 255
+	open String
+    end
+
+(*--------------------------------------------------------------------
+ *
+ *-------------------------------------------------------------------*)
+
+structure String =
+    struct
+	open String
+	type string = String.string
+	val maxLen = 33554431
+	fun str c = c
+	val concat = String.implode
+	fun sub(s,i) = String.substring(s,i,1)
+	exception Ord = Ord
+    end
+
+(*--------------------------------------------------------------------
+ *
+ *-------------------------------------------------------------------*)
+
+structure PrettyPrint =
+struct
+open System.PrettyPrint
+
+fun with_ppstream ppstrm = 
+   {add_string=add_string ppstrm, 
+    add_break=add_break ppstrm, 
+    begin_block=begin_block ppstrm, 
+    end_block=fn () => end_block ppstrm, 
+    add_newline=fn () => add_newline ppstrm, 
+    clear_ppstream=fn () => clear_ppstream ppstrm, 
+    flush_ppstream=fn () => flush_ppstream ppstrm}
+
+fun defaultConsumer () =
+      {consumer = System.Control.Print.say,
+       linewidth = !System.Control.Print.linewidth,
+       flush = System.Control.Print.flush}
+
+end
+
+(*--------------------------------------------------------------------
+ *
+ *-------------------------------------------------------------------*)
+
+structure Time =
+struct
+open System.Timer
+val timestamp : unit -> System.Timer.time =
+      System.Unsafe.CInterface.c_function "timeofday"
+
+fun time_eq (t1:System.Timer.time) t2 = (t1 = t2)
+fun time_lt (t1:System.Timer.time) t2 = System.Timer.earlier(t1,t2)
+fun mk_time (t:{sec:int, usec:int}) = System.Timer.TIME t
+fun dest_time (System.Timer.TIME t) = t:{sec:int, usec:int}
+val time_to_string = System.Timer.makestring
+end
+
+
+(*--------------------------------------------------------------------
+ *
+ *-------------------------------------------------------------------*)
+
+structure Timer =
+struct
+open System.Timer
+type cpu_timer = System.Timer.timer
+val startCPUTimer = System.Timer.start_timer
+fun checkCPUTimer t = 
+    {usr = check_timer t, sys = check_timer_sys t, gc = check_timer_gc t}
+val init_CPU_time = ref(System.Timer.start_timer())
+fun totalCPUTimer () = !init_CPU_time
+
+val init_time = ref(Time.timestamp())
+abstype real_timer = Real_time of unit -> Time.time
+with
+fun startRealTimer () =
+    let val time_cell = ref(Time.timestamp())
+    in Real_time
+	(fn () => System.Timer.sub_time(Time.timestamp(),!time_cell))
+    end
+fun checkRealTimer (Real_time f) = f ()
+fun totalRealTimer () =
+    Real_time(fn () => System.Timer.sub_time(Time.timestamp(),!init_time))
+end (* abstype *)
+end
+
+
+(*--------------------------------------------------------------------
+ * Misc. - interactions which manipulate the ML environment
+ *
+ *-------------------------------------------------------------------*)
+
+val use = System.Compile.use
+val use_stream = System.Compile.use_stream
+fun load files =  (map use files; ());
+
+val interp = System.Control.interp
+fun compile file =
+   let val old_interp = !interp
+   in interp := false;
+      use handle e => (interp := old_interp; raise e);
+      interp := old_interp
+   end
+ 
+fun interpret file =
+   let val old_interp = !interp
+   in interp := true;
+      use file handle e => (interp := old_interp; raise e);
+      interp := old_interp
+   end
+
+fun load files = (map compile files; ());
+
+
+(*-------------------------------------------------------------------
+ * Misc. I/O and OS interaction
+ *
+ * WARNING: This will be reorganised before the release of hol90.8 to
+ * be a portable part of the "OS" structure of the new SML basis. DRS.
+ *------------------------------------------------------------------*)
+
+val execute = IO.execute
+val say = System.Control.Print.say
+val linewidth = System.Control.Print.linewidth
+
+local
+fun get_suffix ([],l) = SOME l
+  | get_suffix (_,[]) = NONE
+  | get_suffix (s::pre,t::l) = if s = t then get_suffix (pre,l) else NONE
+fun find_env (var,(s::rst)) =
+    (case get_suffix (var,explode s)
+	 of NONE => find_env (var,rst)
+       | SOME v => SOME (implode v))
+  | find_env (_,[]) = NONE
+in
+fun getEnv str = find_env(explode (str^"="), System.environ())
+end
+    
+
+val cd = System.Directory.cd
+val pwd = System.Directory.getWD
+val listDir = System.Directory.listDir
+fun ls() = System.system "ls"
+val system = System.system
+val getArgs = System.argv
+
+fun mkdir d =
+   case system ("/bin/mkdir "^d)
+     of 0 => ()
+        | _ => raise Fail "mkdir - can't make directory"};
+
+val clean_directory  =
+  let fun all_dot_files [] = true
+        | all_dot_files (file::files) =
+          (ord file = ord ".") andalso all_dot_files files
+  in fn dir => 
+   if all_dot_files (listDir dir) 
+   then ()
+   else (case system ("/bin/rm "^dir^"/*")
+           of 0 => ()
+            | _ => raise Fail "clean_directory - can't remove files")
+  end;
+
+fun exit() = System.Unsafe.CInterface.exit 0
+
+(*--------------------------------------------------------------------
+ * Some parameters.
+ *-------------------------------------------------------------------*)
+
+val sml_banner = System.version
+
+val sml_version = ["njsml","93"];
+    
+(* suffix to distinquish hol90s for different architectures. 
+   Implode.tl.explode used to get rid of leading "."
+*)
+val arch = substring(!System.architecture,
+                     1,
+                     (String.length (!System.architecture) - 1))
+
+
+
+
+(*---------------------------------------------------------------------
+ * Misc. conversions.
+ *--------------------------------------------------------------------*)
+
+val int_to_string = makestring: int -> string
+val real_to_string = makestring: real -> string
+
+(*---------------------------------------------------------------------
+ * Misc file I/O
+ *--------------------------------------------------------------------*)
+
+fun file_exists_for_reading s =
+   System.Unsafe.SysIO.access(s,[System.Unsafe.SysIO.A_READ])
+   handle System.Unsafe.CInterface.SystemCall _ => false
+
+fun set_print_depth n = System.Control.Print.printDepth := n;
+fun print_depth () = (!System.Control.Print.printDepth);
+    
+(*---------------------------------------------------------------------
+ * Pointer/Lisp-EQ Equality (god forbid).
+ *--------------------------------------------------------------------*)
+
+fun pointer_eq (x,y) =
+    ((System.Unsafe.cast x : int) = (System.Unsafe.cast y : int))
+
+
+
+end (* structure Portable *)
+@
+
+
+1.2
+log
+@Preterm and other changes, see 7.changes
+@
+text
+@d437 3
+@
+
+
+1.1
+log
+@First phase of hol90.8 development.  hol90 now compiles using NJSML-CM
+108.5, with separate compilation of libraries.  System dependencies
+have been isolated in the makefiles and "portable.sml".
+
+This involved a large number of enhancments to the source files,
+most of which are documented in the 7.changes file (or will be shortly).
+See also the correpsonding email corrspondence between RJB, KLS, TFM,
+JRH and DRS that happened during this development.
+@
+text
+@d24 4
+d54 4
+d161 4
+d167 4
+d202 4
+d228 4
+d240 4
+d255 4
+d279 3
+a281 64
+val execute = IO.execute
+
+val use = System.Compile.use
+val use_stream = System.Compile.use_stream
+fun load files =  (map use files; ());
+
+val interp = System.Control.interp
+val say = System.Control.Print.say
+val linewidth = System.Control.Print.linewidth
+
+val ord = String.ord
+val ordof = String.ordof
+
+local
+fun get_suffix ([],l) = SOME l
+  | get_suffix (_,[]) = NONE
+  | get_suffix (s::pre,t::l) = if s = t then get_suffix (pre,l) else NONE
+fun find_env (var,(s::rst)) =
+    (case get_suffix (var,explode s)
+	 of NONE => find_env (var,rst)
+       | SOME v => SOME (implode v))
+  | find_env (_,[]) = NONE
+in
+fun getEnv str = find_env(explode (str^"="), System.environ())
+end
+    
+
+val cd = System.Directory.cd
+val pwd = System.Directory.getWD
+val listDir = System.Directory.listDir
+fun ls() = System.system "ls"
+val system = System.system
+val getArgs = System.argv
+
+val sml_banner = System.version
+
+local
+    exception OutOfRange
+    fun eat_head_whitespace [] = []
+      | eat_head_whitespace (cl as char::char_list) =
+      if char = " " then eat_head_whitespace char_list else cl
+    fun chars_upto_char (char,[],rev_front_chars) =
+	(List.rev rev_front_chars,[])
+      | chars_upto_char (char,c::tail_chars,rev_front_chars) =
+	(if c = char
+	     then (List.rev rev_front_chars,eat_head_whitespace tail_chars)
+	 else chars_upto_char(char,tail_chars,c::rev_front_chars))
+    fun digit c = if String.ord c >= 48 andalso String.ord c <= 57
+		      then String.ord c - 48 else raise OutOfRange
+    fun chars_to_int (c::cl,(num,rev_num_list)) =
+	chars_to_int (cl,
+		      (((num * 10) + digit c,rev_num_list)
+		       handle OutOfRange =>
+			   (0,num::rev_num_list)))
+      | chars_to_int ([],(num,rev_num_list)) = List.rev (num::rev_num_list)
+    val (system,id_and_date) =
+	chars_upto_char(",",String.explode sml_banner,[])
+    val (v_id,date) = chars_upto_char (",",id_and_date,[])
+    val (_,id) = chars_upto_char (".",v_id,[])
+in
+val version = {system = String.implode system,
+	       version_id = chars_to_int (id,(0,[])),
+	       date = String.implode date}
+end
+a282 10
+(* suffix to distinquish hol90s for different architectures. 
+   Implode.tl.explode used to get rid of leading "."
+*)
+val arch = substring(!System.architecture,
+                     1,
+                     (String.length (!System.architecture) - 1))
+
+
+fun exit() = System.Unsafe.CInterface.exit 0
+
+d297 4
+d324 6
+a329 4
+(*  ( close_in(open_in s); true ) handle _ => false         *)
+fun file_exists_for_reading s =
+   System.Unsafe.SysIO.access(s,[System.Unsafe.SysIO.A_READ])
+   handle System.Unsafe.CInterface.SystemCall _ => false
+d331 3
+a333 2
+(*
+local
+d335 14
+a348 7
+fun customGroup {source_files,cache} :SC.Group.group =
+    let fun process(file:string,sources:SC.Group.Source.source list)=
+            ((SC.SMLFile.create file)::sources)
+	val sources = fold process source_files []
+    in
+	SC.Group.createGroup (SC.Source.implodeBag sources, [])
+    end
+d350 1
+a350 19
+in
+fun hol_make source_files =
+    let val cache = SC.Cache.create
+	(Compiler.Environment.concatEnv
+	 (!Compiler.Environment.topLevelEnvRef,
+	  !Compiler.Environment.pervasiveEnvRef),
+	 SC.Cache.architectureBinary)
+(* for version 69
+		     SC.Configuration.targetNamer)
+*)
+	val group = customGroup {cache=cache,source_files=source_files}
+	val env = SC.CompileAndExecute.build (cache, group, [])
+    in
+        Compiler.Environment.topLevelEnvRef :=
+	Compiler.Environment.concatEnv
+	  (env,!Compiler.Environment.topLevelEnvRef)
+    end
+end
+*)
+a351 2
+structure Sys_params =
+struct
+d353 2
+a354 1
+(* *************************************************************************
+d356 3
+a358 39
+ * This module codifies the arguments given to make_hol. The calling 
+ * convention for make_hol is:
+ * 
+ *     make_hol <sml> [-n | -b | -o] [-d <path>]
+ * 
+ * The default, calling make_hol with no parameters, tells the system to
+ * re-use the existing ascii theory files. One must be in hol90.4/src to
+ * invoke this. If you aren't there, the "-d" option must be used.
+ * 
+ *     -o  This is the same as calling the default.
+ * 
+ *     -n  The "-n" option tells the system to rebuild all its theories. Be
+ *         warned that a consequence of this option is that all user theories 
+ *         at the site will have to be rebuilt.
+ * 
+ *     -b  The "-b" option tells the system to build binary theories. This 
+ *         is not advised, and some editing of the sys01.sml file is 
+ *         necessary to get this approach to work.
+ * 
+ *     -d <path> This option to make_hol is used to establish the root
+ *         directory for hol90. If your current directory at the 
+ *         time of calling "make_hol" is not hol90.4/src, then you 
+ *         will need to supply the full directory path to the hol90.4 
+ *         directory.
+ * 
+ * The default and the "-n" and "-o" options entail that theory files will
+ * be in ascii. This is preferable, since ascii files are portable between
+ * architectures and are much smaller than binary theory files.
+ ***************************************************************************)
+
+datatype thy_opt = make_binary | make_new_ascii | use_old_ascii
+
+
+fun last_char str = substring (str, size str - 1, 1);
+
+fun normalize p = 
+   if (last_char p = "/")
+   then p 
+   else (p^"/");
+d360 3
+a362 10
+local
+fun head_dir wd =
+   let val hd_size = (size wd) - 1
+   in if last_char wd = "/"
+      then wd
+      else head_dir (substring (wd, 0, hd_size))
+   end
+in
+fun base() = head_dir (pwd ())
+end;
+a363 6
+exception MAKE_HOL_FAILED
+val argv = getArgs()
+fun fail () = (output(std_out, ("\nmake_hol failed: format is\
+                  \ \"make_hol <sml> [-n | -b | -o] [-d <path>]\"\n"));
+				raise MAKE_HOL_FAILED)
+
+d365 8
+a372 1
+fun mem x [] = false | mem x (y::ys) = (x = y) orelse mem x ys
+d374 1
+a374 8
+val theory_file_option =
+    if mem "-b" argv
+	then if mem "-o" argv orelse mem "-n" argv
+		 then fail()
+	     else make_binary
+    else if mem "-n" argv
+	     then if mem "-o" argv then fail() else make_new_ascii
+	 else use_old_ascii
+d376 1
+d378 6
+a383 4
+fun find_directory [] = base()
+  | find_directory (flag::[]) = (case flag of "-d" => fail() | _ => base ())
+  | find_directory (flag::(rest as next::_)) =
+    (case flag of "-d" => normalize next | _ => find_directory rest)
+d385 16
+a400 1
+val HOL_base_directory = ref (find_directory argv)
+d402 1
+d404 3
+a406 2
+(*
+Manual configuration.
+d408 1
+a408 1
+One can manually configure the system by 
+d410 8
+a417 2
+    a) Setting the values of theory_file_option and HOL_base_directory in
+       this file.
+a418 2
+    b) By commenting out the code that currently sets these values in
+       this file.
+a419 1
+    c) By not using the line
+a420 1
+           $* < sys01.sml
+d422 3
+a424 3
+       in the make_hol shell script. Instead one would invoke sml, then do a
+   
+           use "sys01.sml";
+d426 2
+a427 2
+       After that finished, the rest of the make_hol shell script should be 
+       invoked.
+d429 3
+d433 3
+a435 6
+Here are some hints for part a.
+
+If you want ascii theory files and you want to rebuild all the
+theories anew, you should do
+
+    val theory_file_option = make_new_ascii
+d437 3
+a439 1
+If you want binary versions of theory files, you should use
+d441 2
+a442 1
+    val theory_file_option = make_binary
+a443 3
+If you chose either of the above two options, you will have to remake
+all libraries and site theories. If you use binary format you will have
+to modify the file sys01.sml too.
+a444 40
+If you wish to reuse existing ascii theory files, thereby avoiding
+having to remake libraries and local theories, you should use
+
+    val theory_file_option = use_old_ascii
+
+You will need to use the "use_old_ascii" option on all but the first
+build when building hol90 on multiple architectures which are all to
+share the same theory files.
+
+Warning: the "use_old_ascii" option is not as secure as the other two.
+It also may not always be possible when building a new version of hol90
+for the first time at your site. SYSTEM THEORY FILES MAY CHANGE BETWEEN
+RELEASES.
+
+*)
+
+end (* structure Sys_params *)
+
+
+local
+val make_cell = ref (app use)
+in
+fun new_make_fun f = make_cell := f
+fun hol_make files = (!make_cell) files
+end
+
+val int_to_string = makestring: int -> string
+val real_to_string = makestring: real -> string
+
+val store_hol_in_HOLdir = ref true
+
+fun exportHOL str =
+    let val dir = if !store_hol_in_HOLdir
+		      then !Sys_params.HOL_base_directory ^ "src/"
+		  else pwd()
+    in
+	(exportML (dir^str) before
+	 (Timer.init_CPU_time := Timer.startCPUTimer();
+	  Timer.init_time := Time.timestamp()))
+end
+@
+
+
+1.1.2.1
+log
+@The core of hol90.9.alpha now builds successfully with SML/NJ 109,
+SML/NJ 108.5 (using CM), SML/NJ 0.93, and Poly/ML 3.0.
+I have not yet tried rebuilding the theory files.
+@
+text
+@d2 1
+a2 1
+(* FILE          : portable.njsml.93.sml                                 *)
+d21 2
+a22 1
+         System.Control.Print.signatures := 2);
+d32 2
+d38 1
+a38 1
+	datatype order = LESS | EQUAL | GREATER
+d153 2
+a159 2
+        fun sub (vector,i) =
+            Vector.sub (vector,i) handle Subscript => raise General.Subscript
+d169 5
+a173 10
+	fun extract (a,start_index,lengthopt) =
+            let val length =
+                   case lengthopt
+                   of General.SOME l => l
+		    | General.NONE => Vector.length a - start_index
+	    in  Vector.vector (listofvector{vector = a,
+					    start_index = start_index,
+					    length = length,
+					    list = []})
+	    end
+a190 5
+        fun sub (array,i) =
+            Array.sub (array,i) handle Subscript => raise General.Subscript
+        fun update (array,i,x) =
+            Array.update (array,i,x)
+            handle Subscript => raise General.Subscript
+d200 5
+a204 21
+	fun extract (a,start_index,lengthopt) =
+            let val length =
+                   case lengthopt
+                   of General.SOME l => l
+		    | General.NONE => Array.length a - start_index
+	    in  Vector.vector (listofarray{array = a,
+					   start_index = start_index,
+					   length = length,
+					   list = []})
+	    end
+    end
+
+structure ByteArray =
+    struct
+        open ByteArray
+        fun extract (a,i,nopt) =
+            let val l = ByteArray.length a
+                val n =
+                    case nopt of General.SOME n => n | General.NONE => l - i
+            in  ByteArray.extract (a,i,n)
+            end
+a206 1
+structure Ref = Ref;
+d223 2
+a224 7
+	fun substring(s,i,n) =
+            String.substring(s,i,n) handle Substring => raise General.Subscript
+	fun sub(s,i) =
+            String.substring(s,i,1) handle Substring => raise General.Subscript
+        fun ordof (s,i) =
+            String.ordof (s,i) handle Ord => raise General.Subscript
+	exception Ord = General.Subscript
+a230 2
+fun install_pp path s = System.PrettyPrint.install_pp path;
+
+d247 1
+a247 5
+structure Time =
+struct
+open System.Timer
+val timestamp : unit -> System.Timer.time =
+      System.Unsafe.CInterface.c_function "timeofday"
+d249 3
+a251 6
+fun time_eq (t1:System.Timer.time) t2 = (t1 = t2)
+fun time_lt (t1:System.Timer.time) t2 = System.Timer.earlier(t1,t2)
+fun mk_time (t:{sec:int, usec:int}) = System.Timer.TIME t
+fun dest_time (System.Timer.TIME t) = t:{sec:int, usec:int}
+val time_to_string = System.Timer.makestring
+end
+d253 1
+a253 23
+structure Timer =
+struct
+open System.Timer
+type cpu_timer = System.Timer.timer
+val startCPUTimer = System.Timer.start_timer
+fun checkCPUTimer t = 
+    {usr = check_timer t, sys = check_timer_sys t, gc = check_timer_gc t}
+val init_CPU_time = ref(System.Timer.start_timer())
+fun totalCPUTimer () = !init_CPU_time
+val init_time = ref(Time.timestamp())
+abstype real_timer = Real_time of unit -> Time.time
+with
+fun startRealTimer () =
+    let val time_cell = ref(Time.timestamp())
+    in Real_time
+	(fn () => System.Timer.sub_time(Time.timestamp(),!time_cell))
+    end
+fun checkRealTimer (Real_time f) = f ()
+fun totalRealTimer () =
+    Real_time(fn () => System.Timer.sub_time(Time.timestamp(),!init_time))
+end (* abstype *)
+end
+
+d257 3
+d273 1
+a274 1
+(* Doesn't work with Linux
+a275 6
+*)
+fun pwd () =
+   let val (is,os) = IO.execute ("/bin/pwd",[])
+       val dir = input_line is
+   in  close_in is; close_out os; String.substring (dir,0,String.size dir - 1)
+   end;
+d281 1
+a281 90
+(* suffix to distinquish hol90s for different architectures. 
+   Implode.tl.explode used to get rid of leading "."
+*)
+val arch =
+   case getEnv "ARCH"
+   of General.SOME s => s
+    | General.NONE =>
+     let val s = !System.architecture
+     in  String.substring (s,1,String.length s - 1)
+     end;
+
+(*--------------------------------------------------------------------
+ * Misc. - interactions which manipulate the ML environment
+ *-------------------------------------------------------------------*)
+
+val execute = IO.execute
+
+(* The contents of the following declarations are *)
+(* Copyright 1996 by University of Cambridge      *)
+
+local
+
+val unix_pid = System.Unsafe.CInterface.getpid ();
+
+val hol_dir =
+   case getEnv "HOL_DIR"
+   of General.SOME s => s
+    | General.NONE => raise General.Fail "HOL_DIR variable not bound"
+
+val pipe = hol_dir ^ "/bin/pipe"
+
+val quote_filter = hol_dir ^ "/bin/quote-filter." ^ arch
+
+fun connect_streams (is,os) =
+    if (end_of_stream is)
+    then IO.flush_out os
+    else (output (os,input (is,1)); connect_streams (is,os))
+
+(* Doesn't work
+fun restore_filename filename out =
+   let val (is,os) =
+          IO.execute ("/bin/sed",["s/<instream>/" ^ filename ^ "/"])
+   in  connect_streams (is,out); close_in is; os
+   end
+*)
+fun restore_filename filename out = out
+
+in
+
+(* Resorted to using a tmp file! Sigh ... *)
+fun use_stream str =
+   let val time = case System.Unsafe.CInterface.gettimeofday ()
+                  of System.Timer.TIME x => x
+       val tmp_file = "/tmp/hol90_use_file." ^ makestring unix_pid ^ "." ^
+                      makestring (#sec time) ^ "." ^ makestring (#usec time)
+       val tmp = open_out tmp_file
+       val _ = (connect_streams (str,tmp); close_out tmp)
+       val (is,os) = IO.execute (pipe,[tmp_file,quote_filter])
+   in  close_out os;
+       (System.Compile.use_stream is handle e => (close_in is; raise e));
+       close_in is;
+       System.system ("/bin/rm " ^ tmp_file);
+       ()
+   end
+
+fun use filename =
+   let val out = !System.Print.out
+       val is = (output (out,"[opening " ^ filename ^ "]\n");
+                 open_in filename handle e as Io s =>
+                 (output (out,"[use failed: " ^ s ^ "]\n"); raise e))
+       val _ = close_in is
+       val (is,os) = IO.execute (pipe,[filename,quote_filter])
+       val new_out = restore_filename filename out
+       fun tidy_up () =
+          (System.Print.out := out; (* close_out new_out; *) close_in is)
+   in  close_out os;
+       System.Print.out := new_out;
+       (System.Compile.use_stream is handle e => (tidy_up (); raise e));
+       tidy_up ()
+   end
+
+end;
+
+(* End of University of Cambridge copyright *)
+
+val interp = System.Control.interp
+
+fun load files = (map use files; ());
+
+val sml_banner = System.version;
+d312 47
+d364 177
+a540 1
+fun exit() = System.Unsafe.CInterface.exit 0
+d542 2
+a543 2
+val int_to_string = makestring : int -> string
+val real_to_string = makestring : real -> string
+a544 1
+(* ???
+d547 1
+a547 1
+fun export str =
+d555 1
+a555 11
+    end
+*)
+fun export str = (IO.exportML str; ());
+
+val flush_out = IO.flush_out
+val input_line = IO.input_line
+val open_string = IO.open_string
+
+fun pointer_eq (x,y) =
+    ((System.Unsafe.cast x : int) = (System.Unsafe.cast y : int))
+
+@
+
+
+1.1.2.2
+log
+@Added a structure Int.
+Defined and exported HOL_base_directory.
+Added an unfiltered version of use_stream.
+Added a function for batch processing (exits after using a file).
+@
+text
+@a46 2
+structure Int = Integer;
+
+d364 5
+a368 1
+val HOL_base_directory =
+d373 1
+a373 5
+local
+
+val unix_pid = System.Unsafe.CInterface.getpid ();
+
+val pipe = HOL_base_directory ^ "/bin/pipe"
+d375 1
+a375 1
+val quote_filter = HOL_base_directory ^ "/bin/quote-filter." ^ arch
+a428 2
+val unfiltered_use_stream = System.Compile.use_stream;
+
+a470 4
+fun use_and_exit print_err filename =
+   (use filename; exit ())
+   handle e => (print_err e; System.Unsafe.CInterface.exit 1)
+
+@
+
+
+1.1.2.2.2.1
+log
+@Removed files are parse files and portability files that have
+effectively been moved elsewhere.
+
+Modified files are up to date for ML 109.26.
+@
+text
+@@

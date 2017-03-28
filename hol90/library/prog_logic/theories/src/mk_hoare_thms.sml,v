@@ -1,0 +1,194 @@
+head	1.1;
+branch	1.1.1;
+access;
+symbols
+	HOL97:1.1.1.1.0.6
+	bpHOL97:1.1.1.1
+	hol90_9_alpha:1.1.1.1
+	hol90_pre8_for_multiple_compilers:1.1.1.1.0.4
+	hol90_pre8_after_donalds_separate_compilation_changes:1.1.1.1
+	hol90_8_after_merging_Konrad_Elsa:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	95.10.16.13.31.57;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.31.57;	author rjb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@(* ************************************************************************* *)
+(*                                                                           *)
+(* FILE          : mk_hoare_thms.sml                                         *)
+(* DESCRIPTION   : Proof of theorems corresponding to the Hoare rules and    *)
+(*                 axioms                                                    *)
+(*                                                                           *)
+(* AUTHOR        : Mike Gordon, University of Cambridge                      *)
+(* DATE          : March 1988                                                *)
+(*                                                                           *)
+(* TRANSLATOR    : Matthew Morley, University of Edinburgh                   *)
+(* DATE          : Feb 1993                                                  *)
+(*                                                                           *)
+(* ************************************************************************* *)
+
+new_theory "hoare_thms";
+
+load_library{lib=string_lib,theory="hoare_thms"};
+
+new_parent "semantics";
+Add_to_sml.add_definitions_to_sml "semantics";
+
+val MK_FINITE_WHILE_CLAUSES = theorem "semantics" "MK_FINITE_WHILE_CLAUSES";
+
+
+val SKIP_THM = save_thm("SKIP_THM",
+ prove
+  ((--`! p. MK_SPEC(p,MK_SKIP,p)`--),
+   REWRITE_TAC[MK_SPEC,MK_SKIP]
+    THEN REPEAT STRIP_TAC
+    THEN POP_ASSUM_LIST(fn [th1,th2] => ACCEPT_TAC(REWRITE_RULE[th1] th2))));
+
+
+val ASSIGN_THM = save_thm("ASSIGN_THM", 
+ prove
+  ((--`!p x e. MK_SPEC((\s. p (BND x (e s) s)), MK_ASSIGN(x,e) , p)`--),
+   REWRITE_TAC[MK_SPEC,MK_ASSIGN]
+    THEN BETA_TAC
+    THEN REPEAT STRIP_TAC
+    THEN ASSUM_LIST(fn [th1,th2] => ACCEPT_TAC(SUBS[SYM th1]th2))));
+
+
+val SEQ_THM = save_thm("SEQ_THM",
+ prove
+  ((--`!p q r c c'.
+    MK_SPEC(p,c,q) /\ MK_SPEC(q,c',r) ==> MK_SPEC(p,MK_SEQ(c,c'),r)`--),
+   REWRITE_TAC[MK_SPEC,MK_SEQ]
+    THEN REPEAT STRIP_TAC
+    THEN RES_TAC
+    THEN RES_TAC));
+
+(* Proof revised for HOL version 1.12 [TFM 91.01.24]			     *)
+
+val IF1_THM = save_thm("IF1_THM",
+ prove
+  ((--`!p q c b.
+     MK_SPEC((\s. p s /\ b s),c,q) /\ (!s. p s /\ ~(b s) ==> q s) ==>
+     MK_SPEC(p,MK_IF1(b,c),q)`--),
+   REWRITE_TAC[MK_SPEC,MK_IF1] 
+    THEN CONV_TAC (ONCE_DEPTH_CONV BETA_CONV) 
+    THEN REPEAT GEN_TAC THEN STRIP_TAC THEN REPEAT GEN_TAC 
+    THEN ASM_CASES_TAC (--`(b:(string->num)->bool)s`--) 
+    THEN ASM_REWRITE_TAC[]
+    THEN REPEAT STRIP_TAC 
+    THENL [RES_TAC, RES_TAC THEN POP_ASSUM_LIST (fn thl => 
+               ACCEPT_TAC(REWRITE_RULE [(el 3 thl)] (el 2 thl)))]));
+
+val IF2_THM = save_thm("IF2_THM",
+ prove
+  ((--`!p q c c' b.
+     MK_SPEC((\s. p s /\ b s),c,q) /\ MK_SPEC((\s. p s /\ ~(b s)),c',q) ==>
+     MK_SPEC(p,MK_IF2(b,c,c'),q)`--),
+   REWRITE_TAC[MK_SPEC,MK_IF2]
+    THEN REPEAT GEN_TAC
+    THEN BETA_TAC
+    THEN STRIP_TAC
+    THEN REPEAT GEN_TAC
+    THEN ASM_CASES_TAC (--`(b:(string->num)->bool)s`--)
+    THEN ASM_REWRITE_TAC[]
+    THEN REPEAT STRIP_TAC
+    THEN RES_TAC));
+
+val PRE_STRENGTH_THM = save_thm("PRE_STRENGTH_THM",
+ prove
+  ((--`!p p' q c.
+     (!s. p' s ==> p s) /\ MK_SPEC(p,c,q) ==> MK_SPEC(p',c,q)`--),
+   REWRITE_TAC[MK_SPEC]
+    THEN REPEAT STRIP_TAC
+    THEN RES_TAC
+    THEN RES_TAC));
+
+val POST_WEAK_THM = save_thm("POST_WEAK_THM",
+ prove
+  ((--`!p q q' c.
+     MK_SPEC(p,c,q) /\ (!s. q s ==> q' s)  ==> MK_SPEC(p,c,q')`--),
+   REWRITE_TAC[MK_SPEC]
+    THEN REPEAT STRIP_TAC
+    THEN RES_TAC
+    THEN RES_TAC));
+
+val WHILE_THM = save_thm("WHILE_THM",
+ prove
+  ((--`!p c b. MK_SPEC((\s. p s /\ b s),c,p) ==> 
+                 MK_SPEC(p,MK_WHILE(b,c),(\s. p s /\ ~(b s)))`--),
+    REWRITE_TAC[MK_SPEC,MK_WHILE] 
+     THEN BETA_TAC
+     THEN REPEAT GEN_TAC
+     THEN STRIP_TAC
+     THEN REPEAT GEN_TAC
+     THEN STRIP_TAC
+     THEN ASSUM_LIST(fn thl => UNDISCH_TAC(concl(hd thl)))
+     THEN ASSUM_LIST(fn thl => UNDISCH_TAC(concl(hd thl)))
+     THEN SPEC_TAC((--`s':string->num`--),(--`s':string->num`--))
+     THEN SPEC_TAC((--`s:string->num`--),(--`s:string->num`--))
+     THEN SPEC_TAC((--`n:num`--),(--`n:num`--))
+     THEN INDUCT_TAC
+     THEN REWRITE_TAC[MK_FINITE_WHILE_CLAUSES,MK_IF1,MK_SEQ]
+     THEN REPEAT GEN_TAC
+     THEN ASM_CASES_TAC (--`(b:(string->num)->bool)s`--)
+     THEN ASM_REWRITE_TAC[]
+     THEN STRIP_TAC
+     THEN STRIP_TAC
+     THEN RES_TAC
+     THEN RES_TAC
+     THEN ASM_REWRITE_TAC[]
+     THEN ASSUM_LIST(fn thl => SUBST_TAC[SYM(el 4 thl)])
+     THEN ASM_REWRITE_TAC[]));
+
+close_theory();
+    
+export_theory();
+
+
+
+
+
+
+
+
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

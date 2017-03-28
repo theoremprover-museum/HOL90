@@ -1,0 +1,98 @@
+head	1.1;
+branch	1.1.1;
+access;
+symbols
+	HOL97:1.1.1.1.0.6
+	bpHOL97:1.1.1.1
+	hol90_9_alpha:1.1.1.1
+	hol90_pre8_for_multiple_compilers:1.1.1.1.0.4
+	hol90_pre8_after_donalds_separate_compilation_changes:1.1.1.1
+	hol90_8_after_merging_Konrad_Elsa:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	95.10.16.13.33.42;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.33.42;	author rjb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@\DOC ASM_CASES_TAC
+
+\TYPE {ASM_CASES_TAC : (term -> tactic)}
+
+\SYNOPSIS
+Given a term, produces a case split based on whether or not that
+term is true.
+
+\KEYWORDS
+tactic, cases.
+
+\DESCRIBE
+Given a term {u}, {ASM_CASES_TAC} applied to a goal produces two
+subgoals, one with {u} as an assumption and one with {~u}:
+{
+               A ?-  t
+   ================================  ASM_CASES_TAC "u"
+    A u {{u}} ?- t   A u {{~u}} ?- t
+}
+\noindent {ASM_CASES_TAC u} is implemented by
+{DISJ_CASES_TAC(SPEC u EXCLUDED_MIDDLE)}, where {EXCLUDED_MIDDLE} is
+the axiom {|- !u. u \/ ~u}.
+
+\FAILURE
+By virtue of the implementation (see above), the decomposition fails if
+{EXCLUDED_MIDDLE} cannot be instantiated to {u}, e.g. if {u} does not
+have boolean type.
+
+\EXAMPLE
+The tactic {ASM_CASES_TAC "u"} can be used to produce a case analysis
+on {"u"}:
+{
+    ASM_CASES_TAC "u:bool" ([],"(P:bool -> bool) u");;
+    ([(["u"], "P u"); (["~u"], "P u")], -) : subgoals
+}
+\USES
+Performing a case analysis according to whether a given term is true or false.
+
+\SEEALSO
+BOOL_CASES_TAC, COND_CASES_TAC, DISJ_CASES_TAC, SPEC, STRUCT_CASES_TAC.
+
+\ENDDOC
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

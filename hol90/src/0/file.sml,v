@@ -1,0 +1,360 @@
+head	1.5;
+access;
+symbols
+	HOL97:1.2.0.4
+	bpHOL97:1.2
+	hol90_9_alpha:1.2
+	hol90_pre8_for_multiple_compilers:1.2.0.2
+	hol90_pre8_after_donalds_separate_compilation_changes:1.2
+	hol90_8_after_merging_Konrad_Elsa:1.2
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.5
+date	96.02.08.00.30.51;	author drs1004;	state Exp;
+branches;
+next	1.4;
+
+1.4
+date	96.01.04.13.45.11;	author drs1004;	state Exp;
+branches;
+next	1.3;
+
+1.3
+date	95.12.18.11.34.21;	author drs1004;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	95.10.17.17.06.49;	author drs1004;	state Exp;
+branches
+	1.2.4.1;
+next	1.1;
+
+1.1
+date	95.10.16.13.30.01;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.30.01;	author rjb;	state Exp;
+branches;
+next	;
+
+1.2.4.1
+date	97.06.11.17.23.50;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.5
+log
+@New theory mechanism, by Donald Syme, and many other enhancements.
+@
+text
+@structure File  : File_sig =
+struct
+    open Lib;
+	
+
+val ERR = Exception.ERR "File";
+val WRAP_ERR = Exception.WRAP_ERR "File";
+
+
+(*-------------------------------------------------------------------------
+ * find_file
+ *
+ * Look for a file along a path.  Return both the path and the 
+ * path+filename.
+ *------------------------------------------------------------------------*)
+
+fun find_file paths name =
+   let fun find [] = ERR("find_file",
+			 "unable to get the file "^quote name^
+			 "\n  looked in :\n  "^
+			 (foldl(fn (x,s) => s^x^"\n  ") "" paths))
+         | find (prefix::rst) =
+	   let val pname = prefix^name
+	   in if (Portable.file_exists_for_reading pname)
+		  then {path=prefix,file=pname}
+	      else find rst
+	   end
+   in find paths
+   end;
+
+(*-------------------------------------------------------------------------
+ * get_file_by_name
+ *------------------------------------------------------------------------*)
+
+fun get_file_by_name{reader : instream -> 'a,
+                     suffix : string} paths name =
+   let val ending = name^suffix
+       fun find [] = ERR("get_file_by_name",
+                              "unable to get the file "^quote ending^
+			      "\n  looked in :\n  "^
+                              (foldl(fn (x,s) => s^x^"\n  ") "" paths))
+         | find (prefix::rst) =
+            let val pname = prefix^ending
+            in if (Portable.file_exists_for_reading pname)
+               then let val istrm = open_in pname
+                        val data = reader istrm
+                                   handle e => (close_in istrm; WRAP_ERR("get_file_by_name",e))
+                        val _ = close_in istrm
+                    in {data = data, path = prefix}
+                    end (* handle e => find rst *)
+               else find rst
+            end
+   in find paths
+   end;
+
+
+(*-------------------------------------------------------------------------
+ * get_file_by_key
+ *------------------------------------------------------------------------*)
+
+
+
+fun get_file_by_key {reader : instream -> 'a,
+                     suffix : string,
+                     eq : ('b * 'b) -> bool,
+                     key_of : 'a -> 'b,
+                     name_of : 'b -> string} paths key =
+   let val ending = (name_of key)^suffix
+       fun find [] = ERR("get_file_by_key",
+                              "unable to get the file "^quote ending)
+         | find (prefix::rst) =
+            let val pname = prefix^ending
+            in
+            if (Portable.file_exists_for_reading pname)
+            then let val istrm = open_in pname
+                     val data = reader istrm
+                                handle e => (close_in istrm; WRAP_ERR("get_file_by_key",e))
+                     val _ = close_in istrm
+                 in
+                   if eq(key_of data, key)
+                   then {data = data, path = prefix}
+                   else find rst
+                 end (* handle e => find rst *)
+            else find rst
+            end
+   in find paths
+   end;
+
+
+end; (* FILE *)
+@
+
+
+1.4
+log
+@Fixed types, pretypes, fixities, parsing.
+@
+text
+@d6 1
+a6 1
+val FILE_ERR = Exception.ERR "File";
+d10 12
+a21 5
+fun find_file  paths name =
+   let fun find [] = FILE_ERR("find_file",
+                              "unable to get the file "^quote name^
+			      "\n  looked in :\n  "^
+                              (foldl(fn (x,s) => s^x^"\n  ") "" paths))
+d25 1
+a25 1
+		  then pname
+d31 3
+d38 1
+a38 1
+       fun find [] = FILE_ERR("get_file_by_name",
+d57 4
+d69 1
+a69 1
+       fun find [] = FILE_ERR("get_file_by_key",
+@
+
+
+1.3
+log
+@Preterm and other changes, see 7.changes
+@
+text
+@a8 2
+fun found_but_unable_to_read s = say 
+ ("\nfound "^quote s^" but couldn't read it successfully: continuing\n");
+d10 15
+d40 1
+a40 1
+                    end handle e => find rst
+@
+
+
+1.2
+log
+@Keeping you up to date:
+
+I'm about to do a checkin of elsa's modifications to the hol90.7
+sources to create her hol90.pre8.  To recap what I've done:
+	- I checked out hol90 (in /usr/groups/hol/drs1004/hol90)
+		cvs co hol90
+	  (Well, to be honest, I only checked out those
+	  parts of hol90 I knew I'd be changing, e.g. not the
+	  Manual, and only parts of the library.  Checking out the
+	  entire source takes a while, mainly due to the enormous number
+	  of help files.  The limiting factor is files/second, which
+         runs at around 5 when CVS is working on nfs over a network, not
+         KB/second, which you might at first think it would be).
+
+	- By doing a recursive diff between Elsa's source and the
+	hol90.7 source I found all the changes Elsa had made to
+	source files.  I copied relevant files from Elsa's source
+	into my checked out version.  The only new files were
+		- the sml_system files in src/0
+		- some make scripts in src/.
+	Changed files were in:
+		src/{0,1,2,3}
+		library/arith/src/thm_convs.sml
+		library/list/src/list_conv1.sml
+		library/num/src/num_lib.sml
+		library/prog_logic/src/halts_logic.sml
+		library/prog_logic/src/translation.sml
+		library/prog_logic/theories/src/mk_halts.sml
+		library/real/theories/src/Make
+		library/real/theories/src/equiv.sml
+		library/real/theories/src/seq.sml
+		library/reduce/src/arithconv.sml
+		library/string/src/string_conv.sml
+		library/unity/theories/src/aux_definitions.sml
+		library/word/theories/src/*
+
+	- I will now commit these changes, with this email as the log message.
+		cvs commit
+
+	- Tomorrow I will get this version compiling
+	with NJSML 108 (I will probably add
+	the files to enable the NJSML compilation manager to make
+	this easier), then check those changes in.  I think it's
+	good to get things in a working state.
+@
+text
+@d1 1
+a1 1
+functor FILE ( (* structure Lib : Lib_sig *) ) : File_sig =
+d3 2
+d6 2
+a7 4
+fun FILE_ERR{function,message} =
+    Exception.HOL_ERR{origin_structure = "File",
+		      origin_function = function,
+		      message = message};
+d9 2
+a10 2
+fun found_but_unable_to_read s = Lib.say 
+ ("\nfound "^Lib.quote s^" but couldn't read it successfully: continuing\n");
+d13 1
+a13 1
+                     suffix : string} (paths : string list) name =
+d15 4
+a18 4
+       fun find [] = raise FILE_ERR{function = "get_file_by_name",
+				    message =
+				    "unable to get the file "^Lib.quote
+				    ending}
+d21 1
+a21 1
+            in if (Lib.file_exists_for_reading pname)
+d23 2
+a24 4
+                        val data = reader istrm 
+                                   handle e => (close_in istrm; 
+                                                found_but_unable_to_read pname;
+                                                raise e)
+d40 1
+a40 1
+                     name_of : 'b -> string} (paths :string list) (key :'b) =
+d42 2
+a43 2
+       fun find [] = raise FILE_ERR{function = "get_file_by_key",
+                       message = "unable to get the file "^Lib.quote ending}
+d47 1
+a47 1
+            if (Lib.file_exists_for_reading pname)
+d50 1
+a50 3
+                                handle e => (close_in istrm; 
+                                             found_but_unable_to_read pname;
+                                             raise e)
+d53 4
+a56 4
+                 if eq(key_of data, key)
+                 then {data = data, path = prefix}
+                 else find rst
+                 end handle e => find rst
+@
+
+
+1.2.4.1
+log
+@Removed files are parse files and portability files that have
+effectively been moved elsewhere.
+
+Modified files are up to date for ML 109.26.
+@
+text
+@d1 1
+a1 1
+structure File : File_sig =
+a3 2
+open Portable;
+
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d1 1
+a1 1
+functor FILE (Lib : Lib_sig) : File_sig =
+d4 4
+a7 3
+fun FILE_ERR{function,message} = HOL_ERR{origin_structure = "File",
+                                         origin_function = function,
+                                         message = message};
+d16 3
+a18 1
+                             message = "unable to get the file "^quote ending}
+d21 1
+a21 1
+            in if (file_exists_for_reading pname)
+d49 1
+a49 1
+            if (file_exists_for_reading pname)
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

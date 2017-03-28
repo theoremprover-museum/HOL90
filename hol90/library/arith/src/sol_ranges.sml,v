@@ -1,0 +1,316 @@
+head	1.3;
+access;
+symbols
+	HOL97:1.3.0.4
+	bpHOL97:1.3
+	hol90_9_alpha:1.3
+	hol90_pre8_for_multiple_compilers:1.3.0.2
+	hol90_pre8_after_donalds_separate_compilation_changes:1.3
+	hol90_8_after_merging_Konrad_Elsa:1.2
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.3
+date	95.10.31.14.02.03;	author drs1004;	state Exp;
+branches
+	1.3.4.1;
+next	1.2;
+
+1.2
+date	95.10.18.15.50.15;	author drs1004;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	95.10.16.13.31.36;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.31.36;	author rjb;	state Exp;
+branches
+	1.1.1.1.2.1;
+next	;
+
+1.1.1.1.2.1
+date	95.10.18.15.47.14;	author drs1004;	state Exp;
+branches;
+next	;
+
+1.3.4.1
+date	97.07.11.19.29.02;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.3
+log
+@First phase of hol90.8 development.  hol90 now compiles using NJSML-CM
+108.5, with separate compilation of libraries.  System dependencies
+have been isolated in the makefiles and "portable.sml".
+
+This involved a large number of enhancments to the source files,
+most of which are documented in the 7.changes file (or will be shortly).
+See also the correpsonding email corrspondence between RJB, KLS, TFM,
+JRH and DRS that happened during this development.
+@
+text
+@(*****************************************************************************)
+(* FILE          : sol_ranges.sml                                            *)
+(* DESCRIPTION   : Functions for determining the ranges of the solutions to  *)
+(*                 linear programming problems, and whether there are        *)
+(*                 natural number solutions.                                 *)
+(*                                                                           *)
+(* READS FILES   : <none>                                                    *)
+(* WRITES FILES  : <none>                                                    *)
+(*                                                                           *)
+(* AUTHOR        : R.J.Boulton, University of Cambridge                      *)
+(* DATE          : 18th April 1991                                           *)
+(*                                                                           *)
+(* TRANSLATOR    : R.J.Boulton, University of Cambridge                      *)
+(* DATE          : 16th February 1993                                        *)
+(*                                                                           *)
+(* LAST MODIFIED : R.J.Boulton                                               *)
+(* DATE          : 16th February 1993                                        *)
+(*****************************************************************************)
+
+structure Sol_ranges : Sol_ranges_sig =
+struct
+
+open Core; (* open up all of the HOL 0/1 Core - could be replaced by more *)
+           (* explicit opens to avoid endless recompilation of libraries  *)
+           (* during system development                                   *)
+
+fun failwith function = raise HOL_ERR{origin_structure = "Sol_ranges",
+                                      origin_function = function,
+                                      message = ""};
+
+open Rationals;
+open Sup_Inf;
+open Streams;
+
+(*---------------------------------------------------------------------------*)
+(* less_bound : bound -> bound -> bool                                       *)
+(*---------------------------------------------------------------------------*)
+
+fun less_bound Neg_inf Neg_inf = failwith "less_bound"
+  | less_bound Neg_inf (Bound (_,[])) = true
+  | less_bound Neg_inf Pos_inf = true
+  | less_bound (Bound (_,[])) Neg_inf = false
+  | less_bound (Bound (r1,[])) (Bound (r2,[])) =
+       ((rat_less r1 r2) handle _ => failwith "less_bound")
+  | less_bound (Bound (_,[])) Pos_inf = true
+  | less_bound Pos_inf Neg_inf = false
+  | less_bound Pos_inf (Bound (_,[])) = false
+  | less_bound Pos_inf Pos_inf = failwith "less_bound"
+  | less_bound _ _ = failwith "less_bound";
+
+(*---------------------------------------------------------------------------*)
+(* is_neg_bound : bound -> bool                                              *)
+(*---------------------------------------------------------------------------*)
+
+fun is_neg_bound (Bound (r,[])) =
+       ((rat_less r rat_zero) handle _ => failwith "is_neg_bound")
+  | is_neg_bound Pos_inf = false
+  | is_neg_bound Neg_inf = true
+  | is_neg_bound _ = failwith "is_neg_bound";
+
+(*---------------------------------------------------------------------------*)
+(* is_finite_bound : bound -> bool                                           *)
+(*---------------------------------------------------------------------------*)
+
+fun is_finite_bound (Bound (_,[])) = true
+  | is_finite_bound Pos_inf = false
+  | is_finite_bound Neg_inf = false
+  | is_finite_bound _ = failwith "is_finite_bound";
+
+(*---------------------------------------------------------------------------*)
+(* rat_of_bound : bound -> rat                                               *)
+(*---------------------------------------------------------------------------*)
+
+fun rat_of_bound (Bound (r,[])) = r
+  | rat_of_bound _ = failwith "rat_of_bound";
+
+(*---------------------------------------------------------------------------*)
+(* is_int_range : rat -> rat -> bool                                         *)
+(*---------------------------------------------------------------------------*)
+
+fun is_int_range r1 r2 =
+   let val i1 = upper_int_of_rat r1
+       and i2 = lower_int_of_rat r2
+   in  not (i2 < i1)
+   end;
+
+(*---------------------------------------------------------------------------*)
+(* non_neg_int_between : bound -> bound -> int                               *)
+(*---------------------------------------------------------------------------*)
+
+fun non_neg_int_between b1 b2 =
+   (case (b1,b2)
+    of (Neg_inf,Neg_inf) => failwith "fail"
+     | (Neg_inf,Bound (r,[])) =>
+          (if (rat_less r rat_zero) then failwith "fail" else 0)
+     | (Neg_inf,Pos_inf) => 0
+     | (Bound (_,[]),Neg_inf) => failwith "fail"
+     | (Bound (r1,[]),Bound (r2,[])) =>
+          (let val i1 = upper_int_of_rat r1
+               and i2 = lower_int_of_rat r2
+               val i1' = if (i1 < 0) then 0 else i1
+           in  if (i2 < i1') then failwith "fail" else i1'
+           end)
+     | (Bound (r,[]),Pos_inf) =>
+          (if (rat_less r rat_zero) then 0 else upper_int_of_rat r)
+     | (Pos_inf,Neg_inf) => failwith "fail"
+     | (Pos_inf,Bound (_,[])) => failwith "fail"
+     | (Pos_inf,Pos_inf) => failwith "fail"
+     | _ => failwith "fail"
+   ) handle _ => failwith "non_neg_int_between";
+
+(*---------------------------------------------------------------------------*)
+(* inst_var_in_coeffs : (string * int) ->                                    *)
+(*                      (int * (string * int) list) list ->                  *)
+(*                      (int * (string * int) list) list                     *)
+(*                                                                           *)
+(* Substitute a constant for a variable in a set of coefficients.            *)
+(*---------------------------------------------------------------------------*)
+
+fun inst_var_in_coeffs (v:string,c) coeffsl =
+   let fun remove p l =
+          if (p (hd l))
+          then (hd l,tl l)
+          else (I ## (fn r => ((hd l)::r))) (remove p (tl l))
+   in
+   if (null coeffsl)
+   then []
+   else let val (const,bind) = hd coeffsl
+            val ((_,coeff),bind') =
+               (remove (fn (name,_) => name = v) bind handle _ => ((v,0),bind))
+        in  (const + (c * coeff),bind')::
+               (inst_var_in_coeffs (v,c) (tl coeffsl))
+        end
+   end;
+
+(*---------------------------------------------------------------------------*)
+(* Shostak : (int * (string * int) list) list -> (string * int) list         *)
+(*                                                                           *)
+(* Uses SUP-INF in the way described by Shostak to find satisfying values    *)
+(* (natural numbers) for the variables in a set of inequalities (represented *)
+(* as bindings). The function fails if it can't find such values.            *)
+(*                                                                           *)
+(* The function tries permutations of the variables, because the ordering    *)
+(* can affect whether or not satisfying values are found. Lazy evaluation is *)
+(* used to avoid computing all the permutations before they are required.    *)
+(* This should help to avoid problems due to enormously long lists, but even *)
+(* so, for a large number of variables, the function could execute for a     *)
+(* very long time.                                                           *)
+(*---------------------------------------------------------------------------*)
+
+fun Shostak coeffsl =
+   let fun vars_of_coeffs coeffsl =
+          Lib.mk_set (flatten (map ((map fst) o snd) coeffsl))
+       fun Shostak' coeffsl vars =
+          let val no_vars = filter (null o snd) coeffsl
+              val falses = filter (fn (n,_) => n < 0) no_vars
+          in  if (null falses)
+              then if (null vars)
+                   then []
+                   else let val coeffsl' =
+                               filter (fn (n,l) => not (null l)) coeffsl
+                            val var = hd vars
+                            val b = Bound (rat_zero,[(var,rat_one)])
+                            val sup = eval_bound (SIMP (SUP coeffsl' (b,[])))
+                            and inf = eval_bound (SIMP (INF coeffsl' (b,[])))
+                            val value = non_neg_int_between inf sup
+                            val new_coeffsl =
+                               inst_var_in_coeffs (var,value) coeffsl'
+                        in  (var,value)::(Shostak' new_coeffsl (tl vars))
+                        end
+              else failwith "fail"
+          end
+       fun try f s = case s () of (Stream (x,s')) => (f x handle _ => try f s')
+       val vars = vars_of_coeffs coeffsl
+   in  (if (null vars)
+        then Shostak' coeffsl []
+        else try (Shostak' coeffsl) (permutations vars)
+       ) handle _ => failwith "Shostak"
+   end;
+
+end
+@
+
+
+1.3.4.1
+log
+@Changes to accomodate CM, and also the differences between  SML'90 and SML'97.
+@
+text
+@d23 3
+a25 5
+open Rationals;
+open Sup_Inf;
+open Streams;
+open Lib; infix ##;
+open Exception;
+d31 3
+@
+
+
+1.2
+log
+@	Konrad's bug fixes and further development to hol90.7 after it's release.
+	Checked n on a side branch for later merging with the main trunk
+	(Elsa's revisions), which is what I'm doing now.
+        See doc/7.changes for details.
+@
+text
+@d23 4
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d149 1
+a149 1
+          mk_set (flatten (map ((map fst) o snd) coeffsl))
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@
+
+
+1.1.1.1.2.1
+log
+@	Konrad's bug fixes and further development to hol90.7 after it's release.
+	Checked n on a side branch for later merging with the main trunk
+	(Elsa's revisions).  See doc/7.changes for details.
+@
+text
+@d149 1
+a149 1
+          Lib.mk_set (flatten (map ((map fst) o snd) coeffsl))
+@

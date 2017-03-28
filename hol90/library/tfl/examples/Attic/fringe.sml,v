@@ -1,0 +1,162 @@
+head	1.1;
+access;
+symbols
+	HOL97:1.1.2.2.0.2
+	bpHOL97:1.1.2.2
+	hol90_9_alpha:1.1.2.2
+	TFL_1:1.1.2.1
+	hol90_pre8_for_multiple_compilers:1.1.0.2;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	96.06.29.15.08.13;	author rjb;	state dead;
+branches
+	1.1.2.1;
+next	;
+
+1.1.2.1
+date	96.06.29.15.08.14;	author rjb;	state Exp;
+branches;
+next	1.1.2.2;
+
+1.1.2.2
+date	96.08.05.15.40.38;	author rjb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@file fringe.sml was initially added on branch hol90_pre8_for_multiple_compilers.
+@
+text
+@@
+
+
+1.1.2.1
+log
+@TFL version 1 for HOL: A well-founded recursive function definition package.
+@
+text
+@a0 81
+(*---------------------------------------------------------------------------
+ * McCarthy's function for computing the fringe of a binary tree. 
+ * It's a nested function, but a nested primitive recursion, and therefore
+ * trivial to prove termination for. In fact, it should be automatic!
+ *---------------------------------------------------------------------------*)
+
+new_theory"fringe";
+
+val _ = cons_path"../" theory_path;
+val _ = new_parent"kls_list";
+val APPEND = theorem"kls_list" "APPEND";
+
+
+
+(*---------------------------------------------------------------------------
+ *     Define btrees.
+ *---------------------------------------------------------------------------*)
+local open Hol_datatype
+in
+val btree_facts = hol_datatype
+                        `btree = LEAF of 'a
+                               | NODE of 'a => btree => btree`
+end;
+
+
+(*---------------------------------------------------------------------------
+ * The size of a btree 
+ *---------------------------------------------------------------------------*)
+val Weight_eqns = Hol_datatype.define Prefix
+   `(Weight (LEAF x) = 1) /\
+    (Weight (NODE (v:'a) p q) = SUC(Weight q + Weight p))`;
+
+
+(*---------------------------------------------------------------------------
+ * The fringe of a btree is the elements at the leaves, from left-to-right.
+ *---------------------------------------------------------------------------*)
+val fringe_def = Rfunction
+`measure (Weight o FST)`
+   `(fringe(LEAF x, Acc) = CONS x Acc) /\
+    (fringe(NODE (v:'a) b1 b2, Acc) = fringe(b1, fringe(b2,Acc)))`;
+
+
+val fringe_terminates = Q.prove
+`Weight b2 < Weight (NODE (v:'a) b1 b2) /\ 
+ Weight b1 < Weight (NODE v b1 b2)`
+(RW_TAC[Weight_eqns] THEN REPEAT CONJ_TAC 
+ THEN REPEAT GEN_TAC 
+ THEN CONV_TAC ARITH_CONV);
+
+
+val fringe_eqns = save_thm("fringe_eqns", 
+  RW_RULE [fringe_terminates] (#rules fringe_def));
+
+val fringe_induction = save_thm("fringe_induction", 
+   RW_RULE[fringe_terminates] (DISCH_ALL(#induction fringe_def)));
+
+
+(*---------------------------------------------------------------------------
+ * A property (from Boyer&Moore 79) of fringe: the fringe of a btree is
+ * equal to the flattened btree. The interesting thing about the B&M proof is
+ * that it is fully automatic (they begin from our introduced subgoal),
+ * including a subsidiary proof that APPEND is associative. 
+ *---------------------------------------------------------------------------*)
+val flatten_def = 
+Hol_datatype.define 
+          Prefix `(flatten (LEAF x) = [x:'a]) /\
+                  (flatten (NODE v b1 b2) = APPEND (flatten b1) (flatten b2))`;
+
+
+val flatten_eq_fringe = Q.prove
+`!tr:'a btree. flatten tr = fringe(tr,[])`
+(Q.SUBGOAL_THEN  (* Generalize straight off *)
+   `!tr (L:'a list). APPEND (flatten tr) L = fringe(tr,L)`
+   (fn th => RW_TAC[APPEND,GSYM th]) THEN 
+PROGRAM_TAC{induction = fringe_induction, rules = fringe_eqns}
+ THEN RW_TAC[flatten_def,APPEND]
+ THEN POP_ASSUM (MAP_EVERY (SUBST_ALL_TAC o SYM) o CONJUNCTS)
+ THEN RW_TAC[theorem"list" "APPEND_ASSOC"]);
+
+
+html_theory"-";
+@
+
+
+1.1.2.2
+log
+@Updated to TFL release 4.
+@
+text
+@d29 1
+a29 2
+val Weight_eqns = 
+define Prefix
+d60 1
+a60 1
+ * equal to the flattened btree. The neat thing about the B&M proof is
+d62 1
+a62 1
+ * including a subsidiary inductive proof that APPEND is associative. 
+d65 3
+a67 3
+define Prefix 
+  `(flatten (LEAF x) = [x:'a]) /\
+   (flatten (NODE v b1 b2) = APPEND (flatten b1) (flatten b2))`;
+d72 7
+a78 8
+(Q.SUBGOAL_THEN 
+    `!tr (L:'a list). APPEND (flatten tr) L = fringe(tr,L)`
+    (fn th => RW_TAC[APPEND,GSYM th]) 
+ THEN 
+  PROGRAM_TAC{induction=fringe_induction, rules=fringe_eqns}
+   THEN RW_TAC[flatten_def,APPEND]
+   THEN POP_ASSUM (MAP_EVERY (SUBST_ALL_TAC o SYM) o CONJUNCTS)
+   THEN RW_TAC[theorem"list" "APPEND_ASSOC"]);
+@

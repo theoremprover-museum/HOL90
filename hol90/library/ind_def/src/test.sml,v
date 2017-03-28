@@ -1,0 +1,148 @@
+head	1.1;
+branch	1.1.1;
+access;
+symbols
+	HOL97:1.1.1.1.0.6
+	bpHOL97:1.1.1.1
+	hol90_9_alpha:1.1.1.1
+	hol90_pre8_for_multiple_compilers:1.1.1.1.0.4
+	hol90_pre8_after_donalds_separate_compilation_changes:1.1.1.1
+	hol90_8_after_merging_Konrad_Elsa:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	95.10.16.13.30.50;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.30.50;	author rjb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@new_theory "test";
+
+val {desc,induction_thm} =
+   let val N = --`N (R:num->num->bool) : num->num->bool`--
+   in 
+   new_inductive_definition
+      {name="N", 
+       fixity=Prefix,
+       patt = (--`^N n m`--, [--`R:num->num->bool`--]),
+       rules = 
+        [{hypotheses=[],side_conditions=[],
+          conclusion = --`^N 0 m`--},
+          {hypotheses=[--`^N n m`--, --`R (m:num) (n:num):bool`--], 
+           side_conditions=[],
+           conclusion = --`^N (n+2) k`--}]}
+   end;
+
+let val RTC = --`RTC:('a->'a->bool)->'a->'a->bool`--
+in
+new_inductive_definition{name="RTC",fixity=Prefix,
+  patt = (--`^RTC R x y`--, [--`R:'a->'a->bool`--]),
+  rules =[
+   {hypotheses=[], side_conditions=[(--`R (x:'a) (y:'a):bool`--)],
+   (* ----------------------------------------------------------*)  
+                  conclusion = --`^RTC R x y`--},
+   
+             {hypotheses=[], side_conditions=[],
+            (*------------------------------- *) 
+               conclusion = (--`^RTC R x x`--)},
+   
+   {hypotheses=[ (--`^RTC R z y`--) , (--`(R:'a->'a->bool) x z`--) ],
+   side_conditions=[],
+   (*------------------------------------------------------------ *)
+               conclusion = (--`^RTC R x y`--)}]}
+end;
+
+let val RTC = --`RTC1:('a->'a->bool)->'a->'a->bool`-- 
+in
+new_inductive_definition{name="RTC1",fixity=Prefix,
+   patt=(--`^RTC R x y`--,  [--`R:'a->'a->bool`--]),
+   rules=[
+    {               hypotheses=[],
+     side_conditions=[(--`R (x:'a) (y:'a):bool`--)],
+     (* -------------------------------------------- *)  
+             conclusion =  (--`^RTC R x y`--)},
+
+    {hypotheses=[],side_conditions=[],
+    (*------------------------------- *) 
+     conclusion = (--`^RTC R x x`--) },
+
+    {hypotheses=[ (--`^RTC R z y`--), (--`(R:'a->'a->bool) x z`--)],
+    (*-------------------------------------------------------------*)
+             conclusion = (--`^RTC R x y`--),            side_conditions=[]}]}
+end;
+
+
+let val RTC = --`RTC2:('a->'a->bool)->'a->'a->bool`-- 
+in
+new_inductive_definition{name="RTC2",fixity=Prefix,
+    patt =(--`^RTC R x y`--, [--`R:'a->'a->bool`--]),
+    rules=[
+     {hypotheses=[],side_conditions=[--`R (x:'a) (y:'a):bool`--],
+     (* ------------------------------------------------------ *)
+      conclusion =     (--`^RTC R x y`--)                       },
+
+     {hypotheses=[],           side_conditions=[],
+      (*------------------------------------------ *)
+      conclusion =     (--`^RTC R x x`--)},
+
+    {hypotheses=[(--`^RTC R x z`--) , (--`^RTC R z y`--)  ],side_conditions=[],
+    (*----------------------------------------------------*)
+     conclusion=       (--`^RTC R x y`--)                          }]}
+end;
+
+
+let val ODD = --`ODD_REL:num->num->bool`--
+in
+new_inductive_definition{name="ODD_REL",fixity=Prefix,
+  patt=(--`^ODD n m`--, []),
+  rules=[
+   {hypotheses=[],side_conditions=[(--`T /\ F`--)],
+  (*--------------------------------------------- *)
+    conclusion=      (--`^ODD 2 3`--)},
+
+    {hypotheses=[(--`^ODD n m`--), (--`(1=2) /\ (3=4)`--), (--`^ODD 2 3`--)],
+   (*-----------------------------------------------------------------------*)
+     conclusion =             (--`^ODD (n+m) m`--)                          ,
+     side_conditions=[]                                                     }]}
+end;
+
+
+
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

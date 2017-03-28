@@ -1,0 +1,589 @@
+<TITLE>Libraries in hol90</TITLE>
+
+<H1><A NAME = "Libraries">Libraries in hol90</H1>
+
+A library is intended to provide an environment for doing HOL work in.
+There are three components that an environment provided by a library may
+have: logical theories, code, and help. When a library is loaded, new
+theories may become available for use, new code may be loaded in, and
+the online help manual ought to be augmented. It may be that a library
+depends on other libraries; these are recursively loaded in before the
+library itself loads. 
+<P>
+<STRONG>Warning</STRONG>: the hol90 implementation of libraries is
+quite different from that of hol88!
+<P>
+<UL>
+<LI> <A HREF = "#Getting a library">Getting a library</A>
+<LI> <A HREF = "#Using a library">Using a library</A>
+<LI> <A HREF = "#Declaring a library">Declaring a library</A>
+<LI> <A HREF = "#Other operations">Other operations</A>
+<LI> <A HREF = "#System libraries">System libraries</A>
+</UL>
+
+<P>
+<A HREF = "manual.html#Table of Contents">User Manual Table of Contents</A>
+<HR>
+
+<H2><A NAME = "Getting a library">Getting a library</A></H2>
+
+A library is represented by a group of files on disk, and by a
+corresponding internal representation: a value of type
+<STRONG>lib</STRONG>. It is values of this type that the hol90 library
+functions manipulate; therefore, to use a library, one must first get
+its description so that hol90 knows what it is dealing with. There are
+several ways to get a library description:
+
+<UL>
+<LI> The descriptions of the <A HREF = "#System libraries">standard system
+     libraries</A> supplied by hol90 are found in the structure
+     <KBD>Sys_lib</KBD>, which has already been opened when the system 
+     starts up. 
+<P>
+
+<LI> Declaring a library is done by calling <KBD>new_library</KBD>. This 
+     returns a value of type <KBD>lib</KBD>. (As a side-effect, this writes 
+     a <KBD>.hol_lib</KBD> file.) 
+<P>
+
+<LI> A list of descriptions of all libraries that have been declared is
+     returned by a call to the function <KBD>known_libraries</KBD>.
+<P>
+
+<LI> The function <KBD>find_library</KBD> of type <VAR>:string -> lib</VAR>
+    will look for the first library with a name equal to its argument. It 
+    looks first in the known libraries. If the library is not there, 
+    it will look for the first <KBD>.hol_lib</KBD> file along the 
+    library path with the right name, and return the library description 
+    contained therein. 
+<P>
+
+<LI> If one wants to look directly on the disk for a <KBD>.hol_lib</KBD> 
+ file, the function <KBD>get_library_from_disk</KBD> should be used. 
+ It performs the same function as <KBD>find_library</KBD>, and has 
+ the same type, but it doesn't look in the known libraries.
+</UL>
+<P>
+<A HREF = "#Libraries">Beginning of Libraries</A>.
+<BR>
+<A HREF = "manual.html#Table of Contents">User Manual Table of Contents</A>.
+<HR>
+
+<H2><A NAME = "Using a library">Using a library</A></H2>
+
+Once one has a library description, the environment provided by the
+library can be set up. This is simply done with a call to the function
+<KBD>load_library</KBD>.
+<PRE>
+    val load_library: {lib :lib, theory :string} -> unit
+</PRE>
+
+There is a subtlety in <KBD>load_library</KBD> having to do with the
+relationship between the current theory and the theories that the
+library provides.  (If the library doesn't provide any theories, there
+is no difficulty.)  The question is whether we want to load the theories
+provided by the library, or make them new parents. The distinction is
+technical, but it can easily be the case that
+
+<A HREF = "theory.html#Going to an existing theory"> 
+
+one can not load a theory provided by a library because it is not a
+descendant of the current theory at the time of invocation</A>. One may
+simply be in the wrong part of the theory graph for load_theory to work.
+
+<P>
+It is much more robust to make the theories of a library parents of the
+current theory (if they are not already, that is). The problem then
+becomes the fact that <KBD>new_parent</KBD> must be invoked in draft mode,
+<I>i.e.</I>,
+the user must already be in an "unclosed" theory. Suppose the current
+theory is not in draft mode. Then the simplest thing to do is to make a
+call to <KBD>new_theory</KBD> with a suitable name. We force the user to give
+this name at the time <KBD>load_library</KBD> is called; this is the 
+<VAR>theory</VAR> field of the call. 
+(If the library to be loaded has no theories, or the system is already 
+in draft_mode, then <VAR>theory</VAR> is ignored; putting a <KBD>"-"</KBD> 
+would cohere with the use of <KBD>"-"</KBD> as an abbreviation for the
+ current theory.)
+<P>
+
+<H3>Example</H3>
+If one just starts up hol90, one is in the <KBD>HOL</KBD> theory, which
+is not in draft mode. If we want to play around with the theory of strings,
+then we would do
+<PRE>
+    load_library{lib = Sys_lib.string_lib, theory = "foo"}
+</PRE>
+
+This places us in a new theory <KBD>foo</KBD>, with the theory
+<KBD>string</KBD> as its parent.
+
+<P>
+With that discussion out of the way, what happens in a call to
+<KBD>load_library</KBD>? First, the parent libraries are recursively loaded, if
+there are any. Then we check if there are any theories provided by the
+library. If there are, we are either in draft mode, or we put ourselves
+into draft mode (if the theories are not already parents!) by the
+mechanism just discussed. Now the theories are made new 
+parents of the current theory (if they are not already). Then any ML 
+code provided by the library is loaded. Then any help paths for the
+library are added to the system help path.
+<P>
+If failure occurs along the way, we clean up so that the theories and
+paths are as they were before the invocation of <KBD>load_library</KBD>.
+<P>
+If one knows that a) the library to be loaded supplies no theories, or
+b) has theories that are already parents of the current theory, or c)
+the session is currently in draft mode, then one may call
+<PRE>
+    load_library_in_place : lib -> unit
+</PRE>
+to load a library.
+<P>
+A current shortcoming of hol90 libraries is that any code loaded will
+be source, not object, so loading will be slower. As soon as SML/NJ's
+separate compilation facility settles down, this will be fixed. In the 
+meantime, one solution would be for users to load commonly used libraries 
+and then dump the image with <KBD>save_hol</KBD>.  
+<P>
+<A HREF = "#Libraries">Beginning of Libraries</A>.
+<BR>
+<A HREF = "manual.html#Table of Contents">User Manual Table of Contents</A>.
+<HR>
+
+<H2><A NAME = "Declaring a library">Declaring a library</A></H2>
+
+Now we turn to how a library is made available for loading. Once the
+theory files of a library have been produced and the code made ready for
+loading (perhaps by separate compilation), and the help files written,
+the library implementor can declare the library. But first, the library
+must be in the right arrangement on disk. The library disk format is:
+<BLOCKQUOTE>
+
+    A library is a directory with subdirectories <VAR>src</VAR>,
+    <VAR>help</VAR>, and <VAR>theories</VAR> (which itself must have
+    subdirectories <VAR>src</VAR> and <VAR>ascii</VAR> (and possibly
+    <VAR>sun4</VAR>, <VAR>mipsb</VAR>, ... if one uses binary theory
+    format)).
+
+</BLOCKQUOTE>
+
+When one wishes to make a library available for use, it is declared by a
+call to <KBD>new_library</KBD>.
+<PRE>
+    val new_library : {name : string,
+                       doc : string,
+                       path : string,
+                       parents : lib list,
+                       theories : string list,
+                       code : string list,
+                       help : string list,
+                       loaded : string} -> lib
+</PRE>
+The <VAR>name</VAR> is the name of the library. It goes into making up a 
+unique identifier which is used in many internal operations. The 
+<VAR>doc</VAR> field gives a short description of the library. The 
+<VAR>path</VAR> is the path to where the library can be found. The
+<VAR>parents</VAR> of a library are the libraries that it needs loaded 
+before it can be used. These could have been represented by strings but
+representing them as values of type <KBD>lib</KBD>, besides being correct,
+allows easy computation of library properties. 
+<P>
+The <VAR>theories</VAR> of a library are the HOL theories that it provides for
+one to use. This is a list of strings which are interpreted as relative
+paths from <VAR>path</VAR>, and to which the proper suffixes get added. For
+example, note the <VAR>theories</VAR> field in the following, which is the 
+system declaration of the <KBD>set</KBD> library.
+<PRE>
+    val set_lib = Library.new_library
+       {name = "set",
+        doc = "The system library of sets, 
+               due to Tom Melham and P. Leveilley",
+        path = (!Globals.HOLdir)^"library/set/",
+        parents = [num_lib],
+        theories = ["set"],
+        code = ["gspec.sig","gspec.sml",
+                "set_ind.sig","set_ind.sml",
+                "fset_conv.sig","fset_conv.sml"],
+        help = ["entries/"],
+        loaded = "fn() => ()"};
+</PRE>
+
+When the library is loaded, (assuming an ASCII theory file regime) the
+theory files will be looked for in
+(<VAR>path</VAR>^"theories/ascii/set.holsig") and
+(<VAR>path</VAR>^"theories/ascii/set.thms").
+
+<P>
+The <VAR>code</VAR> of a library is the SML code that becomes available for one
+to use. It is loaded in left-to-right order, as, by the way, are the
+contents of the fields <VAR>parents</VAR>, <VAR>theories</VAR>, and 
+<VAR>help</VAR>. The code is currently expected to be found at prefix 
+(<VAR>path</VAR>^"src/"). In a separate compilation regime, this prefix will
+probably be different. 
+<P>
+The <VAR>help</VAR> of a library represents the directories of its 
+documentation files (written so as to be usable by the system function
+<KBD>help</KBD>). Each member of the <VAR>help</VAR> field is suffixed to 
+(path^"help/"), and that is prepended to <KBD>help_path</KBD>. If the
+<VAR>help</VAR> list is empty, the directory (path^"help/") is prepended
+to <KBD>help_path</KBD>.
+<P>
+The <VAR>loaded</VAR> field of a library representation is a function that is
+called at the end of the loading of the library; it is intended to
+provide any functionality not catered to by the first part of the
+loading process. This ought to be an ML function of type 
+<VAR>unit -> unit</VAR>, but currently this must instead be represented
+as a string that will compile into an ML function of type 
+<VAR>unit -> unit</VAR> in the environment current at the time
+<KBD>new_library</KBD> is called. 
+<P>
+When a library is declared, there are these side effects:
+<UL>
+<LI>Its theory paths get added to the system theory path. This enables
+    one to, for instance, load a theory that has a parent theory in an
+    unloaded library. For example, the string library is already 
+    declared (but not loaded) when the system starts up, so one can do
+<PRE>
+     load_theory "string"
+</PRE>
+immediately on startup of hol90.
+<P>
+
+<LI> A <KBD>.hol_lib</KBD> file is written to a file determined by 
+   appending the library  name to the head of the library path. These files
+   are meant to be found with <KBD>find_library</KBD> and 
+  <KBD>get_library_from_disk</KBD>.
+<P>
+
+<LI> The lib is added to the list of declared libraries, which is maintained
+     by the system.
+</UL>
+
+It is allowed that there be more than one known library with the same
+name: libraries are known internally by unique identifiers.
+<P>
+<A HREF = "#Libraries">Beginning of Libraries</A>.
+<BR>
+<A HREF = "manual.html#Table of Contents">User Manual Table of Contents</A>.
+<HR>
+
+<H2><A NAME = "Other operations">Other library operations</A></H2>
+
+<DL>
+<DT><STRONG>dest_library</STRONG>
+<DD>
+The function <KBD>dest_library</KBD> will return many parts of the internal
+representation of a library.
+<PRE>
+   val dest_library : lib -> {name : string,
+                              doc : string,
+                              path : string,
+                              parents : lib list,
+                              theories : string list,
+                              code : string list,
+                              help : string list}
+</PRE>
+
+<DT><STRONG>pp_library</STRONG>
+<DD>
+There is a function for pretty printing some bits of information about a
+library. This has been installed into the system prettyprinter table so
+that users can easily see some helpful identifying information about a
+library.
+<PRE>
+   val pp_library : System.PrettyPrint.ppstream -> lib -> unit
+</PRE>
+
+Here is a simple example of this "self-documentation":
+<PRE>
+    - Sys_lib.integer_lib;
+    val it =
+      library name: integer
+      short description: The system library of integers, 
+                         by Elsa Gunter
+      parents: [group]
+       : lib
+</PRE>
+
+<DT><STRONG>lib_help</STRONG>
+<DD>
+It can happen that loading a library will cause documentation for a
+function in another library to become inaccessible. This will happen if
+two libraries both provide a function with the same name, and both are
+loaded. In that case, one should use <KBD>lib_help</KBD>, which provides
+library-specific help.
+<PRE>
+   val lib_help : {lib:lib, topic:string} -> unit
+</PRE>
+<P>
+
+<DT><STRONG>move_library</STRONG>
+<DD>
+At times, the system needs to be informed that the disk location of a
+library has changed. The function for this is <KBD>move_library</KBD>, which
+updates the internal representation of a library to reflect the external
+change. It needs an absolute path name in its second argument.
+<PRE>
+    val move_library : lib * string  -> unit
+</PRE>
+We emphasize that <KBD>move_library</KBD> has nothing to do with 
+the location of a <KBD>.hol_lib</KBD> file on disk. 
+<KBD>move_library</KBD> only deals with the location of
+the group of files comprising the library. One would track the movement
+of a <KBD>.hol_lib</KBD> file by changing the library path, if necessary.
+
+<DT><STRONG>delete_library</STRONG>
+<DD> 
+One can also delete a library. It will be removed from the list of known
+libraries if there are no other known libraries that have it as a
+parent. It is not allowed to delete a loaded library.
+<PRE>
+    val delete_library : lib -> unit
+</PRE>
+
+<DT><STRONG>lib_eq</STRONG>
+<DD>
+One can test libraries for equality with the function <KBD>lib_eq</KBD>.
+<PRE>
+    lib_eq : lib -> lib -> bool
+</PRE>
+</DL>
+
+<P>
+<A HREF = "#Libraries">Beginning of Libraries</A>.
+<BR>
+<A HREF = "manual.html#Table of Contents">User Manual Table of Contents</A>.
+<HR>
+
+<H2><A NAME = "System libraries">System libraries</A></H2>
+
+The following lists the libraries that hol90 knows about when it starts up.
+A quick listing can be achieved by performing
+<PRE>
+    open Sys_lib;
+</PRE>
+in the hol90 top level.
+<P>
+
+<STRONG>Caution!</STRONG> The documentation for almost every library has
+been written for hol88 and has not yet been translated to hol90. As
+wretched as this situation is, perhaps it is better than the
+alternative, <EM>i.e.</EM>, no documentation at all! Seriously, if you
+find it difficult to use a library because its documentation makes no
+sense in the context of hol90, please inform the author of this
+document, or the author of the library.
+
+<DL>
+<DT><STRONG> string_lib</STRONG>: ASCII character strings
+<DD> <UL>
+     <LI>documentation - 
+         <A HREF = "../library/string/Manual/string.ps">Postscript</A> or
+         <A HREF = "../library/string/Manual/string.dvi">DVI</A>
+     <LI>theories
+         <UL>
+         <LI><A HREF = "../library/string/theories/src/mk_ascii.sml">
+             The ASCII character set</A>
+         <LI><A HREF = "../library/string/theories/src/mk_string.sml">
+             Strings</A>
+         </UL>
+     <LI><A HREF = "../library/string/src/">proof support</A>
+     </UL>
+
+<DT><STRONG>reduce_lib</STRONG>: Normalize terms of type <KBD>bool</KBD>
+    and <KBD>num</KBD>.
+<DD> <UL>
+     <LI>documentation - 
+         <A HREF = "../library/reduce/Manual/reduce.ps">Postscript</A> or
+         <A HREF = "../library/reduce/Manual/reduce.dvi">DVI</A>
+     <LI><A HREF = "../library/reduce/src/">code</A>
+     </UL>
+
+<DT><STRONG>arith_lib</STRONG>: A linear-arithmetic decision procedure 
+<DD> <UL>
+     <LI>documentation - 
+         <A HREF = "../library/arith/Manual/arith.ps">Postscript</A> or
+         <A HREF = "../library/arith/Manual/arith.dvi">DVI</A>
+     <LI><A HREF = "../library/arith/src/">code</A>
+     </UL>
+
+<DT><STRONG>set_lib</STRONG>: Polymorphic type of sets
+<DD> <UL>
+     <LI>documentation - 
+         <A HREF = "../library/set/Manual/set.ps">Postscript</A> or
+         <A HREF = "../library/set/Manual/set.dvi">DVI</A>
+     <LI><A HREF = "../library/set/theories/src/mk_set.sml">theory</A>
+     <LI><A HREF = "../library/set/src/">code</A>
+     </UL>
+<DT><STRONG>pred_set_lib</STRONG>: Sets-as-predicates
+<DD> <UL>
+     <LI>documentation - 
+         <A HREF = "../library/pred_set/Manual/pred_set.ps">Postscript</A> or
+         <A HREF = "../library/pred_set/Manual/pred_set.dvi">DVI</A>
+     <LI><A HREF = "../library/pred_set/theories/src/mk_pred_set.sml">
+         theory</A>
+     <LI><A HREF = "../library/pred_set/src/">code</A>
+     </UL>
+
+<DT><STRONG>unwind_lib</STRONG>: Support for unwinding hardware lines
+<DD><UL>
+     <LI>documentation - 
+         <A HREF = "../library/unwind/Manual/unwind.ps">Postscript</A> or 
+         <A HREF = "../library/unwind/Manual/unwind.dvi">DVI</A>
+     <LI><A HREF = "../library/unwind/src/">code</A>
+     </UL>
+
+<DT><STRONG>taut_lib</STRONG>: Support for tautology proofs
+<DD><UL>
+     <LI>documentation - 
+         <A HREF = "../library/taut/Manual/taut.ps">Postscript</A> or 
+         <A HREF = "../library/taut/Manual/taut.dvi">DVI</A>
+     <LI><A HREF = "../library/taut/src/">code</A>
+     </UL>
+
+<DT><STRONG>ind_def_lib</STRONG>:  Inductive definitions
+<DD><UL>
+     <LI>paper - 
+         <A HREF = "../library/ind_def/Manual/paper.ps">Postscript</A> or
+         <A HREF = "../library/ind_def/Manual/paper.dvi">DVI</A>
+     <LI><A HREF = "../library/ind_def/src/">code</A>
+     </UL>
+
+<DT><STRONG>utils_lib</STRONG> :  General-purpose proof support
+<DD><UL>
+     <LI><A HREF = "../library/utils/help/">documentation</A>
+     <LI><A HREF = "../library/utils/src/">code</A>
+     </UL>
+
+<DT><STRONG>group_lib</STRONG> : Group theory
+<DD> <UL>
+     <LI><A HREF = "../library/group/theories/src/mk_elt_gp.sml">
+         Elementary group theory</A>
+     <LI><A HREF = "../library/group/src/">
+         code for instantiating group theory</A>
+     </UL>
+
+<DT><STRONG>integer_lib</STRONG> : Integers
+<DD> <UL>
+     <LI><A HREF = "../library/integer/theories/src/">theories</A>
+     <LI><A HREF = "../library/integer/src/mk_integer.sml">code</A>
+     </UL>
+
+<DT><STRONG>abs_theory_lib</STRONG> : Abstract theories
+<DD> <UL>
+     <LI>paper - 
+         <A HREF = "../library/abs_theory/example/abs_theory.ps">
+             Postscript</A> or
+         <A HREF = "../library/abs_theory/example/abs_theory.dvi">DVI</A>
+     <LI><A HREF = "../library/abs_theory/src/">code</A>
+     </UL>
+
+<DT><STRONG>unity_lib</STRONG> : Chandy and Misra's UNITY formalism
+<DD> <UL>
+     <LI>documentation - 
+         <A HREF = "../library/unity/Manual/manual.ps">Postscript</A> or 
+         <A HREF = "../library/unity/Manual/manual.dvi">DVI</A>
+     <LI><A HREF = "../library/unity/theories/src/">theories</A>
+     <LI><A HREF = "../library/unity/src/">code</A>
+     </UL>
+
+<DT><STRONG>pair_lib</STRONG> : Proof support for pairs
+<DD> <UL>
+     <LI>documentation - 
+         <A HREF = "../library/pair/Manual/pair.ps">Postscript</A> or 
+         <A HREF = "../library/pair/Manual/pair.dvi">DVI</A>
+     <LI><A HREF = "../library/pair/theories/src/mk_pair_thms.sml">theory</A>
+     <LI><A HREF = "../library/pair/src/">code</A>
+     </UL>
+
+<DT><STRONG>real_lib</STRONG> : The real numbers
+<DD> <UL>
+     <LI>documentation - 
+         <A HREF = "../library/real/Manual/real.ps">Postscript</A> or
+         <A HREF = "../library/real/Manual/real.dvi">DVI</A>
+     <LI><A HREF = "../library/real/theories/src/">theories</A>
+     </UL>
+
+<DT><STRONG>wellorder_lib</STRONG> : Wellorderings and wellfounded recursion
+<DD><UL>
+     <LI>documentation - 
+         <A HREF = "../library/wellorder/Manual/wellorder.ps">
+             Postscript</A> or
+         <A HREF = "../library/wellorder/Manual/wellorder.dvi">DVI</A>
+     <LI><A HREF = "../library/wellorder/theories/src/mk_wellorder.sml">
+          theories</A>
+     </UL>
+
+<DT><STRONG>window_lib</STRONG> : A <EM>window inference</EM> proof manager
+<DD> <UL>
+     <LI>documentation - 
+         <A HREF = "../library/window/Manual/window.ps"> Postscript</A> or
+         <A HREF = "../library/window/Manual/window.dvi">DVI</A>
+     <LI><A HREF = "../library/window/src/">code</A>
+     <LI><A HREF = "../library/window/theories/src/mk_window.sml">theory</A>
+     </UL>
+
+<DT><STRONG>list_lib</STRONG> : Extended support for lists
+<DD> <UL>
+     <LI>documentation - 
+         <A HREF = "../library/list/help/"> help files
+     <LI><A HREF = "../library/list/src/">code</A>
+     <LI><A HREF = "../library/list/theories/src/mk_List.sml">theory</A>
+     </UL>
+
+<DT><STRONG>res_quan_lib</STRONG> : Support for restricted quantification
+<DD> <UL>
+    <LI>documentation - 
+         <A HREF = "../library/res_quan/Manual/res_quan.ps"> Postscript</A> or
+         <A HREF = "../library/res_quan/Manual/res_quan.dvi">DVI</A>
+    <LI><A HREF = "../library/res_quan/src/">code</A>
+    <LI><A HREF = "../library/res_quan/theories/src/mk_res_quan.sml">theory</A>
+     </UL>
+
+<DT><STRONG>word_lib</STRONG> : Support for reasoning about bit vectors
+<DD> <UL>
+     <LI>documentation - 
+         <A HREF = "../library/word/Manual/word.ps"> Postscript</A> or
+         <A HREF = "../library/word/Manual/word.dvi">DVI</A>
+     <LI><A HREF = "../library/word/src/">code</A>
+     <LI><A HREF = "../library/word/theories/src/">theories</A>
+     </UL>
+
+<DT><STRONG>prog_logic_lib</STRONG> : Programming logics
+<DD> <UL>
+     <LI><A HREF = "../library/prog_logic/examples/examples.sml">
+         annotated examples</A>
+     <LI><A HREF = "../library/prog_logic/theories/src/">theories</A>
+     <LI><A HREF = "../library/prog_logic/src/">code</A>
+     </UL>
+
+<DT><STRONG> num_lib</STRONG> :  Proof support for numbers
+<DD><UL>
+     <LI><A HREF = "../library/num/src/">code</A>
+     </UL>
+
+
+<DT><STRONG> hol88_lib</STRONG> : Backwards compatibility for hol88
+<DD> <UL>
+     <LI><A HREF = "../library/hol88/src/">code</A>
+     </UL>
+
+<DT><STRONG> prim_hol_lib</STRONG> 
+<DD>Derived rules and such. Preloaded.
+
+<DT><STRONG>basic_hol_lib</STRONG> 
+<DD>Supplies numbers and pairs. Preloaded.
+
+<DT><STRONG>hol_lib</STRONG>
+<DD> Arithmetic, lists, trees, and recursive types. Preloaded.
+
+</DL>
+<P>
+
+<HR>
+<A HREF = "#Libraries">Beginning of Libraries</A>.
+<BR>
+<A HREF = "manual.html#Table of Contents">User Manual Table of Contents</A>.
+<BR>
+<A HREF="http://hpbroy3.informatik.tu-muenchen.de/MITARBEITER/slind/slind.html">Konrad Slind</A>, 
+slind@informatik.tu-muenchen.de<P>

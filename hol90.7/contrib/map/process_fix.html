@@ -1,0 +1,186 @@
+<TITLE>Theory: process_fix</TITLE>
+<H1>Theory: process_fix</H1>
+<H1>Parents</H1>
+    <UL>
+    <LI><A HREF = "stop.html"><STRONG>stop</STRONG></A>
+    <LI><A HREF = "CSP_base.html"><STRONG>CSP_base</STRONG></A>
+    </UL>
+
+
+<HR>
+<H1>Type constants</H1>
+    <UL>
+    
+    </UL>
+
+
+<HR>
+<H1>Term constants</H1>
+    <UL>
+    <LI><STRONG><<</STRONG><EM>:process -> process -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Infix 450<STRONG>}</STRONG>
+    <LI><STRONG>FIX_PROC</STRONG><EM>:(process -> process) -> process</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>ITER</STRONG><EM>:num -> ('a -> 'a) -> 'a -> 'a</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>IT_UNION</STRONG><EM>:(num -> 'a set) -> 'a set</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>CHAIN</STRONG><EM>:(num -> process) -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>LIM_PROC</STRONG><EM>:(num -> process) -> process</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>CONTINUOUS</STRONG><EM>:(process -> process) -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>MONO</STRONG><EM>:(process -> process) -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    </UL>
+
+
+<HR>
+<H1>Axioms</H1>
+<DL>
+
+</DL>
+
+
+<HR>
+<H1>Definitions</H1>
+<DL>
+<DT><STRONG>PROCESS_ORDER</STRONG>
+<DD>
+<PRE>
+|- !P Q. P << Q = (ALPHA P = ALPHA Q) /\ TRACES P SUBSET TRACES Q
+</PRE>
+
+<DT><STRONG>PROCESS_FIX</STRONG>
+<DD>
+<PRE>
+|- !fun. FIX_PROC fun = (@P. (fun P = P) /\ (!Q. (fun Q = Q) ==> P << Q))
+</PRE>
+
+<DT><STRONG>ITER</STRONG>
+<DD>
+<PRE>
+|- (!f x. ITER 0 f x = x) /\ (!n f x. ITER (SUC n) f x = f (ITER n f x))
+</PRE>
+
+<DT><STRONG>IT_UNION</STRONG>
+<DD>
+<PRE>
+|- !c. IT_UNION c = {x | ?n. x IN c n}
+</PRE>
+
+<DT><STRONG>CHAIN</STRONG>
+<DD>
+<PRE>
+|- !P. CHAIN P = (!n. P n << P (SUC n))
+</PRE>
+
+<DT><STRONG>LIM_PROC</STRONG>
+<DD>
+<PRE>
+|- !P.
+     LIM_PROC P =
+     (@Q.
+       CHAIN P ==>
+       (Q = ABS_process (ALPHA (P 0),IT_UNION (\n. TRACES (P n)))))
+</PRE>
+
+<DT><STRONG>CONTINUOUS</STRONG>
+<DD>
+<PRE>
+|- !fun.
+     CONTINUOUS fun =
+     (!P. CHAIN P ==> (fun (LIM_PROC P) = LIM_PROC (\n. fun (P n))))
+</PRE>
+
+<DT><STRONG>MONO_PROCESS</STRONG>
+<DD>
+<PRE>
+|- !fun. MONO fun = (!p1 p2. p1 << p2 ==> fun p1 << fun p2)
+</PRE>
+
+</DL>
+
+
+<HR>
+<H1>Theorems</H1>
+<DL>
+<DT><STRONG>EQ_SUB_THM</STRONG>
+<DD>
+<PRE>
+|- !A B. (A = B) = A SUBSET B /\ B SUBSET A
+</PRE>
+
+<DT><STRONG>REFL_PROCESS_ORDER</STRONG>
+<DD>
+<PRE>
+|- !P. P << P
+</PRE>
+
+<DT><STRONG>TRANS_PROCESS_ORDER</STRONG>
+<DD>
+<PRE>
+|- !P Q R. P << Q /\ Q << R ==> P << R
+</PRE>
+
+<DT><STRONG>ANTISYM_PROCESS_ORDER</STRONG>
+<DD>
+<PRE>
+|- !P Q. P << Q /\ Q << P ==> (P = Q)
+</PRE>
+
+<DT><STRONG>CHAIN_EQ_ALPHA</STRONG>
+<DD>
+<PRE>
+|- !P. CHAIN P ==> (!n m. ALPHA (P n) = ALPHA (P m))
+</PRE>
+
+<DT><STRONG>LIM_PROC_THM</STRONG>
+<DD>
+<PRE>
+|- !P.
+     CHAIN P ==>
+     (LIM_PROC P = ABS_process (ALPHA (P 0),IT_UNION (\n. TRACES (P n))))
+</PRE>
+
+<DT><STRONG>IS_PROCESS_LIMIT</STRONG>
+<DD>
+<PRE>
+|- !P. CHAIN P ==> IS_PROCESS (ALPHA (P 0),IT_UNION (\n. TRACES (P n)))
+</PRE>
+
+<DT><STRONG>ALPHA_LIMIT</STRONG>
+<DD>
+<PRE>
+|- CHAIN P ==> (ALPHA (LIM_PROC P) = ALPHA (P 0))
+</PRE>
+
+<DT><STRONG>TRACES_LIMIT</STRONG>
+<DD>
+<PRE>
+|- CHAIN P ==> (TRACES (LIM_PROC P) = IT_UNION (\n. TRACES (P n)))
+</PRE>
+
+<DT><STRONG>LEAST_PROCESS</STRONG>
+<DD>
+<PRE>
+|- !A P. (A = ALPHA P) ==> STOP A << P
+</PRE>
+
+<DT><STRONG>LUB_CHAIN1</STRONG>
+<DD>
+<PRE>
+|- !P. CHAIN P ==> (!n. P n << LIM_PROC P)
+</PRE>
+
+<DT><STRONG>LUB_CHAIN2</STRONG>
+<DD>
+<PRE>
+|- !P Q. CHAIN P /\ (!n. P n << Q) ==> LIM_PROC P << Q
+</PRE>
+
+</DL>
+
+
+<HR>

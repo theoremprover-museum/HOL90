@@ -1,0 +1,1877 @@
+head	1.1;
+access;
+symbols
+	HOL97:1.1.2.5.0.2
+	bpHOL97:1.1.2.5
+	hol90_9_alpha:1.1.2.3
+	hol90_pre8_for_multiple_compilers:1.1.0.2;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	96.09.04.12.36.14;	author rjb;	state dead;
+branches
+	1.1.2.1;
+next	;
+
+1.1.2.1
+date	96.09.04.12.36.15;	author rjb;	state Exp;
+branches;
+next	1.1.2.2;
+
+1.1.2.2
+date	96.09.04.16.56.40;	author rjb;	state Exp;
+branches;
+next	1.1.2.3;
+
+1.1.2.3
+date	96.09.06.10.49.18;	author rjb;	state Exp;
+branches;
+next	1.1.2.4;
+
+1.1.2.4
+date	96.10.01.13.21.35;	author rjb;	state Exp;
+branches;
+next	1.1.2.5;
+
+1.1.2.5
+date	96.12.18.12.22.36;	author rjb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@file 8.changes was initially added on branch hol90_pre8_for_multiple_compilers.
+@
+text
+@@
+
+
+1.1.2.1
+log
+@Changes from version 8.
+@
+text
+@a0 1568
+<HTML>
+<HEAD>
+<TITLE>CHANGE LOG</TITLE>
+</HEAD>
+
+<BODY>
+<H1>CHANGE LOG</H1>
+
+<H2>Changes from version 8</H2>
+
+<OL>
+
+<LI> <A HREF = "../7/7.changes">Previous change list</A>
+
+<HR>
+
+<LI>
+Development begun at Cambridge using the Concurrent Versions System (CVS) by
+Richard Boulton and Donald Syme with the intention of producing hol90.8.
+However, an independently produced version was released as hol90.8, so these
+changes eventually result in hol90.9. The CVS development involved:
+
+<OL>
+
+<LI>
+Starting with the base hol90.7 system as released by Konrad Slind.
+
+<LI>
+Merging in the changes made by Elsa Gunter (elsa@@research.att.com) to make
+hol90 compile under both NJSML 0.93 and later versions of NJSML:
+<OL>
+<LI>
+Added a structure Sml_system, through which almost all of the system
+dependencies have been factored.  This is basic to the way in which I
+maintained compatibility with both sml-nj.93 and sml-nj.108.5 and greater.
+<LI>
+Changed LESS to LESS_DEF in mk_prim_rec.sml
+<LI>
+Changed GREATER to GREATER_DEF in mk_arithmetic.sml
+<LI>
+Added
+<PRE>
+  print_theory_to_outstream : {outstream:outstream, theory:string} -> outstream
+  print_theory_to_file : {file:string, theory:string} -> unit
+</PRE>
+to the structure Theory.  The first function returns an outstream because
+we don't close it.  You might want to continue sending more things to it.
+With the second we do close the stream, and so we return unit.
+<LI>
+The name of the structure Bool in hol90 has been changed to Boolean, so that
+the structure Bool from sml will no longer be hidden.
+</OL>
+These changes were included in the hol90.8 release.
+
+<LI>
+Merging in the changes by Konrad Slind described in
+<A HREF = "../7/7.changes">7/changes.7</A> (except for the changes attributed
+to Elsa Gunter (elsa@@research.att.com)).
+
+<LI>
+Resolving conflicts between these separate developments.
+
+</OL>
+
+<HR> 
+
+<LI>
+"rotl" and "rotr" have been added to Lib, something which I just did
+impulsively. Documentation files have also been added in help/90.
+<BR>
+[D.R.Syme]
+
+<HR>
+
+<LI>
+
+Extensive changes made by Donald Syme to get the system into a more portable
+state, followed by separate compilation using NJSML-CM 108.5.
+<P>
+
+Here are excerpts from the email notes that were made while making these
+changes:
+<P>
+
+Changes I've made to get the system loading with dependency
+analysis and separate compilation:
+
+<UL>
+
+<LI>
+No longer using "sys01.sml" etc.  These get replaced by sources.cm
+files and a number of extra .sml files in src/0 which specify
+the files that make up the full system.
+
+<LI>
+All declarations like:
+<PRE>
+  structure Drule1 = struct end (* for garbage collection *)
+</PRE>
+have been commented out as CM doesn't like multiply defined structures
+and signatures.
+
+<LI>
+No longer using "save_hol" as there is no real need to export 
+executables at the end of 0,1,2 and 3.
+
+<LI>
+I have taken out the construction of the "Base_logic" structure.  This was
+previously opened at the top level immediately after creation.  Its main
+purpose was to provide security for the Term and Type constructors (as well as
+hiding other gross things).
+<BR>
+Rationale:
+<UL>
+<LI>
+We can't open Base_logic at the top level, due to CM.
+<LI>
+We want to avoid having to open the Base_logic structure in every working
+environment.
+<LI>
+So we just construct the component structures one by one at the top level.
+<LI>
+To maintain security of types and terms, PrivateType and PrivateTerm are
+hidden in a local definition, then restricted to their public signatures at
+the top level.  This also lets one see very clearly exactly which parts of the
+system need explicit access to the internals of the Type and Term
+representation.
+</UL>
+
+<LI>
+Took out Elsa's parametrization over Lib.  It doesn't seem to
+serve any constructive purpose (and isn't needed for separate compilation).
+It also meant things wouldn't compile with CM + NJSML 108.5 due to
+a compiler bug in restricting things to the Lib signature.
+
+<LI>
+Took out parameterization of some structures, in particular:
+<UL>
+<LI>
+Lib is no longer parameterized by Sml_system (as it was in Elsa'a version).
+<LI>
+Exception and Globals aren't either.
+<LI>
+Boolean (Mk_bool), Min and Exists are no longer functors, but just structures.
+I hope this is OK.
+</UL>
+
+<LI>
+Boolean (Elsa renamed Bool to this) is now defined in mk_bool.sml,
+which conditionally defines the constants and axioms, based on the
+value of remake_theory_files.  This brings mk_bool.sml in line with
+mk_min.sml and mk_exists.sml.
+
+<LI>
+I added rotl and rotr to Lib, with documentation in hol90/help/90.
+
+<LI>
+There is a major problem with introducing the abbreviations "tactic",
+"goal" etc. at the top level - CM basically doesn't recognise them,
+in the sense that it never really allows the introduction of
+these symbols into the top level environment during compilation.  What 
+on earth can we do about this??  For the moment I have defined them
+in their own structure (Abbrev) - if we find another
+solution it should be easy to weed Abbrev out.
+
+<LI>
+Occasionally I would do more "opening" at the top of
+a structure and remove structure lookups like Match.match_term.
+e.g. in conv.sml.  I did this in this one file but have generally
+restrained myself from such activities.  
+<BR>
+[ To explain why I felt the impulse to do this: The code
+in many of the core modules is basically unreadable (in my opinion).
+My first (impulse) reaction to unreadable code is to clear away
+excess junk, e.g. structure lookup paths, by using an "open".
+In nearly all cases I see code readability as more important than
+knowing exactly which structure an identifier comes from.
+Open is a wonderful tool, and worth using where ambiguity will not then
+arise.....  I reckon the code of conv.sml is much easier 
+to understand now, but again people may disagree. ]
+
+<LI>
+I had got the conflict resolutoin on GSUBST_TAC wrong - I had
+to go back to Konrad's verison to find out what it should be.
+
+<LI>
+I had to change lots of references to "tactic" and "goal" etc.
+to "Abbrev.tactic" and "Abbrev.goal".
+
+<LI>
+I had to take the installation of pretty printers out of code
+which CM looks after.  This will have to be done late in the
+system construction.  This fits well with an advanced view
+of interfaces - pretty printer installation is definitely in
+the domain of the interface-side-of-things, and so needn't be
+in the core.  They only need be installed when the (command-line)
+interface gets "installed".
+
+<LI>
+Changes needed to be made to get level 2 loading without any
+signatures open.  Since only a few source code files were involved, I took
+the approach of opening the appropriate structures in the .sml
+files and altering the signatures to access types from structures.
+
+<LI>
+As always, fixity information causes headaches!!!  Previously
+infixes were declared inside structures, then at the top level
+at the end of a levels 0 and 1.  Top level declarations will now be
+ignored by modules which we want CM to manage.
+
+<LI>
+Discovery of "pervasive environment" in Compiler/CM....
+
+<LI>
+Added mk_BASIC_HOL.sml and mk_HOL.sml for orthogonality.
+
+</UL>
+
+[D.R.Syme]
+
+<HR>
+
+<LI>
+
+Use of Compilation Manager:
+
+<OL>
+
+<LI>
+I have made a Makefile for NJML 108.5 + Compilation Manager.
+I am confident similar makefiles will be possible for 0.93 and 108.5
+without the compilation manager.  Using only one makefile will
+not, I fear, be possible.  I intend all system specifics to be
+in:
+<UL>
+<LI>
+the Makefile (for differences in the ML compilation environment,
+e.g. CM v. no compilation) or
+<LI>
+portable.sml (for differences in the ML basis).
+</UL>
+The makefile is able to express the fact that we don't want theory
+files remade just because the executable which makes them is
+remade (since theory files normally don't change).  To force
+the remake of theory files, go:
+<PRE>
+  make clobber
+  make
+</PRE>
+Normally theory files don't get remade.
+<P>
+The makefile takes the role of the "make_hol" script.  Turn
+around time for bugs varies.  For example:
+<UL>
+<LI>
+to find a compile time error in one of the last files to be
+loaded when building HOL, e.g. "define_type.sml", presuming
+everything else has been recompiled, takes about 25 seconds
+on albatross from the time I press "make" to the time
+the errors scroll by.  (This compares with 10-15 minutes when using
+no separate compilation).  
+<LI>
+interactive performance is even better - e.g. to
+fix the error, DO NOT sit there editing define_type.sml and
+typing "make" again.  Instead do it interactively, e.g.:
+<PRE>
+> sml-cm
+- fun m () = CM.make' (CM.cmfile "3/sources.cm");     
+- m();
+<VAR>errors</VAR>
+<VAR>fix errors</VAR>
+- m();
+</PRE>
+The turn around time is then about 10-20 seconds.
+</UL>
+
+<LI>
+Theoretically the use of Makefiles means various things can be taken
+out of the code (e.g. Sys_params).  I haven't done this yet.
+
+<LI>
+Getting a clean make process was interesting, and lead to some 
+tidying up around the min/exists/bool area:
+<UL>
+<LI>
+A "hol0" executable now gets created at the point where
+there are *no* theories in the system (i.e. current_theory() 
+returns "").
+<LI>
+The theories "min" and "bool" are created in between hol0 and
+hol1.  This is done is the same way as all the other theories - 
+by running a minimal hol executable (hol0) over mk_min.sml,
+mk_exists.sml and mk_bool.sml.
+<LI>
+I have added theories/src/ld_bool.sml to create the Boolean
+structure.  It can be loaded if the theory "bool" has been 
+created (i.e. by running mk_bool previously), 
+Loading ld_bool.sml creates the Boolean structure which the
+rest of the system then uses.  theories/src/ld_min.sml and 
+theories/src/ld_exists.sml do similar things.
+<LI>
+This separates the two concerns of mk_bool.sml - creating the
+theory and creating the structure, and makes theory construction
+in the base system uniform.
+<LI>
+There is no visible external change from this, but it makes the
+make process more consistent and the code 
+much neater.  In particular, the variable remake_theory_files 
+is no longer needed.  Theory
+file remaking can be handled at the Makefile level rather than
+in the source code.
+<LI>
+Using CM affected this decision:
+<UL>
+<LI>
+mk_xxx scripts cannot be handled by CM (unless HOL
+gains the ability to remake definitions over and over
+again).
+<LI>
+ld_xxx scripts can, as they simply load a theory and
+read information off disk and create a structure.
+<LI>
+The dependency of a piece of code, say the structure
+"Conv", on a theory, in this case "bool",
+can be expressed by opening the appropriate structure
+inside Conv, i.e. opening Boolean inside Conv (or just
+using it).  CM will know that to create Boolean it
+must load ld_bool.sml, which will force the theory
+to be loaded at the right time.
+<LI>
+The only other ways around this is to explicitly load
+theories in the Makefile.  The ld_xxx scripts look
+like a much better long term solution, especially
+if we head toward the notion of theories as structures.
+Note the ld_xxx scripts could be created automatically.
+</UL>
+</UL>
+
+<LI>
+Some rules when writing code in the base system.
+All modules must be loadable without:
+<UL>
+<LI>
+any structures opened at the top level.
+<LI>
+any infixes declared at the top level (yes, I know this is
+awful, but until they implement infixes in signatures, it can't be avoided)
+<LI>
+the apriori assumption that any theories are loaded.  You express the
+fact that you need them loaded by opening a structure like 
+Boolean, BASIC_HOL or HOL within the structure you are writing.
+By doing this you can be sure that your file will have been loaded
+after the relevant file which loads the theory has been loaded.
+If you don't do it, then it is possible CM will decide to load your
+file before it loads the theory - bad news."
+<LI>
+</UL>
+
+This lead to some code changes and module opening in the structures at
+levels 2 and 3.
+<P>
+
+Whether this rule will apply to library development as well is yet to
+be decided - I think it probably should apply to libraries in the
+HOL distribution, as it will make their maintenance and development using
+CM much easier.
+
+<LI>
+A note about the make process:  The executables (i.e. heap images)
+hol0, hol1 and hol2 are not actually created unless they are actually
+needed to process the script files they are used for.  hol0 is
+not needed to make hol1, though all the compiled bin files in the 0/
+directory are used to make hol1. Likewise hol1 is not used to make hol2,
+and hol2 not used to make HOL.
+<P>
+Thus in a final release only one executable will get made.
+
+<LI>
+Things to do:
+<UL>
+<LI>
+add signature/functor elimination to 0/hol0.sml, 1/hol1.sml, 2/hol2.sml and
+3/hol3.sml
+</UL>
+
+<LI>
+Notes:
+<P>
+A full compilation of the core on woodcock takes 10 minutes, or in CPU time:
+<PRE>
+      562.9 real         0.5 user         3.5 sys
+</PRE>
+The heap produced is: 11344 hol3.sparc
+<P>
+Which means the system runs at around 12MB of memory on startup
+(and due to generational garbage collecting doesn't suddenly expand
+to 18MB as far as I can see.  Maybe there is hope for my 16MB PC yet!)
+<P>
+P.S.
+Note I have basically given up on trying to express compile-time
+parameters in the SML code (ala "Sys_params" in hol90.7).  ML
+just isn't a very good language for expressing these (in my opinion).
+In the end, of course, we just have to get something working (as Richard
+said to me yesterday), and it doesn't much matter which we use.
+
+</OL>
+
+[D.R.Syme]
+
+<HR>
+
+<LI>
+The hol90 sources have been changed to allow for the use of different
+Standard ML compilers (possibly simultaneously). The main changes are:
+
+<UL>
+
+<LI>
+Introduction of makefiles for different ML compilers.
+<UL>
+<LI>
+The existing Makefile has become Makefile.njsml.108-cm and has been
+modified to be called from the new main Makefile.
+<LI>
+New Makefile introduced. In addition to an entry for making the hol90
+executable there are entries for making an architecture-independent
+script for running HOL and a filter for providing quotation and
+antiquotation for those ML compilers/interpretors that do not have the
+facility built-in. The Makefile has a variable for the name of the
+version, e.g. "pre8", which ultimately should be propagated to the build.
+</UL>
+
+<LI>
+The "bin" subdirectory is the location for the new architecture-independent
+script and for the quotation filters for various architectures. The hol90
+executables and heaps are now placed in subdirectories of "bin" based on
+the name of the SML compiler. The naming scheme is:
+<PRE>
+    njsml.108      Standard ML of New Jersey, Version 108
+    njsml.108-cm   SML/NJ, Version 108, using the Compilation Manager
+    njsml.93       Standard ML of New Jersey, Version 0.93
+    polyml         Poly/ML
+    mosml          Moscow ML
+</PRE>
+The compiler-specific makefiles should write executables, heaps, and logs
+into these subdirectories. In addition, architecture-independent scripts
+(or symbolic links to them) for the SML compiler and (where appropriate)
+the CM version of the compiler should be placed in these directories under
+the names "sml" and "sml-cm".
+
+<LI>
+A file called "script" has been added to the "src" subdirectory. This is
+the architecture-independent script for executing hol90. The Makefile
+simply copies this to the "bin" subdirectory preceded by a few lines of
+parameter definitions. One of these parameters is the default SML version
+to use. So, the last version of HOL to be built using "make" or "make all"
+will become the default.
+
+<LI>
+The Lex source for the quotation filter has been added to the "src"
+subdirectory under the name "quote-filter.lex".
+
+<LI>
+Many files in "src/0" changed to make them more portable across different
+ML compilers. Various additions have been made to the Portable structure
+and files changed to access identifiers in the Portable structure rather
+than from the global environment. Worthy of special note are:
+<UL>
+<LI>
+The pointer equality used in "src/0/term.sml" has been made into a
+function in the Portable structure.
+<LI>
+The ML-Lex and ML-Yacc files for the various parsers have been changed
+to access the Portable structure. Both the source files and the SML
+produced from them have been changed but I have not verified that the
+source files would reproduce the new SML versions if ML-Lex and ML-Yacc
+were to be rerun on them. The changes involve some hacks that exploit the
+way ML-Lex and ML-Yacc work. See the sources for details.
+</UL>
+
+</UL>
+
+[R.J.Boulton 95.11.15]
+
+<HR>
+
+<LI>
+Support for the predecessor function, PRE, has been added to the arith
+library. It is eliminated in the pre-processing phase along with natural
+number subtraction. The modifications are due to Kim Dam Petersen of
+Tele Danmark Research.
+<BR>
+[R.J.Boulton 95.11.16]
+
+<HR>
+
+<LI>
+Added library "retrieve", a theorem retrieval system.
+<BR>
+[R.J.Boulton 95.11.17]
+
+<HR>
+
+<LI>
+Made "retrieve" library work with latest hol90 by opening "Core" structure
+at the beginning of the library's structures. It was also necessary to make
+some changes in "name.sml" to fit in with the new definitions of "explode"
+and "implode" (which now use type "char").
+<BR>
+[R.J.Boulton 95.11.17]
+
+<HR>
+
+<LI>
+Renamed the Unix environment variable VERSION to HOL90_VERSION
+(defined in Makefile).
+<BR>
+[R.J.Boulton]
+
+<HR>
+
+<LI>
+The version number is now held as a string rather than an integer to allow
+letters to be used, e.g., one might want to have a version called "9.alpha".
+The value of the version number is obtained from the main Makefile via
+the Unix environment variable HOL90_VERSION.
+<BR>
+[R.J.Boulton]
+
+<HR>
+
+<LI>
+A Makefile and portability file have been added for Poly/ML. Unfortunately,
+a portability signature file for Poly/ML has to be added as well because of
+different notation for weak type variables.
+<P>
+
+Additional changes for portablility:
+<UL>
+<LI>
+The use of the function execute_in_env in 0/save_hol.sml has been replaced
+by a call to the function execute in the Portable structure.
+<LI>
+The call to input_line in 0/save_hol.sml now goes through the Portable
+structure.
+<LI>
+Portable.List is opened inside the Lib structure defined in 0/lib.sml.
+</UL>
+
+[R.J.Boulton]
+
+<HR>
+
+<LI>
+Poly/ML's install_pp only works at top level. So, to factor it through the
+portability structure requires that the name of the pretty-printing function
+be passed and the call to install_pp be compiled on-the-fly. Yuk! Surely,
+there is a better way? Anyway, the install_pp function now takes the name of
+the pretty-printing function as an argument as well as its value. Poly/ML uses
+the name; SML/NJ uses the value.
+<P>
+Files affected: 0/pp.sig, 0/hol0.sml, 1/hol1.sml, 3/hol3.sml.
+<BR>
+[R.J.Boulton]
+
+<HR>
+
+<LI>
+The structure Lib is now opened in the structures defined in
+1/induct_then.sml, 1/resolve.sml, and 1/type_def_support.sml.
+<BR>
+[R.J.Boulton]
+
+<HR>
+
+<LI>
+To satisfy Poly/ML, a number of identifiers have to be redeclared as infix
+inside the structures in which they are used, specifically `##' in
+2/let_conv.sml and 2/rec_type_support.sml, and `before' in 3/gstack.sml.
+<BR>
+[R.J.Boulton]
+
+<HR>
+
+<LI>
+Uses of close_in added to implementations of use_string and eval_string in
+0/lib.sml, and in 0/parse.sml and 0/thy_parse.sml. SML/NJ doesn't seem to
+mind streams not being closed but Poly/ML runs out of the resource.
+<BR>
+[R.J.Boulton]
+
+<HR>
+
+<LI>
+The quotation filter has been extensively revised to allow `...` to be used
+for both terms and types. Full details of the new behaviour are as follows:
+<PRE>
+   `...`        a HOL term quotation
+   `:...`       a HOL type quotation
+   ``...``      a generic quotation
+   --`...`--    a HOL term quotation (for backward compatibility)
+   ==`:...`==   a HOL type quotation (for backward compatibility)
+
+   `... ^(...) ...`     term antiquotation in a HOL term
+   `... :^(...) ...`    type antiquotation in a HOL term
+   `:... ^(...) ...`    type antiquotation in a HOL type
+   ``... ^(...) ...``   antiquotation in a generic quotation
+</PRE>
+where (...) may be an alphanumeric or symbolic ML identifier or a
+parenthesized expression. The number of lines in the processed
+text remains unchanged.
+<P>
+
+Current limitations:
+<UL>
+<LI>
+No carriage return or line feed may appear between the `--'
+or `==' and the quotation marks in the old-style quotations.
+<LI>
+Antiquotation in old-style quotations may not work as it used to.
+</UL>
+<P>
+
+The following bug has also been fixed: two backslashes in succession in an
+ML string were not being handled correctly; if followed by a close string
+quote the first backslash was echoed leaving the second and the close quote
+to be interpreted as a literal quote. Thus, the end of the string was not
+detected.
+<P>
+
+The tabulation character in quotations is now handled (required by Moscow ML).
+<P>
+
+The interrupt trapping code in the filter has been deleted in favour of
+code in the start up script.
+<P>
+
+[R.J.Boulton]
+
+<HR>
+
+<LI>
+Changes to the start up script:
+<UL>
+<LI>
+Poly/ML is now supported including code to trap control-C so that it
+goes to the ML session rather than to the quotation filter, and code
+to ensure that the filter dies when the ML session terminates.
+<LI>
+An option has been added for the heapsize to be used with Poly/ML.
+<LI>
+Better handling of the options so that the help text is output when an
+option is given without its value.
+</UL>
+[R.J.Boulton]
+
+<HR>
+
+<LI>
+Modified Makefile.polyml so that the date in the banner is static.
+<BR>
+[R.J.Boulton 96.05.24]
+
+<HR>
+
+<LI>
+The export function in portable.polyml.sml now uses PolyML.commit.
+<BR>
+[R.J.Boulton 96.05.24]
+
+<HR>
+
+<LI>
+Makefile now expects sml.$ARCH rather than sml.
+<BR>
+[R.J.Boulton 96.05.25]
+
+<HR>
+
+<LI>
+Changed version number to 9.alpha.
+<BR>
+[R.J.Boulton 96.05.27]
+
+<HR>
+
+<LI>
+Added parameter USE_FILE to Makefile. This should be the name of a file
+(if any) to load/compile before dumping the executable/heap/database.
+<BR>
+[R.J.Boulton 96.05.27]
+
+<HR>
+
+<LI>
+Changed type of install_pp in portable.sig and portable.njsml.108-cm.sml to
+include the name of the pretty-printing function.
+<BR>
+[R.J.Boulton 96.06.17]
+
+<HR>
+
+<LI>
+Arranged for banner to be printed with njsml.108-cm.
+<BR>
+[R.J.Boulton 96.06.18]
+
+<HR>
+
+<LI>
+Fixed bug in polyml version of "use": it used a relative directory path.
+<BR>
+[R.J.Boulton 96.06.18]
+
+<HR>
+
+<LI>
+Changed "use" in njsml.108-cm to use the quotation filter.
+<BR>
+[R.J.Boulton 96.06.18]
+
+<HR>
+
+<LI>
+I haven't been able to get CM to use the quotation filter, so I'll have to
+rely on the sources having the old-style quotations (including for library
+compilation).
+<BR>
+[R.J.Boulton 96.06.18]
+
+<HR>
+
+<LI>
+Fixed a bug in Lib.compile.
+<BR>
+[R.J.Boulton 96.06.18]
+
+<HR>
+
+<LI>
+Changed initial values of type and term prefixes for pretty-printing to "".
+<BR>
+[R.J.Boulton 96.06.19]
+
+<HR>
+
+<LI>
+Changed type of "g" in 3/gstack.{sig|sml} to take a term as argument instead
+of a frag list.
+<BR>
+[R.J.Boulton 96.06.19]
+
+<HR>
+
+<LI>
+Modified `use_stream' in Portable so that it uses the quotation filter.
+<BR>
+[R.J.Boulton 96.06.20]
+
+<HR>
+
+<LI>
+Got the core to build with SML/NJ 0.93 (Makefile.njsml.93 added).
+<BR>
+[R.J.Boulton 96.06.24]
+
+<HR>
+
+<LI>
+Exceptions Ln and Sqrt removed from Portable.General.
+<BR>
+[R.J.Boulton 96.06.25]
+
+<HR>
+
+<LI>
+The third component of the argument to Vector.extract, Array.extract, and
+ByteArray.extract in Portable has been made an int option for consistency with
+SML/NJ 109.
+<BR>
+[R.J.Boulton 96.06.25]
+
+<HR>
+
+<LI>
+Got the core working with SML/NJ 109 (some renaming of Makefiles and
+portability files). The name used for this implementation is njsml.1xx.
+<BR>
+[R.J.Boulton 96.06.25]
+
+<HR>
+
+<LI>
+So, the core system (without rebuilding theories) now builds with SML/NJ 109,
+SML/NJ 108.5 (using CM), SML/NJ 0.93, and Poly/ML 3.0. All three SML/NJ
+versions successfully load the arith library, but the Poly/ML version does
+not. Sizes of executable/heap/database for sparc-sunos:
+<PRE>
+   SML/NJ 109           9791144
+   SML/NJ 108.5 (CM)   12229316
+   SML/NJ 0.93          9011232
+   Poly/ML 3.0          5464064
+</PRE>
+Committed the changes to hol90/src into the repository using "cvs commit"
+with the message:
+The core of hol90.9.alpha now builds successfully with SML/NJ 109,
+SML/NJ 108.5 (using CM), SML/NJ 0.93, and Poly/ML 3.0.
+I have not yet tried rebuilding the theory files.
+<BR>
+[R.J.Boulton 96.06.25]
+
+<HR>
+
+<LI>
+Introduced 0/sources.sml, 1/sources.sml, 2/sources.sml, and 3/sources.sml.
+<BR>
+[R.J.Boulton 96.06.26]
+
+<HR>
+
+<LI>
+Removed limitation in quote-filter.lex that meant antiquotation in old-style
+quotations didn't work as it used to.
+<BR>
+[R.J.Boulton 96.06.26]
+
+<HR>
+
+<LI>
+Tested SML/NJ 0.93 and Poly/ML versions in emacs.
+<BR>
+[R.J.Boulton 96.06.27]
+
+<HR>
+
+<LI>
+Modified execution script: renamed -s option to -ml, and
+-i <VAR>interface</VAR> to -v <VAR>variant</VAR>. The <VAR>variant</VAR>
+specified replaces "hol90" in the name of the executable/heap/database to be
+loaded.
+<BR>
+[R.J.Boulton 96.06.27]
+
+<HR>
+
+<LI>
+Changed filter compilation to use flex and gcc. They now go through parameters
+to the Makefile so that users can override them easily.
+<BR>
+[R.J.Boulton 96.06.27]
+
+<HR>
+
+<LI>
+The core system including theories now builds with all four SML
+implementations. The executable sizes for sparc-sunos are:
+<PRE>
+   SML/NJ 109           9788424
+   SML/NJ 108.5 (CM)   12536692
+   SML/NJ 0.93          9011232
+   Poly/ML 3.0          5996544
+</PRE>
+[R.J.Boulton 96.06.27]
+
+<HR>
+
+<LI>
+Deleted some of the old make scripts and source files that are no longer
+required.
+<BR>
+[R.J.Boulton 96.06.27]
+
+<HR>
+
+<LI>
+Committed the changes to hol90/src into the repository using "cvs commit"
+with the messages:
+<PRE>
+Theory files now build with SML/NJ 109, SML/NJ 108.5 (using CM), SML/NJ 0.93,
+and Poly/ML 3.0.
+The quotation filter has been modified so that antiquotation works correctly
+in old-style quotations.
+The quotation filter is now compiled using flex and gcc (by default).
+The arguments to the script for running hol90 have been changed.
+The filter processes executed in the SML/NJ 109 version used to hang around
+after they had done their job. They are now terminated explicitly.
+</PRE>
+[R.J.Boulton 96.06.27]
+
+<HR>
+
+<LI>
+Added an entry to the Makefile for making the libraries.
+<BR>
+[R.J.Boulton 96.06.28]
+
+<HR>
+
+<LI>
+Deleted the make_lib script.
+<BR>
+[R.J.Boulton 96.06.28]
+
+<HR>
+
+<LI>
+While trying to build the string library I have discovered that calls to
+define_type have to be modified to use ``...`` for the type spec instead of
+`...`. Changes made for string library, but I haven't checked elsewhere yet.
+<BR>
+[R.J.Boulton 96.06.28]
+
+<HR>
+
+<LI>
+The quotation filter does not correctly handle double quotes inside quotations.
+They need to be preceded by a backslash. Modified quote-filter.lex accordingly.
+<BR>
+[R.J.Boulton 96.06.28]
+
+<HR>
+
+<LI>
+Modified make_string script in string library to use all the command line
+arguments for the hol90 executable, not just the first. This allows the -ml
+parameter of the execution script to be used in the Makefile. Done the same
+for the other libraries that have make scripts. The real, wellorder, and word
+libraries also have auxiliary scripts in their theories/src subdirectories
+that had to be changed. The unity library has a sophisticated script that does
+not appear to work. I've modified it so that it does but the library still
+does not build.
+<BR>
+[R.J.Boulton 96.06.28]
+
+<HR>
+
+<LI>
+The function install in 0/theory/add_to_sml.sml uses a `...` quotation. I have
+changed this to ``...``.
+<BR>
+[R.J.Boulton 96.06.28]
+
+<HR>
+
+<LI>
+Added libraries option and retrieve to 3/sys_lib.{sig|sml}.
+<BR>
+[R.J.Boulton 96.06.28]
+
+<HR>
+
+<LI>
+Added a sources.cm file to the option library.
+<BR>
+[R.J.Boulton 96.06.29]
+
+<HR>
+
+<LI>
+Added a PRE_LOAD parameter to the Makefile for the names of libraries that are
+to be loaded into the core before the executable/heap/database is dumped.
+I have also modified the njsml.93 Makefile to make use of this new parameter.
+<BR>
+[R.J.Boulton 96.06.29]
+
+<HR>
+
+<LI>
+Added a new library "tfl", Konrad Slind's well-founded recursive function
+definition package. Rearranged his sources into a library, committed them to
+the CVS repository, and tagged them with TFL_1. I have checked out a second
+copy so that I can update to version 2 when Konrad provides it; the command I
+used was:
+<PRE>
+   cvs checkout -r TFL_1 -d tfl hol90/library/tfl
+</PRE>
+[R.J.Boulton 96.06.29]
+
+<HR>
+
+<LI>
+I have got the theories in the tfl library to build. This required extensive
+replacement of `...` quotations with ``...``. A lot of the functions that use
+these quotations are variants of standard HOL functions. These variants are
+defined in the Q structure. However, it was not possible to replace calls to
+the Q variants with calls to the standard functions because the variants do
+more than just parse the quotation; they also insert type assertions.
+I also commented out the generation of html files for the theories.
+<BR>
+[R.J.Boulton 96.06.29]
+
+<HR>
+
+<LI>
+The tfl library now loads (with SML/NJ 0.93) and runs the two test files
+successfully. I haven't tried the examples. The only additional changes
+required were a modification to the theory load path in thms.sml and further
+transformations of `...` quotes to ``...``. Loading the library causes a
+theory "basic_datatypes" to be written into the current working directory.
+<BR>
+[R.J.Boulton 96.07.01]
+
+<HR>
+
+<LI>
+Following discussions with other developers, I've decided to switch to using
+``...`` for term and type quotations and `...` for raw quotations. Modified
+filter accordingly.
+<BR>
+[R.J.Boulton 96.07.12]
+
+<HR>
+
+<LI>
+Modified the term and type prefixes and postfixes in 0/globals.sml to suit new
+quotation scheme. Restored `g' in 3/gstack.{sig|sml} to old value that takes a
+frag list as argument. Reverted to using `...` in 0/theory/add_to_sml.sml.
+Reverted to use of `...` in calls to define_type in the string and option
+libraries. Reverted to use of `...` for raw quotations in the tfl library.
+Changed definitions of Term and Type in declaration of tfl_lib in
+3/sys_lib.sml so that they work with `...` as raw quotations.
+<BR>
+[R.J.Boulton 96.07.12]
+
+<HR>
+
+<LI>
+Installed fixes provided by Konrad Slind for bug reported by Ralf Reetz on
+96.07.01. Files affected: 0/lexis.{sig|sml}, 0/theory/theory.sml.
+Konrad writes:
+<PRE>
+   This is not a full solution (since the "thy_indexes"
+   I allow to be written are still not identical to those
+   that the theory grammar will allow to be read), but a
+   real solution would require having to re-lex-and-yak
+   various parsers and it's not worth it at the moment.
+</PRE>
+While making this fix, Konrad found another bug, in "new_specification"
+(0/const_spec.sml): it should clean up after itself on failure. I have applied
+Konrad's patch for this bug too.
+<BR>
+[R.J.Boulton 96.07.13]
+
+<HR>
+
+<LI>
+Added a file quote-filter.sml containing an ML version of the HOL quotation
+filter. Changed definitions of use_string and eval_string in lib.sml to use
+this so that filter processes are not started unnecessarily when using
+eval_string on small pieces of ML text. It was also necessary to provide an
+unfiltered version of use_stream in the Portable structure.
+<BR>
+[R.J.Boulton 96.08.01]
+
+<HR>
+
+<LI>
+Included Konrad's partial fix for the following lexer bug: `$<,1` and
+`[$<; $<]` do not parse correctly because `<,' and `<;' are taken as one
+symbol. The fix corrects the former example but not the latter. Changes are
+to 0/hol_lex, 0/hol_lex.sml, and 0/parse_support.sml.
+<BR>
+[R.J.Boulton 96.08.01]
+
+<HR>
+
+<LI>
+Corrected bug in parsing of lists introduced by changes to lexer on 96.08.1:
+"::" used in Konrad's version of 0/parse_support.sml in place of "CONS".
+I have changed this back to "CONS".
+<BR>
+[R.J.Boulton 96.08.05]
+
+<HR>
+
+<LI>
+Checked in the changes pending in the TFL library then updated it to release 4
+of TFL. Use of the spare version I checked out on 96.06.29 did not work. I
+think this was because I didn't make the tag a branch. Checked in the
+revisions. Modified 3/sys_lib.sml so that tfl_lib uses the new files in TFL
+release 4. Main system builds and tfl library theories build but the library
+does not load successfully. Replaced `val |->' with `val op |->' in rw.sml
+and final occurrence of `Term' in that file with `Parse.term_parser'. The tfl
+library now loads. The files ../library/tfl/src/{test|test1|test2}.sml are
+processed correctly. Committed changes to rw.sml.
+<BR>
+[R.J.Boulton 96.08.05]
+
+<HR>
+
+<LI>
+Added new libraries lite-lib, ho-match, refute, fol, tab, meson, ind-def, simp,
+and automate. Committed the alpha versions of the new tools distributed by
+Donald Syme on 96.07.25. Added _lib entries for all these new libraries to
+3/sys_lib.{sig|sml}. Renamed lite-lib to lite, ho-match to ho_match, and
+ind-def to ind_def_new, so that the ML identifiers for them are valid. Had to
+hack the CVS files. Changed the READ-ME files and committed them. Also changed
+Makefile to use the new names. The core system now builds with SML/NJ 0.93.
+<BR>
+[R.J.Boulton 96.08.06]
+
+<HR>
+
+<LI>
+After some minor changes, the new libraries load in the SML/NJ 0.93 version
+(provided the arith_lib is manually loaded prior to simp_lib). The changes
+required were: In lite/src/Lib.sml the hol90.8 declaration at the top of the
+file had to be commented out. In refute/src/Canon.sml there were three
+occurrences of quotations of the form (==`:...`--). This works in earlier
+versions of hol90 because the `--' is an argument that is thrown away.
+However, the quotation filter in hol90.9 never finds the right-hand
+type-quotation delimiter, which causes the following parser error:
+`syntax error found at EOF'.
+<BR>
+[R.J.Boulton 96.08.06]
+
+<HR>
+
+<LI>
+Trying now to build with SML/NJ 109. The change to 0/lexis.sml installed on
+96.07.13 is not suitable for SML/NJ 109; fixed. The core system now builds with
+SML/NJ 109.
+<BR>
+[R.J.Boulton 96.08.06]
+
+<HR>
+
+<LI>
+The lite library does not load; requires declaration of `ordof' to be made in
+terms of Portable.String.ordof. The other new libraries load successfully in
+SML/NJ 109 without changes.
+<BR>
+[R.J.Boulton 96.08.06]
+
+<HR>
+
+<LI>
+Trying now to build with Poly/ML 3.0. Build of core successful.
+<BR>
+[R.J.Boulton 96.08.07]
+
+<HR>
+
+<LI>
+Can't test the simp library yet in the Poly/ML version because the arith
+library does not load. Added explicit type annotations in
+arith/src/norm_ineqs.sml and arith/src/solve_ineqs.sml, and declarations of
+`print' and `print_int' in arith/src/rationals.sml. `print_int' replaces any
+occurrences of `print' applied to an integer. The arith library now loads and
+works on a file of examples.
+<BR>
+[R.J.Boulton 96.08.07]
+
+<HR>
+
+<LI>
+The new libraries loaded in the Poly/ML version after making the following
+changes:
+<UL>
+<LI>
+lite/src/Lib.sml: changed an occurrence of List.nth to Portable.List.nth;
+<LI>
+fol/src/FOL.sig: removed some superfluous semicolons;
+<LI>
+meson/src/Meson.sig: removed some superfluous semicolons;
+<LI>
+simp/src/Simplifier.sig: deleted unnecessary `op';
+<LI>
+simp/src/arith_ss.sml: added an explicit type annotation.
+</UL>
+[R.J.Boulton 96.08.07]
+
+<HR>
+
+<LI>
+Trying to load tfl library in Poly/ML version. Changed String structure to
+Portable.String in tfl/src/thry.sml. Added a semicolon in tfl/src/post.sml.
+Made type Preterm in USyntax_sig (tfl/src/usyntax.sig) and in TFL_sig
+(tfl/src/tfl.sig) an eqtype. The tfl library now loads in the Poly/ML version.
+<BR>
+[R.J.Boulton 96.08.07]
+
+<HR>
+
+<LI>
+I have (hopefully temporarily) made the simp library dependent on the arith
+library in 3/sys_lib.sml because the decision library is not yet installed to
+provide a linear arithmetic decision procedure.
+<BR>
+[R.J.Boulton 96.08.07]
+
+<HR>
+
+<LI>
+Modified Makefiles to pre-load certain libraries. The core plus these
+libraries now build for SML/NJ 0.93, SML/NJ 109, and Poly/ML, but for the
+latter, the opening of the structures during the library load sequence does
+not appear to have worked correctly.
+<BR>
+[R.J.Boulton 96.08.07]
+
+<HR>
+
+<LI>
+Modified script so that it returns an error code based on the success or
+failure of the HOL process.
+<BR>
+[R.J.Boulton 96.08.07]
+
+<HR>
+
+<LI>
+Added a function `use_and_exit' to Portable structure. This uses a file and
+exits with a return code based on the success or failure of the use. Provided
+for batch processing, in particular the making of theory files. I've also
+added this function to the Lib structure so that it becomes available at top
+level.
+<BR>
+[R.J.Boulton 96.08.08]
+
+<HR>
+
+<LI>
+The structures Arith, Ho_rewrite, and Resolve are no longer opened when the
+automate library is loaded. The first is opened when the arith library is
+loaded, and the other two override standard HOL functions. This was causing
+the build of the tfl library to fail.
+<BR>
+[R.J.Boulton 96.08.08]
+
+<HR>
+
+<LI>
+Modified the make files for the libraries so that they terminate on failure
+and return a non-zero exit code.
+<BR>
+[R.J.Boulton 96.08.08]
+
+<HR>
+
+<LI>
+Disconnected Portable.interp from the interpreter control in the SML/NJ 109
+version because Portable.use does not then work properly and other things
+behave badly like Compiler.Interact.use_file dumping core!
+<BR>
+[R.J.Boulton 96.08.08]
+
+<HR>
+
+<LI>
+Modified mk_option.sml in the option library to open the Simplifier structure.
+With a few more minor changes this library now builds.
+<BR>
+[R.J.Boulton 96.08.08]
+
+<HR>
+
+<LI>
+Changed an occurrence of `Sml_system' in the unity library to `Portable'.
+<BR>
+[R.J.Boulton 96.08.08]
+
+<HR>
+
+<LI>
+Changed NEQ_CONV in library/real/theories/src/{real|nets|seq}.sml to
+Arithconv.NEQ_CONV (which is in the reduce library). Opened Redconv structure
+in library/real/theories/src/transc.sml.
+<BR>
+[R.J.Boulton 96.08.09]
+
+<HR>
+
+<LI>
+Changed Sml_system to Portable in multiple files in library/word/theories/src/
+Opened structures Cond_rewrite and Res_quan (both from the res_quan library)
+in multiple files in library/word/theories/src/.
+<BR>
+[R.J.Boulton 96.08.09]
+
+<HR>
+
+<LI>
+Changed the type of `save' in library/hol88/src/compat.sig from string->bool
+to string->unit (which is more consistent with HOL88!). Changed implementation
+of `save' in compat.sml from `exportML' to `save_hol' (from structure Core) so
+that it works in Poly/ML.
+<BR>
+[R.J.Boulton 96.08.09]
+
+<HR>
+
+<LI>
+The theory files of the libraries now appear to build successfully with all
+three ML implementations.
+<BR>
+[R.J.Boulton 96.08.09]
+
+<HR>
+
+<LI>
+Modified src/make so that parameters like `LIBRARIES="a b c"' are passed
+correctly to /bin/make.
+<BR>
+[R.J.Boulton 96.08.09]
+
+<HR>
+
+<LI>
+Modified Makefile so that library building is included in the default make and
+is dependent on HOL and the HOL script having been made.
+<BR>
+[R.J.Boulton 96.08.09]
+
+<HR>
+
+<LI>
+Modified library/option/theories/src/mk_option.sml so that the simplifier
+library is loaded if it has not already been, and so that the theory files are
+written to the correct directory.
+<BR>
+[R.J.Boulton 96.08.12]
+
+<HR>
+
+<LI>
+Made option_lib in 3/sys_lib.sml dependent on simp_lib and modified
+library/option/src/option_ss.sml to suit the new version of the simplifier.
+<BR>
+[R.J.Boulton 96.08.12]
+
+<HR>
+
+<LI>
+Opened structure Portable in library/retrieve/src/name.sml so that the Char
+and String structures are accessible. Changed `print' to `Portable.say' in
+library/retrieve/src/search.sml.
+<BR>
+[R.J.Boulton 96.08.12]
+
+<HR>
+
+<LI>
+Opened structure Portable in library/abs_theory/src/abs_theory.sml so that
+structure String is accessible and prefixed occurrences of `str' and
+`substring' with `String.'.
+<BR>
+[R.J.Boulton 96.08.12]
+
+<HR>
+
+<LI>
+Opened structure Portable in library/prog_logic/src/translation.sml so that
+structure Char is accessible. Removed references to Sml_system. Added
+`String_rules.' before `string_EQ_CONV' in bnd_conv.sml. Opened structure
+Portable in halts_logic.sml so that structures Char and String are accessible.
+Added semicolons at end of signature declaration in translation.sml,
+bnd_conv.sml, hoare_logic.sml, and halts_logic.sml to satisfy Poly/ML.
+<BR>
+[R.J.Boulton 96.08.12]
+
+<HR>
+
+<LI>
+Changed `base_rewrites' to `implicit_rewrites' in library/window/src/win.sml.
+Modified declaration of `stack_stream' in library/window/src/tty.sml to use
+Portable.PrettyPrint.defaultConsumer. Also in tty.sml: changed
+System.PrettyPrint to Portable.PrettyPrint, replaced `implode' with `concat',
+and opened Portable.String. Modified window.sml to get `flush' and `say'
+functions from Portable structure.
+<BR>
+[R.J.Boulton 96.08.12]
+
+<HR>
+
+<LI>
+Commented out opening of structure Trace in load sequence of automate_lib in
+3/sys_lib.sml because the constructor `REDUCE' prevents the ind_def library
+from loading.
+<BR>
+[R.J.Boulton 96.08.12]
+
+<HR>
+
+<LI>
+I believe that all the libraries now load successfully for the SML/NJ 0.93,
+SML/NJ 109, and Poly/ML 3.0 implementations.
+<BR>
+[R.J.Boulton 96.08.12]
+
+<HR>
+
+<LI>
+Discovered that the value of the Makefile parameter HOL_DIR is not being
+propagated into the system. So, added a value HOL_base_directory to the
+Portable structure and modified the definition of HOL_base_directory in
+0/globals.sml to use it.
+<BR>
+[R.J.Boulton 96.08.12]
+
+<HR>
+
+<LI>
+Added a library `decision'. Added a structure Int to Portable and used it in
+library/decision/src/arith/arith.sml and library/decision/src/num.sml.
+Changed uses of exception Hd in decide.sml to exception Empty taken from the
+Portable.List structure. Changed occurrences of the exceptions Div and Mod in
+arith/arith.sml and num.sml to explicitly access the Int structure. Changed
+use of List to Portable.List in support.sml. Changed min in decide.sml to
+Portable.Int.min and added max and min to Portable.Int. Made structure String
+equal to Portable.String in arith/ineq_coeffs.sml and arith/arith.sml.
+<BR>
+[R.J.Boulton 96.08.21]
+
+<HR>
+
+<LI>
+Added a `contrib' entry to the main Makefile. Introduced a dummy hol_lib in
+src/3/sys_lib.{sig|sml} because it is required by some contributed libraries.
+The proper version was commented out by Donald Syme during his development
+with the SML/NJ Compilation Manager. Deleted src/make_contrib.
+<BR>
+[R.J.Boulton 96.08.22]
+
+<HR>
+
+<LI>
+A full rebuild of the system including theories and libraries now works for
+SML/NJ 0.93, SML/NJ 109, and Poly/ML 3.0. Loading of libraries was not tested.
+<BR>
+[R.J.Boulton 96.08.22]
+
+<HR>
+
+<LI>
+Committed all changes other than in the doc directory.
+<BR>
+[R.J.Boulton 96.08.23]
+
+<HR>
+
+<LI>
+Modified main Makefile to generate the library/desc directory if it does not
+already exist.
+<BR>
+[R.J.Boulton 96.09.02]
+
+<HR>
+
+<LI>
+Bug fixes in ho_match library to Ho_match.sml and Rewrite.sml:
+<UL>
+<LI>
+higher order matching code wasn't catching Subscript exceptions correctly.
+Found by Michael Norrish.
+</UL>
+[D.R.Syme 96.09.02]
+
+<HR>
+
+<LI>
+Bug fixes in simp library
+<BR>
+to arith_ss.sml:
+<UL>
+<LI>
+added PAIR_ss to HOL_ss
+<LI>
+tweaks to is_arith. This may still be buggy.
+Suggested by Michael Norrish and Paul Curzon.
+</UL>
+to Simpifier.sml:
+<UL>
+<LI>
+line 212: fix to implementation of FULL_SIMP_TAC. Found by Michael Norrish.
+</UL>
+to Unwind.sml:
+<UL>
+<LI>
+EQT_ELIM removed from infront of CONJ_ACI: not required.
+<LI>
+Workaround for quantifier swapping to make sure no variable renaming occurs.
+Bug found by Michael Norrish.
+</UL>
+to Cond_rewr.{sig|sml}:
+<UL>
+<LI>
+Added stack depth limit to prevent endless conditional rewriting.
+A warning is printed. The limit is initially 4, but may be controlled by
+the variable
+<PRE>
+   val Cond_rewr.stack_limit : int ref
+</PRE>
+Added by Michael Norrish.
+</UL>
+[D.R.Syme 96.09.02]
+
+<HR>
+
+<LI>
+Added command in library/tfl/make_tfl to make the directory theories/ascii if
+it does not already exist.
+<BR>
+[D.R.Syme 96.09.02]
+
+<HR>
+
+<LI>
+Modified mkdir command in make_tfl so that the error message produced if
+theories/ascii is already present is redirected to /dev/null.
+Modified make_tfl to use the THEORY_TYPE parameter.
+Modified make files for the other libraries that have theories so that the
+target directory is created if not already present.
+Modified the main Makefile to make THEORY_TYPE available in the environment
+when building the libraries and contributed libraries.
+<BR>
+[R.J.Boulton 96.09.03]
+
+<HR>
+
+<LI>
+Added a function DECIDE to DecisionUser in the decision library to prove |- t
+from a term t. Added a file of examples: library/decision/examples.sml.
+Documented these changes in library/decision/READ-ME.
+<BR>
+[R.J.Boulton 96.09.03]
+
+<HR>
+
+<LI>
+Made library reduce a parent of library simp in src/3/sys_lib.sml.
+<BR>
+[D.R.Syme 96.09.03]
+
+<HR>
+
+<LI>
+I have made the following changes under library/simp/. Bug fixes by Michael
+Norrish. I've checked things reload under njsml.1xx.
+<BR>
+Changes to Simplifier:
+<UL>
+<LI>
+REDUCE_CONV is part of arith_ss and is called on multiplication and
+exponentiation terms.
+<LI>
+SUM_ss is made part of arith_ss too.
+<LI>
+A bound variable bug is fixed in opening.sml.
+</UL>
+Changes to Unwind:
+<UL>
+<LI>
+An attempt to be clever here caused UNWIND_EXISTS_CONV to break if the
+first conjunct of the body of the clause was the one with the variable's
+definition, and was also nested, e.g. ?n. ((n = 3) /\ (n < y)) /\ P n
+failed because CONJ_TO_FRONT_CONV didn't touch the body, thinking it was
+OK, but it wasn't, because this term above doesn't match the rewrite
+theorem (which is: ?x. (x = v) /\ ..., or near enough).
+</UL>
+[D.R.Syme 96.09.03]
+
+<HR>
+
+</OL>
+
+</BODY>
+</HTML>
+@
+
+
+1.1.2.2
+log
+@Corrected typos.
+@
+text
+@d81 1
+a81 1
+Here are excerpts from the e-mail notes that were made while making these
+d183 1
+a183 1
+I had got the conflict resolution on GSUBST_TAC wrong - I had
+d208 1
+a208 1
+at the end of levels 0 and 1.  Top level declarations will now be
+d489 1
+a489 1
+library. PRE is eliminated in the pre-processing phase along with natural
+a805 1
+<PRE>
+d809 1
+a809 1
+</PRE>
+d1068 1
+a1068 1
+Corrected bug in parsing of lists introduced by changes to lexer on 96.08.01:
+@
+
+
+1.1.2.3
+log
+@*** empty log message ***
+@
+text
+@a1565 45
+<LI>
+Modified the installation instructions in doc/install.html.
+<BR>
+[R.J.Boulton 96.09.03]
+
+<HR>
+
+<LI>
+Changes to the `Description' manual:
+<UL>
+<LI>
+Modified to suit hol90. The part of the Description devoted to ML has been
+removed, etc. Major restructuring.
+<LI>
+I removed the long derivations of the "derived rules", and added pointers to
+refer to the HOL88 documentation, or to John Harrison's GTT system, for
+details of the derivation of non-derived rules in the system.
+<LI>
+I added several notes and pointers to the "decision" library, and also notes
+saying that higher order matching was now in the system. These notes are
+displayed in nice "aside" boxes so they don't seem too out of place.
+<LI>
+I changed the font used to sans serif. To change it back take out the line at
+the top of description.tex.
+</UL>
+[D.R.Syme 96.09.04]
+
+<HR>
+
+<LI>
+Further changes to the `Description' manual:
+<UL>
+<LI>
+Modified Makefile so that the correct index file is used.
+<LI>
+Changed contact information for ProofPower.
+<LI>
+Fixed some remaining occurrences of the old-style hol90 quotations.
+<LI>
+Changed occurrences of `void' to `unit'.
+</UL>
+[R.J.Boulton 96.09.06]
+
+<HR>
+
+@
+
+
+1.1.2.4
+log
+@Updated Elsa Gunter's e-mail address and documented further changes.
+@
+text
+@d29 2
+a30 2
+Merging in the changes made by Elsa Gunter (elsa@@research.bell-labs.com) to
+make hol90 compile under both NJSML 0.93 and later versions of NJSML:
+d58 1
+a58 1
+to Elsa Gunter (elsa@@research.bell-labs.com)).
+a1608 73
+<HR>
+
+<LI>
+Modified doc/9/9.announce to match the announcement sent out for
+hol90.9.alpha. Also modified doc/9/9.release to be consistent with the changes
+to 9.announce.
+<BR>
+[R.J.Boulton 96.09.30]
+
+<HR>
+
+<LI>
+Changed version number in main Makefile to "9.beta1".
+<BR>
+[R.J.Boulton 96.09.30]
+
+<HR>
+
+<LI>
+Corrections to documentation suggested by Konrad Slind:
+<UL>
+<LI>In doc/manual.html, the link to the changes list was stale.
+<LI>The symbolic links to examples, in the examples directory, have been lost
+due to use of CVS. I have created files called make_links in examples and
+examples/orsml to generate the links.
+<LI>Added links to the decision and tfl libraries in examples/make_links.
+Added pointers in doc/manual.html to documentation (the READ-ME file) and
+examples (examples.sml) for the decision library and to the examples directory
+of the tfl library.
+<LI>Added links to the new libraries in doc/library.html.
+</UL>
+[R.J.Boulton 96.09.30]
+
+<HR>
+
+<LI>
+Corrected <KBD>doc</KBD> field of ind_def_new_lib in src/3/sys_lib.sml.
+<BR>
+[R.J.Boulton 96.10.01]
+
+<HR>
+
+<LI>
+The ftp site for Bell Labs has changed address. So I have changed occurrences
+of
+<PRE>
+  ftp://research.att.com/dist/ml/hol90/
+</PRE>
+to
+<PRE>
+  ftp://ftp.research.bell-labs.com/dist/hol90/
+</PRE>
+and some occurrences of
+<PRE>
+  ftp://research.att.com/dist/ml/
+</PRE>
+to
+<PRE>
+  ftp://ftp.research.bell-labs.com/dist/smlnj/
+</PRE>
+I have not yet changed the link for SML/NJ 0.93 because it has not been put
+up at the new site. The changes are in doc/install.html.
+<BR>
+[R.J.Boulton 96.10.01]
+
+<HR>
+
+<LI>
+The `trap' command in src/script doesn't seem to work in Linux, so I have
+restored the code in src/quote-filter.lex that makes the filter ignore ^C.
+<BR>
+[R.J.Boulton 96.10.01]
+
+@
+
+
+1.1.2.5
+log
+@*** empty log message ***
+@
+text
+@a1683 67
+<LI>
+Added a line to each of the files src/make and src/script to correctly set the
+architecture for Linux systems. Suggested by Wai Wong on the info-hol mailing
+list.
+<BR>
+[R.J.Boulton 96.10.17]
+
+<HR>
+
+<LI>
+SML/NJ 0.93 is now available at Bell Labs' new ftp site. So, I have changed
+the pointer in doc/install.html to read:
+<PRE>
+  ftp://ftp.research.bell-labs.com/dist/smlnj/release/93/
+</PRE>
+[R.J.Boulton 96.12.10]
+
+<HR>
+
+<LI>
+I have replaced the -v option in src/script with -u <I>exec</I> where
+<I>exec</I> is an executable/heap/database. This allows users to restart
+executables and heaps dumped using `save_hol', or with Poly/ML to use a child
+database of the HOL database. Variants can still be implemented by writing a
+script to call the HOL script with -u and the path to the variant executable.
+For Poly/ML, the read only option is omitted when -u is used. I have also
+added the beginnings of support for Harlequin's MLWorks. I have modified
+doc/install.html to describe the new behaviour.
+<BR>
+[R.J.Boulton 96.12.17]
+
+<HR>
+
+<LI>
+The command "kill -PIPE $$" used in src/script produces a non-zero error code
+in Solaris. This causes the building of the library to fail when nothing has
+actually gone wrong. So, I have replaced this use of "kill" with "exit 0".
+A consequence is that the quotation filter processes may now hang around
+instead of dying as they should. This bug was reported by Mamoun Filali of
+IRIT, France.
+<BR>
+[R.J.Boulton 96.12.17]
+
+<HR>
+
+<LI>
+I have introduced a new file src/architecture, a script that determines the
+architecture of the system being used. This information is required by both
+the makefile and the execution script so it is better to have it shared.
+The files src/make and src/script now use src/architecture. I have also made
+some modifications to the way the architecture is determined, in particular
+to support HP machines.
+<BR>
+[R.J.Boulton 96.12.18]
+
+<HR>
+
+<LI>
+I have renamed src/make to src/build because of the conflict the original
+name had with the built-in make program. This script no longer assumes that
+the built-in make can be found in the /bin directory. The documentation in
+doc/install.html has been modified accordingly.
+<BR>
+[R.J.Boulton 96.12.18]
+
+<HR>
+
+@

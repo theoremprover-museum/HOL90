@@ -1,0 +1,59 @@
+thid = (traces, 784032773, 717934)
+axioms = []
+definitions =
+[((ITERATE),
+  [],
+  `((/\ ((! :('a list -> bool) -> bool) (\(t :'a list).
+   (((= :'a list -> 'a list -> bool)
+   (((ITERATE :num -> 'a list -> 'a list) 0) $0)) (NIL :'a list)))))
+   ((! :(num -> bool) -> bool) (\(n :num).
+   ((! :('a list -> bool) -> bool) (\(t :'a list).
+   (((= :'a list -> 'a list -> bool)
+   (((ITERATE :num -> 'a list -> 'a list) (SUC $1)) $0))
+   (((APPEND :'a list -> 'a list -> 'a list) $0)
+   (((ITERATE :num -> 'a list -> 'a list) $1) $0))))))))`),
+ ((TR_DIST),
+  [],
+  `((! :(('a list -> 'a list) -> bool) -> bool)
+   (\(f :'a list -> 'a list). (((= :bool -> bool -> bool)
+   ((TR_DIST :('a list -> 'a list) -> bool) $0))
+   ((! :('a list -> bool) -> bool) (\(s :'a list).
+   ((! :('a list -> bool) -> bool) (\(t :'a list).
+   (((= :'a list -> 'a list -> bool) ($2
+   (((APPEND :'a list -> 'a list -> 'a list) $1) $0)))
+   (((APPEND :'a list -> 'a list -> 'a list) ($2 $1)) ($2
+   $0))))))))))`),
+ ((TR_STRICT),
+  [],
+  `((! :(('a list -> 'a list) -> bool) -> bool)
+   (\(f :'a list -> 'a list). (((= :bool -> bool -> bool)
+   ((TR_STRICT :('a list -> 'a list) -> bool) $0))
+   (((= :'a list -> 'a list -> bool) ($0 (NIL :'a list)))
+   (NIL :'a list)))))`)]
+theorems =
+[((ITER_APP),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num).
+   ((! :('a list -> bool) -> bool) (\(s :'a list).
+   ((! :('a list -> bool) -> bool) (\(t :'a list).
+   (((= :'a list -> 'a list -> bool)
+   (((ITERATE :num -> 'a list -> 'a list) (SUC $2))
+   (((APPEND :'a list -> 'a list -> 'a list) $1) $0)))
+   (((APPEND :'a list -> 'a list -> 'a list) $1)
+   (((APPEND :'a list -> 'a list -> 'a list)
+   (((ITERATE :num -> 'a list -> 'a list) $2)
+   (((APPEND :'a list -> 'a list -> 'a list) $0) $1))) $0)))))))))`),
+ ((ITER_COMM),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num).
+   ((! :('a list -> bool) -> bool) (\(t :'a list).
+   (((= :'a list -> 'a list -> bool)
+   (((ITERATE :num -> 'a list -> 'a list) (SUC $1)) $0))
+   (((APPEND :'a list -> 'a list -> 'a list)
+   (((ITERATE :num -> 'a list -> 'a list) $1) $0)) $0))))))`),
+ ((TR_DIST_STRICT),
+  [],
+  `((! :(('a list -> 'a list) -> bool) -> bool)
+   (\(f :'a list -> 'a list). ((==>
+   ((TR_DIST :('a list -> 'a list) -> bool) $0))
+   ((TR_STRICT :('a list -> 'a list) -> bool) $0))))`)]

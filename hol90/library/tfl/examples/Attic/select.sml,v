@@ -1,0 +1,327 @@
+head	1.1;
+access;
+symbols
+	HOL97:1.1.2.2.0.2
+	bpHOL97:1.1.2.2
+	hol90_9_alpha:1.1.2.2
+	TFL_1:1.1.2.1
+	hol90_pre8_for_multiple_compilers:1.1.0.2;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	96.06.29.15.08.29;	author rjb;	state dead;
+branches
+	1.1.2.1;
+next	;
+
+1.1.2.1
+date	96.06.29.15.08.30;	author rjb;	state Exp;
+branches;
+next	1.1.2.2;
+
+1.1.2.2
+date	96.08.05.15.40.56;	author rjb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@file select.sml was initially added on branch hol90_pre8_for_multiple_compilers.
+@
+text
+@@
+
+
+1.1.2.1
+log
+@TFL version 1 for HOL: A well-founded recursive function definition package.
+@
+text
+@a0 207
+(*---------------------------------------------------------------------------
+ * Select the nth smallest element in a list. The following algorithm does 
+ * it in (worst case) time proportional to the length of the list. Due to
+ * Blum, Floyd, Pratt, Rivest, and Tarjan.
+ *---------------------------------------------------------------------------*)
+
+new_theory"median";
+cons_path "../" theory_path;
+new_parent"qsort";
+
+fun Rdefine thml = 
+rfunction (Prim.postprocess{WFtac = WF_TAC[],
+                       terminator = terminator, 
+                       simplifier = tc_simplifier thml})
+          RW_RULE;
+
+
+val nth_def =
+ Rfunction`inv_image ^pred FST`
+    `(nth(0, [])     = ARB) /\
+     (nth(SUC n, []) = ARB) /\
+     (nth(0, CONS h t) = (h:'a)) /\
+     (nth(SUC n, CONS h t) = nth(n,t))`;
+
+
+val iota_def = 
+  Rfunction`measure \(b,t). SUC t - b`
+      `iota(bot, top) = ((bot>top) => [] | CONS bot (iota(bot+1,top)))`;
+
+
+val quints_def =
+ Rdefine[definition"list" "LENGTH"]
+   `measure LENGTH`
+    `(quints[] = [[]]) /\
+     (quints[a] = [[a:'a]]) /\
+     (quints[a;b] = [[a;b]]) /\
+     (quints[a;b;c] = [[a;b;c]]) /\
+     (quints[a;b;c;d] = [[a;b;c;d]]) /\
+     (quints[a;b;c;d;e] = [[a;b;c;d;e]]) /\
+     (quints(CONS a (CONS b (CONS c (CONS d (CONS e (CONS f rst)))))) = 
+           CONS [a;b;c;d;e] (quints(CONS f rst)))`;
+
+
+val rup_div_def = 
+     Rfunction`Empty`
+        `rup_div(x,d) = x DIV d + ((x MOD d = 0) => 0 | 1)`;
+
+
+(*---------------------------------------------------------------------------
+ * Special purpose median: we know that the list is sorted and has length
+ * at least 1 and at most 5.
+ *---------------------------------------------------------------------------*)
+val median5_def =
+ Rfunction`Empty`
+   `(median5(CONS a(CONS b(CONS c(CONS d(CONS e(CONS f rst)))))) = (ARB:'a)) /\
+    (median5[a;b;m;d;e] = m) /\
+    (median5[a;b;m;d] = m) /\
+    (median5[a;m;c] = m) /\
+    (median5[a;m] = m) /\
+    (median5[m] = m) /\
+    (median5[] = ARB)`;
+
+
+val part3_def =
+ Rdefine[definition"list" "LENGTH"]
+   `measure (LENGTH o FST o SND)`
+     `(part3(m:num,[],p1,p2,p3) = (p1,p2,p3)) /\
+      (part3(m,CONS h t,(l1,n1),(l2,n2),(l3,n3)) =
+         ((h<m) => part3(m,t,(CONS h l1,n1+1),(l2,n2),(l3,n3)) 
+        | (m<h) => part3(m,t,(l1,n1),(CONS h l2,n2+1),(l3,n3)) 
+        |          part3(m,t,(l1,n1),(l2,n2),(CONS h l3,n3+1))))`;
+
+ 
+(*---------------------------------------------------------------------------
+ * The algorithm.
+ *---------------------------------------------------------------------------*)
+
+val select_def =
+  Rfunction
+   `measure (LENGTH o SND)`
+    `(select(0,L)            = ARB) /\
+     (select(SUC 0,[])       = ARB) /\
+     (select(SUC(SUC n),[])  = ARB) /\
+     (select(SUC(SUC n),[h]) = ARB) /\
+     (select(SUC 0, CONS h t) = h) /\
+     (select(SUC(SUC n), CONS h1 (CONS h2 t)) = 
+        let index = SUC(SUC n) in    (* simulate "as" patterns *)
+        let L = CONS h1 (CONS h2 t) in
+        let Q = quints L in 
+        let Qlen = LENGTH Q in 
+        let sQ = MAP (CURRY qsort $<) Q in 
+        let m = select(rup_div(Qlen+1,2), MAP median5 sQ) in 
+        let ((lower,n1),(upper,n2),(eq,n3)) = part3(m,L,([],0),([],0),([],0))
+        in
+          (n1 >= index) => select(index, lower)
+        | (n1+n3 >= index) => m
+        | select(index-(n1+n3), upper))`;
+
+
+(*---------------------------------------------------------------------------
+ *  Specification of select:
+ *
+ *        nth(n, sort L) = select(n+1,L).
+ *
+ *---------------------------------------------------------------------------*)
+
+(*---------------------------------------------------------------------------
+ *
+ *        ML version.
+ *
+ *---------------------------------------------------------------------------*)
+fun curry f x y = f (x,y);
+
+fun iota bot top = if (bot>top) then [] else bot::iota (bot+1) top;
+
+fun filter P = 
+   let fun itr [] = []
+         | itr (h::t) = 
+             if P h 
+             then h::itr t 
+             else itr t
+   in itr
+   end;
+
+fun qsort(R,[]) = []
+  | qsort(R, x::rst) = 
+      qsort(R,filter(not o R x) rst)
+      @@[x]@@
+      qsort(R,filter(R x) rst);
+
+fun quints (h1::h2::h3::h4::h5::h6::rst) = [h1,h2,h3,h4,h5]::quints(h6::rst)
+  | quints l = [l];
+
+fun rup_div(x,d) = x div d + (if (x mod d = 0) then 0 else 1);
+
+fun median5[_,_,m,_,_] = m
+  | median5[_,_,m,_] = m
+  | median5[_,m,_] = m
+  | median5[_,m] = m
+  | median5[m] = m;
+
+fun part3(m:real,[],l1,l2,l3) = (l1,l2,l3)
+  | part3(m,h::t,(l1,n1),(l2,n2),(l3,n3)) =
+      if (h<m) then part3(m,t,(h::l1,n1+1),(l2,n2),(l3,n3)) else 
+      if (m<h) then part3(m,t,(l1,n1),(h::l2,n2+1),(l3,n3)) 
+               else part3(m,t,(l1,n1),(l2,n2),(h::l3,n3+1));
+
+exception EMPTY;
+exception EMPTY1;
+
+(*---------------------------------------------------------------------------
+ * The algorithm
+ *---------------------------------------------------------------------------*)
+fun select(0,[]) = raise EMPTY
+  | select(1,[]) = raise EMPTY1
+  | select(1,[s]) = s
+  | select(n,L) = 
+     let val Q = quints L
+         val Qlen = length Q
+         val sQ = map (fn alist => qsort(curry(op<):real->real->bool, alist)) Q
+         val m = select(rup_div(Qlen+1,2),map median5 sQ)
+         val ((lower,n1),(upper,n2),(eq,n3)) = part3(m,L,([],0),([],0),([],0))
+     in
+     if (n1 >= n) 
+     then select(n,lower)
+     else if (n1+n3 >= n)
+          then m
+          else select(n-(n1+n3),upper)
+     end;
+
+(*---------------------------------------------------------------------------
+ *  Testing (Not necessary with verified "select"!)
+ *
+ * An algorithm from Park&Miller, by way of Paulson, p.96
+ *---------------------------------------------------------------------------*)
+
+local val A = 16807.0    and    M = 2147483647.0
+in
+fun random n =
+   let fun nextrand seed =
+          let val t = A*seed
+          in t-M * real(floor(t/M))
+          end
+       fun randlist(0,seed,tail) = (seed,tail)
+         | randlist(n,seed,tail) = randlist(n-1,nextrand seed, seed::tail)
+  in #2(randlist(n,1.0,[]))
+  end
+end;
+
+fun nth(0,[]) = raise EMPTY
+  | nth(0,h::t) = h
+  | nth(n,h::t) = nth(n-1,t);
+
+
+(*---------------------------------------------------------------------------
+ * When "nth" computes the "nth" element of a non-empty list, it actually
+ * finds the n+1th element. 
+ *
+ * Specification of select:
+ *
+ *        nth(n, sort L) = select(n+1,L).
+ *
+ *---------------------------------------------------------------------------*)
+
+select(13, random 113);
+
+nth(12, qsort(curry(op<):real->real->bool, random 113));
+@
+
+
+1.1.2.2
+log
+@Updated to TFL release 4.
+@
+text
+@d20 3
+a22 1
+    `(nth(0, CONS h t) = (h:'a)) /\
+d27 2
+a28 4
+  Rfunction `measure \(b,t). SUC t - b`
+    `iota(bot, top) = 
+      (bot > top => [] 
+      | CONS bot (iota(bot+1,top)))`;
+d34 8
+a41 3
+    `(quints(CONS a (CONS b (CONS c (CONS d (CONS e (CONS f rst)))))) = 
+            CONS [a;b;c;d;e] (quints(CONS f rst))) /\
+     (quints (x:'a list) = [x])`;
+a43 3
+(*---------------------------------------------------------------------------
+ * Rounding-up version of div.
+ *---------------------------------------------------------------------------*)
+d50 2
+a51 3
+ * Special purpose median: in the context that we call it, we know that the 
+ * list is sorted and has length at least 1 and at most 5. Wildcards would
+ * be nice here.
+d55 2
+a56 1
+   `(median5[a;b;m;d;e] = m) /\
+d60 2
+a61 2
+    (median5[m:'a] = m)`;
+    
+d63 1
+a63 4
+(*---------------------------------------------------------------------------
+ * Split a list into 3: those smaller than "m", those greater, and those
+ * equal. Keep track of the multiplicities of each of these lists.
+ *---------------------------------------------------------------------------*)
+d75 1
+a75 2
+ * The algorithm. It's partial: can't be applied to empty lists, and one
+ * can't ask for the 0th element.
+d81 5
+a85 1
+    `(select(SUC 0, CONS h t) = h) /\
+d95 1
+a95 1
+          (n1 >= index)    => select(index, lower)
+d97 2
+a98 2
+        | (* otherwise *)   select(index-(n1+n3), upper))`;
+	
+d101 1
+a101 1
+ *  Approximate specification of select:
+d103 1
+a103 1
+ *   ~(L=[]) ==> (nth(n, sort L) = select(n+1,L)).
+d172 3
+a174 3
+ *  Testing (this wouldn't be necessary with a verified "select"!). We use
+ * a random number generator due to Park&Miller, by way of Paulson, p.96, in
+ * order to build random lists of numbers.
+d199 1
+a199 1
+ * Specification of select (again)
+@

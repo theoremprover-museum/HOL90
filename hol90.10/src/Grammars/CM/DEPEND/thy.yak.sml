@@ -1,0 +1,2 @@
+Decl 7
+f%thyLrValsFun.f-sqsToken.v$TOKEN.;-;sTerm.v$Term_sig.;-;;;ss<resultStr>.sqsParserData.sqsHeader.sqsTerm.vTerm.;-;rException.;;-;sLrTable.vToken.LrTable.;-;sToken.vToken.;-;lqovLrTable.;;;qrString.Array.Char.LrTable.;;lqovHeader.;;;qsMlyValue.srTerm.;-;rMlyValue.Term.;;sEC.sqovLrTable.;;lqovHeader.;;;qrMlyValue.;;;-;sActions.sqlqovHeader.;;;qrMlyValue.Term.LrTable.;;rMlyValue.;;-;;-;sTokens.srToken.ParserData.;+v$thy_TOKENS.;;;-;-;

@@ -1,0 +1,291 @@
+head	1.4;
+access;
+symbols
+	HOL97:1.4.0.4
+	bpHOL97:1.4
+	hol90_9_alpha:1.4
+	hol90_pre8_for_multiple_compilers:1.4.0.2
+	hol90_pre8_after_donalds_separate_compilation_changes:1.3
+	hol90_8_after_merging_Konrad_Elsa:1.2
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.4
+date	95.11.16.16.53.09;	author rjb;	state Exp;
+branches
+	1.4.4.1;
+next	1.3;
+
+1.3
+date	95.10.31.14.02.11;	author drs1004;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	95.10.18.15.50.20;	author drs1004;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	95.10.16.13.31.37;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.31.37;	author rjb;	state Exp;
+branches
+	1.1.1.1.2.1;
+next	;
+
+1.1.1.1.2.1
+date	95.10.18.15.47.19;	author drs1004;	state Exp;
+branches;
+next	;
+
+1.4.4.1
+date	97.07.11.19.29.18;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.4
+log
+@Support for the predecessor function, PRE, has been added to the arith
+library. It is eliminated in the pre-processing phase along with natural
+number subtraction. The modifications are due to Kim Dam Petersen of
+Tele Danmark Research.
+
+R.J.Boulton, 16th November 1995.
+@
+text
+@(*****************************************************************************)
+(* FILE          : sub_and_cond.sml                                          *)
+(* DESCRIPTION   : Elimination of subtraction from natural number formulae   *)
+(*                 and elimination of conditionals.                          *)
+(*                                                                           *)
+(* READS FILES   : <none>                                                    *)
+(* WRITES FILES  : <none>                                                    *)
+(*                                                                           *)
+(* AUTHOR        : R.J.Boulton, University of Cambridge                      *)
+(* DATE          : 9th April 1992                                            *)
+(*                                                                           *)
+(* TRANSLATOR    : R.J.Boulton, University of Cambridge                      *)
+(* DATE          : 16th February 1993                                        *)
+(*                                                                           *)
+(* LAST MODIFIED : R.J.Boulton                                               *)
+(* DATE          : 16th November 1995                                        *)
+(*****************************************************************************)
+
+structure Sub_and_cond : Sub_and_cond_sig =
+struct
+
+open Core; (* open up all of the HOL 0/1 Core - could be replaced by more *)
+           (* explicit opens to avoid endless recompilation of libraries  *)
+           (* during system development                                   *)
+
+fun failwith function = raise HOL_ERR{origin_structure = "Sub_and_cond",
+                                      origin_function = function,
+                                      message = ""};
+
+open Rsyntax;
+open Qconv;
+open Arith_thm_convs;
+
+(*---------------------------------------------------------------------------*)
+(* COND_ABS_CONV : conv                                                      *)
+(*---------------------------------------------------------------------------*)
+
+fun COND_ABS_CONV tm =
+ (let val {Bvar = v,Body = bdy} = dest_abs tm
+      val {cond,larm = x,rarm = y} = dest_cond bdy
+      val b = assert (not o Lib.mem v o free_vars) cond
+      val xf = mk_abs{Bvar = v,Body = x}
+      and yf = mk_abs{Bvar = v,Body = y}
+      val th1 = INST_TYPE [{residue = type_of v,redex = (==`:'a`==)},
+                           {residue = type_of x,redex = (==`:'b`==)}] COND_ABS
+      val th2 = SPECL [b,xf,yf] th1
+  in  CONV_RULE (RATOR_CONV (RAND_CONV (ABS_CONV
+         (RATOR_CONV (RAND_CONV BETA_CONV) THENC RAND_CONV BETA_CONV) THENC
+         ALPHA_CONV v))) th2
+  end
+ ) handle (HOL_ERR _) => failwith "COND_ABS_CONV";
+
+(*---------------------------------------------------------------------------*)
+(* SUB_AND_COND_ELIM_CONV : conv                                             *)
+(*                                                                           *)
+(* Subtraction cannot be eliminated without eliminating conditionals that    *)
+(* enclose the subtraction operator. This function is not as delicate as it  *)
+(* could be: it eliminates all conditionals in arithmetic formulae as well   *)
+(* as eliminating natural number subtraction.                                *)
+(*                                                                           *)
+(* Care has to be taken with the conditional lifting theorems because they   *)
+(* can loop if they try to move a conditional past another conditional, e.g. *)
+(*                                                                           *)
+(*    b1 => x | (b2 => y | z)                                                *)
+(*                                                                           *)
+(* Note also that these theorems are specialised for natural numbers. This   *)
+(* prevents them from pulling the conditionals higher up the term than       *)
+(* necessary prior to elimination.                                           *)
+(*                                                                           *)
+(* Also eliminates the predecessor function, PRE.                            *)
+(*---------------------------------------------------------------------------*)
+
+val SUB_AND_COND_ELIM_CONV =
+ let fun op_of_app tm = op_of_app (rator tm) handle _ => tm
+ in
+ fn tm =>
+ TOP_DEPTH_CONV
+  (SUB_NORM_CONV ORELSEC
+   COND_EXPAND_CONV ORELSEC
+   NUM_COND_RATOR_CONV ORELSEC
+   (fn tm => if ((#Name (dest_const (op_of_app tm)) = "COND")
+                 handle _ => false)
+             then failwith "fail"
+             else NUM_COND_RAND_CONV tm) ORELSEC
+   COND_ABS_CONV
+  )
+ tm
+ end;
+
+(*---------------------------------------------------------------------------*)
+(* COND_ELIM_CONV : conv                                                     *)
+(*                                                                           *)
+(* This function eliminates all conditionals in a term that it can. If the   *)
+(* term is a formula, only an abstraction can prevent the elimination, e.g.: *)
+(*                                                                           *)
+(*    COND_ELIM_CONV `(\m. (m = 0) => 0 | (m - 1)) (SUC n) = n` --->         *)
+(*    |- ((\m. ((m = 0) => 0 | m - 1))(SUC n) = n) =                         *)
+(*       ((\m. ((m = 0) => 0 | m - 1))(SUC n) = n)                           *)
+(*                                                                           *)
+(* Care has to be taken with the conditional lifting theorems because they   *)
+(* can loop if they try to move a conditional past another conditional, e.g. *)
+(*                                                                           *)
+(*    b1 => x | (b2 => y | z)                                                *)
+(*                                                                           *)
+(*---------------------------------------------------------------------------*)
+
+val COND_ELIM_CONV =
+ let fun op_of_app tm = op_of_app (rator tm) handle _ => tm
+ in
+ fn tm =>
+ TOP_DEPTH_CONV
+  (COND_EXPAND_CONV ORELSEC
+   COND_RATOR_CONV ORELSEC
+   (fn tm => if ((#Name (dest_const (op_of_app tm)) = "COND")
+                 handle _ => false)
+             then failwith "fail"
+             else COND_RAND_CONV tm) ORELSEC
+   COND_ABS_CONV
+  )
+ tm
+ end;
+
+end
+@
+
+
+1.4.4.1
+log
+@Changes to accomodate CM, and also the differences between  SML'90 and SML'97.
+@
+text
+@d22 3
+a24 16
+type conv = Abbrev.conv;
+
+open Rsyntax;
+open Qconv; infix THENC; infix ORELSEC;
+open Arith_thm_convs;
+open Drule;
+open CoreHol.Term;
+open CoreHol.Dsyntax;
+open CoreHol.Thm;
+open Parse;
+open Lib;
+open Exception;
+
+val COND_ABS = Taut_thms.COND_ABS;
+val TOP_DEPTH_CONV = Conv.TOP_DEPTH_CONV;
+
+d30 3
+@
+
+
+1.3
+log
+@First phase of hol90.8 development.  hol90 now compiles using NJSML-CM
+108.5, with separate compilation of libraries.  System dependencies
+have been isolated in the makefiles and "portable.sml".
+
+This involved a large number of enhancments to the source files,
+most of which are documented in the 7.changes file (or will be shortly).
+See also the correpsonding email corrspondence between RJB, KLS, TFM,
+JRH and DRS that happened during this development.
+@
+text
+@d16 1
+a16 1
+(* DATE          : 16th February 1993                                        *)
+d69 2
+@
+
+
+1.2
+log
+@	Konrad's bug fixes and further development to hol90.7 after it's release.
+	Checked n on a side branch for later merging with the main trunk
+	(Elsa's revisions), which is what I'm doing now.
+        See doc/7.changes for details.
+@
+text
+@d22 4
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d37 1
+a37 1
+      val b = assert (not o mem v o free_vars) cond
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@
+
+
+1.1.1.1.2.1
+log
+@	Konrad's bug fixes and further development to hol90.7 after it's release.
+	Checked n on a side branch for later merging with the main trunk
+	(Elsa's revisions).  See doc/7.changes for details.
+@
+text
+@d37 1
+a37 1
+      val b = assert (not o Lib.mem v o free_vars) cond
+@

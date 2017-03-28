@@ -1,0 +1,161 @@
+
+
+          HHH                 LL
+          HHH                  LL
+          HHH                   LL
+          HHH                    LL
+          HHH          OOOO       LL
+          HHHHHHH     OO  OO       LL
+          HHHHHHH     OO  OO       LLL
+          HHH          OOOO        LLLL
+          HHH                     LL  LL
+          HHH                    LL    LL
+          HHH                   LL      LL
+          HHH                  LL        LL90.7
+
+Created on Tue Nov 15 10:19:01 GMT 1994
+using: Standard ML of New Jersey, Version 0.93, February 15, 1993
+
+
+val it = () : unit
+val it = () : unit
+- [opening process_ty.sml]
+
+Declaring theory "process_ty".
+
+Theory "CSP_base" already consistent with disk, hence not exported.
+val it = () : unit
+val it = () : unit
+val event = (--`(ty_antiq((==`:string`==)))`--) : term
+val trace = (--`(ty_antiq((==`:string list`==)))`--) : term
+val alphabet = (--`(ty_antiq((==`:string set`==)))`--) : term
+val it = [(),(),()] : unit list
+val APPEND_EQ_NIL = |- !l1 l2. (APPEND l1 l2 = []) = (l1 = []) /\ (l2 = [])
+  : thm
+val RESTRICT =
+  |- (!A. RESTRICT [] A = []) /\
+     (!x t A.
+       RESTRICT (CONS x t) A =
+       ((x IN A) => (CONS x (RESTRICT t A)) | (RESTRICT t A))) : thm
+val STAR = |- !A. STAR A = {s | RESTRICT s A = s} : thm
+val it = [(),(),()] : unit list
+val IS_PROCESS =
+  |- !A TR.
+       IS_PROCESS (A,TR) =
+       TR SUBSET STAR A /\ [] IN TR /\ (!s t. APPEND s t IN TR ==> s IN TR)
+  : thm
+val EXISTS_PROCESS = |- ?P. (\(A,TR). IS_PROCESS (A,TR)) P : thm
+val PROCESS_TYPE = |- ?rep. TYPE_DEFINITION (\(A,TR). IS_PROCESS (A,TR)) rep
+  : thm
+process_ty.sml:72.1-94.9 Warning: binding not exhaustive
+          PROCESS_LEMMA1 :: PROCESS_LEMMA2 :: PROCESS_LEMMA3 :: PROCESS_LEMMA4 :: PROCESS_LEMMA5 :: PROCESS_LEMMA6 :: nil = ...
+val PROCESS_LEMMA1 = |- !a a'. (REP_process a = REP_process a') = a = a' : thm
+val PROCESS_LEMMA2 = |- !r. IS_PROCESS r = (?a. r = REP_process a) : thm
+val PROCESS_LEMMA3 =
+  |- !r r'.
+       IS_PROCESS r ==>
+       IS_PROCESS r' ==>
+       ((ABS_process r = ABS_process r') = r = r') : thm
+val PROCESS_LEMMA4 = |- !a. ?r. (a = ABS_process r) /\ IS_PROCESS r : thm
+val PROCESS_LEMMA5 = |- !a. ABS_process (REP_process a) = a : thm
+val PROCESS_LEMMA6 = |- !r. IS_PROCESS r = REP_process (ABS_process r) = r
+  : thm
+val ALPHA_DEF = |- !P. ALPHA P = FST (REP_process P) : thm
+val TRACES_DEF = |- !P. TRACES P = SND (REP_process P) : thm
+val ID_PROCESS = |- !P. ABS_process (ALPHA P,TRACES P) = P : thm
+val ID_PROCESS' = |- !P. (ALPHA P,TRACES P) = REP_process P : thm
+val SPLIT_PROCESS =
+  |- IS_PROCESS v =
+     SND v SUBSET STAR (FST v) /\
+     [] IN SND v /\
+     (!s t. APPEND s t IN SND v ==> s IN SND v) : thm
+val PROC_TAC = fn : tactic
+val proc_LEMMA1 =
+  |- !P v. (P = ABS_process v) /\ IS_PROCESS v ==> [] IN TRACES P : thm
+val proc_LEMMA2 =
+  |- !P v.
+       (P = ABS_process v) /\ IS_PROCESS v ==>
+       (!s t. APPEND s t IN TRACES P ==> s IN TRACES P) : thm
+val proc_LEMMA3 =
+  |- !P v.
+       (P = ABS_process v) /\ IS_PROCESS v ==> TRACES P SUBSET STAR (ALPHA P)
+  : thm
+process_ty.sml:169.1-179.38 Warning: binding not exhaustive
+          NIL_IN_TRACES :: APPEND_IN_TRACES :: TRACES_IN_STAR :: nil = ...
+val NIL_IN_TRACES = |- !P. [] IN TRACES P : thm
+val APPEND_IN_TRACES = |- !P s t. APPEND s t IN TRACES P ==> s IN TRACES P
+  : thm
+val TRACES_IN_STAR = |- !P. TRACES P SUBSET STAR (ALPHA P) : thm
+val ALPHA_FST = |- !x y. IS_PROCESS (x,y) ==> (ALPHA (ABS_process (x,y)) = x)
+  : thm
+val TRACES_SND = |- !x y. IS_PROCESS (x,y) ==> (TRACES (ABS_process (x,y)) = y)
+  : thm
+val PROCESS_EQ_SPLIT =
+  |- !P Q. (P = Q) = (ALPHA P = ALPHA Q) /\ (TRACES P = TRACES Q) : thm
+
+Theory "process_ty" exported.
+val it = () : unit
+val it = () : unit
+Theory: process_ty
+
+Parents:
+    star
+    CSP_base
+
+Type constants:
+    process 0
+
+Term constants:
+    IS_PROCESS (Prefix)   :string set # string list set -> bool
+    REP_process (Prefix)   :process -> string set # string list set
+    ABS_process (Prefix)   :string set # string list set -> process
+    ALPHA (Prefix)   :process -> string set
+    TRACES (Prefix)   :process -> string list set
+
+Axioms:
+    
+
+Definitions:
+    IS_PROCESS
+    |- !A TR.
+         IS_PROCESS (A,TR) =
+         TR SUBSET STAR A /\ [] IN TR /\ (!s t. APPEND s t IN TR ==> s IN TR)
+    process_TY_DEF |- ?rep. TYPE_DEFINITION (\(A,TR). IS_PROCESS (A,TR)) rep
+    process_ISO_DEF
+    |- (!a. ABS_process (REP_process a) = a) /\
+       (!r. (\(A,TR). IS_PROCESS (A,TR)) r = REP_process (ABS_process r) = r)
+    ALPHA_DEF |- !P. ALPHA P = FST (REP_process P)
+    TRACES_DEF |- !P. TRACES P = SND (REP_process P)
+
+Theorems:
+    EXISTS_PROCESS |- ?P. (\(A,TR). IS_PROCESS (A,TR)) P
+    PROCESS_LEMMA1 |- !a a'. (REP_process a = REP_process a') = a = a'
+    PROCESS_LEMMA2 |- !r. IS_PROCESS r = (?a. r = REP_process a)
+    PROCESS_LEMMA3
+    |- !r r'.
+         IS_PROCESS r ==>
+         IS_PROCESS r' ==>
+         ((ABS_process r = ABS_process r') = r = r')
+    PROCESS_LEMMA4 |- !a. ?r. (a = ABS_process r) /\ IS_PROCESS r
+    PROCESS_LEMMA5 |- !a. ABS_process (REP_process a) = a
+    PROCESS_LEMMA6 |- !r. IS_PROCESS r = REP_process (ABS_process r) = r
+    ID_PROCESS |- !P. ABS_process (ALPHA P,TRACES P) = P
+    ID_PROCESS' |- !P. (ALPHA P,TRACES P) = REP_process P
+    proc_LEMMA1 |- !P v. (P = ABS_process v) /\ IS_PROCESS v ==> [] IN TRACES P
+    proc_LEMMA2
+    |- !P v.
+         (P = ABS_process v) /\ IS_PROCESS v ==>
+         (!s t. APPEND s t IN TRACES P ==> s IN TRACES P)
+    proc_LEMMA3
+    |- !P v.
+         (P = ABS_process v) /\ IS_PROCESS v ==> TRACES P SUBSET STAR (ALPHA P)
+    NIL_IN_TRACES |- !P. [] IN TRACES P
+    APPEND_IN_TRACES |- !P s t. APPEND s t IN TRACES P ==> s IN TRACES P
+    TRACES_IN_STAR |- !P. TRACES P SUBSET STAR (ALPHA P)
+    ALPHA_FST |- !x y. IS_PROCESS (x,y) ==> (ALPHA (ABS_process (x,y)) = x)
+    TRACES_SND |- !x y. IS_PROCESS (x,y) ==> (TRACES (ABS_process (x,y)) = y)
+    PROCESS_EQ_SPLIT
+    |- !P Q. (P = Q) = (ALPHA P = ALPHA Q) /\ (TRACES P = TRACES Q)
+
+Theory "process_ty" is consistent with disk.
+val it = () : unit

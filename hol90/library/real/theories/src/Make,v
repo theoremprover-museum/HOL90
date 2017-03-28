@@ -1,0 +1,214 @@
+head	1.2;
+access;
+symbols
+	HOL97:1.2.2.1.0.2
+	bpHOL97:1.2.2.1
+	hol90_9_alpha:1.2.2.1
+	hol90_pre8_for_multiple_compilers:1.2.0.2
+	hol90_pre8_after_donalds_separate_compilation_changes:1.2
+	hol90_8_after_merging_Konrad_Elsa:1.2
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.2
+date	95.10.16.17.47.55;	author drs1004;	state Exp;
+branches
+	1.2.2.1;
+next	1.1;
+
+1.1
+date	95.10.16.13.32.28;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.32.28;	author rjb;	state Exp;
+branches;
+next	;
+
+1.2.2.1
+date	96.08.23.10.09.14;	author rjb;	state Exp;
+branches
+	1.2.2.1.2.1;
+next	;
+
+1.2.2.1.2.1
+date	97.06.11.18.35.40;	author kxs;	state Exp;
+branches;
+next	1.2.2.1.2.2;
+
+1.2.2.1.2.2
+date	98.01.06.13.54.48;	author kxs;	state Exp;
+branches;
+next	1.2.2.1.2.3;
+
+1.2.2.1.2.3
+date	98.04.20.17.19.27;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.2
+log
+@I'm about to do a checkin of Elsa Gunter's modifications to the hol90.7
+sources to create her hol90.pre8.  To recap what I've done:
+	- I checked out hol90 (in /usr/groups/hol/drs1004/hol90)
+		cvs co hol90
+
+	- By doing a recursive diff between Elsa's source and the
+	hol90.7 source I found all the changes Elsa had made to
+	source files.  I copied relevant files from Elsa's source
+	into my checked out version.  The only new files were
+		- the sml_system files in src/0
+		- some make scripts in src/.
+	Changed files were in:
+		src/{0,1,2,3}
+		library/arith/src/thm_convs.sml
+		library/list/src/list_conv1.sml
+		library/num/src/num_lib.sml
+		library/prog_logic/src/halts_logic.sml
+		library/prog_logic/src/translation.sml
+		library/prog_logic/theories/src/mk_halts.sml
+		library/real/theories/src/Make
+		library/real/theories/src/equiv.sml
+		library/real/theories/src/seq.sml
+		library/reduce/src/arithconv.sml
+		library/string/src/string_conv.sml
+		library/unity/theories/src/aux_definitions.sml
+		library/word/theories/src/*
+
+	- I will now commit these changes, with this email as the log message.
+		cvs commit
+
+	- Tomorrow I will get this version compiling
+	with NJSML 108 (I will probably add
+	the files to enable the NJSML compilation manager to make
+	this easier), then check those changes in.  I think it's
+	good to get things working.
+@
+text
+@echo "use \"useful.sml\"; use \"equiv.sml\"; save_hol \"rhol\";" | $1
+./rhol < hrat.sml
+./rhol < hreal.sml
+./rhol < realax.sml
+./rhol < real.sml
+./rhol < topology.sml
+./rhol < nets.sml
+./rhol < seq.sml
+./rhol < lim.sml
+./rhol < powser.sml
+./rhol < transc.sml
+/bin/rm -f ./rhol*
+@
+
+
+1.2.2.1
+log
+@Now uses full hol command including options, but file is no longer used.
+@
+text
+@d1 1
+a1 1
+echo "use \"useful.sml\"; use \"equiv.sml\"; save_hol \"rhol\";" | $@@
+@
+
+
+1.2.2.1.2.1
+log
+@Changes to accomodate move to SML/NJ 109.26.
+@
+text
+@d2 10
+a11 10
+hol97 -u rhol* < hrat.sml
+hol97 -u rhol* < hreal.sml
+hol97 -u rhol* < realax.sml
+hol97 -u rhol* < real.sml
+hol97 -u rhol* < topology.sml
+hol97 -u rhol* < nets.sml
+hol97 -u rhol* < seq.sml
+hol97 -u rhol* < lim.sml
+hol97 -u rhol* < powser.sml
+hol97 -u rhol* < transc.sml
+@
+
+
+1.2.2.1.2.2
+log
+@Fixed bug in build file for the theories of the "real"library -- now we are
+not dependent on a particular name for the current HOL.
+@
+text
+@d2 10
+a11 11
+hol90=$@@
+$hol90 -u rhol* < hrat.sml
+$hol90 -u rhol* < hreal.sml
+$hol90 -u rhol* < realax.sml
+$hol90 -u rhol* < real.sml
+$hol90 -u rhol* < topology.sml
+$hol90 -u rhol* < nets.sml
+$hol90 -u rhol* < seq.sml
+$hol90 -u rhol* < lim.sml
+$hol90 -u rhol* < powser.sml
+$hol90 -u rhol* < transc.sml
+@
+
+
+1.2.2.1.2.3
+log
+@*** empty log message ***
+@
+text
+@d3 10
+a12 10
+$hol90 -u rhol < hrat.sml
+$hol90 -u rhol < hreal.sml
+$hol90 -u rhol < realax.sml
+$hol90 -u rhol < real.sml
+$hol90 -u rhol < topology.sml
+$hol90 -u rhol < nets.sml
+$hol90 -u rhol < seq.sml
+$hol90 -u rhol < lim.sml
+$hol90 -u rhol < powser.sml
+$hol90 -u rhol < transc.sml
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d1 1
+a1 1
+echo "use \"useful.sml\"; use \"equiv.sml\"; exportML \"rhol\";" | $1
+d12 1
+a12 1
+/bin/rm -f ./rhol
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

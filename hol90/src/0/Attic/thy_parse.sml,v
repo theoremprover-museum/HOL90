@@ -1,0 +1,282 @@
+head	1.5;
+access;
+symbols
+	HOL97:1.3.2.1.0.2
+	bpHOL97:1.3.2.1
+	hol90_9_alpha:1.3.2.1
+	hol90_pre8_for_multiple_compilers:1.3.0.2
+	hol90_pre8_after_donalds_separate_compilation_changes:1.2
+	hol90_8_after_merging_Konrad_Elsa:1.2
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.5
+date	96.02.08.00.32.23;	author drs1004;	state dead;
+branches;
+next	1.4;
+
+1.4
+date	95.12.18.11.35.34;	author drs1004;	state Exp;
+branches;
+next	1.3;
+
+1.3
+date	95.11.15.13.24.47;	author rjb;	state Exp;
+branches
+	1.3.2.1;
+next	1.2;
+
+1.2
+date	95.10.17.17.07.37;	author drs1004;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	95.10.16.13.29.59;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.29.59;	author rjb;	state Exp;
+branches;
+next	;
+
+1.3.2.1
+date	96.06.25.15.42.02;	author rjb;	state Exp;
+branches
+	1.3.2.1.2.1;
+next	;
+
+1.3.2.1.2.1
+date	97.06.11.17.24.49;	author kxs;	state Exp;
+branches;
+next	1.3.2.1.2.2;
+
+1.3.2.1.2.2
+date	97.07.11.15.07.36;	author kxs;	state dead;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.5
+log
+@New theory mechanism, by Donald Syme, and many other enhancements.
+@
+text
+@(* ===================================================================== *)
+(* FILE          : thy_parse.sml                                         *)
+(* DESCRIPTION   : Implements parsing of simple HOL terms and types.     *)
+(*                 Used in parsing theories from disk.                   *)
+(*                                                                       *)
+(* AUTHOR        : Konrad Slind                                          *)
+(* DATE          : November 10, 1992                                     *)
+(* ===================================================================== *)
+
+
+functor THY_PARSE (structure P : PARSER
+                   structure Term : Private_term_sig
+                   sharing 
+                     type P.result = Term.term
+                   sharing 
+                     type P.arg = unit) : Thy_parse_sig =
+
+struct
+structure Term = Term;
+
+
+fun error (s,_,_) = (output(std_out,("Theory term parser error: "^s^"\n"));
+                     Exception.ERR "THY_PARSE" ("first pass of parsing",s));
+
+fun theory_term_parser s =
+   let val strm = Portable.open_string s
+       val lexer = P.makeLexer(fn _ => Portable.input_line strm) 
+       val (res,_) = P.parse(0,lexer,error,())
+   in
+   res
+   end;
+
+
+
+end; (* THY_PARSE *)
+@
+
+
+1.4
+log
+@Preterm and other changes, see 7.changes
+@
+text
+@@
+
+
+1.3
+log
+@The HOL90 sources have been changed to allow for the use of different
+Standard ML compilers (possibly simultaneously).
+
+ * Many files in "src/0" changed to make them more portable across different
+   ML compilers. Various additions have been made to the Portable structure
+   and files changed to access identifiers in the Portable structure rather
+   than from the global environment. Worthy of special note are:
+
+   - The pointer equality used in "src/0/term.sml" has been made into a
+     function in the Portable structure.
+
+   - The ML-Lex and ML-Yacc files for the various parsers have been changed
+     to access the Portable structure. Both the source files and the SML
+     produced from them have been changed but I have not verified that the
+     source files would reproduce the new SML versions if ML-Lex and ML-Yacc
+     were to be rerun on them. The changes involve some hacks that exploit the
+     way ML-Lex and ML-Yacc work. See the sources for details.
+
+R.J.Boulton, 15th November 1995.
+@
+text
+@d12 1
+a12 1
+                   structure Term : Term_sig
+a20 4
+fun THY_PARSE_ERR{function,message} = 
+    Exception.HOL_ERR{origin_structure = "Thy_parse",
+		      origin_function = function,
+		      message = message}
+a21 1
+
+d23 1
+a23 2
+                     raise THY_PARSE_ERR{function = "first pass of parsing",
+				         message = s});
+@
+
+
+1.3.2.1
+log
+@The core of hol90.9.alpha now builds successfully with SML/NJ 109,
+SML/NJ 108.5 (using CM), SML/NJ 0.93, and Poly/ML 3.0.
+I have not yet tried rebuilding the theory files.
+@
+text
+@d35 2
+a36 1
+   in close_in strm; res
+@
+
+
+1.3.2.1.2.1
+log
+@Removed files are parse files and portability files that have
+effectively been moved elsewhere.
+
+Modified files are up to date for ML 109.26.
+@
+text
+@d27 3
+a29 3
+fun error (s,_,_) = 
+ (Portable.output(Portable.std_out,("Theory term parser error: "^s^"\n"));
+  raise THY_PARSE_ERR{function = "first pass of parsing", message = s});
+d35 1
+a35 1
+   in Portable.close_in strm; res
+@
+
+
+1.3.2.1.2.2
+log
+@This has been moved to the theory directory, where it belongs.
+@
+text
+@@
+
+
+1.2
+log
+@Keeping you up to date:
+
+I'm about to do a checkin of elsa's modifications to the hol90.7
+sources to create her hol90.pre8.  To recap what I've done:
+	- I checked out hol90 (in /usr/groups/hol/drs1004/hol90)
+		cvs co hol90
+	  (Well, to be honest, I only checked out those
+	  parts of hol90 I knew I'd be changing, e.g. not the
+	  Manual, and only parts of the library.  Checking out the
+	  entire source takes a while, mainly due to the enormous number
+	  of help files.  The limiting factor is files/second, which
+         runs at around 5 when CVS is working on nfs over a network, not
+         KB/second, which you might at first think it would be).
+
+	- By doing a recursive diff between Elsa's source and the
+	hol90.7 source I found all the changes Elsa had made to
+	source files.  I copied relevant files from Elsa's source
+	into my checked out version.  The only new files were
+		- the sml_system files in src/0
+		- some make scripts in src/.
+	Changed files were in:
+		src/{0,1,2,3}
+		library/arith/src/thm_convs.sml
+		library/list/src/list_conv1.sml
+		library/num/src/num_lib.sml
+		library/prog_logic/src/halts_logic.sml
+		library/prog_logic/src/translation.sml
+		library/prog_logic/theories/src/mk_halts.sml
+		library/real/theories/src/Make
+		library/real/theories/src/equiv.sml
+		library/real/theories/src/seq.sml
+		library/reduce/src/arithconv.sml
+		library/string/src/string_conv.sml
+		library/unity/theories/src/aux_definitions.sml
+		library/word/theories/src/*
+
+	- I will now commit these changes, with this email as the log message.
+		cvs commit
+
+	- Tomorrow I will get this version compiling
+	with NJSML 108 (I will probably add
+	the files to enable the NJSML compilation manager to make
+	this easier), then check those changes in.  I think it's
+	good to get things in a working state.
+@
+text
+@d32 2
+a33 2
+   let val strm = open_string s
+       val lexer = P.makeLexer(fn _ => input_line strm) 
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d22 3
+a24 3
+          HOL_ERR{origin_structure = "Thy_parse",
+                  origin_function = function,
+                  message = message}
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

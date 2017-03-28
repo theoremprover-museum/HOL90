@@ -1,0 +1,114 @@
+head	1.2;
+access;
+symbols
+	HOL97:1.2.0.4
+	bpHOL97:1.2
+	hol90_9_alpha:1.2
+	hol90_pre8_for_multiple_compilers:1.2.0.2
+	hol90_pre8_after_donalds_separate_compilation_changes:1.2
+	hol90_8_after_merging_Konrad_Elsa:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.2
+date	95.10.31.15.15.58;	author drs1004;	state Exp;
+branches
+	1.2.4.1;
+next	1.1;
+
+1.1
+date	95.10.16.13.30.50;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.30.50;	author rjb;	state Exp;
+branches;
+next	;
+
+1.2.4.1
+date	97.07.11.19.55.10;	author kxs;	state dead;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.2
+log
+@Changes by DRS for separate compilation using NJSML 108.5/CM
+@
+text
+@(* ===================================================================== *)
+(* FILE          : inductive_def.sig                                     *)
+(* DESCRIPTION   : Signature for Tom Melham's inductive definition       *)
+(*                 package. Translated from hol88.                       *)
+(*                                                                       *)
+(* ===================================================================== *)
+
+
+signature Inductive_def_sig =
+sig
+   type term sharing type term = Term.term
+   type thm sharing type thm = Thm.thm
+   type tactic sharing type tactic = Abbrev.tactic
+   type conv sharing type conv = Abbrev.conv
+   type thm_tactic sharing type thm_tactic = Abbrev.thm_tactic
+
+val prove_inductive_set_exists
+  : term * term list -> {hypotheses : term list,side_conditions : term list,
+                         conclusion: term} list -> thm
+val new_inductive_definition
+  : {name:string, fixity:Term.fixity,patt:term*term list,
+     rules: {hypotheses : term list,side_conditions : term list,
+     conclusion: term} list}
+    -> {desc : thm list, induction_thm :thm}
+val derive_induction : conv
+val derive_rule : term -> (thm -> thm) * conv -> thm -> thm
+val derive_strong_induction : thm list * thm -> thm
+val derive_cases_thm : thm list * thm -> thm
+val REDUCE : conv
+val RULE_INDUCT_THEN : thm -> thm_tactic -> thm_tactic -> tactic
+val RULE_TAC : thm_tactic
+end;
+@
+
+
+1.2.4.1
+log
+@CM upgrade.
+@
+text
+@@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d11 6
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

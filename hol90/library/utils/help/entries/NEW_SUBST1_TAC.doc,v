@@ -1,0 +1,121 @@
+head	1.1;
+branch	1.1.1;
+access;
+symbols
+	HOL97:1.1.1.1.0.6
+	bpHOL97:1.1.1.1
+	hol90_9_alpha:1.1.1.1
+	hol90_pre8_for_multiple_compilers:1.1.1.1.0.4
+	hol90_pre8_after_donalds_separate_compilation_changes:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	95.10.16.13.31.18;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.31.18;	author rjb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@\DOC NEW_SUBST1_TAC
+
+\TYPE
+{
+NEW_SUBST1_TAC : thm_tactic
+}
+
+\LIBRARY utils
+
+\SYNOPSIS
+Substitutes all occurrences of an expression within a goal for an
+equal expression.
+
+\DESCRIBE
+The tactic {NEW_SUBST1_TAC thm} where {thm = B |- exp1 = exp2}, when
+applied to a goal {A ?- P}, returns the subgoal {A u B ?- P[exp2/exp1]}. 
+If {hypi} is a hypothesis of {thm} which is not among the assumptions {A},
+then the subgoal {(A ?- hypi)} is also returned.
+{
+
+            A ?- P
+   =======================  NEW_SUBST1_TAC (B |- exp1 = exp2)
+    A u B ?- P[exp2/exp1]
+     <... A ?- hypi ...>
+
+}
+
+\FAILURE
+The tactic {NEW_SUBST1_TAC} fails if the conclusion of the theorem it
+is given is not an equation.
+
+\EXAMPLE
+{
+   NEW_SUBST1_TAC
+    (UNDISCH (SPECL [(--`neg((Y times QUOT) plus REM)`--), (--`X:integer`--)]
+      PLUS_UNIQUE_INV))
+}
+where
+{
+   PLUS_UNIQUE_INV = |- !x u. (u plus x = INT 0) ==> (u = neg x)
+}
+when applied to the goal
+{
+   ([(--`X minus ((Y times QUOT) plus REM) = INT 0`--)],
+    (--`MIN times X = TOP plus (MIN times REM)`--))
+}
+returns the subgoals
+{
+   ([(--`X plus (neg((Y times QUOT) plus REM)) = INT 0`--),
+     (--`X minus ((Y times QUOT) plus REM) = INT 0`--)],
+    (--`MIN times (neg(neg((Y times QUOT) plus REM))) =
+     TOP plus (MIN times REM)`--)),
+
+   ([(--`X minus ((Y times QUOT) plus REM) = INT 0`--)],
+    (--`X plus (neg((Y times QUOT) plus REM)) = INT 0`--))
+}
+
+\USES
+When you need to carefully control the rewriting of a goal, particularly
+when using conditional equations (as often arise when doing forms of
+algebra).
+
+\SEEALSO
+SUBST1_TAC, SUBST_TAC, PURE_ONCE_REWRITE_TAC, REWRITE_TAC, SUBST_MATCH_TAC.
+
+\ENDDOC
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

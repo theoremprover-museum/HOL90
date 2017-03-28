@@ -1,0 +1,32 @@
+val _ = set_autoloads
+{Theory = "common_holML_core",
+ Axioms = [],
+ Definitions = 
+ ["add_exconenv_DEF","insert_into_exconenv_DEF","lookupexcon_exconenv_DEF",
+  "empty_exconenv_DEF","EXCONENV_arg_DEF","is_SVSTR_DEF","is_SVINT_DEF",
+  "SVSTR_arg_DEF","SVINT_arg_DEF","EXNAMESET_arg_DEF","less_exname_DEF",
+  "EXNAME_arg_DEF","less_addr_DEF","ADDR_arg_DEF","value_of_DEF",
+  "dist_aux_ftn_atexp_DEF","dist_aux_ftn_atpat_DEF",
+  "dist_aux_ftn_exbind_DEF","less_label_DEF","LABEL_arg_DEF",
+  "less_excon_DEF","EXCON_arg_DEF","less_var_DEF","VAR_arg_DEF",
+  "long_base_DEF","less_strid_DEF","STRID_arg_DEF"],
+
+ Theorems =
+ ["exconenv_constructors_one_one","exconenv_cases_thm",
+  "exconenv_induction_thm","exconenv_Axiom","exnameset_Axiom","exname_Axiom",
+  "basval_Axiom","addr_cases_thm","addr_induction_thm",
+  "addr_constructors_one_one","addr_Axiom","sval_Axiom","gram_cases",
+  "gram_one_one","gram_distinct","gram_unique","gram_induct","gram_existence",
+  "pat_cases","pat_one_one","pat_distinct","pat_unique","pat_induct",
+  "pat_existence","exbind_cases","exbind_one_one","exbind_distinct",
+  "exbind_unique","exbind_induct","exbind_existence",
+  "label_constructors_one_one","label_cases_thm","label_induction_thm",
+  "label_Axiom","excon_constructors_one_one","excon_cases_thm",
+  "excon_induction_thm","excon_Axiom","scon_constructors_distinct",
+  "scon_constructors_one_one","scon_cases_thm","scon_induction_thm",
+  "scon_Axiom","con_constructors_one_one","con_cases_thm","con_induction_thm",
+  "con_Axiom","var_constructors_one_one","var_cases_thm","var_induction_thm",
+  "var_Axiom","long_constructors_distinct","long_constructors_one_one",
+  "long_cases_thm","long_induction_thm","long_Axiom",
+  "strid_constructors_one_one","strid_cases_thm","strid_induction_thm",
+  "strid_Axiom"]}

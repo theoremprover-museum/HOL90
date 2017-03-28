@@ -1,0 +1,148 @@
+<TITLE>Theory: sum</TITLE>
+<H1>Theory: sum</H1>
+<H1>Parents</H1>
+    <UL>
+    <LI><A HREF = "combin.html"><STRONG>combin</STRONG></A>
+    </UL>
+
+
+<HR>
+<H1>Type constants</H1>
+    <UL>
+    <LI><STRONG>sum</STRONG>(Arity = 2)
+    </UL>
+
+
+<HR>
+<H1>Term constants</H1>
+    <UL>
+    <LI><STRONG>IS_SUM_REP</STRONG><EM>:(bool -> 'a -> 'b -> bool) ->
+                                        bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>REP_sum</STRONG><EM>:'a + 'b -> bool -> 'a -> 'b -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>ABS_sum</STRONG><EM>:(bool -> 'a -> 'b -> bool) ->
+                                     'a + 'b</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>INL</STRONG><EM>:'a -> 'a + 'b</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>INR</STRONG><EM>:'b -> 'a + 'b</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>ISL</STRONG><EM>:'a + 'b -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>ISR</STRONG><EM>:'a + 'b -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>OUTL</STRONG><EM>:'a + 'b -> 'a</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>OUTR</STRONG><EM>:'a + 'b -> 'b</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    </UL>
+
+
+<HR>
+<H1>Axioms</H1>
+<DL>
+
+</DL>
+
+
+<HR>
+<H1>Definitions</H1>
+<DL>
+<DT><STRONG>IS_SUM_REP</STRONG>
+<DD>
+<PRE>
+|- !f.
+     IS_SUM_REP f =
+     (?v1 v2. (f = (\b x y. (x = v1) /\ b)) \/ (f = (\b x y. (y = v2) /\ ~b)))
+</PRE>
+
+<DT><STRONG>sum_TY_DEF</STRONG>
+<DD>
+<PRE>
+|- ?rep. TYPE_DEFINITION IS_SUM_REP rep
+</PRE>
+
+<DT><STRONG>sum_ISO_DEF</STRONG>
+<DD>
+<PRE>
+|- (!a. ABS_sum (REP_sum a) = a) /\
+   (!r. IS_SUM_REP r = REP_sum (ABS_sum r) = r)
+</PRE>
+
+<DT><STRONG>INL_DEF</STRONG>
+<DD>
+<PRE>
+|- !e. INL e = ABS_sum (\b x y. (x = e) /\ b)
+</PRE>
+
+<DT><STRONG>INR_DEF</STRONG>
+<DD>
+<PRE>
+|- !e. INR e = ABS_sum (\b x y. (y = e) /\ ~b)
+</PRE>
+
+<DT><STRONG>ISL</STRONG>
+<DD>
+<PRE>
+|- (!x. ISL (INL x)) /\ (!y. ~(ISL (INR y)))
+</PRE>
+
+<DT><STRONG>ISR</STRONG>
+<DD>
+<PRE>
+|- (!x. ISR (INR x)) /\ (!y. ~(ISR (INL y)))
+</PRE>
+
+<DT><STRONG>OUTL</STRONG>
+<DD>
+<PRE>
+|- !x. OUTL (INL x) = x
+</PRE>
+
+<DT><STRONG>OUTR</STRONG>
+<DD>
+<PRE>
+|- !x. OUTR (INR x) = x
+</PRE>
+
+</DL>
+
+
+<HR>
+<H1>Theorems</H1>
+<DL>
+<DT><STRONG>sum_axiom</STRONG>
+<DD>
+<PRE>
+|- !f g. ?!h. (h o INL = f) /\ (h o INR = g)
+</PRE>
+
+<DT><STRONG>sum_Axiom</STRONG>
+<DD>
+<PRE>
+|- !f g. ?!h. (!x. h (INL x) = f x) /\ (!x. h (INR x) = g x)
+</PRE>
+
+<DT><STRONG>ISL_OR_ISR</STRONG>
+<DD>
+<PRE>
+|- !x. ISL x \/ ISR x
+</PRE>
+
+<DT><STRONG>INL</STRONG>
+<DD>
+<PRE>
+|- !x. ISL x ==> (INL (OUTL x) = x)
+</PRE>
+
+<DT><STRONG>INR</STRONG>
+<DD>
+<PRE>
+|- !x. ISR x ==> (INR (OUTR x) = x)
+</PRE>
+
+</DL>
+
+
+<HR>

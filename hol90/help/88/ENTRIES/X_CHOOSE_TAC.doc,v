@@ -1,0 +1,103 @@
+head	1.1;
+branch	1.1.1;
+access;
+symbols
+	HOL97:1.1.1.1.0.6
+	bpHOL97:1.1.1.1
+	hol90_9_alpha:1.1.1.1
+	hol90_pre8_for_multiple_compilers:1.1.1.1.0.4
+	hol90_pre8_after_donalds_separate_compilation_changes:1.1.1.1
+	hol90_8_after_merging_Konrad_Elsa:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	95.10.16.13.34.26;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.34.26;	author rjb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@\DOC X_CHOOSE_TAC
+
+\TYPE {X_CHOOSE_TAC : (term -> thm_tactic)}
+
+\SYNOPSIS
+Assumes a theorem, with existentially quantified variable replaced by a given
+witness.
+
+\KEYWORDS
+tactic, witness, quantifier, existential.
+
+\DESCRIBE
+{X_CHOOSE_TAC} expects a variable {y} and theorem with an existentially
+quantified conclusion.  When applied to a goal, it adds a new
+assumption obtained by introducing the variable {y} as a witness for
+the object {x} whose existence is asserted in the theorem.
+{
+           A ?- t
+   ===================  X_CHOOSE_TAC "y" (A1 |- ?x. w)
+    A u {{w[y/x]}} ?- t         ("y" not free anywhere)
+}
+\FAILURE
+Fails if the theorem's conclusion is not existentially quantified, or if
+the first argument is not a variable.  Failures may arise in the
+tactic-generating function.  An invalid tactic is produced if the
+introduced variable is free in {w} or {t}, or if the theorem has any
+hypothesis which is not alpha-convertible to an assumption of the
+goal.
+
+\EXAMPLE
+Given a goal of the form
+{
+   {{n < m}} ?- ?x. m = n + (x + 1)
+}
+\noindent the following theorem may be applied:
+{
+   th = ["n < m"] |- ?p. m = n + p
+}
+\noindent by the tactic {(X_CHOOSE_TAC "q:num" th)} giving
+the subgoal:
+{
+   {{n < m, m = n + q}} ?- ?x. m = n + (x + 1)
+}
+\SEEALSO
+CHOOSE, CHOOSE_THEN, X_CHOOSE_THEN.
+
+\ENDDOC
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

@@ -1,0 +1,179 @@
+<TITLE>Theory: bool</TITLE>
+<H1>Theory: bool</H1>
+<H1>Parents</H1>
+    <UL>
+    <LI><A HREF = "min.html"><STRONG>min</STRONG></A>
+    </UL>
+
+
+<HR>
+<H1>Type constants</H1>
+    <UL>
+    
+    </UL>
+
+
+<HR>
+<H1>Term constants</H1>
+    <UL>
+    <LI><STRONG>?</STRONG><EM>:('a -> bool) -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Binder<STRONG>}</STRONG>
+    <LI><STRONG>T</STRONG><EM>:bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>!</STRONG><EM>:('a -> bool) -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Binder<STRONG>}</STRONG>
+    <LI><STRONG>/\</STRONG><EM>:bool -> bool -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Infix 400<STRONG>}</STRONG>
+    <LI><STRONG>\/</STRONG><EM>:bool -> bool -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Infix 300<STRONG>}</STRONG>
+    <LI><STRONG>F</STRONG><EM>:bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>~</STRONG><EM>:bool -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>?!</STRONG><EM>:('a -> bool) -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Binder<STRONG>}</STRONG>
+    <LI><STRONG>LET</STRONG><EM>:('a -> 'b) -> 'a -> 'b</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>COND</STRONG><EM>:bool -> 'a -> 'a -> 'a</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>ONE_ONE</STRONG><EM>:('a -> 'b) -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>ONTO</STRONG><EM>:('a -> 'b) -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>TYPE_DEFINITION</STRONG><EM>:('a -> bool) -> ('b -> 'a) ->
+                                             bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    </UL>
+
+
+<HR>
+<H1>Axioms</H1>
+<DL>
+<DT><STRONG>BOOL_CASES_AX</STRONG>
+<DD>
+<PRE>
+|- !t. (t = T) \/ (t = F)
+</PRE>
+
+<DT><STRONG>IMP_ANTISYM_AX</STRONG>
+<DD>
+<PRE>
+|- !t1 t2. (t1 ==> t2) ==> (t2 ==> t1) ==> (t1 = t2)
+</PRE>
+
+<DT><STRONG>ETA_AX</STRONG>
+<DD>
+<PRE>
+|- !t. (\x. t x) = t
+</PRE>
+
+<DT><STRONG>SELECT_AX</STRONG>
+<DD>
+<PRE>
+|- !P x. P x ==> P ($@ P)
+</PRE>
+
+<DT><STRONG>INFINITY_AX</STRONG>
+<DD>
+<PRE>
+|- ?f. ONE_ONE f /\ ~(ONTO f)
+</PRE>
+
+</DL>
+
+
+<HR>
+<H1>Definitions</H1>
+<DL>
+<DT><STRONG>EXISTS_DEF</STRONG>
+<DD>
+<PRE>
+|- $? = (\P. P ($@ P))
+</PRE>
+
+<DT><STRONG>TRUTH</STRONG>
+<DD>
+<PRE>
+|- T = (\x. x) = (\x. x)
+</PRE>
+
+<DT><STRONG>FORALL_DEF</STRONG>
+<DD>
+<PRE>
+|- $! = (\P. P = (\x. T))
+</PRE>
+
+<DT><STRONG>AND_DEF</STRONG>
+<DD>
+<PRE>
+|- $/\ = (\t1 t2. !t. (t1 ==> t2 ==> t) ==> t)
+</PRE>
+
+<DT><STRONG>OR_DEF</STRONG>
+<DD>
+<PRE>
+|- $\/ = (\t1 t2. !t. (t1 ==> t) ==> (t2 ==> t) ==> t)
+</PRE>
+
+<DT><STRONG>F_DEF</STRONG>
+<DD>
+<PRE>
+|- F = (!t. t)
+</PRE>
+
+<DT><STRONG>NOT_DEF</STRONG>
+<DD>
+<PRE>
+|- ~ = (\t. t ==> F)
+</PRE>
+
+<DT><STRONG>EXISTS_UNIQUE_DEF</STRONG>
+<DD>
+<PRE>
+|- $?! = (\P. $? P /\ (!x y. P x /\ P y ==> (x = y)))
+</PRE>
+
+<DT><STRONG>LET_DEF</STRONG>
+<DD>
+<PRE>
+|- LET = (\f x. f x)
+</PRE>
+
+<DT><STRONG>COND_DEF</STRONG>
+<DD>
+<PRE>
+|- COND = (\t t1 t2. @x. ((t = T) ==> (x = t1)) /\ ((t = F) ==> (x = t2)))
+</PRE>
+
+<DT><STRONG>ONE_ONE_DEF</STRONG>
+<DD>
+<PRE>
+|- !f. ONE_ONE f = (!x1 x2. (f x1 = f x2) ==> (x1 = x2))
+</PRE>
+
+<DT><STRONG>ONTO_DEF</STRONG>
+<DD>
+<PRE>
+|- !f. ONTO f = (!y. ?x. y = f x)
+</PRE>
+
+<DT><STRONG>TYPE_DEFINITION</STRONG>
+<DD>
+<PRE>
+|- !P rep.
+     TYPE_DEFINITION P rep =
+     (!x' x''. (rep x' = rep x'') ==> (x' = x'')) /\
+     (!x. P x = (?x'. x = rep x'))
+</PRE>
+
+</DL>
+
+
+<HR>
+<H1>Theorems</H1>
+<DL>
+
+</DL>
+
+
+<HR>

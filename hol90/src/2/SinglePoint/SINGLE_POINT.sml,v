@@ -1,0 +1,652 @@
+head	1.1;
+access;
+symbols;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	96.02.08.00.45.40;	author drs1004;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@New theory mechanism, code reorganisation and other enhancements by Don Syme.
+@
+text
+@
+(*-------------------------------------------------------------------
+ * SINGLE_POINT_EXISTS_CONV : conv
+ * SINGLE_POINT_FORALL_CONV : conv
+ *
+ * DESCRIPTION
+ *
+ * SINGLE_POINT_EXISTS_CONV eliminates existential 
+ * quantifiers where the quantified variable
+ * is restricted to a single point via an equality in the
+ * conjuncts of the body.  Given a term of the form
+ *    ?x1 x2 ... xn. P1[x1..xn] /\ P2[x1..xn] /\ ... /\ Pm[x1..xn]
+ * where one of Pk is
+ *        "x1 = F[x2...xn]"
+ *   or   "F[x2...xn] = x1"
+ *   or   "x1"
+ *   or   "~x1"
+ * SINGLE_POINT_EXISTS_CONV eliminates the variable x1 from the existential
+ * quantification and converts the term to
+ *     ?x2...xn. P1'[x2...xn] /\ ...P(m-1)'[x2...xn]
+ * where P1' through Pm-1' have any occurrences of x1 substituted as
+ * F[x2...xn].
+ *
+ * SINGLE_POINT_FORALL_CONV eliminates universal
+ * quantifiers where the quantified variable
+ * is restricted to a single point via an equality in the
+ * conjuncts of the body.  Given a term of the form
+ *    !x1 x2 ... xn. P1[x1..xn] ==> P2[x1..xn] ==> ... ==> Pm[x1..xn]
+ * where one of Pk (k < m) is
+ *        "x1 = F[x2...xn]"
+ *   or   "F[x2...xn] = x1"
+ *   or   "x1"
+ *   or   "~x1"
+ * SINGLE_POINT_FORALL_CONV eliminates the variable x1 from the
+ * quantification and converts the term to
+ *     !x2...xn. P1'[x2...xn] ==> ...P(m-1)'[x2...xn] ==> Pm[x1..xn]
+ * where P1' through Pm-1' have any occurrences of x1 substituted as
+ * F[x2...xn], and Pk has been removed.
+ *
+ * The constraint can also occur within conjuncts of P1, P2 ... P(m-1).
+ *
+ * USES
+ *
+ * Eliminating trivial existential and universal quantifiers.
+ *
+ * EXAMPLES
+ *
+ * - SINGLE_POINT_EXISTS_CONV (--`?inp. inp /\ P inp`--);
+ * |- (?inp. inp /\ P inp) = P T : thm
+ *
+ * - SINGLE_POINT_EXISTS_CONV (--`?inp (f:'a->num). (inp = f x)  /\ P f inp`--);
+ * |- (?inp f. (inp = f x) /\ P f inp) = (?f. P f (f x)) : thm
+ *
+ * - SINGLE_POINT_EXISTS_CONV (--`?inp. ~inp /\ P inp`--);
+ * |- (?inp. ~inp /\ P inp) = P F : thm
+ *
+ * SINGLE_POINT_FORALL_CONV (--`!x. (x = 3) ==> P x`--);
+ * SINGLE_POINT_FORALL_CONV (--`!x. (x = 3) /\ Q x ==> P x`--);
+ * SINGLE_POINT_FORALL_CONV (--`!x. (3 = x) /\ Q x ==> P x`--);
+ * SINGLE_POINT_FORALL_CONV (--`!x. (x < y) ==> (x = 3) /\ Q x ==> P x`--);
+ * SINGLE_POINT_FORALL_CONV (--`!Q R. (x = 3) /\ Q /\ P x ==> R Q`--);
+ * SINGLE_POINT_FORALL_CONV (--`!Q R. (x = 3) /\ ~Q /\ P x ==> R Q`--);
+ * 
+ * TESTING CODE 
+ *
+ * use "3/simplifier/src/SINGLE_POINT.sml";
+ * open Single_point;
+ *------------------------------------------------------------------------*)
+
+
+signature Single_point_sig =
+sig
+   type conv sharing type conv = Abbrev.conv;
+   type tactic sharing type tactic = Abbrev.tactic;
+   type term sharing type term = Term.term;
+   type thm sharing type thm = Thm.thm;
+
+   val SINGLE_POINT_EXISTS_CONV : conv
+   val SINGLE_POINT_EXISTS_TAC : tactic
+   val SINGLE_POINT_EXISTS_RULE : thm -> thm
+   val SINGLE_POINT_FORALL_CONV : conv
+   val SINGLE_POINT_FORALL_TAC : tactic
+   val SINGLE_POINT_FORALL_RULE : thm -> thm
+
+
+end;
+
+structure Single_point : Single_point_sig =
+struct
+ 
+open Lib Pterms Drule Conv Ho_rewrite Trace AC Rules Theorems
+open Plain_rewrite Parse Tactic Boolean Tactical Thm_cont Quant_convs;
+   infix THENC THENL THEN
+   infixr -->
+   infix THENC;
+   infix THEN;
+   infix THENL;
+   infix |>;
+
+   infix iTRANS
+   val (op iTRANS) = uncurry TRANS
+   open Pterms;
+       
+
+   val WRAP_ERR = Exception.WRAP_ERR "Single_point";
+   val ERR = Exception.ERR "Single_point";
+
+
+(*-------------------------------------------------------------------
+ * rename_vars
+ *
+ * Variable renaming for $\alpha$-conversion over a series of quantified
+ * variables is provided by the function [[rename_vars]].
+ * 
+ *------------------------------------------------------------------------*)
+
+
+fun rename_vars varlist term = 
+  let 
+    val (strip, list_mk) = 
+       if (is_exists term) then
+          (strip_exists, list_mk_exists) else
+       if (is_forall term) then 
+          (strip_forall, list_mk_forall)
+       else
+          ERR("rename_vars","Term not quantified with something I can handle")
+    val (ex_vars, body) = strip term 
+    val (tochange, unchanged) = split_after (length varlist) ex_vars 
+    val new_vars = varlist @@ unchanged
+    val new_body = 
+        Term.subst (map2 (curry op |->)  tochange varlist) body in
+    ALPHA (list_mk (ex_vars, body)) (list_mk (new_vars, new_body))
+  end;
+
+
+(*-------------------------------------------------------------------
+ * find_var_value
+ *
+ * Given a quantified variable $var$, and a list of possible restricting
+ * terms, we return
+ * a conjunct from the list of the form $(var = val)$ or $(val = var)$
+ * or $var$ or $~var$.
+ * If there is no such conjunct, then the function simply fails.  This
+ * whole function would be a whole lot easier in Prolog.
+ * 
+ * It is the [[check_var]] function which actually does the work.  It
+ * takes a variable and a conjunct and returns a value for that variable
+ * or fails.  
+ * 
+ *------------------------------------------------------------------------*)
+
+fun check_var var conj =
+  if is_eq conj then let
+    val (arg1, arg2) = dest_eq conj in
+      if (mem arg1 (Term.free_vars arg2) orelse 
+          mem arg2 (Term.free_vars arg1)) then
+         ERR ("check_var","Duplicate values") else
+      if (arg1 = var) then 
+         arg2 else
+      if (arg2 = var) then
+         arg1 
+      else ERR ("check_var","No value") end
+  else if is_neg conj andalso dest_neg conj = var then 
+    falsity 
+  else if var = conj then 
+    truth
+  else
+    ERR ("check_var","No value");
+
+fun find_var_value var = 
+  let fun fvv [] = ERR ("find_var_value","No value equality")
+        | fvv (c::cs) = (c, check_var var c) 
+                        handle _ => fvv cs;
+  in fvv
+  end
+
+(*-------------------------------------------------------------------
+ * SWAP_VARS_CONV : conv
+ *
+ * We are at the point where we have to convert something of
+ * the form "?v1 v2. f[v1,v2]" to "?v2 v1. f[v1,v2].  
+ * The first step is to find ourselves a theorem
+ * supporting this fact, and we can then use this to justify the
+ * transformation used in [[swap_vars]].  The tricky bit of this code is
+ * then to transform the existentially quantified part of the term into a
+ * function applied to two arguments. (i.e. higher order matching).
+ * 
+ * This is done by making the variable [[snd_body]] the body of an
+ * abstraction whose parameters are the two variables that are to be
+ * swapped.  This introduces another level of abstraction between the
+ * quantified variables and the expression.  The function created thereby
+ * ([[fn]] below) is applied to two arguments and [[LIST_BETA_CONV]]
+ * demonstrates the equivalence of this with what was had before.  With
+ * the definition of [[fn_rewrite]], the program is now manipulating
+ * theorems, not just terms. 
+ * 
+ * The next step is to re-introduce the existential quantification with
+ * [[LIST_MK_EXISTS]].  This produces something of the form: $\vdash
+ * \exists v_1 v_2 \bullet P \equiv \exists v_1 v_2 \bullet (\lambda v_1
+ * v_2 \bullet P) v_1 v_2$.  The right-hand side of this theorem is of
+ * the form that [[EX_QVAR_SWAP_THM]] will rewrite.
+ * 
+ * However, [[EX_QVAR_SWAP_THM]] can not be used directly; its types must
+ * be instantiated and, if we are to avoid confusing the user entirely,
+ * its variables should be renamed (using $\alpha$-conversion) as well.
+ * 
+ * Finally, we note that this [[conv]] does not rely on anything
+ * fundamental about the nature of the existential quantifier to do its
+ * work, so we generalise it to handle universal quantification as well.
+ * (One wonders why there is not a [[LIST_MK_FORALL]], but folding
+ * [[FORALL_EQ]] does the trick.)
+ * 
+ *------------------------------------------------------------------------*)
+val LIST_MK_FORALL = itlist FORALL_EQ;
+
+val EX_QVAR_SWAP_THM = 
+  prove ((--`!(f:'a->'b->bool).(? x y. f x y) = (? y x . f x y)`--),
+         STRIP_TAC THEN EQ_TAC THEN STRIP_TAC THENL [
+             EXISTS_TAC (--`y:'b`--) THEN EXISTS_TAC (--`x:'a`--),
+             EXISTS_TAC (--`x:'a`--) THEN EXISTS_TAC (--`y:'b`--)
+         ] THEN
+         POP_ASSUM MATCH_ACCEPT_TAC);
+
+val FA_QVAR_SWAP_THM =
+  prove ((--`!(f:'a->'b->bool).(!x y. f x y) = (!y x. f x y)`--),
+         STRIP_TAC THEN EQ_TAC THEN STRIP_TAC THEN ASM_REWRITE_TAC []);
+
+(* EX_QVAR_SWAP_THM = |- !f. (?x y. f x y) = (?y x. f x y) *)
+(* FA_QVAR_SWAP_THM = |- !f. (!x y. f x y) = (!y x. f x y) *)
+fun SWAP_VARS_CONV term = let
+  val (dest, list_mk, qvar_thm) =
+      if (is_exists term) then
+         (dest_exists, LIST_MK_EXISTS, EX_QVAR_SWAP_THM) else
+      if (is_forall term) then
+         (dest_forall, LIST_MK_FORALL, FA_QVAR_SWAP_THM)
+      else
+         ERR ("SWAP_VARS_CONV","Formula must be universally or existentially quantified")
+  val (fst_var, fst_body) = dest term 
+  val (snd_var, snd_body) = dest fst_body 
+  val fnc = list_mk_abs ([fst_var,snd_var], snd_body) 
+  val fn_rewrite = 
+     SYM (LIST_BETA_CONV (list_mk_comb (fnc, [fst_var,snd_var]))) 
+  val ex_rewrite = list_mk [fst_var,snd_var] fn_rewrite 
+  val inst_thm = ISPEC fnc qvar_thm 
+  val final_thm = 
+            inst_thm iTRANS
+            (rename_vars [snd_var,fst_var] (rhs (concl inst_thm))) in
+  BETA_RULE (SUBS [final_thm] ex_rewrite) end;
+ 
+
+(*-------------------------------------------------------------------
+ * MOVE_EXISTS_RIGHT_CONV : conv
+ *
+ * If we find that a quantified variable does have a value waiting for
+ * it, then we need to move it rightwards as far as possible in the
+ * string of existentially quantified variables.  To do this, we develop
+ * a [[MOVE_RIGHT_CONV]] that performs just this action.  The basic
+ * primitive action is that of swapping two variables in the
+ * existentially quantified chain, so we also need a proof that allows us
+ * that rewrite.  Having swapped the variable in question to the right,
+ * we call the same [[conv]] recursively on the body of the quantification.
+ * 
+ *------------------------------------------------------------------------*)
+
+fun MOVE_EXISTS_RIGHT_CONV t =
+  if (is_exists t) then
+    let val (curvar,  subterm) = dest_exists t in
+      if (is_exists subterm) then 
+          (SWAP_VARS_CONV THENC 
+           (RAND_CONV (ABS_CONV (MOVE_EXISTS_RIGHT_CONV)))) t
+      else
+        REFL t
+    end
+  else
+    ERR ("MOVE_EXISTS_RIGHT_CONV","");
+
+fun MOVE_FORALL_RIGHT_CONV t =
+  if (is_forall t) then
+    let val (curvar,  subterm) = dest_forall t in
+      if (is_forall subterm) then 
+          (SWAP_VARS_CONV THENC 
+           (RAND_CONV (ABS_CONV (MOVE_FORALL_RIGHT_CONV)))) t
+      else
+        REFL t
+    end
+  else
+    ERR ("MOVE_FORALL_RIGHT_CONV","");
+
+
+
+(*-------------------------------------------------------------------
+ * Utils
+ *------------------------------------------------------------------------*)
+
+val RHS_CONV = RAND_CONV;
+val LHS_CONV = RATOR_CONV o RAND_CONV;
+val pvar = (--`p:bool`--);
+
+fun split_at f [] = raise NOT_FOUND
+  | split_at f (hd::tl) = 
+       if (f hd) 
+       then ([],hd,tl) 
+       else let val (fr,el,back) = split_at f tl
+            in (hd::fr,el,back)
+             end;
+
+
+
+(*-------------------------------------------------------------------
+ * CONJ_TO_FRONT_CONV
+ *
+ * An conjunct nesting is of the form
+ *     T1 /\ T2 
+ * where each Ti is a conjunct nesting, or a single term T which
+ * is not a conjunct.
+ *
+ * CONJ_TO_FRONT_CONV takes a conjunct nesting and a special conjunct
+ * Txx, and converts the conjunct nesting to
+ *     Txx /\ T1 /\ T2 /\ ... /\ Tn
+ * where T1 ... TN are the conjuncts in the conjunct nesting (apart
+ * from Txx).  Thus the conjunct nesting is also flattened.
+ *
+ * The implementation of this function may eventually be changed to
+ * maintain the structure of the nestings T1, T2 etc.
+ *
+ * NOTE: The same code could easily work for any AC operator.  The
+ * implementation uses AC_CONV, which could be inefficient in
+ * certain circumstances.  A more efficient implementation is
+ * certainly possible but tricky to code up (please supply
+ * one!!)
+ *
+ * EXAMPLES
+ * profile CONJ_TO_FRONT_CONV (--`x = 3`--,--`(x = 3)`--);
+ * profile CONJ_TO_FRONT_CONV (--`x = 3`--,--`(x = 3) /\ P x`--);
+ * profile CONJ_TO_FRONT_CONV (--`x = 3`--,--`(x = 3) /\ P x /\ Q x`--);
+ * profile CONJ_TO_FRONT_CONV (--`(P:num->bool) x`--,--`(x = 3) /\ P x /\ Q x`--);
+ * profile CONJ_TO_FRONT_CONV (--`(Q:num->bool) x`--,--`(x = 3) /\ P x /\ Q x`--);
+ *------------------------------------------------------------------------*)
+
+val AC_CONJ_CONV = AC_CONV (CONJ_ASSOC,CONJ_SYM);
+fun CONJ_TO_FRONT_CONV conj term =
+    let val conjs = strip_conj term
+        val (front,e,back) = split_at (fn x => conj = x) conjs
+    in if (null front) then REFL term
+       else let val rhs = list_mk_conj (e::(front @@ back))
+                val thm = EQT_ELIM (AC_CONJ_CONV (mk_eq(term,rhs)))
+            in thm
+            end
+    end;
+
+
+(*-------------------------------------------------------------------
+ * IMP_TO_FRONT_CONV
+ *
+ * An antecedant nesting is of the form
+ *     T1 ==> T2 ==> ... ==> C
+ * where each Ti is a conjunct nesting.
+ *
+ * IMP_TO_FRONT_CONV transforms an antecedant nesting into the form
+ *    Txx ==> T1a ==> T1b ==> ... ==> T2a ==> ... ==> C
+ * where Txx is a special member of one of the conjunct nestings,
+ * and T1a..T1x are the members of conjunct nesting T1 (and so on
+ * for T2, T3 etc.), excluding Txx which is now at the front.
+ *
+ * The implementation of this function may eventually be changed to
+ * maintain the structure of nestings T1, T2 etc.
+ *
+ * NOTE 
+ *   The implementation of this routine uses TAUT_TAC.  A more
+ * efficient implementation is certainly possible, but gross
+ * to code up!!  Please  supply one if you can work out 
+ * the fiddly details of the proof strategy.
+ *
+ * EXAMPLES
+ *   profile IMP_TO_FRONT_CONV (--`x = 3`--) (--`(x = 3) ==> P x`--);
+ *   profile IMP_TO_FRONT_CONV (--`x = 3`--) (--`(x = 3) /\ Q x ==> P x`--);
+ *   profile IMP_TO_FRONT_CONV (--`x = 3`--) (--`(Q x) ==> (x = 3) /\ Q x ==> P x`--);
+ *   profile IMP_TO_FRONT_CONV (--`Q:bool`--) (--`(x = 3) /\ Q /\ P x ==> R Q`--);
+ *   profile IMP_TO_FRONT_CONV (--`Q:bool`--) (--`(x = 3) /\ P x /\ Q ==> R Q`--);
+ * IMP_CONJ_CANON (mk_thm([],(--`P ==> Q ==> R`--)));
+ * IMP_CONJ_CANON (mk_thm([],(--`P /\ Q ==> R`--)));
+ * IMP_CONJ_CANON (mk_thm([],(--`P ==> (Q /\ R) ==> Q`--)));
+
+ *------------------------------------------------------------------------*)
+(* new version of strip_imp which breaks apart conjuncts
+in antecedents, and which doesn't strip off negations in the
+body *)
+fun strip_imp' tm = 
+    let val (l,r) = Imp.dest_imp tm
+        val lants = strip_conj l
+        val (rants,rest) = strip_imp' r
+    in (lants@@rants,rest)
+    end
+    handle _ => ([],tm);
+
+fun IMP_TO_FRONT_CONV ante term =
+    let val (antes,concl) = strip_imp' term;
+        val (front,e,back) = split_at (fn x => ante = x) antes
+        val rhs = list_mk_imp (e::(front @@ back),concl)
+    in
+        prove(mk_eq(term,rhs), 
+	      EQ_TAC THEN
+	      DISCH_THEN (fn thm => REPEAT STRIP_TAC THEN MP_TAC thm) THEN
+	      REPEAT (POP_ASSUM (SUBST1_TAC o EQT_INTRO)) THEN REWRITE_TAC [])
+    end
+handle e => WRAP_ERR("IMP_TO_FRONT_CONV",e);
+    
+
+
+(*-------------------------------------------------------------------
+ * ENSURE_CONJ_CONV
+ *   Prove a term is equal to a term which is a conjunct
+ * by introduing T if necessary, as in
+ *     P = P /\ T
+ *------------------------------------------------------------------------*)
+
+
+val TRUTH_CONJ_INTRO_THM = prove(--`!P. P = (P /\ T)`--, REWRITE_TAC []);
+fun ENSURE_CONJ_CONV tm =
+   if (is_conj tm) 
+   then REFL tm
+   else SPEC tm TRUTH_CONJ_INTRO_THM;
+
+
+(*-------------------------------------------------------------------
+ * ENSURE_VAR_EQ_CONV
+ *   Make a term into an equality with a particular
+ * variable on the left in the case it is
+ * of the form P (where P is not an equality) or ~P, otherwise
+ * leave it alone.
+ *    <P>  P -> P = T
+ *    <P>  ~P -> P = F
+ *    <P>  P = Q -> P = Q
+ *    <P>  Q = P -> P = Q
+ * ENSURE_EQ_CONV (--`P:bool`--) (--`P:bool`--);
+ * ENSURE_EQ_CONV (--`P:bool`--) (--`~P:bool`--);
+ * ENSURE_EQ_CONV (--`P:bool`--) (--`P = (Q:bool)`--);
+ * ENSURE_EQ_CONV (--`P:bool`--) (--`Q = (P:bool)`--);
+ *------------------------------------------------------------------------*)
+
+val EQF_INTRO_THM = prove(--`!P. ~P = (P = F)`--,
+			  GEN_TAC THEN ASM_CASES_TAC (--`P:bool`--) THEN ASM_REWRITE_TAC []);
+val EQT_INTRO_THM = prove(--`!P. P = (P = T)`--,
+			  GEN_TAC THEN ASM_CASES_TAC (--`P:bool`--) THEN ASM_REWRITE_TAC []);
+
+fun ENSURE_EQ_CONV var tm =
+   if (is_eq tm)
+   then if (lhs tm = var)
+        then REFL tm
+        else SYM_CONV tm
+   else if is_neg tm
+        then SPEC (dest_neg tm) EQF_INTRO_THM
+        else SPEC tm EQT_INTRO_THM;
+
+(*-------------------------------------------------------------------
+ * Two theorems on which to base the conversions:
+ *------------------------------------------------------------------------*)
+
+val ELIM_EXISTS_THM = 
+prove((--`! f (v:'a) . ((? x . (x = v) /\ f x) = f v)`--),
+    REPEAT STRIP_TAC THEN EQ_TAC THEN STRIP_TAC
+    THEN TRY (EXISTS_TAC (--`v:'a`--)) THEN ASM_REWRITE_TAC []
+    THEN FIRST_ASSUM ((fn th => SUBST_TAC [th]) o SYM)
+    THEN ASM_REWRITE_TAC []
+);
+
+val ELIM_FORALL_THM = 
+prove((--`! f (v:'a) . ((! x . (x = v) ==> f x) = f v)`--),
+    REPEAT STRIP_TAC THEN EQ_TAC
+    THEN REPEAT STRIP_TAC
+    THENL [
+       FIRST_ASSUM MATCH_MP_TAC THEN REWRITE_TAC [],
+       ASM_REWRITE_TAC []
+    ]
+);
+
+(*-------------------------------------------------------------------
+ * LAST_EXISTS_CONV : Apply a conversion to the last existential in
+ * a nesting of existential bindings, i.e.
+ *    ?x1 x2 x3...xn.  T1
+ * conv gets applied to 
+ *    ?xn. T1
+ *------------------------------------------------------------------------*)
+
+fun LAST_EXISTS_CONV conv tm =
+  let val (var,body) = dest_exists tm
+  in if (is_exists body)
+     then RAND_CONV (ABS_CONV (LAST_EXISTS_CONV conv)) tm
+     else conv tm
+  end;
+
+(*-------------------------------------------------------------------
+ * LAST_FORALL_CONV : Apply a conversion to the last universal 
+ * quantification in a nesting of universal quantifications, i.e.
+ *    !x1 x2 x3...xn.  T1
+ * conv gets applied to 
+ *    !xn. T1
+ *------------------------------------------------------------------------*)
+
+fun LAST_FORALL_CONV conv tm =
+  let val (var,body) = dest_forall tm
+  in if (is_forall body)
+     then RAND_CONV (ABS_CONV (LAST_FORALL_CONV conv)) tm
+     else conv tm
+  end;
+
+(*-------------------------------------------------------------------
+ * ELIM_EXISTS_CONV : 
+ *    Eliminate an existential witnessed by an equality somewhere
+ * in the conjunct nesting immediately below the existential.
+ *
+ * EXAMPLES
+ *
+ * val inp = --`inp:bool`--;
+ * - profile (ELIM_EXISTS_CONV (inp,inp)) (--`?inp. inp /\ P inp`--);
+ * - profile (ELIM_EXISTS_CONV (inp, --`inp:bool = y`--)) (--`?inp. Q inp /\ (inp:bool = y)  /\ P inp`--);
+ * - ELIM_EXISTS_CONV (inp,--`~inp`--) (--`?inp. Q inp /\ ~inp /\ P inp`--);
+ *
+ * IMPLEMENTATION:
+ *    1. Convert the body by:
+ *         a. Moving the appropriate conjunct to the front of the conjunct
+ *            nesting.
+ *         b. Abstract the other conjuncts by the 
+ *            appropriate variable.
+ *         c. Ensure the conjunct is an equality (P --> (P = T) etc.) with
+ *            the variable to eliminate on the left.
+ *    2. Now apply ELIM_EXISTS_THM
+ *------------------------------------------------------------------------*)
+
+fun ELIM_EXISTS_CONV (var,conj) =
+  RAND_CONV (ABS_CONV 
+         (CONJ_TO_FRONT_CONV conj THENC 
+          ENSURE_CONJ_CONV THENC 
+          RHS_CONV (MK_ABS_CONV var) THENC
+          LHS_CONV (ENSURE_EQ_CONV var)))
+  THENC REWR_CONV ELIM_EXISTS_THM;
+
+(*-------------------------------------------------------------------
+ * ELIM_FORALL_CONV : 
+ *    Eliminate an universal witnessed by an equality somewhere
+ * in the antecedant nesting immediately below the quantification.
+ *
+ *
+ * EXAMPLES
+ *
+ * val inp = --`inp:bool`--;
+ * - profile (ELIM_FORALL_CONV (inp,inp)) (--`!inp. inp ==> Q inp ==> P inp`--);
+ * - profile (ELIM_FORALL_CONV (inp, --`inp:bool = y`--)) (--`!inp. Q inp ==> (inp:bool = y)  ==> P inp`--);
+ * - profile (ELIM_FORALL_CONV (inp,--`~inp`--)) (--`!inp. Q inp /\ R inp ==> ~inp ==> P inp`--);
+ *
+ * IMPLEMENTATION:
+ *    1. Convert the body by:
+ *         a. Moving the appropriate antecedent to the front of the
+ *           antecedent nesting.
+ *         b. Abstract the other antecedents and conclusion by the 
+ *            appropriate variable.
+ *         c. Ensure the antecedent is an equality (P --> (P = T) etc.) with
+ *            the variable to eliminate on the left.
+ *    2. Now apply ELIM_FORALL_THM
+ *------------------------------------------------------------------------*)
+
+fun ELIM_FORALL_CONV (var,conj) =
+  RAND_CONV (ABS_CONV 
+         (IMP_TO_FRONT_CONV conj THENC 
+          RHS_CONV (MK_ABS_CONV var) THENC
+          LHS_CONV (ENSURE_EQ_CONV var)))
+  THENC REWR_CONV ELIM_FORALL_THM;
+
+
+(*-------------------------------------------------------------------
+ * SINGLE_POINT_EXISTS_CONV
+ *
+ * Like ELIM_EXISTS_CONV but does variable reordering as well to
+ * work on the top quantifier in a sequence of existenial quantifications.
+ *------------------------------------------------------------------------*)
+
+fun SINGLE_POINT_EXISTS_CONV tm =
+  let val ((var::vars), body) = strip_exists tm 
+      val (conj,value) = find_var_value var (strip_conj body) handle _ => 
+         ERR ("SINGLE_POINT_EXISTS_CONV","No value for outer variable")
+  in (MOVE_EXISTS_RIGHT_CONV 
+      THENC LAST_EXISTS_CONV (ELIM_EXISTS_CONV (var,conj))) tm
+  end;
+
+(*------------------------------------------------------------------------
+ * SINGLE_POINT_EXISTS_TAC
+ * SINGLE_POINT_EXISTS_RULE
+ *
+ *------------------------------------------------------------------------*)
+
+val SINGLE_POINT_EXISTS_TAC = 
+        CONV_TAC (TOP_DEPTH_CONV SINGLE_POINT_EXISTS_CONV)
+val SINGLE_POINT_EXISTS_RULE = 
+        CONV_RULE SINGLE_POINT_EXISTS_CONV
+
+(*-------------------------------------------------------------------
+ * SINGLE_POINT_FORALL_CONV
+ *
+ * Like ELIM_FORALL_CONV but does variable reordering as well to
+ * work on any existential in a grouping of existentials.
+ * 
+ *------------------------------------------------------------------------*)
+
+fun SINGLE_POINT_FORALL_CONV tm =
+  let val ((var::vars), body) = strip_forall tm 
+      val (ant,value) = find_var_value var (fst(strip_imp' body)) handle _ => 
+         ERR ("SINGLE_POINT_FORALL_CONV","No value for outer variable")
+  in (MOVE_FORALL_RIGHT_CONV 
+      THENC LAST_FORALL_CONV (ELIM_FORALL_CONV (var,ant))) tm
+  end;
+
+(*------------------------------------------------------------------------
+ * SINGLE_POINT_FORALL_TAC
+ * SINGLE_POINT_FORALL_RULE
+ *
+ *------------------------------------------------------------------------*)
+
+val SINGLE_POINT_FORALL_TAC = 
+        CONV_TAC (TOP_DEPTH_CONV SINGLE_POINT_FORALL_CONV)
+val SINGLE_POINT_FORALL_RULE = 
+        CONV_RULE SINGLE_POINT_FORALL_CONV
+
+
+
+end; (* struct *)
+
+
+
+
+@

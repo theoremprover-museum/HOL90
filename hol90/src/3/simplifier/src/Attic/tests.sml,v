@@ -1,0 +1,419 @@
+head	1.2;
+access;
+symbols;
+locks; strict;
+comment	@# @;
+
+
+1.2
+date	96.01.04.14.15.18;	author drs1004;	state dead;
+branches;
+next	1.1;
+
+1.1
+date	95.12.18.11.39.50;	author drs1004;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.2
+log
+@Added simplifier components, added drule files, added MK_ABS_CONV, better error messages
+@
+text
+@
+
+
+(* Extensive test suit for traversal and simplification *)
+
+use "3/simplifier/src/opening.sml";
+use "3/simplifier/src/traverse.sml";
+use "3/simplifier/src/simplifier.sml";
+
+use "0/hol0.sml";
+use "1/hol1.sml";
+use "2/hol2.sml";
+use "3/simplifier/src/load.sml";
+open Traverse;
+open Congprocs;
+open Qconv;
+open Trace;
+
+
+fun replicate x 0 = [] | replicate x n = x::(replicate x (n-1));
+
+(* ---------------------------------------------------------------------
+ * Traversal under HOL equality
+ * ---------------------------------------------------------------------*)
+
+val equality_rel=RELATION{relname="=",REFL=REFL,TRANS=TRANS}; 
+val empty_eq_ts = empty_ts addrelation equality_rel;
+
+(* ---------------------------------------------------------------------
+ * Test application of a simple operation during traversal over
+ * combinators.
+ * ---------------------------------------------------------------------*)
+
+val equality = #const (const_decl "=");
+val slow_traversal_thm = mk_thm([],
+          --`!x x' (f:'a->'b) f'. 
+                       (x = x') ==> (f = f') ==> (f x = f' x')`--);
+            
+val slow_eq_traversal_ts = empty_eq_ts addcongrule slow_traversal_thm;
+
+val slow_rewriter = mk_reducer{
+                initial=THMLIST [],
+                name="slow rewriter", 
+                addcontext=fn (THMLIST ctxt,thms) => THMLIST (thms@@ctxt),
+                apply=fn {solver,context=THMLIST ctxt} => CHANGED_CONV (FIRST_QCONV (map REWR_CONV ctxt)),
+		relation=equality
+           };
+
+val slow_rewriter_ts = slow_eq_traversal_ts addrewriter slow_rewriter;
+
+(* ---------------------------------------------------------------------
+ *
+ * ---------------------------------------------------------------------*)
+val _ = trace_level 5;
+
+val slow_rewrite = TRAVERSE (slow_eq_traversal_ts,equality);
+slow_rewrite (--`(x = 3) ==> P x`--); (* UNCHANGED *)
+slow_rewrite (--`3`--);
+slow_rewrite (--`(f:num->num) 3`--);
+slow_rewrite (--`(x = 3)`--);
+
+val ctxt = initial_context (slow_rewriter_ts,equality);
+val ctxt' = add_context slow_rewriter_ts (ctxt,[ASSUME(--`x=3`--)]);
+TRAVERSE_IN_CONTEXT slow_rewriter_ts ctxt' (--`x:num`--);
+TRAVERSE_IN_CONTEXT slow_rewriter_ts ctxt' (--`3:num`--);
+TRAVERSE_IN_CONTEXT slow_rewriter_ts ctxt' (--`x + 4`--);
+TRAVERSE_IN_CONTEXT slow_rewriter_ts ctxt' (--`y + 4`--);
+TRAVERSE_IN_CONTEXT slow_rewriter_ts ctxt' (--`!x. x + 4 = 4`--);
+TRAVERSE_IN_CONTEXT slow_rewriter_ts ctxt' (--`!y:'a. x + 4 = 4`--); 
+                 (* UNCHANGED - no abs rule in travset *)
+
+
+(* ---------------------------------------------------------------------
+ * Test EQ_CONGPROC.
+ * ---------------------------------------------------------------------*)
+
+val fast_eq_traversal_ts = empty_eq_ts addcongproc {
+                name="Equality congruence rules for combs and abstractions",
+                proc=EQ_CONGPROC,
+                relation=equality
+            };
+val fast_traverse = TRAVERSE (fast_eq_traversal_ts,equality);
+fast_traverse (--`3`--);
+fast_traverse (--`(f:num->num) 3`--);
+fast_traverse (--`(x = 3)`--);
+fast_traverse (--`!x. (x = 3)`--);
+
+val slow_rewriter_ts = fast_eq_traversal_ts addrewriter slow_rewriter;
+val ctxt = initial_context (slow_rewriter_ts,equality);
+val ctxt' = add_context slow_rewriter_ts (ctxt,[ASSUME(--`x=3`--)]);
+TRAVERSE_IN_CONTEXT slow_rewriter_ts ctxt' (--`x + 4 = 4`--);
+TRAVERSE_IN_CONTEXT slow_rewriter_ts ctxt' (--`!x. x + 4 = 4`--);
+TRAVERSE_IN_CONTEXT slow_rewriter_ts ctxt' (--`!y. x + y = 4`--);
+
+(* ---------------------------------------------------------------------
+ * Test simplification as a conversion, with just plain rewriting.
+ * Use |- !x. I x = x as a rewrite.
+ * ---------------------------------------------------------------------*)
+
+open Simplifier;
+val I_ss = empty_ss addrewrs [SPEC_ALL (theorem "combin" "I_THM")];
+SIMP_CONV I_ss (--`I 3`--);      (* = 3 *)
+SIMP_CONV I_ss (--`I (I 3)`--);  (* = 3 *)
+SIMP_CONV I_ss (--`(I I) 3`--); (* = 3 *)
+
+(* ---------------------------------------------------------------------
+ * Efficiency test:
+ *    SIMP_CONV v. PURE_REWRITE_CONV v. TOP_DEPTH_CONV
+ * doing nothing over large terms of the shape "I (I ...(I x))".
+ *
+ * Results:
+ *      K   100    1000       2000
+ *    A:  0.010   0.230      0.360
+ *    B:  0.060   6.070 (!) 26.382 (!!)
+ *    C:  0.000   0.110      0.070
+ * ---------------------------------------------------------------------*)
+
+fun mk_I x = mk_comb(mk_const("I",mk_type("fun",[type_of x, type_of x])),x);
+
+local 
+  val bigI = funpow 1000 mk_I (--`1`--);
+  val _ = trace_level 0; 
+in
+  (* A *) val _ = profile (SIMP_CONV empty_ss) bigI;
+  (* B *) val _ = profile (PURE_REWRITE_CONV []) bigI;
+  (* C *) val _ = profile (TOP_DEPTH_CONV NO_CONV) bigI;
+  val _ = trace_level 5;
+end;
+
+(* ---------------------------------------------------------------------
+ * Efficiency test:
+ *    SIMP_CONV v. PURE_REWRITE_CONV rewriting I (I (I ...(I x)))
+ * Results:
+ *   A: 2999 thms, Total runtime: 1.190
+ *   B: 2999 thms, Total runtime: 7.380
+ * ---------------------------------------------------------------------*)
+
+profile (SIMP_CONV I_ss) (--`(I I) 3`--);
+profile (REWRITE_CONV [theorem "combin" "I_THM"]) (--`(I I) 3`--);
+fun mk_I x = mk_comb(mk_const("I",mk_type("fun",[type_of x, type_of x])),x);
+
+local 
+  val bigI = funpow 1000 mk_I (--`1`--);
+  val _ = trace_level 0;
+in
+  (* A *) val _ = profile (SIMP_CONV I_ss) bigI; 
+  (* B *) val _ = profile (PURE_REWRITE_CONV [theorem "combin" "I_THM"]) bigI; 
+   val _ = trace_level 5;
+end;
+
+(* ---------------------------------------------------------------------
+ * Simplification with context generating congruence rules.  Nb. No fancy
+ * rewrite maker installed.
+ *   - Also check renaming under abstractions.
+ * ---------------------------------------------------------------------*)
+
+val imp_congrule = mk_thm([],
+             --`!P P' Q Q'. 
+                (P = P') ==> 
+                (P' ==> (Q = Q')) ==> 
+                ((P ==> Q) = (P' ==> Q'))`--);
+
+val imp_ss = empty_ss addcongrule imp_congrule;
+
+trace_level 5;
+SIMP_CONV imp_ss (--`(x = 3) ==> P x`--);
+SIMP_CONV imp_ss (--`(x = 3) ==> !x:num. P x`--);
+profile2 SIMP_CONV imp_ss (--`(x = (y:num)) ==> !y:num. P x`--);
+
+(* ---------------------------------------------------------------------
+ * Traversal with reduction under a different relation.
+ *
+ * The relation mimics an equivalence between different types of programs,
+ * e.g. a bisimilarity (?).
+ * ---------------------------------------------------------------------*)
+
+val _ = new_theory "junk" handle _ => ();
+val _ = new_type 0 "exp" handle _ => ();
+val _ = new_infix("==",(==`:exp->exp->bool`==),400) handle _ => ();
+val _ = new_constant("succ",(==`:exp->exp`==));
+val _ = new_constant("Prog",(==`:exp->bool`==));
+val _ = new_constant("Appl",(==`:exp->exp->exp`==));
+val _ = new_constant("Var",(==`:num->exp`==));
+
+val TRANS_THM = mk_thm([],(--`!x y z. (x == y) /\ (y == z) ==> (x == z)`--));
+val REFL_THM = mk_thm([],(--`!x. x == x`--));
+fun EQQ_REFL x = SPEC x REFL_THM;
+
+val eqq = #const (const_decl "==");
+val succ_rule = mk_thm([],
+        (--`!e e'. Prog e ==> (e == e') ==> (succ e == succ e')`--));
+val Appl_rule = mk_thm([],
+        (--`!e1 e1' e2 e2'. 
+            Prog e1 ==> Prog e2 ==> (e1 == e1') ==> (e2 == e2') ==> 
+                (Appl e1 e2 == Appl e1' e2')`--));
+
+
+val eqq_traversal_ts = 
+    empty_ts
+    addrelation mk_relation{REFL_THM=REFL_THM,TRANS_THM=TRANS_THM}
+    addcongrule succ_rule
+    addcongrule Appl_rule;
+
+val eqq_matcher = mk_reducer{
+                initial=THMLIST [],
+                name="slow eqq_matcher", 
+                addcontext=fn (THMLIST ctxt,thms) => THMLIST (thms@@ctxt),
+                apply=fn {solver,context=THMLIST ctxt} => FIRST_CONV (map (PART_MATCH (rand o rator o snd o strip_forall)) ctxt),
+                relation=eqq
+           };
+val eqq_matcher_ts = eqq_traversal_ts addrewriter eqq_matcher;
+
+
+val f = TRAVERSE (eqq_matcher_ts,eqq) [ASSUME(--`Var y == EE`--)];
+f (--`succ (Appl (Var y) x)`--);
+
+
+
+(* ---------------------------------------------------------------------
+ * Test multiple relations
+ *
+ * "==>" && "<=="
+ * ---------------------------------------------------------------------*)
+open Psyntax;
+val _ = new_theory "junk" handle _ => ();
+val _ = new_infix("<==",(==`:bool->bool->bool`==),400) handle _ => ();
+
+val IMP_TRANS_THM = mk_thm([],(--`!x y z. (x ==> y) /\ (y ==> z) ==> (x ==> z)`--));
+val IMP_REFL_THM = mk_thm([],(--`!x. x ==> x`--));
+val PMI_TRANS_THM = mk_thm([],(--`!x y z. (x <== y) /\ (y <== z) ==> (x <== z)`--));
+val PMI_REFL_THM = mk_thm([],(--`!x. x <== x`--));
+
+fun IMP_REFL x = SPEC x IMP_REFL_THM;
+fun PMI_REFL x = SPEC x PMI_REFL_THM;
+
+val imp = #const (const_decl "==>");
+val pmi = #const (const_decl "<==");
+
+(*
+  TAUT_PROVE(--`(A ==> A') ==> (A' ==> B' ==> B) ==> ((A' ==> B') ==> (A ==> B))`--);
+  TAUT_PROVE(--`(A' ==> A) ==> (~(A') ==> B ==> B') ==> ((B' ==> A') ==> (B ==> A))`--);
+  TAUT_PROVE(--`(A' ==> A) ==> (A' ==> B' ==> B) ==> ((A' /\ B') ==> (A /\ B))`--);
+  TAUT_PROVE(--`(A' ==> A) ==> (~A' ==> B' ==> B) ==> ((A' \/ B') ==> (A \/ B))`--);
+  TAUT_PROVE(--`(A ==> A') ==> (~A' ==> ~A)`--);
+*)
+
+val pmi_weaken_rule = mk_thm([], (--`(A = A') ==> (A <== A')`--));
+val pmi_imp_rule = mk_thm([],
+  (--`(A ==> A') ==> (A' ==> (B <== B')) ==> ((A ==> B) <== (A' ==> B'))`--));
+val pmi_pmi_rule = mk_thm([],
+  (--`(A <== A') ==> (~A' ==> B ==> B') ==> ((A <== B) <== (A' <== B'))`--));
+val pmi_conj_rule = mk_thm([],
+  (--`(A <== A') ==> (A' ==> (B <== B')) ==> ((A /\ B) <== (A' /\ B'))`--));
+val pmi_disj_rule = mk_thm([],
+  (--`(A <== A') ==> (~A' ==> (B <== B')) ==> ((A \/ B) <== (A' \/ B'))`--));
+val pmi_neg_rule = mk_thm([],
+  (--`(A ==> A') ==> ((~A) <== (~A'))`--));
+val pmi_forall_rule = mk_thm([],
+  (--`(!x:'a. P x <== P' x) ==> (FORALL P <== FORALL P')`--));
+val pmi_exists_rule = mk_thm([],
+  (--`(!x:'a. P x <== P' x) ==> (EXISTS P <== EXISTS P')`--));
+
+val imp_weaken_rule = mk_thm([], (--`(A = A') ==> (A ==> A')`--));
+val imp_imp_rule = mk_thm([],
+  (--`(A <== A') ==> (B ==> B') ==> ((A ==> B) ==> (A' ==> B'))`--));
+val imp_pmi_rule = mk_thm([],
+  (--`(A ==> A') ==> (B <== B') ==> ((A <== B) ==> (A' <== B'))`--));
+val imp_conj_rule = mk_thm([],
+  (--`(A ==> A') ==> (B ==> B') ==> ((A /\ B) ==> (A' /\ B'))`--));
+val imp_disj_rule = mk_thm([],
+  (--`(A ==> A') ==> (B ==> B') ==> ((A \/ B) ==> (A' \/ B'))`--));
+val imp_neg_rule = mk_thm([],
+  (--`(A <== A') ==> ((~A) ==> (~A'))`--));
+val imp_forall_rule = mk_thm([],
+  (--`(!x:'a. P x ==> P' x) ==> (FORALL P ==> FORALL P')`--));
+val imp_exists_rule = mk_thm([],
+  (--`(!x:'a. P x ==> P' x) ==> (EXISTS P ==> EXISTS P')`--);
+
+val imp_pmi_traversal_ts = 
+    empty_ts 
+    addrelation mk_relation{REFL_THM=IMP_REFL_THM,TRANS_THM=IMP_TRANS_THM}
+    addrelation mk_relation{REFL_THM=PMI_REFL_THM,TRANS_THM=PMI_TRANS_THM}
+    addrelation equality_rel
+    addweakenrule imp_weaken_rule
+    addweakenrule pmi_weaken_rule
+    addcongrule imp_imp_rule
+    addcongrule imp_pmi_rule
+    addcongrule imp_forall_rule
+    addcongrule imp_exists_rule
+    addcongrule imp_conj_rule
+    addcongrule imp_disj_rule
+    addcongrule imp_neg_rule
+    addcongrule pmi_imp_rule
+    addcongrule pmi_pmi_rule
+    addcongrule pmi_forall_rule
+    addcongrule pmi_exists_rule
+    addcongrule pmi_conj_rule
+    addcongrule pmi_disj_rule
+    addcongrule pmi_neg_rule;
+
+val IMP_TRUTH_INTRO = mk_thm([],(--`P ==> (T ==> P)`--));
+fun ENSURE_IMP thm = 
+    if (is_imp (concl thm)) then thm else MATCH_MP IMP_TRUTH_INTRO thm;
+fun IMP_CANON' thm = map ENSURE_IMP (IMP_CANON thm);
+val IMP_EQ_PMI = mk_thm([],(--`(A ==> B) ==> (B <== A)`--));
+fun PMI_CANON' thm = map (MATCH_MP IMP_EQ_PMI) (IMP_CANON' thm);
+
+IMP_CANON' (ASSUME(--`A ==> B`--));
+PMI_CANON' (ASSUME(--`A ==> B`--));
+IMP_CANON' (ASSUME(--`(A ==> B) /\ (B /\ C ==> D)`--));
+PMI_CANON' (ASSUME(--`(A ==> B) /\ (B /\ C ==> D)`--));
+PMI_CANON' (ASSUME(--`A /\ B`--));
+
+val imp_matcher = {
+                initial=THMLIST [],
+                name="slow imp matcher", 
+                addcontext=fn (THMLIST ctxt,thms) => THMLIST (flatten (map IMP_CANON' thms)@@ctxt),
+                apply=fn {solver,context=THMLIST ctxt} => FIRST_CONV (map (PART_MATCH (rand o rator o snd o strip_forall)) ctxt),
+                relation=imp
+           };
+
+val pmi_matcher = {
+                initial=THMLIST [],
+                name="slow pmi matcher", 
+                addcontext=fn (THMLIST ctxt,thms) => THMLIST (flatten (map PMI_CANON' thms)@@ctxt),
+                apply=fn {solver,context=THMLIST ctxt} => FIRST_CONV (map (PART_MATCH (rand o rator o snd o strip_forall)) ctxt),
+                relation=pmi
+           };
+val equality= #const (const_decl "=");
+val imp_pmi_ts = 
+    imp_pmi_traversal_ts 
+    addrewriter imp_matcher
+    addrewriter pmi_matcher
+    addrewriter (mk_reducer{initial=THMLIST [],name="beta conv",
+                            addcontext = #1,
+                            apply=K BETA_CONV,relation=equality});
+
+
+val fimp = TRAVERSE (imp_pmi_ts,imp) [ASSUME(--`!x:num. AA x ==> BB x`--)];
+val fpmi = TRAVERSE (imp_pmi_ts,pmi) [ASSUME(--`!x:num. AA x ==> BB x`--)];
+fimp (--`(AA:num->bool) 3`--);  (* what does AA 3 imply?? *)
+fpmi (--`(AA:num->bool) 3`--);  (* what implies AA 3?? *)
+fpmi (--`(BB:num->bool) 6`--);  (* what implies BB 6?? *)
+fimp (--`AA 3 /\ BB 6`--);      
+fimp (--`AA 3 \/ BB 6`--);
+fpmi (--`AA 3 \/ BB 6`--);
+fpmi (--`AA 3 /\ BB 6`--);
+fpmi (--`!x:num. AA x`--);
+fpmi (--`!x:num. BB x`--);
+fpmi (--`!x:num. AA x /\ BB 6`--); (* fails - congruence rules do not get reapplied again!! *)
+TRAVERSE_IN_CONTEXT imp_pmi_matcher_ts ctxt'' (--`~(BB 6)`--);
+
+
+(--`(!x. (P:'a -> boo B') ==> ((B' ==> A') ==> (B ==> A))`--);
+  TAUT_PROVE(--`(A' ==> A) ==> (A' ==> B' ==> B) ==> ((A' /\ B') ==> (A /\ B))`--);
+  TAUT_PROVE(--`(A' ==> A) ==> (~A' ==> B' ==> B) ==> ((A' \/ B') ==> (A \/ B))`--);
+  TAUT_PROVE(--`(A ==> A') ==> (~A' ==> ~A)`--);
+*)
+
+
+prove(--`(!x. (P:'a -> bool) x = P' x) ==> ((!x. P x) = (!x. P' x))`--,
+    REPEAT STRIP_TAC THEN ASM_REWRITE_TAC []);
+prove(--`(!x. (P:'a -> bool) x ==> P' x) ==> ((!x. P x) ==> (!x. P' x))`--,
+    REPEAT STRIP_TAC THEN FIRST_ASSUM MATCH_MP_TAC THEN ASM_REWRITE_TAC []);
+prove(--`(!x. (P:'a -> bool) x ==> P' x) ==> ((?x. P x) ==> (?x. P' x))`--,
+    REPEAT STRIP_TAC THEN EXISTS_TAC (--`x:'a`--) 
+    THEN FIRST_ASSUM MATCH_MP_TAC THEN ASM_REWRITE_TAC []);
+
+
+(* ---------------------------------------------------------------------
+ * Misc.
+ * ---------------------------------------------------------------------*)
+
+
+val P = (--`P:bool`--);
+val big = list_mk_conj (replicate P 10000);
+profile (fn tm => TRAVERSE null_ts tm handle UNCHANGED => TRUTH) big;
+profile (fn tm => (DEPTH_CONV NO_CONV tm ; ())) big;
+end;
+
+profile (fn tm => TRAVERSE ts'' tm handle UNCHANGED => TRUTH) big;
+*)
+
+@
+
+
+1.1
+log
+@Preterm and other changes, see 7.changes
+@
+text
+@@

@@ -1,0 +1,137 @@
+<TITLE>Theory: tree</TITLE>
+<H1>Theory: tree</H1>
+<H1>Parents</H1>
+    <UL>
+    <LI><A HREF = "list.html"><STRONG>list</STRONG></A>
+    </UL>
+
+
+<HR>
+<H1>Type constants</H1>
+    <UL>
+    <LI><STRONG>tree</STRONG>(Arity = 0)
+    </UL>
+
+
+<HR>
+<H1>Term constants</H1>
+    <UL>
+    <LI><STRONG>node_REP</STRONG><EM>:num list -> num</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>Is_tree_REP</STRONG><EM>:num -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>REP_tree</STRONG><EM>:tree -> num</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>ABS_tree</STRONG><EM>:num -> tree</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>node</STRONG><EM>:tree list -> tree</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>dest_node</STRONG><EM>:tree -> tree list</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>bht</STRONG><EM>:num -> tree -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>HT</STRONG><EM>:tree -> num</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>trf</STRONG><EM>:num -> ('b list -> 'b) -> tree -> 'b</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    </UL>
+
+
+<HR>
+<H1>Axioms</H1>
+<DL>
+
+</DL>
+
+
+<HR>
+<H1>Definitions</H1>
+<DL>
+<DT><STRONG>node_REP</STRONG>
+<DD>
+<PRE>
+|- (node_REP [] = 0) /\
+   (!t h. node_REP (CONS h t) = SUC (h + h) * 2 EXP node_REP t)
+</PRE>
+
+<DT><STRONG>Is_tree_REP</STRONG>
+<DD>
+<PRE>
+|- Is_tree_REP = (\t. !P. (!tl. EVERY P tl ==> P (node_REP tl)) ==> P t)
+</PRE>
+
+<DT><STRONG>tree_TY_DEF</STRONG>
+<DD>
+<PRE>
+|- ?rep. TYPE_DEFINITION Is_tree_REP rep
+</PRE>
+
+<DT><STRONG>tree_ISO_DEF</STRONG>
+<DD>
+<PRE>
+|- (!a. ABS_tree (REP_tree a) = a) /\
+   (!r. Is_tree_REP r = REP_tree (ABS_tree r) = r)
+</PRE>
+
+<DT><STRONG>node</STRONG>
+<DD>
+<PRE>
+|- !tl. node tl = ABS_tree (node_REP (MAP REP_tree tl))
+</PRE>
+
+<DT><STRONG>dest_node</STRONG>
+<DD>
+<PRE>
+|- !t. dest_node t = (@p. t = node p)
+</PRE>
+
+<DT><STRONG>bht</STRONG>
+<DD>
+<PRE>
+|- bht =
+   PRIM_REC (\tr. tr = node [])
+     (\res n tr. ?trl. (tr = node trl) /\ EVERY res trl)
+</PRE>
+
+<DT><STRONG>HT</STRONG>
+<DD>
+<PRE>
+|- !t. HT t = (@n. bht n t /\ (!m. m < n ==> ~(bht m t)))
+</PRE>
+
+<DT><STRONG>trf</STRONG>
+<DD>
+<PRE>
+|- !n f.
+     trf n f =
+     (@fn. !trl. HT (node trl) <= n ==> (fn (node trl) = f (MAP fn trl)))
+</PRE>
+
+</DL>
+
+
+<HR>
+<H1>Theorems</H1>
+<DL>
+<DT><STRONG>node_11</STRONG>
+<DD>
+<PRE>
+|- !tl1 tl2. (node tl1 = node tl2) = tl1 = tl2
+</PRE>
+
+<DT><STRONG>tree_Induct</STRONG>
+<DD>
+<PRE>
+|- !P. (!tl. EVERY P tl ==> P (node tl)) ==> (!t. P t)
+</PRE>
+
+<DT><STRONG>tree_Axiom</STRONG>
+<DD>
+<PRE>
+|- !f. ?!fn. !tl. fn (node tl) = f (MAP fn tl) tl
+</PRE>
+
+</DL>
+
+
+<HR>

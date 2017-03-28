@@ -1,0 +1,311 @@
+head	1.2;
+access;
+symbols
+	HOL97:1.2.2.2.0.2
+	bpHOL97:1.2.2.2
+	hol90_9_alpha:1.2.2.2
+	hol90_pre8_for_multiple_compilers:1.2.0.2
+	hol90_pre8_after_donalds_separate_compilation_changes:1.2
+	hol90_8_after_merging_Konrad_Elsa:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.2
+date	95.10.31.15.07.46;	author drs1004;	state Exp;
+branches
+	1.2.2.1;
+next	1.1;
+
+1.1
+date	95.10.16.13.30.23;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.30.23;	author rjb;	state Exp;
+branches
+	1.1.1.1.2.1;
+next	;
+
+1.1.1.1.2.1
+date	95.10.18.10.09.35;	author drs1004;	state Exp;
+branches;
+next	;
+
+1.2.2.1
+date	96.06.25.15.47.57;	author rjb;	state Exp;
+branches;
+next	1.2.2.2;
+
+1.2.2.2
+date	96.08.23.15.47.54;	author rjb;	state Exp;
+branches
+	1.2.2.2.2.1;
+next	;
+
+1.2.2.2.2.1
+date	97.07.11.15.33.33;	author kxs;	state Exp;
+branches;
+next	1.2.2.2.2.2;
+
+1.2.2.2.2.2
+date	97.10.05.21.11.26;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.2
+log
+@First phase of hol90.8 development.  hol90 now compiles using NJSML-CM
+108.5, with separate compilation of libraries.  System dependencies
+have been isolated in the makefiles and "portable.sml".
+
+This involved a large number of enhancments to the source files,
+most of which are documented in the 7.changes file (or will be shortly).
+See also the correpsonding email corrspondence between RJB, KLS, TFM,
+JRH and DRS that happened during this development.
+@
+text
+@signature Goalstack_sig =
+  sig
+    structure Thm : Thm_sig
+    type goalstack
+    type proofs
+
+    structure Functional :
+    sig
+      (* Starting a proof *)
+      val set_goal : Abbrev.goal -> goalstack
+      val add : goalstack -> proofs -> proofs
+
+      (* Undo *)
+      val backup : goalstack -> goalstack
+      val set_backup : int -> goalstack -> goalstack
+      val restart   : goalstack -> goalstack
+      val drop : proofs -> proofs
+
+      (* Applying a tactic to a goal *)
+      val expandf : Abbrev.tactic -> goalstack -> goalstack
+
+      (* Seeing what the state of the proof manager is *)
+      val current_goalstack : proofs -> goalstack
+      val top_thm : goalstack -> Thm.thm
+      val initial_goal : goalstack -> Abbrev.goal
+      val top_goal  : goalstack -> Abbrev.goal
+      val top_goals : goalstack -> Abbrev.goal list
+
+      (* Switch focus to a different subgoal (or proof attempt) *)
+      val rotate : int -> goalstack -> goalstack
+      val rotate_proofs : int -> proofs -> proofs
+
+    end
+
+    (* The "functions" here maintain a reference to an element of the 
+     * proofs type. For example, "set_goal" silently modifies the 
+     * current proofs to have the new goalstack as the focus of
+     * subsequent operations. For purely functional operations, i.e., 
+     * where no hidden state is being maintained, use the "Functional" 
+     * structure above.
+     ***********************************************************************)
+    structure Implicit :
+    sig
+      (* Starting a proof *)
+      val set_goal : Abbrev.goal -> proofs
+      val g : Thm.Term.term frag list -> proofs
+      val add : goalstack -> proofs
+
+      (* Undo *)
+      val backup : unit -> goalstack
+      val b : unit -> goalstack
+      val set_backup : int -> unit
+      val restart : unit -> goalstack
+      val drop : unit -> proofs
+
+      (* Applying a tactic to the current goal *)
+      val expandf : Abbrev.tactic -> goalstack
+      val expand : Abbrev.tactic -> goalstack
+      val e : Abbrev.tactic -> goalstack
+
+      (* Seeing what the state of the proof manager is *)
+      val top_thm : unit -> Thm.thm
+      val initial_goal : unit -> Abbrev.goal
+      val top_goal  : unit -> Abbrev.goal
+      val top_goals : unit -> Abbrev.goal list
+      val p : unit -> goalstack
+      val status : unit -> proofs
+
+      (* Switch focus to a different subgoal (or proof attempt) *)
+      val rotate : int -> goalstack
+      val rotate_proofs : int -> proofs
+      val r : int -> goalstack
+      val R : int -> proofs
+    end
+
+    (* Switch to a different prettyprinter for all goals *)
+    val set_goal_pp :(PP.ppstream -> Abbrev.goal -> unit)
+                       -> (PP.ppstream -> Abbrev.goal -> unit)
+    (* Standard system prettyprinter for goals *)
+    val std_goal_pp : (PP.ppstream -> Abbrev.goal -> unit)
+
+    (* Prettyprinters for the state of the proof manager *)
+    val pp_goalstack : PP.ppstream -> goalstack -> unit
+    val pp_proofs : PP.ppstream -> proofs -> unit
+  end
+@
+
+
+1.2.2.1
+log
+@The core of hol90.9.alpha now builds successfully with SML/NJ 109,
+SML/NJ 108.5 (using CM), SML/NJ 0.93, and Poly/ML 3.0.
+I have not yet tried rebuilding the theory files.
+@
+text
+@d46 1
+a46 1
+      val g : Thm.Term.term -> proofs
+@
+
+
+1.2.2.2
+log
+@Restored `g' to using raw quotations.
+@
+text
+@d46 1
+a46 1
+      val g : Thm.Term.term frag list -> proofs
+@
+
+
+1.2.2.2.2.1
+log
+@Updates to make HOP CM-friendly. gstack.sml.0 deleted because it was just a
+security copy.
+@
+text
+@d3 1
+a3 4
+    type term
+    type thm
+    type tactic
+    type goal
+d10 1
+a10 1
+      val set_goal : goal -> goalstack
+d24 4
+a27 4
+      val top_thm : goalstack -> thm
+      val initial_goal : goalstack -> goal
+      val top_goal  : goalstack -> goal
+      val top_goals : goalstack -> goal list
+d35 1
+a35 2
+    (*----------------------------------------------------------------------
+     * The "functions" here maintain a reference to an element of the 
+d41 1
+a41 1
+     *-----------------------------------------------------------------------*)
+d45 2
+a46 2
+      val set_goal : goal -> proofs
+      val g : term frag list -> proofs
+d62 4
+a65 4
+      val top_thm : unit -> thm
+      val initial_goal : unit -> goal
+      val top_goal  : unit -> goal
+      val top_goals : unit -> goal list
+d77 2
+a78 2
+    val set_goal_pp :(PP.ppstream -> goal -> unit)
+                       -> (PP.ppstream -> goal -> unit)
+d80 1
+a80 1
+    val std_goal_pp : (PP.ppstream -> goal -> unit)
+@
+
+
+1.2.2.2.2.2
+log
+@Changes so that frags are known.
+@
+text
+@d50 1
+a50 1
+      val g : term Portable.frag list -> proofs
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d10 1
+a10 1
+      val set_goal : goal -> goalstack
+d20 1
+a20 1
+      val expandf : tactic -> goalstack -> goalstack
+d25 3
+a27 3
+      val initial_goal : goalstack -> goal
+      val top_goal  : goalstack -> goal
+      val top_goals : goalstack -> goal list
+d45 1
+a45 1
+      val set_goal :goal -> proofs
+d57 3
+a59 3
+      val expandf : tactic -> goalstack
+      val expand : tactic -> goalstack
+      val e : tactic -> goalstack
+d63 3
+a65 3
+      val initial_goal : unit -> goal
+      val top_goal  : unit -> goal
+      val top_goals : unit -> goal list
+d77 4
+a80 2
+    val set_goal_pp :(PP.ppstream -> goal -> unit)
+                       -> (PP.ppstream -> goal -> unit)
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@
+
+
+1.1.1.1.2.1
+log
+@	Konrad's bug fixes and further development to hol90.7 after it's release.
+	Checked n on a side branch for later merging with the main trunk
+	(Elsa's revisions).  See doc/7.changes for details.
+@
+text
+@a78 2
+    (* Standard system prettyprinter for goals *)
+    val std_goal_pp : (PP.ppstream -> goal -> unit)
+@

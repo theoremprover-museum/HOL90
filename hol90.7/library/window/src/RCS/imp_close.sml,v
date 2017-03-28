@@ -1,0 +1,1057 @@
+head	4.1;
+access;
+symbols
+	HOL90-7:4.1;
+locks
+	slind:4.1; strict;
+comment	@# @;
+
+
+4.1
+date	94.09.10.03.42.51;	author jim;	state Exp;
+branches;
+next	0.1;
+
+0.1
+date	94.05.24.05.42.00;	author jug;	state Exp;
+branches;
+next	0.0;
+
+0.0
+date	94.05.12.00.13.36;	author jug;	state Exp;
+branches;
+next	;
+
+
+desc
+@window closing rules that preserve implication.
+@
+
+
+4.1
+log
+@Version released with HOL90.7.
+@
+text
+@(*--------------------------------------------------------------------------*)
+(*                  Copyright (c) Jim Grundy 1992                           *)
+(*                  All rights reserved                                     *)
+(*                                                                          *)
+(* Jim Grundy, hereafter referred to as `the Author', retains the copyright *)
+(* and all other legal rights to the Software contained in this file,       *)
+(* hereafter referred to as `the Software'.                                 *)
+(*                                                                          *)
+(* The Software is made available free of charge on an `as is' basis. No    *)
+(* guarantee, either express or implied, of maintenance, reliability,       *)
+(* merchantability or suitability for any purpose is made by the Author.    *)
+(*                                                                          *)
+(* The user is granted the right to make personal or internal use of the    *)
+(* Software provided that both:                                             *)
+(* 1. The Software is not used for commercial gain.                         *)
+(* 2. The user shall not hold the Author liable for any consequences        *)
+(*    arising from use of the Software.                                     *)
+(*                                                                          *)
+(* The user is granted the right to further distribute the Software         *)
+(* provided that both:                                                      *)
+(* 1. The Software and this statement of rights are not modified.           *)
+(* 2. The Software does not form part or the whole of a system distributed  *)
+(*    for commercial gain.                                                  *)
+(*                                                                          *)
+(* The user is granted the right to modify the Software for personal or     *)
+(* internal use provided that all of the following conditions are observed: *)
+(* 1. The user does not distribute the modified software.                   *)
+(* 2. The modified software is not used for commercial gain.                *)
+(* 3. The Author retains all rights to the modified software.               *)
+(*                                                                          *)
+(* Anyone seeking a licence to use this software for commercial purposes is *)
+(* invited to contact the Author.                                           *)
+(*--------------------------------------------------------------------------*)
+(*==========================================================================*)
+(* CONTENTS: window inference preserving implication (and backward implies) *)
+(*==========================================================================*)
+(*$Id: imp_close.sml,v 0.1 1994/05/24 05:42:00 jug Exp $*)
+
+structure EqClose : sig end =
+
+struct
+
+val IMP_CONJ1_THM =
+    prove
+    (
+        (--`!A B C. (B ==> (A ==> C)) ==> ((A /\ B) ==> (C /\ B))`--)
+    ,
+        (REPEAT GEN_TAC) THEN
+        (BOOL_CASES_TAC (--`A:bool`--)) THEN
+        (BOOL_CASES_TAC (--`B:bool`--)) THEN
+        (REWRITE_TAC [])
+    );
+
+(*        (B |- A ==> C)                                                     *)
+(* ----------------------------  IMP_CONJ1_CLOSE "A /\ B"                    *)
+(*  (|- (A /\ B) ==> (C /\ B))                                               *)
+fun IMP_CONJ1_CLOSE tm th =
+    let val {conj1=a,conj2=b} = dest_conj tm
+        and c = rand (concl th)
+    in
+        MP (SPECL [a,b,c] IMP_CONJ1_THM) (DISCH b th)
+    end;
+
+val IMP_CONJ2_THM =
+    prove
+    (
+        (--`!A B C. (A ==> (B ==> C)) ==> ((A /\ B) ==> (A /\ C))`--)
+    ,
+        (REPEAT GEN_TAC) THEN
+        (BOOL_CASES_TAC (--`A:bool`--)) THEN
+        (BOOL_CASES_TAC (--`B:bool`--)) THEN
+        (REWRITE_TAC [])
+    );
+
+(*        (A |- B ==> C)                                                     *)
+(* ----------------------------  IMP_CONJ2_CLOSE "A /\ B"                    *)
+(*  (|- (A /\ B) ==> (A /\ C))                                               *)
+fun IMP_CONJ2_CLOSE tm th =
+    let val {conj1=a,conj2=b} = dest_conj tm 
+        and c = rand (concl th)
+    in
+        MP (SPECL [a,b,c] IMP_CONJ2_THM) (DISCH a th)
+    end;
+
+val IMP_IMP1_THM =
+    prove
+    (
+        (--`!A B C. (~B ==> (A <== C)) ==> ((A ==> B) ==> (C ==> B))`--)
+    ,
+        (REPEAT GEN_TAC) THEN
+        (REWRITE_TAC [PMI_DEF]) THEN
+        (BOOL_CASES_TAC (--`A:bool`--)) THEN
+        (BOOL_CASES_TAC (--`B:bool`--)) THEN
+        (REWRITE_TAC [])
+    );
+
+(*         (~B |- A <== C)                                                   *)
+(* ------------------------------    IMP_IMP1_CLOSE "A ==> B"                *)
+(*  (|- (A ==> B) ==> (C ==> B))                                             *)
+fun IMP_IMP1_CLOSE tm th = 
+    let val {ant=a,conseq=b} = dest_imp tm 
+        and c = rand (concl th)
+    in
+        MP (SPECL [a,b,c] IMP_IMP1_THM) (DISCH (mk_neg b) th)
+    end;
+
+val IMP_IMP2_THM =
+    prove
+    (
+        (--`!A B C. (A ==> (B ==> C)) ==> ((A ==> B) ==> (A ==> C))`--)
+    ,
+        (REPEAT GEN_TAC) THEN
+        (REWRITE_TAC [PMI_DEF]) THEN
+        (BOOL_CASES_TAC (--`A:bool`--)) THEN
+        (BOOL_CASES_TAC (--`B:bool`--)) THEN
+        (REWRITE_TAC [])
+    );
+
+(*         (A |- B ==> C)                                                    *)
+(* ------------------------------    IMP_IMP2_CLOSE "A ==> B"                *)
+(*  (|- (A ==> B) ==> (A ==> C))                                             *)
+fun IMP_IMP2_CLOSE tm th =
+    let val {ant=a,conseq=b} = dest_imp tm 
+        and c = rand (concl th)
+    in
+        MP (SPECL [a,b,c] IMP_IMP2_THM) (DISCH a th)
+    end;
+    
+val IMP_PMI1_THM =
+    prove
+    (
+        (--`!A B C. (B ==> (A ==> C)) ==> ((A <== B) ==> (C <== B))`--)
+    ,
+        (REPEAT GEN_TAC) THEN
+        (REWRITE_TAC [PMI_DEF]) THEN
+        (BOOL_CASES_TAC (--`A:bool`--)) THEN
+        (BOOL_CASES_TAC (--`B:bool`--)) THEN
+        (REWRITE_TAC [])
+    );
+
+(*         (B |- A ==> C)                                                    *)
+(* ------------------------------    IMP_PMI1_CLOSE "A <== B"                *)
+(*  (|- (A <== B) ==> (C <== B))                                             *)
+fun IMP_PMI1_CLOSE tm th =
+    let val {conseq=a,ant=b} = dest_pmi tm 
+        and c = rand (concl th)
+    in
+        MP (SPECL [a,b,c] IMP_PMI1_THM) (DISCH b th)
+    end;
+
+val IMP_PMI2_THM =
+    prove
+    (
+        (--`!A B C. (~A ==> (B <== C)) ==> ((A <== B) ==> (A <== C))`--)
+    ,
+        (REPEAT GEN_TAC) THEN
+        (REWRITE_TAC [PMI_DEF]) THEN
+        (BOOL_CASES_TAC (--`A:bool`--)) THEN
+        (BOOL_CASES_TAC (--`B:bool`--)) THEN
+        (REWRITE_TAC [])
+    );
+    
+(*         (~A |- B <== C)                                                   *)
+(* ------------------------------    IMP_PMI2_CLOSE "A <== B"                *)
+(*  (|- (A <== B) ==> (A <== C))                                             *)
+fun IMP_PMI2_CLOSE tm th = 
+    let val {conseq=a,ant=b} = dest_pmi tm 
+        and c = rand (concl th)
+    in
+        MP (SPECL [a,b,c] IMP_PMI2_THM) (DISCH (mk_neg a) th)
+    end;
+
+val IMP_DISJ1_THM =
+    prove
+    (
+        (--`!A B C. (~B ==> (A ==> C)) ==> ((A \/ B) ==> (C \/ B))`--)
+    ,
+        (REPEAT GEN_TAC) THEN
+        (BOOL_CASES_TAC (--`A:bool`--)) THEN
+        (BOOL_CASES_TAC (--`B:bool`--)) THEN
+        (REWRITE_TAC [])
+    );
+
+(*        (~B |- A ==> C)                                                    *)
+(* ----------------------------  IMP_DISJ1_CLOSE "A \/ B"                    *)
+(*  (|- (A \/ B) ==> (C \/ B))                                               *)
+fun IMP_DISJ1_CLOSE tm th =
+    let val {disj1=a,disj2=b} = dest_disj tm 
+        and c = rand (concl th)
+    in
+        MP (SPECL [a,b,c] IMP_DISJ1_THM) (DISCH (mk_neg b) th)
+    end;
+
+val IMP_DISJ2_THM =
+    prove
+    (
+        (--`!A B C. (~A ==> (B ==> C)) ==> ((A \/ B) ==> (A \/ C))`--)
+    ,
+        (REPEAT GEN_TAC) THEN
+        (BOOL_CASES_TAC (--`A:bool`--)) THEN
+        (BOOL_CASES_TAC (--`B:bool`--)) THEN
+        (REWRITE_TAC [])
+    );
+
+(*        (~A |- B ==> C)                                                    *)
+(* ----------------------------  IMP_DISJ2_CLOSE "A \/ B"                    *)
+(*  (|- (A \/ B) ==> (A \/ C))                                               *)
+fun IMP_DISJ2_CLOSE tm th =
+    let val {disj1=a,disj2=b} = dest_disj tm 
+        and c = rand (concl th)
+    in
+        MP (SPECL [a,b,c] IMP_DISJ2_THM) (DISCH (mk_neg a) th)
+    end;
+
+val IMP_NEG_THM =
+    prove
+    (
+        (--`!A B. (A <== B) ==> (~A ==> ~B)`--)
+    ,
+        (REPEAT GEN_TAC) THEN
+        (REWRITE_TAC [PMI_DEF]) THEN
+        (BOOL_CASES_TAC (--`A:bool`--)) THEN
+        (REWRITE_TAC [])
+    );
+
+(*   (|- A <== B)                                                            *)
+(* ----------------   IMP_NEG_CLOSE "~A"                                     *)
+(*  (|- ~A ==> ~B)                                                           *)
+fun IMP_NEG_CLOSE (tm:term) th =
+    let val {conseq=a,ant=b} = dest_pmi (concl th) in
+        MP (SPECL [a,b] IMP_NEG_THM) th
+    end;
+
+(*      (|- A ==> B)                                                         *)
+(* -----------------------   IMP_ALL_CLOSE "!v.A"                            *)
+(*  (|- (!v.A) ==> (!v.B)                                                    *)
+fun IMP_ALL_CLOSE tm th =
+    let val v = #Bvar(dest_forall tm) in
+        DISCH tm (GEN v (MP th (SPEC v (ASSUME tm))))
+    end;
+
+(*      (|- B ==> A)                                                         *)
+(* -----------------------   IMP_EXISTS_CLOSE "?v.A"                         *)
+(*  (|- (?v.B) ==> (?v.A)                                                    *)
+fun IMP_EXISTS_CLOSE tm th =
+    let val v = #Bvar(dest_exists tm) in
+	EXISTS_IMP v th
+    end;
+
+val PMI_CONJ1_THM =
+    prove
+    (
+        (--`!A B C. (B ==> (A <== C)) ==> ((A /\ B) <== (C /\ B))`--)
+    ,
+        (REPEAT GEN_TAC) THEN
+        (REWRITE_TAC [PMI_DEF]) THEN
+        (BOOL_CASES_TAC (--`A:bool`--)) THEN
+        (BOOL_CASES_TAC (--`B:bool`--)) THEN
+        (REWRITE_TAC [])
+    );
+
+(*        (B |- A <== C)                                                     *)
+(* ----------------------------  PMI_CONJ1_CLOSE "A /\ B"                    *)
+(*  (|- (A /\ B) <== (C /\ B))                                               *)
+fun PMI_CONJ1_CLOSE tm th =
+    let val {conj1=a,conj2=b} = dest_conj tm 
+        and c = rand (concl th)
+    in
+        MP (SPECL [a,b,c] PMI_CONJ1_THM) (DISCH b th)
+    end;
+
+val PMI_CONJ2_THM =
+    prove
+    (
+        (--`!A B C. (A ==> (B <== C)) ==> ((A /\ B) <== (A /\ C))`--)
+    ,
+        (REPEAT GEN_TAC) THEN
+        (REWRITE_TAC [PMI_DEF]) THEN
+        (BOOL_CASES_TAC (--`A:bool`--)) THEN
+        (BOOL_CASES_TAC (--`B:bool`--)) THEN
+        (REWRITE_TAC [])
+    );
+
+(*        (A |- B <== C)                                                     *)
+(* ----------------------------  PMI_CONJ2_CLOSE "A /\ B"                    *)
+(*  (|- (A /\ B) <== (A /\ C))                                               *)
+fun PMI_CONJ2_CLOSE tm th =
+    let val {conj1=a,conj2=b} = dest_conj tm 
+        and c = rand (concl th)
+    in
+        MP (SPECL [a,b,c] PMI_CONJ2_THM) (DISCH a th)
+    end;
+
+val PMI_IMP1_THM =
+    prove
+    (
+        (--`!A B C. (~B ==> (A ==> C)) ==> ((A ==> B) <== (C ==> B))`--)
+    ,
+        (REPEAT GEN_TAC) THEN
+        (REWRITE_TAC [PMI_DEF]) THEN
+        (BOOL_CASES_TAC (--`A:bool`--)) THEN
+        (BOOL_CASES_TAC (--`B:bool`--)) THEN
+        (REWRITE_TAC [])
+    );
+
+(*         (~B |- A ==> C)                                                   *)
+(* ------------------------------    PMI_IMP1_CLOSE "A ==> B"                *)
+(*  (|- (A ==> B) <== (C ==> B))                                             *)
+fun PMI_IMP1_CLOSE tm th =
+    let val {ant=a,conseq=b} = dest_imp tm 
+        and c = rand (concl th)
+    in
+        MP (SPECL [a,b,c] PMI_IMP1_THM) (DISCH (mk_neg b) th)
+    end;
+
+val PMI_IMP2_THM =
+    prove
+    (
+        (--`!A B C. (A ==> (B <== C)) ==> ((A ==> B) <== (A ==> C))`--)
+    ,
+        (REPEAT GEN_TAC) THEN
+        (REWRITE_TAC [PMI_DEF]) THEN
+        (BOOL_CASES_TAC (--`A:bool`--)) THEN
+        (BOOL_CASES_TAC (--`B:bool`--)) THEN
+        (REWRITE_TAC [])
+    );
+
+(*         (A |- B <== C)                                                    *)
+(* ------------------------------    PMI_IMP2_CLOSE "A ==> B"                *)
+(*  (|- (A ==> B) <== (A ==> C))                                             *)
+fun PMI_IMP2_CLOSE tm th =
+    let val {ant=a,conseq=b} = dest_imp tm 
+        and c = rand (concl th)
+    in
+        MP (SPECL [a,b,c] PMI_IMP2_THM) (DISCH a th)
+    end;
+
+val PMI_PMI1_THM =
+    prove
+    (
+        (--`!A B C. (B ==> (A <== C)) ==> ((A <== B) <== (C <== B))`--)
+    ,
+        (REPEAT GEN_TAC) THEN
+        (REWRITE_TAC [PMI_DEF]) THEN
+        (BOOL_CASES_TAC (--`A:bool`--)) THEN
+        (BOOL_CASES_TAC (--`B:bool`--)) THEN
+        (REWRITE_TAC [])
+    );
+
+(*         (B |- A <== C)                                                    *)
+(* ------------------------------    PMI_PMI1_CLOSE "A <== B"                *)
+(*  (|- (A <== B) <== (C <== B))                                             *)
+fun PMI_PMI1_CLOSE tm th =
+    let val {conseq=a,ant=b} = dest_pmi tm 
+        and c = rand (concl th)
+    in
+        MP (SPECL [a,b,c] PMI_PMI1_THM) (DISCH b th)
+    end;
+
+val PMI_PMI2_THM =
+    prove
+    (
+        (--`!A B C. (~A ==> (B ==> C)) ==> ((A <== B) <== (A <== C))`--)
+    ,
+        (REPEAT GEN_TAC) THEN
+        (REWRITE_TAC [PMI_DEF]) THEN
+        (BOOL_CASES_TAC (--`A:bool`--)) THEN
+        (BOOL_CASES_TAC (--`B:bool`--)) THEN
+        (REWRITE_TAC [])
+    );
+
+(*         (~A |- B ==> C)                                                   *)
+(* ------------------------------    PMI_PMI2_CLOSE "A <== B"                *)
+(*  (|- (A <== B) <== (A <== C))                                             *)
+fun PMI_PMI2_CLOSE tm th =
+    let val {conseq=a,ant=b} = dest_pmi tm 
+        and c = rand (concl th)
+    in
+        MP (SPECL [a,b,c] PMI_PMI2_THM) (DISCH (mk_neg a) th)
+    end;
+
+val PMI_DISJ1_THM =
+    prove
+    (
+        (--`!A B C. (~B ==> (A <== C)) ==> ((A \/ B) <== (C \/ B))`--)
+    ,
+        (REPEAT GEN_TAC) THEN
+        (REWRITE_TAC [PMI_DEF]) THEN
+        (BOOL_CASES_TAC (--`A:bool`--)) THEN
+        (BOOL_CASES_TAC (--`B:bool`--)) THEN
+        (REWRITE_TAC [])
+    );
+
+(*        (~B |- A <== C)                                                    *)
+(* ----------------------------  PMI_DISJ1_CLOSE "A \/ B"                    *)
+(*  (|- (A \/ B) <== (C \/ B))                                               *)
+fun PMI_DISJ1_CLOSE tm th =
+    let val {disj1=a,disj2=b} = dest_disj tm 
+        and c = rand (concl th)
+    in
+        MP (SPECL [a,b,c] PMI_DISJ1_THM) (DISCH (mk_neg b) th)
+    end;
+
+val PMI_DISJ2_THM =
+    prove
+    (
+        (--`!A B C. (~A ==> (B <== C)) ==> ((A \/ B) <== (A \/ C))`--)
+    ,
+        (REPEAT GEN_TAC) THEN
+        (REWRITE_TAC [PMI_DEF]) THEN
+        (BOOL_CASES_TAC (--`A:bool`--)) THEN
+        (BOOL_CASES_TAC (--`B:bool`--)) THEN
+        (REWRITE_TAC [])
+    );
+
+(*        (~A |- B <== C)                                                    *)
+(* ----------------------------  PMI_DISJ2_CLOSE "A \/ B"                    *)
+(*  (|- (A \/ B) <== (A \/ C))                                               *)
+fun PMI_DISJ2_CLOSE tm th =
+    let val {disj1=a,disj2=b} = dest_disj tm 
+        and c = rand (concl th)
+    in
+        MP (SPECL [a,b,c] PMI_DISJ2_THM) (DISCH (mk_neg a) th)
+    end;
+
+val PMI_NEG_THM =
+    prove
+    (
+        (--`!A B. (A ==> B) ==> (~A <== ~B)`--)
+    ,
+        (REPEAT GEN_TAC) THEN
+        (REWRITE_TAC [PMI_DEF]) THEN
+        (BOOL_CASES_TAC (--`A:bool`--)) THEN
+        (REWRITE_TAC [])
+    );
+
+(*   (|- A ==> B)                                                            *)
+(* ----------------   PMI_NEG_CLOSE "~A"                                     *)
+(*  (|- ~A <== ~B)                                                           *)
+fun PMI_NEG_CLOSE (tm:term) th =
+    let val {ant=a,conseq=b} = dest_imp (concl th) in
+        MP (SPECL [a,b] PMI_NEG_THM) th
+    end;
+
+(*      (|- A <== B)                                                         *)
+(* -----------------------   PMI_ALL_CLOSE "!v.A"                            *)
+(*  (|- (!v.A) <== (!v.B)                                                    *)
+fun PMI_ALL_CLOSE tm th =
+    let val b = rand (concl th)
+        and v = #Bvar(dest_forall tm)
+    in
+        IMP_PMI (IMP_ALL_CLOSE (mk_forall {Bvar=v,Body=b}) (PMI_IMP th))
+    end;
+
+(*      (|- B <== A)                                                         *)
+(* -----------------------   PMI_EXIST_CLOSE "?v.A"                          *)
+(*  (|- (?v.B) <== (?v.A)                                                    *)
+fun PMI_EXISTS_CLOSE tm th =
+    let val v = #Bvar(dest_exists tm) in
+	EXISTS_PMI v th
+    end;
+
+(* Put all these rules in the database.                                      *)
+
+val dummy =
+(
+store_rule
+    (
+        [RATOR,RAND],
+        is_conj,
+        K (K imp_tm),
+        K (K imp_tm),
+        (fn tm => SMASH (ASSUME (rand tm))),
+        IMP_CONJ1_CLOSE
+    );
+store_rule
+    (
+        [RAND],
+        is_conj,
+        K (K imp_tm),
+        K (K imp_tm),
+        (fn tm => SMASH (ASSUME (rand (rator tm)))),
+        IMP_CONJ2_CLOSE
+    );
+store_rule
+    (
+        [RATOR,RAND],
+        is_trueimp,
+        K (K pmi_tm),
+        K (K imp_tm),
+        (fn tm => SMASH (ASSUME (mk_neg (rand tm)))),
+        IMP_IMP1_CLOSE
+    );
+store_rule
+    (
+        [RAND],
+        is_trueimp,
+        K (K imp_tm),
+        K (K imp_tm),
+        (fn tm => SMASH (ASSUME (rand (rator tm)))),
+        IMP_IMP2_CLOSE
+    );
+store_rule
+    (
+        [RATOR,RAND],
+        is_pmi,
+        K (K imp_tm),
+        K (K imp_tm),
+        (fn tm => SMASH (ASSUME (rand tm))),
+        IMP_PMI1_CLOSE
+    );
+store_rule
+    (
+        [RAND],
+        is_pmi,
+        K (K pmi_tm),
+        K (K imp_tm),
+        (fn tm => SMASH (ASSUME (mk_neg (rand (rator tm))))),
+        IMP_PMI2_CLOSE
+    );
+store_rule
+    (
+        [RATOR,RAND],
+        is_disj,
+        K (K imp_tm),
+        K (K imp_tm),
+        (fn tm => SMASH (ASSUME (mk_neg (rand tm)))),
+        IMP_DISJ1_CLOSE
+    );
+store_rule
+    (
+        [RAND],
+        is_disj,
+        K (K imp_tm),
+        K (K imp_tm),
+        (fn tm => SMASH (ASSUME (mk_neg (rand (rator tm))))),
+        IMP_DISJ2_CLOSE
+    );
+store_rule
+    (
+        [RAND],
+        is_neg,
+        K (K pmi_tm),
+        K (K imp_tm),
+        K [],
+        IMP_NEG_CLOSE
+    );
+store_rule
+    (
+        [RAND,BODY],
+        is_forall,
+        K (K imp_tm),
+        K (K imp_tm),
+        K [],
+        IMP_ALL_CLOSE
+        );
+store_rule
+    (
+        [RAND,BODY],
+        is_exists,
+        K (K imp_tm),
+        K (K imp_tm),
+        K [],
+        IMP_EXISTS_CLOSE
+        );
+store_rule
+    (
+        [RATOR,RAND],
+        is_conj,
+        K (K pmi_tm),
+        K (K pmi_tm),
+        (fn tm => SMASH (ASSUME (rand tm))),
+        PMI_CONJ1_CLOSE
+    );
+store_rule
+    (
+        [RAND],
+        is_conj,
+        K (K pmi_tm),
+        K (K pmi_tm),
+        (fn tm => SMASH (ASSUME (rand (rator tm)))),
+        PMI_CONJ2_CLOSE
+    );
+store_rule
+    (
+        [RATOR,RAND],
+        is_trueimp,
+        K (K imp_tm),
+        K (K pmi_tm),
+        (fn tm => SMASH (ASSUME (mk_neg (rand tm)))),
+        PMI_IMP1_CLOSE
+    );
+store_rule
+    (
+        [RAND],
+        is_trueimp,
+        K (K pmi_tm),
+        K (K pmi_tm),
+        (fn tm => SMASH (ASSUME (rand (rator tm)))),
+        PMI_IMP2_CLOSE
+    );
+store_rule
+    (
+        [RATOR,RAND],
+        is_pmi,
+        K (K pmi_tm),
+        K (K pmi_tm),
+        (fn tm => SMASH (ASSUME (rand tm))),
+        PMI_PMI1_CLOSE
+    );
+store_rule
+    (
+        [RAND],
+        is_pmi,
+        K (K imp_tm),
+        K (K pmi_tm),
+        (fn tm => SMASH (ASSUME (mk_neg (rand (rator tm))))),
+        PMI_PMI2_CLOSE
+    );
+store_rule
+    (
+        [RATOR,RAND],
+        is_disj,
+        K (K pmi_tm),
+        K (K pmi_tm),
+        (fn tm => SMASH (ASSUME (mk_neg (rand tm)))),
+        PMI_DISJ1_CLOSE
+    );
+store_rule
+    (
+        [RAND],
+        is_disj,
+        K (K pmi_tm),
+        K (K pmi_tm),
+        (fn tm => SMASH (ASSUME (mk_neg (rand (rator tm))))),
+        PMI_DISJ2_CLOSE
+    );
+store_rule
+    (
+        [RAND],
+        is_neg,
+        K (K imp_tm),
+        K (K pmi_tm),
+        K [],
+        PMI_NEG_CLOSE
+    );
+store_rule
+    (
+        [RAND,BODY],
+        is_forall,
+        K (K pmi_tm),
+        K (K pmi_tm),
+        K [],
+        PMI_ALL_CLOSE
+        );
+store_rule
+    (
+        [RAND,BODY],
+        is_exists,
+        K (K pmi_tm),
+        K (K pmi_tm),
+        K [],
+        PMI_EXISTS_CLOSE
+        )
+);
+
+end;
+@
+
+
+0.1
+log
+@Reverse the direction of all the close rules as relations in the
+system now have the opposite since.
+The extry in the rule table for finding the assumptions of the child
+window now just gets passed the focus of the parent and just returns
+the new assumptions.
+The entry in the rule table for finding the variables bound by a rule has
+been dropped.
+@
+text
+@d37 1
+a37 1
+(*$Id: imp_close.sml,v 0.0 1994/05/12 00:13:36 jug Exp jug $*)
+@
+
+
+0.0
+log
+@*** empty log message ***
+@
+text
+@d37 1
+a37 1
+(*$Id: imp_close.ml,v 3.1 1993/12/07 14:15:19 jg Exp $*)
+d46 1
+a46 1
+        (--`!A B C. (B ==> (C ==> A)) ==> ((C /\ B) ==> (A /\ B))`--)
+d54 1
+a54 1
+(*        (B |- C ==> A)                                                     *)
+d56 1
+a56 1
+(*  (|- (C /\ B) ==> (A /\ B))                                               *)
+d59 1
+a59 1
+        and c = rand (rator (concl th))
+d67 1
+a67 1
+        (--`!A B C. (A ==> (C ==> B)) ==> ((A /\ C) ==> (A /\ B))`--)
+d75 1
+a75 1
+(*        (A |- C ==> B)                                                     *)
+d77 1
+a77 1
+(*  (|- (A /\ C) ==> (A /\ B))                                               *)
+d80 1
+a80 1
+        and c = rand (rator (concl th)) 
+d88 1
+a88 1
+        (--`!A B C. (~B ==> (C <== A)) ==> ((C ==> B) ==> (A ==> B))`--)
+d97 1
+a97 1
+(*         (~B |- C <== A)                                                   *)
+d99 1
+a99 1
+(*  (|- (C ==> B) ==> (A ==> B))                                             *)
+d102 1
+a102 1
+        and c = rand (rator (concl th))
+d110 1
+a110 1
+        (--`!A B C. (A ==> (C ==> B)) ==> ((A ==> C) ==> (A ==> B))`--)
+d119 1
+a119 1
+(*         (A |- C ==> B)                                                    *)
+d121 1
+a121 1
+(*  (|- (A ==> C) ==> (A ==> B))                                             *)
+d124 1
+a124 1
+        and c = rand (rator (concl th))
+d132 1
+a132 1
+        (--`!A B C. (B ==> (C ==> A)) ==> ((C <== B) ==> (A <== B))`--)
+d141 1
+a141 1
+(*         (B |- C ==> A)                                                    *)
+d143 1
+a143 1
+(*  (|- (C <== B) ==> (A <== B))                                             *)
+d146 1
+a146 1
+        and c = rand (rator (concl th))
+d154 1
+a154 1
+        (--`!A B C. (~A ==> (C <== B)) ==> ((A <== C) ==> (A <== B))`--)
+d163 1
+a163 1
+(*         (~A |- C <== B)                                                   *)
+d165 1
+a165 1
+(*  (|- (A <== C) ==> (A <== B))                                             *)
+d168 1
+a168 1
+        and c = rand (rator (concl th))
+d176 1
+a176 1
+        (--`!A B C. (~B ==> (C ==> A)) ==> ((C \/ B) ==> (A \/ B))`--)
+d184 1
+a184 1
+(*        (~B |- C ==> A)                                                    *)
+d186 1
+a186 1
+(*  (|- (C \/ B) ==> (A \/ B))                                               *)
+d189 1
+a189 1
+        and c = rand (rator (concl th))
+d197 1
+a197 1
+        (--`!A B C. (~A ==> (C ==> B)) ==> ((A \/ C) ==> (A \/ B))`--)
+d205 1
+a205 1
+(*        (~A |- C ==> B)                                                    *)
+d207 1
+a207 1
+(*  (|- (A \/ C) ==> (A \/ B))                                               *)
+d210 1
+a210 1
+        and c = rand (rator (concl th))
+d218 1
+a218 1
+        (--`!A B. (B <== A) ==> ((~B) ==> (~A))`--)
+d226 3
+a228 3
+(*      (|- B <== A)                                                         *)
+(* --------------------   IMP_NEG_CLOSE "~A"                                 *)
+(*  (|- (~B) ==> (~A))                                                       *)
+d230 1
+a230 1
+    let val {conseq=b,ant=a} = dest_pmi (concl th) in
+d234 1
+a234 1
+(*      (|- B ==> A)                                                         *)
+d236 1
+a236 1
+(*  (|- (!v.B) ==> (!v.A)                                                    *)
+d238 3
+a240 5
+    let val {Bvar=v,Body=a} = dest_forall tm 
+        and b = rand (rator (concl th)) in
+    let val vb = mk_forall {Bvar=v,Body=b} in
+        DISCH vb (GEN v (MP th (SPEC v (ASSUME vb))))
+    end end;
+d245 4
+a248 1
+fun IMP_EXISTS_CLOSE tm th = EXISTS_IMP (bndvar (rand tm)) th;
+d253 1
+a253 1
+        (--`!A B C. (B ==> (C <== A)) ==> ((C /\ B) <== (A /\ B))`--)
+d262 1
+a262 1
+(*        (B |- C <== A)                                                     *)
+d264 1
+a264 1
+(*  (|- (C /\ B) <== (A /\ B))                                               *)
+d267 1
+a267 1
+        and c = rand (rator (concl th)) 
+d275 1
+a275 1
+        (--`!A B C. (A ==> (C <== B)) ==> ((A /\ C) <== (A /\ B))`--)
+d284 1
+a284 1
+(*        (A |- C <== B)                                                     *)
+d286 1
+a286 1
+(*  (|- (A /\ C) <== (A /\ B))                                               *)
+d289 1
+a289 1
+        and c = rand (rator (concl th)) 
+d297 1
+a297 1
+        (--`!A B C. (~B ==> (C ==> A)) ==> ((C ==> B) <== (A ==> B))`--)
+d306 1
+a306 1
+(*         (~B |- C ==> A)                                                   *)
+d308 1
+a308 1
+(*  (|- (C ==> B) <== (A ==> B))                                             *)
+d311 1
+a311 1
+        and c = rand (rator (concl th)) 
+d319 1
+a319 1
+        (--`!A B C. (A ==> (C <== B)) ==> ((A ==> C) <== (A ==> B))`--)
+d328 1
+a328 1
+(*         (A |- C <== B)                                                    *)
+d330 1
+a330 1
+(*  (|- (A ==> C) <== (A ==> B))                                             *)
+d333 1
+a333 1
+        and c = rand (rator (concl th)) 
+d341 1
+a341 1
+        (--`!A B C. (B ==> (C <== A)) ==> ((C <== B) <== (A <== B))`--)
+d350 1
+a350 1
+(*         (B |- C <== A)                                                    *)
+d352 1
+a352 1
+(*  (|- (C <== B) <== (A <== B))                                             *)
+d355 1
+a355 1
+        and c = rand (rator (concl th)) 
+d363 1
+a363 1
+        (--`!A B C. (~A ==> (C ==> B)) ==> ((A <== C) <== (A <== B))`--)
+d372 1
+a372 1
+(*         (~A |- C ==> B)                                                   *)
+d374 1
+a374 1
+(*  (|- (A <== C) <== (A <== B))                                             *)
+d377 1
+a377 1
+        and c = rand (rator (concl th)) 
+d385 1
+a385 1
+        (--`!A B C. (~B ==> (C <== A)) ==> ((C \/ B) <== (A \/ B))`--)
+d394 1
+a394 1
+(*        (~B |- C <== A)                                                    *)
+d396 1
+a396 1
+(*  (|- (C \/ B) <== (A \/ B))                                               *)
+d399 1
+a399 1
+        and c = rand (rator (concl th)) 
+d407 1
+a407 1
+        (--`!A B C. (~A ==> (C <== B)) ==> ((A \/ C) <== (A \/ B))`--)
+d416 1
+a416 1
+(*        (~A |- C <== B)                                                    *)
+d418 1
+a418 1
+(*  (|- (A \/ C) <== (A \/ B))                                               *)
+d421 1
+a421 1
+        and c = rand (rator (concl th)) 
+d429 1
+a429 1
+        (--`!A B. (B ==> A) ==> ((~B) <== (~A))`--)
+d437 3
+a439 3
+(*    (|- B ==> A)                                                           *)
+(* -------------------   PMI_NEG_CLOSE "~A"                                  *)
+(*  (|- (~B) <== (~A)                                                        *)
+d441 1
+a441 1
+    let val {ant=b,conseq=a} = dest_imp (concl th) in
+d445 1
+a445 1
+(*      (|- B <== A)                                                         *)
+d447 1
+a447 1
+(*  (|- (!v.B) <== (!v.A)                                                    *)
+d449 2
+a450 2
+    let val b = rand (rator (concl th))
+        and v = bndvar (rand tm)
+d459 2
+a460 4
+    let val b = rand (rator (concl th))
+        and v = bndvar (rand tm)
+    in
+        IMP_PMI (IMP_EXISTS_CLOSE (mk_exists {Bvar=v,Body=b}) (PMI_IMP th))
+d473 1
+a473 2
+        (fn tm => fn tl => (SMASH (ASSUME (rand tm))) @@ tl),
+        K [],
+d482 1
+a482 2
+        (fn tm => fn tl => (SMASH (ASSUME (rand (rator tm)))) @@ tl), 
+        K [],
+d491 1
+a491 2
+        (fn tm => fn tl => (SMASH (ASSUME (mk_neg (rand tm)))) @@ tl),
+        K [],
+d500 1
+a500 2
+        (fn tm => fn tl => (SMASH (ASSUME (rand (rator tm)))) @@ tl),
+        K [],
+d509 1
+a509 2
+        (fn tm => fn tl => (SMASH (ASSUME (rand tm))) @@ tl),
+        K [],
+d518 1
+a518 2
+        (fn tm => fn tl => (SMASH (ASSUME (mk_neg (rand (rator tm))))) @@ tl),
+        K [],
+d527 1
+a527 2
+        (fn tm => fn tl => (SMASH (ASSUME (mk_neg (rand tm)))) @@ tl),
+        K [],
+d536 1
+a536 2
+        (fn tm => fn tl => (SMASH (ASSUME (mk_neg (rand (rator tm))))) @@ tl),
+        K [],
+a544 1
+        K I,
+d554 1
+a554 2
+        KI,
+        (fn foc => [bndvar (rand foc)]),
+d563 1
+a563 2
+        KI,
+        (fn foc => [bndvar (rand foc)]),
+d572 1
+a572 2
+        (fn tm => fn tl => (SMASH (ASSUME (rand tm))) @@ tl),
+        K [],
+d581 1
+a581 2
+        (fn tm => fn tl => (SMASH (ASSUME (rand (rator tm)))) @@ tl), 
+        K [],
+d590 1
+a590 2
+        (fn tm => fn tl => (SMASH (ASSUME (mk_neg (rand tm)))) @@ tl),
+        K [],
+d599 1
+a599 2
+        (fn tm => fn tl => (SMASH (ASSUME (rand (rator tm)))) @@ tl),
+        K [],
+d608 1
+a608 2
+        (fn tm => fn tl => (SMASH (ASSUME (rand tm))) @@ tl),
+        K [],
+d617 1
+a617 2
+        (fn tm => fn tl => (SMASH (ASSUME (mk_neg (rand (rator tm))))) @@ tl),
+        K [],
+d626 1
+a626 2
+        (fn tm => fn tl => (SMASH (ASSUME (mk_neg (rand tm)))) @@ tl),
+        K [],
+d635 1
+a635 2
+        (fn tm => fn tl => (SMASH (ASSUME (mk_neg (rand (rator tm))))) @@ tl),
+        K [],
+a643 1
+        K I,
+a652 1
+        KI,
+a661 1
+        KI,
+@

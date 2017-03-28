@@ -1,0 +1,68 @@
+
+state 0:
+
+	START : . LIST 
+
+	ident	shift 2
+	EOF	reduce by rule 1
+
+	START	goto 5
+	LIST	goto 1
+
+	.	error
+
+
+state 1:
+
+	START : LIST .  (reduce by rule 0)
+
+	EOF	reduce by rule 0
+
+
+	.	error
+
+
+state 2:
+
+	LIST : ident .  (reduce by rule 2)
+	LIST : ident . comma LIST 
+
+	comma	shift 3
+	EOF	reduce by rule 2
+
+
+	.	error
+
+
+state 3:
+
+	LIST : ident comma . LIST 
+
+	ident	shift 2
+	EOF	reduce by rule 1
+
+	LIST	goto 4
+
+	.	error
+
+
+state 4:
+
+	LIST : ident comma LIST .  (reduce by rule 3)
+
+	EOF	reduce by rule 3
+
+
+	.	error
+
+
+state 5:
+
+
+	EOF	accept
+
+
+	.	error
+
+7 of 15 action table entries left after compaction
+3 goto table entries

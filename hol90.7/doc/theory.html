@@ -1,0 +1,472 @@
+<TITLE>Theories</TITLE>
+<H1><A NAME = "Theories">Theories</A></H1>
+
+In the HOL world a <EM>theory</EM> is used as a means of encapsulating
+logical entities. Typically, a theory is a related collection of types,
+constants, axioms, definitions, and theorems. Here we describe, in some
+detail, although not precisely, the hol90 theory facilities.
+
+<UL>
+<LI><A HREF = "#Theory information facilities">
+              Theory information facilities</A>
+     <UL> 
+     <LI> <A HREF = "#The current theory">The current theory</A>
+     <LI> <A HREF = "#Ancestry">Ancestry</A>
+     <LI> <A HREF = "#Information functions">Information functions</A>
+     </UL>
+<LI> <A HREF = "#Building a theory">Building a theory</A>
+<LI> <A HREF = "#Going to an existing theory">Going to an existing theory</A>
+<LI> <A HREF = "#Theories and the file system">Theories and the file system</A>
+<LI> <A HREF = "#Cache">The theory cache</A>
+<LI> <A HREF = "#System theories">System theories</A>
+</UL>
+
+<P>
+<A HREF = "manual.html#Table of Contents">User Manual Table of Contents</A>
+<HR>
+
+<H2><A NAME = "The current theory">The current theory</A></H2>
+
+When you use HOL, you are always <EM>in</EM> a theory, which is called
+the <EM>current theory</EM>. (Most theory-related functions will treat
+the "dash" ("-") as a synonym for the name of the current theory.) When
+HOL starts up, the current theory you are in is named
+<KBD>HOL</KBD>. This theory represents the culmination of a fair bit of
+logical development, and as a result the <KBD>HOL</KBD> theory has many
+<EM>ancestors</EM>.
+
+<P>
+<A HREF = "#Theories">Beginning of Theories</A>
+<BR>
+<A HREF = "manual.html#Table of Contents">User Manual Table of Contents</A>.
+<HR>
+
+<H2><A NAME = "Ancestry">Ancestry</A></H2>
+
+Every theory except for the initial theory (named <KBD>min</KBD> in
+hol90) has one or more parent theories (found by calling
+<KBD>parents</KBD>). If you follow the parentage all the way back to
+<KBD>min</KBD>, accumulating all the theories you go through, you will have
+computed the <EM>ancestry</EM> of the theory (there is a function called
+<KBD>ancestry</KBD> that will do this for you). All the types,
+constants, axioms, definitions, and theorems of the ancestors of a
+theory are accessible in the theory.(Note: what we are calling
+"theories" here are called "theory segments" in the HOL manual/book.)
+
+<P>
+The entire collection of theories is held in a hierarchical graph
+structure (a directed acyclic graph with a single root node). Some
+elements of this structure are held on disk; others are in the ML heap.
+The HOL system tries to make the location of a theory transparent to the
+user.
+<P>
+
+<STRONG>Note</STRONG>.
+The function <KBD>ancestry</KBD>, like many theory-related functions, can only
+be given the name of a theory that is either the current theory, or an
+ancestor of the current theory. 
+<PRE>
+  - ancestry"-";
+  val it =
+    ["pair","num","BASIC_HOL","prim_rec","arithmetic",
+     "list","tree", "ltree","rec_type","one","combin",
+     "sum","min","bool","restr_binder"] : string list
+
+  - ancestry"min";
+  val it = [] : string list
+
+  - ancestry "string" handle e => Raise e;
+
+  Exception raised at Theory_graph.ancestry:
+  "string" is not in the theory graph.
+</PRE>
+Notice that <KBD>ancestry</KBD> does not include the name of the current
+theory.
+<P>
+<A HREF = "#Theories">Beginning of Theories</A>
+<BR>
+<A HREF = "manual.html#Table of Contents">User Manual Table of Contents</A>.
+<HR>
+
+<H2><A NAME = "Information functions">Information functions</A></H2>
+
+The following functions can be used to find out information about items
+in any theory in the ancestry of the current theory:
+<PRE>
+    (* Information on constants *)
+    val arity : string -> int    (* arity of a type constant *)
+    val fixity : string -> Thm.Term.fixity  
+    val precedence : string -> int
+    val const_decl : string -> {const:Thm.Term.term,
+                                theory : string,
+                                place: Thm.Term.fixity}
+
+    val is_constant : string -> bool
+    val is_type : string -> bool
+    val is_binder : string -> bool
+    val is_infix : string -> bool
+
+    (* Information on the current theory, or an ancestor *)
+    val draft_mode : unit -> bool
+    val current_theory : unit -> string
+    val parents : string -> string list
+    val ancestry : string -> string list
+
+    (* singular *)
+    val axiom : string -> string -> Thm.thm
+    val definition : string -> string -> Thm.thm
+    val theorem : string -> string -> Thm.thm
+
+    (* plural *)
+    val types : string -> {Name : string, Arity : int} list
+    val constants : string -> Thm.Term.term list
+    val infixes : string -> Thm.Term.term list
+    val binders : string -> Thm.Term.term list
+    val axioms : string -> (string * Thm.thm) list
+    val definitions : string -> (string * Thm.thm) list
+    val theorems : string -> (string * Thm.thm) list
+
+    (* The whole picture *)
+    val print_theory : string -> unit
+    val html_theory : string -> unit
+</PRE>
+<P>
+<A HREF = "#Theories">Beginning of Theories</A>
+<BR>
+<A HREF = "manual.html#Table of Contents">User Manual Table of Contents</A>.
+<HR>
+
+<H2><A NAME = "Building a theory">Building a theory</A></H2>
+
+One makes a theory by a call to <KBD>new_theory</KBD>.  A theory built
+with <KBD>new_theory</KBD> has as parent the current theory at the time
+of the call to <KBD>new_theory</KBD>. Once you have called
+<KBD>new_theory</KBD>, you are in <EM>draft mode</EM> (a call to
+<KBD>draft_mode</KBD> will verify this): now you can freely make definitions
+for types and constants.
+
+<PRE>
+    (* Operations that change the current theory *)
+    val new_theory : string -> unit
+    val close_theory : unit -> unit
+
+    (* Adding to the current theory *)
+    val new_parent : string -> unit
+    val new_type : {Name : string, Arity : int} -> unit
+    val new_constant :{Name : string, Ty : hol_type} -> unit
+    val new_infix : {Name : string, Ty : hol_type, Prec :int} -> unit
+    val new_binder : {Name : string, Ty : hol_type} -> unit
+
+    (* Introduce an axiom *)
+    val new_open_axiom : (string * term) -> Thm.thm
+
+    (* Constant specification *)
+    val new_specification 
+        : {name :string, sat_thm : thm,
+           consts : {fixity :fixity,const_name : string} list}
+          -> thm
+
+    (* Definitions *)
+    val new_definition : (string * term) -> thm
+    val new_infix_definition :(string * term * int) -> thm
+    val new_binder_definition : (string *  term) -> thm
+    val new_type_definition 
+        : {name:string, pred:term, inhab_thm : thm} -> thm
+
+    val save_thm : (string * thm) -> thm
+</PRE>
+
+Also, while in draft mode you can freely make any theory a parent theory
+with a call to <KBD>new_parent</KBD>. If theory <VAR>X</VAR> is made a
+new parent, the entire ancestry of <VAR>X</VAR> becomes accessible. Seen
+from a graph level, <KBD>new_parent</KBD> adds an edge to the theory
+graph, while <KBD>new_theory</KBD> adds a new node and a new edge to the
+graph.  (Note: a theory in draft mode has <EM>no</EM> descendants. This
+prevents cycles in the graph.) Draft mode is exited by calling
+<KBD>close_theory</KBD>. One can prove and store theorems in the current
+theory regardless of the draft mode.
+
+<P>
+When <KBD>new_theory</KBD> is called, the contents of the current theory are
+written to disk before the new theory is constructed. That is, unless 
+the theory is already consistent with disk (this is kept track of 
+internally).
+<P>
+<A HREF = "#Theories">Beginning of Theories</A>
+<BR>
+<A HREF = "manual.html#Table of Contents">User Manual Table of Contents</A>.
+<HR>
+
+
+<H2><A NAME = "Going to an existing theory">
+               Going to an existing theory</A></H3>
+
+One "goes to" a theory with a call to <KBD>load_theory</KBD> (or in rare cases,
+<KBD>extend_theory</KBD>). 
+<PRE>
+    val load_theory : string -> unit
+    val extend_theory : string -> unit
+</PRE>
+
+Because of the ancestry relation, there are some subtle issues with
+these operations.  With a call to <KBD>load_theory</KBD> or
+<KBD>extend_theory</KBD>, you can go to any theory <EM>provided</EM>
+that it is a descendant of the current theory. As with
+<KBD>new_parent</KBD>, the entire ancestry of the "gone-to" theory will
+then become accessible.  The semantics of <KBD>load_theory</KBD> is
+somewhat confusing, but it is necessary in order to maintain consistency
+of the system. Once you have loaded a theory, you may prove theorems and
+store them in the theory, but you may not add new definitions (if you
+want to do that, use <KBD>extend_theory</KBD> instead of
+<KBD>load_theory</KBD>). You can not load or extend an ancestor of the
+current theory.
+
+<P>
+<STRONG>Note</STRONG>. Once <KBD>new_theory</KBD> has been called
+implicitly or explicitly in a session, <KBD>load_theory</KBD> is not
+invocable. Why? Because a) a theory in draft mode has no descendants,
+and b) nothing that can happen after leaving draft mode can add
+descendants to the current theory.
+
+<H3>Example</H3>
+
+Suppose the following is the theory path when the hol90 system is started:
+<PRE>
+ - theory_path;
+ val it =
+   ref
+    ["",
+     "/hol/working/theories/ascii/",
+     "/hol/working/library/fixpoint/theories/ascii/",
+     "/hol/working/library/wellorder/theories/ascii/",
+     "/hol/working/library/real/theories/ascii/",
+     "/hol/working/library/pair/theories/ascii/",
+     "/hol/working/library/prog_logic/theories/ascii/",
+     "/hol/working/library/unity/theories/ascii/",
+     "/hol/working/library/integer/theories/ascii/",
+     "/hol/working/library/group/theories/ascii/",
+     "/hol/working/library/pred_set/theories/ascii/",
+     "/hol/working/library/set/theories/ascii/",
+     "/hol/working/library/string/theories/ascii/"]
+      : string list ref
+</PRE>
+
+The current theory is <KBD>HOL</KBD>. Now load the theory
+<KBD>set</KBD>, which has the <KBD>HOL</KBD> theory as a parent.
+<PRE>
+ - load_theory "set";
+
+ Loading theory "set"
+ Theory "HOL" already consistent with disk, hence not exported.
+ val it = () : unit
+</PRE>
+Now try to load the theory <KBD>string</KBD>. You can't! Why? Because
+<KBD>string</KBD> does not have <KBD>set</KBD> as a parent.
+<PRE>
+  - load_theory "string" handle e => Raise e;
+
+  Loading theory "string"
+  Theory "set" already consistent with disk, hence not exported.
+
+  Exception raised at Theory_ops.goto_theory:
+  cannot load/extend given theory
+
+  uncaught exception HOL_ERR
+</PRE>
+
+<P>
+<A HREF = "#Theories">Beginning of Theories</A>
+<BR>
+<A HREF = "manual.html#Table of Contents">User Manual Table of Contents</A>.
+<HR>
+
+<H3>Another example</H3>
+
+A user asked:
+<BLOCKQUOTE>
+In hol90, is it possible to build four theories with the following
+dependence structure in one single SML session?
+<PRE>
+      a
+     /  \
+    b    c
+     \  /
+      d
+</PRE>
+</BLOCKQUOTE>
+
+The answer is "No", although the hol90 implementors are thinking of
+changing the implementation so that this example is possible. To build
+<KBD>b</KBD>, you need to do a <KBD>new_theory</KBD> when in theory
+<KBD>a</KBD>. Likewise with building <KBD>c</KBD>. However, when you do
+a <KBD>new_theory</KBD>, you advance along in the partial order and you
+can't go back. Also, you can't have two independent theories in the same
+session, unless they are in the ancestry of the current theory. To get
+the picture above, you could build <KBD>b</KBD> and <KBD>c</KBD> in
+separate sessions, and then, in a third session, <KBD>load_theory</KBD> on
+either <KBD>b</KBD> or <KBD>c</KBD>, and then do a <KBD>new_theory
+"d"</KBD>, followed by a <KBD>new_parent</KBD> on <KBD>b</KBD> or
+<KBD>c</KBD>, depending on which was not in the ancestry of <KBD>d</KBD>.
+
+<P>
+<A HREF = "#Theories">Beginning of Theories</A>
+<BR>
+<A HREF = "manual.html#Table of Contents">User Manual Table of Contents</A>.
+<HR>
+
+
+<H2><A NAME = "Theories and the file system">
+              Theories and the file system</A></H2>
+
+HOL supports persistent theories: once a user has finished working on a
+theory, it can be written out to a file, to be loaded or extended at a
+later date. The current theory is held in the ML heap, but the large
+number of theories in the HOL system implies that they usually do not
+all need to be in the heap at the same time. Theory operations make use
+of the <A HREF = "manual.html#Paths"><EM>theory path</EM></A> to
+manipulate theories that are on disk.
+
+<PRE>
+    (* Operations that write the theory to disk *)
+    val export_theory : unit -> unit
+    val close : unit -> unit
+</PRE>
+
+In hol88, the Lisp artifact <KBD>quit</KBD> is used to end a session. If
+the session is in draft mode, this has the side-effect of writing the
+current theory to disk. In hol90, <KBD>quit</KBD> is not implemented;
+instead, <KBD>export_theory</KBD> will write the current theory to
+disk. Until it is called, the disk file will not be written (or even
+opened). Ending a session with hol90 is via ^D.  If you are building a
+theory and hit ^D before calling <KBD>export_theory</KBD>, no work will
+be saved on a theory file, since there won't even be a theory file!
+
+<H3><A NAME = "Autoloading">Autoloading</A></H3>
+
+In hol90, hol88-style <EM>autoloading</EM> is not available. The
+replacement for it is found in the structure <KBD>Add_to_sml</KBD>.
+
+<PRE>
+    val add_to_sml : (string * thm) list -> unit
+    val add_axioms_to_sml : string -> unit
+    val add_definitions_to_sml : string -> unit
+    val add_theorems_to_sml : string -> unit
+    val add_theory_to_sml : string -> unit
+</PRE>
+
+These calls map theory-level bindings which are of type <KBD>string *
+thm</KBD> to SML-level bindings. Their argument string must be an
+ancestor of the current theory. For example,
+
+<PRE>
+    - Add_to_sml.add_definitions_to_sml "one";
+    val one_DEF = |- one = (@x. T) : thm
+    val oneTY_DEF = |- ?rep. TYPE_DEFINITION (\b. b) rep : thm
+    val it = () : unit
+    -
+</PRE>
+One can declare which bindings in a theory are to be reflected into SML
+by using the function
+<PRE>
+    set_autoloads : autoload_info -> unit
+</PRE>
+where <KBD>autoload_info</KBD> is a type abbreviation:
+<PRE>
+    type autoload_info = {Theory : string,
+                          Axioms : string list,
+                          Definitions : string list,
+                          Theorems : string list}
+</PRE>
+<P>
+<A HREF = "#Theories">Beginning of Theories</A>
+<BR>
+<A HREF = "manual.html#Table of Contents">User Manual Table of Contents</A>.
+<HR>
+
+
+<H2><A NAME = "Cache">The theory cache</A></H2>
+
+The <EM>theory cache</EM> is a crude "virtual memory" mechanism at the
+level of theories. Typically, only the minimum information is kept
+internally for an ancestor theory. However, once the user requests any
+information about an ancestor, <EM>e.g.</EM>, the definitions that have
+been made in it, <EM>all</EM> the information about that theory is
+loaded into the theory cache. This can have deleterious effects on the
+amount of memory available to do proofs in, particularly if the user only
+needs a small bit of the theory. Therefore, we provide some user control
+over the theory cache. 
+
+<PRE>
+    (* Cache operations *)
+    val delete_cache : unit -> unit
+    val delete_theory_from_cache : string -> unit
+    val theories_in_cache : unit -> string list
+</PRE>
+
+<P>
+<A HREF = "#Theories">Beginning of Theories</A>
+<BR>
+<A HREF = "manual.html#Table of Contents">User Manual Table of Contents</A>.
+<HR>
+
+<H2><A NAME = "System theories">System theories</A></H2>
+
+There is a 
+
+<A HREF = "../contrib/map/MAP.html">map to the entire theory hierarchy</A>
+
+accessible in hol90 when it starts up. Note that the
+<STRONG>HOL</STRONG> theory is current when the system starts up. Only
+theories that are ancestors of the <KBD>HOL</KBD> theory are accessible
+when the system starts up. Descendants of the <KBD>HOL</KBD> theory can
+be accessed via theory operations (<EM>e.g.</EM>, <KBD>new_parent</KBD>
+and <KBD>load_theory</KBD>) or library operations, <EM>i.e.</EM>,
+<A HREF = "library.html#Using a library">load_library</A>.
+
+<P>
+
+The following are the files that build the theories available when hol90
+starts up.
+ 
+<UL>
+<LI> <A HREF = "../theories/src/mk_min.sml">
+     Min - the starting theory of HOL</A>
+<LI> <A HREF = "../theories/src/mk_exists.sml">
+     The existential quantifier</A>
+<LI> <A HREF = "../theories/src/mk_bool.sml">
+     Bool - definitions of logical constants and axioms</A>
+<LI> <A HREF = "../theories/src/mk_pair.sml">
+     Pairs</A>
+<LI> <A HREF = "../theories/src/mk_restr_binder.sml">
+     Restricted binders</A>
+<LI> <A HREF = "../theories/src/mk_combin.sml">
+     Combinators</A>
+<LI> <A HREF = "../theories/src/mk_one.sml">
+     The unit type</A>
+<LI> <A HREF = "../theories/src/mk_sum.sml">
+     Sum type</A>
+<LI> <A HREF = "../theories/src/mk_num.sml">
+     Numbers</A>
+<LI> <A HREF = "../theories/src/mk_prim_rec.sml">
+     Primitive Recursion Theorem</A>
+<LI> <A HREF = "../theories/src/mk_arithmetic.sml">
+     Arithmetic</A>
+<LI> <A HREF = "../theories/src/mk_list.sml">
+     Lists</A>
+<LI> <A HREF = "../theories/src/mk_list_thms.sml">
+     More definitions and theorems about lists</A>
+<LI> <A HREF = "../theories/src/mk_tree.sml">
+     Unlabelled trees</A>
+<LI> <A HREF = "../theories/src/mk_ltree.sml">
+     Labelled trees</A>
+<LI> <A HREF = "../theories/src/mk_rec_type.sml">
+     Support for recursive type definitions</A>
+</UL>
+
+<HR>
+<A HREF = "#Theories">Beginning of Theories</A>
+<BR>
+<A HREF = "manual.html#Table of Contents">User Manual Table of Contents</A>.
+<BR>
+<A HREF="http://hpbroy3.informatik.tu-muenchen.de/MITARBEITER/slind/slind.html">Konrad Slind</A>, 
+slind@informatik.tu-muenchen.de<P>

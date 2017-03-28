@@ -1,0 +1,514 @@
+\documentstyle[fancybox,sem-a4,itmath]{seminar}
+\input{amssym.def}
+\input{amssym.tex}
+
+\landscapeonly 
+%\portraitonly
+
+% Personal hints concerning printing:
+% 1. enable \landscapeonly and print by 
+%    dvips -t landscape slides
+% 2. enable \portraitonly and use portrait-option to print the rest by
+%    dvips slides 
+
+%\slidesmag{2}
+
+\newcommand{\heading}[1]{%
+  \begin{center}
+    \large\bf
+    \shadowbox{\makebox{#1}}%
+  \end{center}
+  \vspace{1ex minus 1ex}}
+
+\newcommand{\Infer}[2]%
+{\frac{\vbox{\hbox{$\displaystyle #1$}\hbox{\vspace{.1ex}}}}%
+{\vbox{\hbox{\vspace{.3ex}}\hbox{$\displaystyle #2$}}}}
+
+
+\begin{document}
+
+
+\begin{slide}
+\heading{Defining Recursive Functions}
+\heading{in Higher Order Logic}
+\bigskip
+\bigskip
+\begin{center}
+  Konrad Slind  \\
+TU M{\"u}nchen
+\end{center}
+\end{slide} 
+
+\begin{slide}
+\heading{Motivation}
+\begin{itemize}
+\item Adding an axiom for a non-terminating function to a logic of total
+      functions results in inconsistency: 
+
+\[ f(x) = f(x) + 1 \]
+
+reduces to 
+
+\[ 0 = 1 \]
+
+\item Termination is undecidable in general.
+\item Primitive recursion imposes syntactic restrictions.
+\end{itemize}
+\end{slide}
+
+\begin{slide}
+\heading{Plan}
+
+\begin{enumerate}
+\item Define functions
+\begin{itemize}
+\item Logical Basis (wellfoundedness, recursion, induction)
+\item Definition Process
+   \begin{itemize}
+   \item Adding pattern matching
+   \end{itemize}
+\item Examples
+\end{itemize}
+\item Custom induction theorems
+\item System Architecture
+\item Future Work
+\end{enumerate}
+\end{slide} 
+
+
+\begin{slide}
+\heading{Logical Basis}
+\medskip
+\begin{itemize}
+\item Wellfoundedness
+
+\begin{eqnarray*}
+wellfounded(R) & \equiv & \neg\exists f. \forall n. R (f(n+1)) (f(n)) \\
+          WF(R) & \equiv & \forall P.\ P \;w \supset \exists m.\;
+   P\;m \land \forall b.\; R \;b \; m \supset \neg P\;b
+\end{eqnarray*}
+
+
+%\begin{verbatim}
+%well_founded R = ~?f. !n. R (f (n + 1)) (f n)
+%WF R = !B. (?w. B w) ==> 
+%           ?min. B min /\ !b. R b min ==> ~(B b)
+%\end{verbatim}
+
+%\item Induction
+%\begin{verbatim}
+%WF R ==> (!x. (!y. R y x ==> P y) ==> P x) ==> !x. P x
+%\end{verbatim}
+
+\item Induction
+\begin{eqnarray*}
+ WF(R)  \supset (\forall x.\; (\forall y.\;R\; y\; x \supset  P\; y) \supset P
+\;x) \supset \forall x.\; P \;x.
+\end{eqnarray*}
+
+
+\item Restriction and Recursion
+\begin{eqnarray*}
+ (f\!\mid\! R,y) \equiv \lambda x.\; \mbox{if}\; R\;x \;y
+\;\mbox{then}\; f\; x \; \mbox{else}\; \varepsilon z.True. \\
+(f = WFREC\ R\ M) \supset WF(R) \supset \forall x.\ f(x) = M\ (f\!\mid\!
+R,x)\ x.
+\end{eqnarray*}
+
+\end{itemize}
+
+%\begin{verbatim}
+%(f % R,y) = \x. if (R x y) then (f x) else @v. T
+%
+%WF R ==> !M. ?!f. !x. f x = M x (f % R,x)
+%(f = WFREC R M) ==> WF R ==> !x. f x = M x (f % R,x)
+%\end{verbatim}
+%\end{itemize}
+
+\end{slide}
+
+%\begin{slide}
+%\heading{WFREC}
+%\medskip
+%\begin{itemize}
+%\item
+%\begin{verbatim}
+%WFREC R M = 
+%  \x. M x (the_fun (TC R) (\v f. M v (f % R,v)) x % R,x)
+%\end{verbatim}
+%
+%\item $WFREC: (\alpha \rightarrow \alpha \rightarrow bool) \rightarrow
+%              ((\alpha \rightarrow \beta) \rightarrow 
+%               (\alpha \rightarrow \beta)) \rightarrow
+%              \alpha \rightarrow \beta$
+%\end{itemize}
+%\end{slide}
+
+
+\begin{slide}
+\heading{Relations}
+\begin{itemize}
+\item Basic wellfounded relations and {\it size}
+\begin{eqnarray*}
+   WF (\lambda x y. y = Suc\ x) \\
+   WF (\lambda L_1 L_2. \exists h. L_2 = Cons\ h\ L_1)
+\end{eqnarray*}
+
+\item Derived
+\begin{eqnarray*}
+  \begin{array}{rcl}
+  inv\_image\ R\ f & = & \lambda x y. R\ (f\ x)\ (f\ y) \\
+  (R_1\ X\ R_2)\ (s,t)\ (u,v) & = & R_1\ s\ u \lor (s = u) \land R_2\ t\ v \\
+  measure & = & inv\_image (<)
+  \end{array} \\
+  \begin{array}{l}
+  \vdash WF\ R \supset WF (inv\_image\ R\ f) \\
+  \vdash WF\ R \land WF\ Q \supset WF\ (R\ X\ Q) \\
+  \vdash WF\ (<)\   \mbox{hence}\ \vdash \forall f. WF(measure\ f)
+  \end{array}
+\end{eqnarray*}
+\end{itemize}
+\end{slide}
+
+\begin{slide}
+\heading{Misc. list functions}
+\[
+\begin{array}{l}
+mem\ x\ [] = False\\
+mem\ x\ (Cons\ y\ L) = (x=y) \lor mem\ x\ L \\
+\\
+filter\ P\ [] = [] \\
+filter\ P\ (Cons\ x\ L) = \\
+{~~~~~}   \mbox{if}\ (P\ x)\ \mbox{then}\ Cons\ x\ (filter\ P\ L) \\
+{~~~~~}   \mbox{else}\ filter\ P\ L
+\end{array}
+\]
+\end{slide}
+
+\begin{slide}
+\heading{Variant}
+
+\begin{itemize}
+\item Input term \\
+\begin{eqnarray*}
+variant(x,L) = \mbox{if}\ (mem\ x\ L)\ \mbox{then}\ variant(x+1,L)\
+\mbox{else}\ x 
+\end{eqnarray*}
+
+\item Example behaviours
+\[
+\begin{array}{c}
+ variant(0, [1,2]) = 0 \\
+ variant(1, [1,2]) = 3 \\
+ variant(1, [1,3]) = 2 \\
+\end{array}
+\]
+\item Termination relations
+\[
+\begin{array}{l}
+measure\  \lambda (x,L). length(filter(\lambda y. x <= y) L) \\
+measure\  \lambda (x,L). (Max\ L + 1 ) - x{~~~}   \mbox{(* M. Kaufmann *)}
+\end{array}
+\]
+\end{itemize}
+\end{slide}
+
+\begin{slide}
+\heading{Extracted Termination Conditions}
+\medskip
+\[
+\begin{array}{l}
+ (\forall x\ L. mem\ x\ L \supset \\
+{~~~~~~~~}length(filter(\lambda y. x+1 <= y) L)  \\
+{~~~~~~~~~~~}          < \\
+{~~~~~~~~}        length(filter(\lambda y. x <= y) L)) \\
+{~~~~~~}\supset \\
+{~~~~~~}variant (x,L) = \\
+{~~~~~~~~~~} \mbox{if}\ (mem\ x\ L)\ \mbox{then}\ variant(x+1,L)\
+\mbox{else}\ x \mbox{: thm} 
+\end{array}
+\]
+\end{slide}
+
+\begin{slide}
+\heading{Variant}
+\begin{itemize}
+\item Lemma needed for termination proof
+\begin{eqnarray*}
+ (\forall x. P\ x \supset Q\ x) \supset length(filter\ P\ L) <=
+ length(filter\ Q\ L) 
+\end{eqnarray*}
+\item Main property of variant:
+\begin{eqnarray*}
+ \neg mem\ (variant (x,L))\ L.
+\end{eqnarray*}
+\end{itemize}
+\end{slide}
+
+
+\begin{slide}
+\heading{Pattern Matching}
+
+The idea is to translate $f(pat_1) = rhs_1 \land \ldots \land f(pat_n) = rhs_n$
+to a nested case statement. We use a pattern matching compilation
+algorithm based on that of L. Augustsson[85]. 
+
+\begin{itemize}
+\item Example - gcd
+\[
+\begin{array}{l}
+ (gcd (0,y)      = y)\\
+ (gcd (Suc x, 0) = Suc\  x)\\
+ (gcd (Suc\  x, Suc\  y) = \mbox{if}\ (y <= x) \\
+{~~~~~~~~~~~~~~~~~~~~~~~~~~~~}\mbox{then}\ gcd(x-y, Suc\  y)  \\
+{~~~~~~~~~~~~~~~~~~~~~~~~~~~~}\mbox{else}\ gcd(Suc\  x, y-x)) \\
+\end{array}
+\]
+\item No overlapping patterns allowed.
+\end{itemize}
+\end{slide}
+
+\begin{slide}
+\heading{Case theorems}
+\medskip
+\[
+\begin{array}{l}
+(ty\_case\ f_1 ... f_n (C_1 \overline{x}) = f_1\overline{x})  \\
+   \ldots \\
+(ty\_case\ f_1 ... f_n (C_n\overline{x}) = f_n\overline{x}) \\
+\\
+case_{prod}\ f\ (p,q) = f\ p\ q
+\\
+(case_{num}\ v\ f\ 0 = v) \\
+(case_{num}\ v\ f\ (Suc\ c) = f\ c) \\
+\\
+(case_{list}\ v\ f\ [] = v) \\
+(case_{list}\ v\ f\ (Cons\ h\ t) = f\ h\ t)
+\end{array}
+\]
+
+\end{slide}
+
+\begin{slide}
+\heading{Generated case expression}
+\[
+\begin{array}{l}
+\lambda gcd\ z.\ case_{prod}\\
+{~~~~~} (\lambda v\ v_1.\ case_{nat} v_1  \\
+{~~~~~~~~~~~~} (\lambda v_2.\ case_{nat} (Suc\  v_2)   \\
+{~~~~~~~~~~~~~~~~~~~~}          (\lambda v_3.\ \mbox{if}\ (v_3 \leq v_2) \\
+{~~~~~~~~~~~~~~~~~~~~~~~~~~~~}\mbox{then}\ gcd(v_2-v_3,Suc\  v_3) \\
+{~~~~~~~~~~~~~~~~~~~~~~~~~~~~}\mbox{else}\ gcd(Suc\ v_2, v_3-v_2))\ v_1)\ v)\ z.
+\end{array}
+\]
+\end{slide}
+
+\begin{slide}
+\heading{Substitute patterns; simplify}
+\medskip
+\[
+\begin{array}{ll} 
+ & WF (measure\ \lambda (x,y). x + y) \\
+\vdash  &  (gcd(0,y) = y)\ \land \\ 
+ & (gcd(Suc\ x,0) = Suc\ x)\ \land \\
+ & (gcd(Suc\ x,Suc\ y) = \\
+ & {~~~}\mbox{if}\ (y \leq x) \\
+ & {~~~}\mbox{then}\ (gcd \!\mid\! (measure\ \lambda (x,y). x + y),
+ (Suc\ x,Suc\ y)) (x - y,Suc\ y) \\  
+ & {~~~}\mbox{else}\ {~}(gcd \!\mid\! (measure\ \lambda (x,y). x + y),
+  (Suc\ x,Suc\ y))(Suc\ x,y - x)).
+\end{array}
+\]
+\end{slide}
+
+\begin{slide}
+\heading{Fibonacci}
+\[
+\begin{array}{l}
+\mbox{function}\ \ (<) \\
+{~~~~~} Fib\ 0 = 1  \\
+{~~~~~} Fib(Suc\  0) = 1 \\
+{~~~~~} Fib(Suc(Suc\ x)) = Fib\ x + Fib(Suc\ x)
+\end{array}
+\]
+
+\end{slide}
+
+
+\begin{slide}
+\heading{Gcd}
+\[
+\begin{array}{l}
+\mbox{function}\ \ (measure (uncurry +)) \\
+ gcd (0,y)      = y\\
+ gcd (Suc\ x, 0) = Suc\  x\\
+ gcd (Suc\  x, Suc\  y) = \mbox{if}\ (y <= x) \\
+{~~~~~~~~~~~~~~~~~~~~~~~~~~~~}\mbox{then}\ gcd(x-y, Suc\  y)  \\
+{~~~~~~~~~~~~~~~~~~~~~~~~~~~~}\mbox{else}\ gcd(Suc\  x, y-x) \\
+\end{array}
+\]
+\end{slide}
+
+\begin{slide}
+\heading{Ackermann}
+
+\[
+\begin{array}{l}
+\mbox{function}\ \ (pred\ X\ pred) \\
+ ack (0,n) = n + 1 \\
+ ack (Suc\  m,0) = ack (m,1) \\
+ ack (Suc\  m,Suc\  n) = ack (m,ack (Suc\ m,n))
+\end{array}
+\]
+
+\end{slide}
+
+
+\begin{slide}
+\heading{Quicksort}
+\begin{itemize}
+\item Definition
+\[
+\begin{array}{l}
+\mbox{function}\ \ (measure(length\circ snd)) \\
+{~~~} qsort (ord,[]) = []  \\
+{~~~} qsort (ord,Cons\ x\ rst) = \\
+{~~~~~~~~~~~~~}    (qsort (ord,filter(\neg \circ ord\ x)\ rst)) \\
+{~~~~~~~~~~~~~}    ++ [x] ++ \\
+{~~~~~~~~~~~~~}    (qsort (ord,filter(ord\ x)\ rst))
+\end{array}
+\]
+
+
+\item Extracted termination conditions
+\[
+\begin{array}{l}
+length(filter\ (ord\ x)\ rst) < length(Cons\ x\ rst) \\
+length(filter\ (\neg \circ ord\ x)\ rst) < length(Cons\ x\ rst)
+\end{array}
+\]
+\end{itemize}
+\end{slide}
+
+
+\begin{slide}
+\heading{Conditional expressions}
+
+\begin{itemize}
+\item Datatype
+\begin{verbatim}
+cond = A of individual | IF of cond cond cond
+\end{verbatim}
+
+\item Definition 
+\[
+\begin{array}{l}
+\mbox{\tt function}\ \ (measure\ M) \\
+{~~} norm(A\ i)  =  A\ i \\
+{~~} norm(IF(A\  x)\ y\ z)  =  IF (A\  x)\ (norm\ y)\ (norm\ z) \\
+{~~} norm(IF(IF\ u\ v\ w)\ y\ z) =  norm(IF\ u\ (IF\ v\ y\ z)\ (IF\
+w\ y\ z))
+\end{array}
+\]
+
+\item Measure function (R. Shostak)
+\begin{eqnarray*}
+  M (A\ i) & \equiv & 1 \\
+  M (IF\ x\ y\ z) & \equiv & M x + (M x \ast M y) + (M x \ast M z)
+\end{eqnarray*}
+
+\end{itemize}
+\end{slide}
+
+\begin{slide}
+\heading{Conditional expressions - contd.}
+\noindent Expanded termination conditions
+
+\[
+\begin{array}{l}
+   M z < 1 + M y + M z\ \land \\
+   M y < 1 + M y + M z\ \land \\
+   M u +  M u * (M v + M v * M y + M v * M z)\ + \\
+   M u * (M w + M w * M y + M w * M z) \\
+  < \\
+  (M u + M u * M v + M u * M w)\ + \\
+  (M u + M u * M v + M u * M w) * M y\ + \\
+  (M u + M u * M v + M u * M w) * M z
+\end{array}
+\]
+
+\end{slide}
+
+\begin{slide}
+\heading{Nested Recursion}
+
+\begin{itemize}
+\item Definition 
+\[
+\begin{array}{l}
+\mbox{\tt function}\ \ (measure (\lambda x. 101 - x)) \\
+ Ninety1\ x = \mbox{if}\; x>100\; \mbox{then}\;x-10\; \mbox{else}\;
+ Ninety1(Ninety1(x+11)) 
+\end{array}
+\]
+
+\item Termination conditions
+\[
+\begin{array}{l}
+\neg x > 100 \supset 101 - (x + 11) < 101 - x \\
+\neg x > 100 \supset 
+\begin{array}[t]{l}
+     (101 - (Ninety1 \!\mid\! (\lambda x y. 101 - x < 101 - y),x) (x + 11) \\
+\hspace{-3mm}  <  101 - x)
+\end{array}
+\end{array}
+\]
+
+The second is equivalent to
+
+\[ x\leq 100 \supset x < Ninety1(x+11). \]
+
+\end{itemize}
+\end{slide}
+
+\begin{slide}
+\heading{Custom induction theorems}
+\begin{itemize}
+\item Gcd
+\[
+\begin{array}{l}
+\forall P.\ (\forall y. P (0,y))\ \land \\
+{~~~~~~~}    (\forall x. P (Suc\ x,0))\ \land \\
+{~~~~~~~}    (\forall y x. (\neg y \leq x \supset P(Suc\  x,y - x))\ \land \\
+{~~~~~~~~~~~~~~~} (y \leq x \supset P(x - y,Suc\ y))\\
+{~~~~~~~~~~~~~~~}\supset P (Suc\  x,Suc\ y)) \\
+{~~~~~~~}\supset \forall v\ v_1. P (v,v_1)
+\end{array}
+\]
+
+\item Quicksort
+\[
+\begin{array}{l}
+[TC_1, TC_2] \\
+\vdash \forall P.\ (\forall ord. P (ord,[]))\ \land \\
+{~~~~~~~~~}(\forall ord\ x\ rst. P (ord,filter (ord\ x) rst)\ \land \\
+{~~~~~~~~~~~~~~~~~~~~~~~~}P (ord,filter (\neg \circ ord\ x) rst) \\
+{~~~~~~~~~~~~~~~~~~~~~~~~}\supset P(ord,CONS\ x\ rst)) \\
+{~~~~~~~~~}\supset \forall v\ v_1. P (v,v_1)
+\end{array}
+\]
+\end{itemize}
+\end{slide}
+
+
+\begin{slide}
+\heading{Future work}
+
+\begin{itemize}
+\item Compute R
+\item Decrypt nestedness
+\item Larger scale examples
+\end{itemize}
+\end{slide}
+
+\end{document}

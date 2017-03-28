@@ -1,0 +1,97 @@
+head	1.1;
+branch	1.1.1;
+access;
+symbols
+	HOL97:1.1.1.1.0.6
+	bpHOL97:1.1.1.1
+	hol90_9_alpha:1.1.1.1
+	hol90_pre8_for_multiple_compilers:1.1.1.1.0.4
+	hol90_pre8_after_donalds_separate_compilation_changes:1.1.1.1
+	hol90_8_after_merging_Konrad_Elsa:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	95.10.16.13.33.55;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.33.55;	author rjb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@\DOC FAIL_TAC
+
+\TYPE {FAIL_TAC : (string -> tactic)}
+
+\SYNOPSIS
+Tactic which always fails, with the supplied string.
+
+\KEYWORDS
+tactic.
+
+\DESCRIBE
+Whatever goal it is applied to, {FAIL_TAC s} always fails
+with the string {s}.
+
+\FAILURE
+The application of {FAIL_TAC} to a string never fails; the resulting
+tactic always fails.
+
+\EXAMPLE
+The following example uses the fact that if a tactic {t1} solves
+a goal, then the tactic {t1 THEN t2} never results in the application
+of {t2} to anything, because {t1} produces no subgoals. In attempting
+to solve the following goal:
+{
+   ?- x => T | T
+}
+\noindent the tactic
+{
+   REWRITE_TAC[] THEN FAIL_TAC `Simple rewriting failed to solve goal`
+}
+\noindent will fail with the message provided, whereas:
+{
+   CONV_TAC COND_CONV THEN FAIL_TAC `Using COND_CONV failed to solve goal`
+}
+\noindent will silently solve the goal because {COND_CONV} reduces it to
+just {?- T}.
+
+\SEEALSO
+ALL_TAC, NO_TAC.
+
+\ENDDOC
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

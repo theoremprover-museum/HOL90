@@ -1,0 +1,989 @@
+Changes from version 5.
+
+1. Updated Globals.version_number to 6.
+
+2. Changed resituate_hol90 to be cleaner. Changed install.doc to give more
+   details on the use of make_hol, especially the -d option (when necessary,
+   etc). 
+
+3. Added GEN_INDUCTION to mk_arithmetic at the request of Elsa Gunter.
+
+4. Made the functions in File print out the path of files that they find,
+   but can not read.
+
+5. Changed the way that the system builds. I now do an install at the end
+   of the build. This cleans up all the screwed-up paths that people
+   were getting added to the theory path as a result of calling find_library
+   in 3/sys_lib.sml when rebuilding the system while re-using theories and
+   libraries.
+
+6. In a related fix, when one loads a library, it is done relative to its
+   path. In version 5, that was true only for code and help. Now it is true for
+   theories. (When we do a new_parent, it is now done with an absolute path 
+   derived from the path field of the library.) After the first parent is
+   found, new_parent ensures that further ancestors are found by unique 
+   theory id.)
+
+7. Changed the parsing of type specifications. The syntax of the hol88 version
+   is more subtle than I thought; it allows the defined constructor to be
+   curried or not. My boneheaded version in hol90.5 wouldn't allow type 
+   constructors that took paired arguments. Now that has been fixed, at the
+   cost of some special syntax. A curried constructor has "=>" between its
+   arguments, while an uncurried constructor has just a single argument,  
+   which can have the form of any type. The "=>" is merely a delimiter that 
+   makes parsing simple, plus I hope that it has an intuitive reading 
+   if one confuses the "=>" with "->".
+
+8. Took some cruft out of hol_lex.
+
+9. As part of the changes done in 7, the "arg_atom" type defined in
+   Parse_support has been changed to be "arg". As a result, the arguments to 
+   dtype have changed:
+
+        - dtype;
+        val it = fn
+          : {clauses:{constructor:string, args:Parse_support.arg list, 
+                      fixity:fixity} list, 
+             save_name:string, ty_name:string}
+            -> thm
+
+   As a result of the change to the concrete syntax of type specifications,
+   I changed the "define_type" invocations in the string library (mk_ascii and
+   mk_string) and in the "examples" directory of the "ind_def" library.
+
+10. Moved "sed_hol_yak" and its bretheren to the tools directory. Added a 
+    comment (some code) to the end of parse_support.sml that shows how to 
+    make an MLYacc produce files that when compiled will give an hol parser
+    (types,terms,and type specs).
+
+11. Changed SPEC to TY_SPEC in the datatype Parse_support.parse. When 
+    Parse_support was "open"ed, the rule of inference "SPEC" would no longer 
+    be accessible, thus other libraries and code that used "SPEC" wouldn't 
+    load. This is an instance of a general problem. This ought to partially 
+    go away when library code is loadable in binary format.
+
+12. Changed hol_lex and hol_yak to depend solely on publically available 
+    functions.
+
+13. Fixed a prettyprinting bug in hol_pp. The bug is manifested in the 
+    following example from David Shephard:
+
+        --`let a=1 and b=2 in a+b`--;
+        val it = (--`let a = 1 and b = 2 in (b + a)`--) : term
+
+14. Added a function "const_decl" to Theory:
+
+        val const_decl : string -> {const:Thm.Term.term,
+                                    theory : string,
+                                    place: Term.fixity}
+
+    It gives the information given when the constant was put in the symbol
+    table.
+
+15. Fixed a bug in the prettyprinting of HOL theories, which was pointed out 
+    by Ralph Reetz.
+
+16. Jim Grundy's library of pairs has been ported to hol90 by David Shepherd.
+
+17. Added a new theory "restr_binder", with definitions for
+    "RES_ABSTRACT", "RES_FORALL", "RES_EXISTS" and "RES_SELECT". 
+    "restr_binder" has "bool" as its (only) parent, and is a parent of
+    "HOL".  Added restricted quantification to the parser and prettyprinter. 
+    As in hol88, users can define their own restricted binders. The interface
+    to this is in Dsyntax:
+
+        val binder_restrictions :unit -> (string * string) list
+        val associate_restriction :(string*string) -> unit
+        val delete_restriction :string -> unit
+
+    There is also a new addition to allow users to control the style of 
+    prettyprinting. Globals.pp_flags will eventually encapsulate all the 
+    flags used to control the prettyprinter. Currently, the only field in
+    Globals.pp_flags is for restrictions:
+
+        val pp_flags : {restrict:bool ref}
+
+    I also took this opportunity to rewrite and document some of the 
+    prettyprinting code.
+
+18. Documentation has been added to help/90 for the restricted binder functions
+    "associate_restriction", "binder_restrictions", and "delete_restriction".
+
+19. Added documentation for "union" - its specification is slightly different
+    than that of hol88.
+
+20. Added the combinators, "W","CB","KI","oo", "Co", and the functions 
+    "funpow", "butlast", and "replicate" to the Compat structure found in the 
+    hol88 library.
+
+21. Fixed the definition of "Lib.front_n_back" so that it handles singleton 
+    lists. Now Compat.last and Compat.butlast are just the second and first 
+    projections of the result of  "front_n_back"
+
+22. The "real" library has been ported to hol90 by its author John Harrison.
+
+23. The "wellorder" library has been ported to hol90 by its author John 
+    Harrison.
+
+24. Added "CHANGED_TAC" to Tacticals.
+
+25. Added "tryfind" to Lib.
+
+26. Fixed an installation bug in the "HOL_lib" description (in 3/sys_lib.sml). 
+    When building the system in the "reusing-theories" mode,
+    "find_library" is used to get the library description from disk. We
+    then have to do a "move_library" so that the internal description
+    has the correct path. I wasn't doing that in the case of "HOL_lib",
+    although I was doing it for "PRIM_HOL" and "BASIC_HOL". Beats me why
+    I wasn't consistent. This caused installation problems for Paul Curzon
+    and Ching Tsun.
+
+27. Fixed a bug in the pairs library, reported by Ching Tsun. Both
+    CURRY_FORALL_CONV and CURRY_EXISTS_CONV needed a list_mk_pforall,
+    instead of a list_mk_forall.
+
+28. Added a new entry to Globals. It identifies the keywords in the HOL 
+    language, i.e., those "apparently OK identifiers" that are not able to 
+    be used as variable or constant names. This is experimental; in particular 
+    it is not clear how this interacts with Globals.tilde_symbols.
+
+        val reserved_identifiers = {symbolic = ["\\", ";", "=>", "|", ":" ],
+                                    alphanumeric = ["let", "in", "and", "of"]}
+
+29. Added CCONTR_TAC, from an old info-hol message from Paul Loewenstein.
+
+30. Made a slight change in Conv.SUB_QCONV. It might make things faster:
+
+       else if (is_abs tm) 
+            then let val {Bvar,Body} = dest_abs tm
+                     val bodyth = conv Body
+                 in MK_ABS (GEN Bvar bodyth)
+                 end
+            else ALL_QCONV tm;
+
+    is now
+
+       else if (is_abs tm) 
+            then let val {Bvar,Body} = dest_abs tm
+                 in ABS Bvar (conv Body)
+                 end
+            else ALL_QCONV tm;
+
+The reasoning is that "MK_ABS o GEN Bvar" is equivalent to "ABS Bvar".
+
+31. Fixed a minor bug in SUBST: the "var" part of a replacement record
+was not being checked to make sure that it was actually a var.
+
+32. Changed line 194 of contrib/mutrec/mut_rec_ty.sml from
+
+                                    arg = map change_arg arg_info,
+to
+                                    args = map change_arg arg_info,
+
+33. Made changes to SUB_QCONV that affect rewriting. These required
+various changes to proofs in the reals library and Paul Loewenstein's
+automata library. I should probably include an upward-compatibility
+modification.
+
+34. Fix to the abs_theory package.
+
+The fix is to the function "new_abstract_entity". Replace the lines
+
+	val type_string =  (type_to_string o type_of o list_mk_pair) ops
+	val rep_type_string = (name ^ " = " ^ name ^ " of " ^ type_string)
+
+	val rep_type = define_type{name=name,
+				   type_spec = [QUOTE rep_type_string],
+				   fixities = [Prefix]}
+with
+
+	val rep_type = dtype
+                {save_name = name,
+                 ty_name = name,
+                 clauses = [{constructor = name, 
+                             args = map (Parse_support.Hty o type_of) ops,
+                             fixity = Prefix}]}
+
+35. Added global variable to Globals:
+
+        val goal_line = ref "____________________________";
+
+36. Fixed a bug in the goalstack: backing up past the initial goal is not
+    allowed. Rewrote the goalstack implementation: it is now much cleaner.
+
+37. Added a new structure "PP", that represents System.PrettyPrint in SML/NJ. 
+    A few extra prettyprinting routines are thrown in too. In time, this 
+    might grow into a useful library of prettyprinting routines.
+
+38. Fixed a bug, reported by Paul Curzon, in the prettyprinter.
+    Non-symbolic binders would not put a space between themselves and
+    the bound variable. The output could not therefore be reparsed.
+
+39. Fixed a bug, reported by Paul Curzon, in the code that installs an
+    axiom/theorem/definition in the current theory. It allowed an empty
+    name to be given, e.g., save_thm("",TRUTH). This case now raises an
+    exception. (It might be argued that hol90 should read the empty name
+    off the theory file; this is possible, and add_theory_to_sml and its
+    ilk will properly handle the attempt to bind in ML the empty string
+    to the theorem (by giving a warning message, not making the binding,
+    and continuing), but if a theorem is important enough to save on a
+    theory file, it is important enough to name.)
+
+40. Fixed a bug in SELECT_CONV. It wasn't using aconv to check equality 
+    of terms. Bug reported by Chris Toshok.
+
+41. Chris Toshok at UIdaho sent me the hol90 conversion of Mike Gordon's
+    fixpoint library.
+
+42. Fixed a bug in the prettyprinter, noticed by Brian Graham:
+
+        c (\(x,y).M) N
+
+    would print out as
+
+        c \(x,y).M N
+
+    and so wouldn't be re-parsable.
+
+43. Added a feature to the pretty printer: infixes can now be stipulated to
+    print at the beginning or end of a line: after
+
+        #infix_at_front pp_flags := true
+
+    then A <op> B <op> C <op> ... <op> D can pretty print as
+
+        A
+        <op> B
+        <op> C
+           .
+           .
+           .
+        <op> D
+
+    Otherwise, we get the usual, default, behaviour:
+
+        A <op>
+        B <op> 
+        C <op>
+           .
+           .
+           .
+        D
+
+44. Changed the structure "Goal_stack" and the signature "Goal_stack_sig" to
+    "Goalstack" and "Goalstack_sig". Also, the Goalstack structure is not 
+    open when the system starts up. This is to allow experimenting with a new
+    proof interface.
+
+45. Added a new field to Globals.pp_flag : stack_infixes: bool ref. This 
+    provides another control on how infixes get printed. The default is to 
+    stack them, as shown above in 43. However, for long formulas, or formulas
+    with a large number of short identifiers being the "atoms" of the infix
+    expression, this can be unsightly. "stack_infixes" is initially true, and 
+    we would observe one of the formats in 43. If "stack_infixes" is false,
+    we might see
+
+            A <op> B <op> C <op> ... F <op>
+            G <op> ...
+
+46. The treatment in 45 has been extended to application, the invisible infix. 
+
+47. Fixed a bug in "subst", noticed by Klaus Schneider. The simplest example 
+    demonstrating the bug is
+
+        val tm = --`\(p:'a) (q:'a). f (x:'a) (y:'a) : 'a`--;
+        val theta = [{redex = --`x:'a`--, residue = --`q:'a`--},
+                     {redex = --`y:'a`--, residue = --`p:'a`--}];
+        subst theta tm;
+
+    The answer should be the term
+
+        \p' q'. f q p
+
+    but hol90.6 fails with a CLASH error. This bug is "conservative", in that
+    it can not be used to prove |- F; it just raises an exception in a case 
+    where it ought to rename and proceed.
+
+48. Fixed a bug in Rec_type_support.prove_induction_thm, noticed by La
+    Bella Maurizio. Frustratingly, this bug had been fixed in hol88, but 
+    not recorded on the Versions file. Anyway, at approximately line 310 of 
+    src/2/rec_type_support.sml, there is a function "mk_fn" defined. This is 
+    a local function to the function "prove_induction_thm". Replace the 
+    definition of "mk_fn" with the following:
+
+        fun mk_fn P ty tm = 
+           let val {lhs,rhs} = dest_eq(snd(strip_forall tm))
+               val c = rand lhs
+               val args = snd(strip_comb rhs)
+               val vars = filter is_var args
+               val n = length(filter (fn t => type_of t = ty) vars)
+           in if (n=0) 
+              then list_mk_abs (vars, tr)
+              else let val bools = gen n
+                       val term = mk_disj{disj1 = list_mk_conj bools,
+                                          disj2 = mk_comb{Rator = P, Rand = c}}
+                   in list_mk_abs((bools@vars),term)
+                   end
+           end
+
+49. Theorems with assumptions are now allowed to be stored and retrieved
+    from theory files. Also, the variable: "allow_theorems_with_assumptions"
+    in declared in Globals is now initialized to true.
+
+50. Fixed a bug in CONTR noticed by David Shephard;
+
+        - CONTR(--`1`--)(ASSUME(--`F`--));
+        val it = . |- 1 : thm
+
+51. Changed several small SML parsing bugs (due to SML/NJ or Poplog SML, 
+    I'm not sure which). Thanks to Robin Popplestone for pointing them out.
+
+52. Fixed a bug in the prettyprinter, reported by Brian Graham.
+
+        - %`!x y. !a::($> x). !b::($> y). (x > y) ==> (a > b)`;
+        val it = (--`!x y. !a b ::($> x). x > y ==> a > b`--) : term
+
+    Showing the dB structure and the restricted quantifiers, this is
+
+        - %`!x y. !a::($> x). !b::($> y). (x > y) ==> (a > b)`;
+        val it =
+        `!x y. RES_FORALL ($> (1))
+               (\a. RES_FORALL ($> (1)) (\b. (3) > (2) ==> (1) > (0)))`
+
+    Notice that the "x" in "($> x)" is one away from its binder, as is the
+    "y" in "($> y)". Hence, just testing with aconv, as I was, is not correct.
+    Changes to hol_pp.sml
+
+53. Augmented Globals.pp_flags. Now it has the fields
+
+        val pp_flags : {infix_at_front:bool ref,
+                        show_dB: bool ref,
+                        show_restrict:bool ref,
+                        show_types: bool ref,
+                        stack_infixes :bool ref}
+
+    and also provides the variables
+
+        val show_restrict : bool ref
+        val show_types : bool ref
+        val show_dB : bool ref
+
+    Only show_restrict is new.
+
+54. Change to Globals.output_HOL_ERR. I didn't understand the check for 
+    origin_structure = "" in the following, so I am getting rid of it.
+
+    OLD:
+        val output_HOL_ERR = 
+           ref (fn {message,origin_function,origin_structure} =>
+                (output(std_out,("\nException raised at "^origin_structure^"."^
+                                 origin_function^
+                                 (if (origin_structure="") then "" else ":\n")^
+                                 message^"\n"));
+                 flush_out std_out));
+
+    NEW:
+        val output_HOL_ERR = 
+           ref (fn {message,origin_function,origin_structure} =>
+                (output(std_out,("\nException raised at "^origin_structure^"."^
+			         origin_function^":\n"^message^"\n"));
+                 flush_out std_out));
+
+55. Richard Boulton has modified the prettyprinter so that it is extensible.
+
+   The structure Extend_hol_pp in hol90 contains functions for incrementally
+   extending the system pretty-printers for HOL types and terms, and for
+   resetting them to their original state. The signature of this structure is:
+
+   sig
+      datatype gravity = TOP | APPL | INFIX of int | WEAK | BOTTOM
+      val gravity_geq : gravity -> gravity -> bool
+      val extend_pp_type :
+         (({depth:int, gravity:gravity} ->
+           Term.Type.hol_type -> PP.ppstream -> unit) ->
+          ({depth:int, gravity:gravity} ->
+           Term.Type.hol_type -> PP.ppstream -> unit)) -> unit
+      val reset_pp_type : unit -> unit
+      val extend_pp_term :
+         (({boundvars:Term.term list, depth:int, gravity:gravity} ->
+           Term.term -> PP.ppstream -> unit) ->
+          ({boundvars:Term.term list, depth:int, gravity:gravity} ->
+           Term.term -> PP.ppstream -> unit)) -> unit
+      val reset_pp_term : unit -> unit
+   end
+
+   Considering terms (and by analogy, types), there are two functions: one to
+   extend the printer; the other to reset it to the start-up state. Users can
+   provide a pretty-printing function for whatever special features they 
+   require. Such a function will be tried first on each call (top-level and 
+   recursive) to the pretty-printer. If it fails for any reason, the original 
+   printer is called (or the previously extended version of it).
+
+   The user-supplied function takes a print function as its first argument.
+   When the user function is installed in the system using extend_pp_term, 
+   this argument is instantiated with the currently active printer for terms. 
+   Thus, if the user function makes calls to this argument in order to 
+   process subterms, the new printing will be tried at each level without 
+   cutting the old printer out of the loop.
+
+  The depth argument to the print functions is the print depth; it
+  should be decremented on each recursive call. When it reaches zero,
+  the subterm is elided. Starting with a negative value prevents elision
+  from occurring regardless of how deep the term is. The boundvars
+  argument is a list of the bound variables of the abstractions passed
+  through in descending the term. The list is accessed by the de Bruijn
+  number when a bound variable is encountered.
+
+  The datatype for precedence (called gravity) is available to the
+  user. There are five constructors. TOP is the highest (most-tightly
+  binding) precedence; APPL is for applications, INFIX is for the infix
+  operators and takes an integer argument; WEAK is used for bindings and
+  for mixfixes such as conditional expressions; and BOTTOM is the lowest
+  precedence value.
+
+  Example:
+
+  The use of the extensibility functions is illustrated in the session
+  below in which a function to print conditional expressions as "if
+  ... then ... else ..."  instead of as "... => ... | ..." is
+  installed. Note that the call to dest_cond fails if the term is not a
+  conditional expression and so forces the original printer to be used.
+
+   - val tm = (--`APPEND ((n = 0) => [] | [n]) [1;2;3]`--);
+   val tm = (--`APPEND ((n = 0) => [] | [n]) [1; 2; 3]`--) : term
+   - local
+   =    open PP Extend_HOL_PP
+   = in
+   = fun pp_ite pp_tm {boundvars:term list,depth,gravity} tm ppstrm =
+   =    if (depth = 0)
+   =    then raise Fail "pp_ite"
+   =    else let val {cond,larm,rarm} = dest_cond tm
+   =             val parenth = gravity_geq gravity WEAK
+   =             val params = {boundvars=boundvars,depth=depth-1,gravity=TOP}
+   =         in  (if parenth then add_string ppstrm "(" else ();
+   =              begin_block ppstrm CONSISTENT 0;
+   =              add_string ppstrm "if ";
+   =              (pp_tm params cond ppstrm : unit);
+   =              add_break ppstrm (1,0);
+   =              add_string ppstrm "then ";
+   =              pp_tm params larm ppstrm;
+   =              add_break ppstrm (1,0);
+   =              add_string ppstrm "else ";
+   =              pp_tm params rarm ppstrm;
+   =              end_block ppstrm;
+   =              if parenth then add_string ppstrm ")" else ())
+   =         end
+   = end;
+   val pp_ite = fn
+     : ({boundvars:term list, depth:int, gravity:Extend_HOL_PP.gravity}
+        -> term -> PP.ppstream -> unit)
+       -> {boundvars:term list, depth:int, gravity:Extend_HOL_PP.gravity}
+          -> term -> PP.ppstream -> unit
+   - tm;
+   val it = (--`APPEND ((n = 0) => [] | [n]) [1; 2; 3]`--) : term
+   - Extend_HOL_PP.extend_pp_term pp_ite;
+   val it = () : unit
+   - tm;
+   val it = (--`APPEND (if (n = 0) then [] else [n]) [1; 2; 3]`--) : term
+   - Extend_HOL_PP.reset_pp_term ();
+   val it = () : unit
+   - tm;
+   val it = (--`APPEND ((n = 0) => [] | [n]) [1; 2; 3]`--) : term
+   - 
+
+56. Momentarily took the new prettyprinter stuff out until I can understand
+    it better. Then put it back.
+
+57. Fixed a bug, reported by Brian Graham, in the way "tilde_symbols" are 
+    lexed. Example:
+
+        - Globals.tilde_symbols := ["~<"];
+        val it = () : unit
+
+        - new_theory"foo";
+             ...
+
+        - val bug = new_infix_definition
+          ("bug", --`~< a b = ~(a < b)`--, 200);
+
+        = val bug = |- !a b. a ~< b = ~(a < b) : thm
+
+        - --`~<`--;              (* OK, as before *)
+        val it = (--`$~<`--) : term
+
+        - --`$~<`--;             (* OK, not as before *)
+        val it = (--`$~<`--) : term
+
+        - --`2:num ~< 3`--;      (* This also used to fail *)
+        val it = (--`2 ~< 3`--) : term
+
+58. Change to the definition of "EXISTS", so as to avoid variable
+    capture from dest_abs.
+
+        (* Old
+         * fun EXISTS (w,t) th =
+         *    let val {Bvar,Body} = dest_exists w
+         *    in
+         *    if (aconv (subst [{redex = Bvar, residue = t}] Body) 
+         *              (concl th))
+         *    then mk_thm(hyp th, w)
+         *    else raise DRULE_ERR{function = "EXISTS",message = ""}
+         *    end
+         *    handle _ => raise DRULE_ERR{function = "EXISTS",message = ""};
+         *******************************************************************)
+
+    fun EXISTS (w,t) th =
+       let val {Rator,Rand} = dest_comb w
+       in
+       if (#Name(dest_const Rator) = "?")
+       then if (aconv (Term.beta_conv(mk_comb{Rator=Rand, Rand=t})) (concl th))
+            then mk_thm(hyp th, w)
+            else raise DRULE_ERR{function = "EXISTS",
+                                 message = "incompatible structure"}
+       else raise DRULE_ERR{function = "EXISTS",message = "not an existential"}
+       end;
+
+
+59. Changed definition of REWR_CONV to localize (and rationalize!) the 
+    exception handling. Did the same for RAND_CONV, RATOR_CONV, ABS_CONV, and
+    ORELSEQC. The general aim should be to replace instances of
+   
+        handle _ => ...
+
+    with
+ 
+        handle (HOL_ERR _) =>
+
+    so that an occurrence of a non-HOL exception can propagate to where it 
+    should. 
+
+60. Added funpow to the basic system.
+
+        fun funpow n f x =
+            let fun it (0,res) = res
+                  | it (n,res) = it (n-1, f res)
+            in it(n,x)
+            end;
+
+61. Added Psyntax and Rsyntax to the system (in 3/{psyntax.sig,rsyntax.sig,
+    psyntax.sml,rsyntax.sml}). This should clean up hol88 a bit.
+
+62. Added a new implementation of Goalstack to the system. This is still 
+    cleaner than the previous clean version, since it uses the "history"
+    abstype, and the interface now provides reasonable access to a list of 
+    proofs.
+
+63. Changed ALPHA_CONV to be more efficient:
+
+       New.
+       fun ALPHA_CONV x t = 
+          ALPHA t (mk_abs{Bvar = x,
+                          Body = Term.beta_conv(mk_comb{Rator = t,Rand = x})})
+
+       Old.
+       fun ALPHA_CONV x t =
+          let val x' = variant (free_vars t) x
+              val cmb = mk_comb{Rator = t, Rand = x'}
+              val th1 = SYM(ETA_CONV(mk_abs{Bvar = x', Body = cmb}))
+              and th2 = ABS x' (BETA_CONV cmb)
+          in
+          TRANS th1 th2
+          end
+          handle _ => raise DRULE_ERR{function = "ALPHA_CONV",message = ""};
+
+64. Fixed bug spotted by Richard Boulton in "is_infix": it shouldn't
+    fail when applied to a string that is not the name of a constant.
+
+66. Added the MATCH_MP by John Harrison. It is much more robust than 
+    the previous version.
+
+67. Made a slight change to EXISTS_TAC, so that it takes advantage of 
+    beta-conversion (safer than using dest_exists followed by a subst 
+    of the term for the bvar).
+
+68. Made a slight change to the semantics of the "loaded_func" of the 
+    library package. It now gets compiled after the library is loaded, 
+    rather than when the library is declared.
+
+69. Made a new library: goalstack_lib. The goalstack is no longer an 
+    integral part of the hol90 distribution. This is intended to pave 
+    the way for other proof managers to be set up as libraries. And it 
+    makes it easier to experiment with the current goalstack 
+    implementation.
+
+70. Fixed a bug in substitution, reported by Elsa Gunter. Falsity was 
+    not derivable; it's just that a replacement would not happen because 
+    a certain renaming would not happen.
+
+71. Changed the implementation of rewriting to use an abstract type of 
+    `rewrites'. A value of type `rewrites' is a "compiled" set of rewrite 
+    rules (what used to be a "conv net ref" before (ugh!)). Many rewriting
+    operations (the ones that don't start with "PURE_", for instance)
+    automatically use a base set of useful simplifications. Before the
+    introduction of the type of `rewrites', the interface to this base
+    set was poor. Now people can install their own base set of rewrites,
+    augment the existing set, or get the current value of the base rewrites. 
+
+    The functions "empty_rewrites" and "add_rewrites", provide a simple 
+    means for interested users to build their own rewrite rule sets. 
+
+    A simple prettyprinter ("pp_rewrites") has been installed in the 
+    system prettyprinter tables to enable the viewing of rewrite rule
+    sets. 
+ 
+       type rewrites
+       val empty_rewrites : rewrites
+       val add_rewrites : rewrites -> Base_logic.Thm.thm list -> rewrites
+       val set_base_rewrites : rewrites -> unit
+       val base_rewrites : unit -> rewrites
+       val add_base_rewrites : Base_logic.Thm.thm list -> unit
+       val pp_rewrites : PP.ppstream -> rewrites -> unit
+
+    Pre-existing functions whose type has changed are:
+
+       val REWRITES_CONV :rewrites -> conv
+       val GEN_REWRITE_CONV :(conv -> conv)
+                               -> rewrites -> Base_logic.Thm.thm list -> conv
+       val GEN_REWRITE_RULE :(conv -> conv) 
+                                -> rewrites -> Base_logic.Thm.thm list
+                                   -> Base_logic.Thm.thm -> Base_logic.Thm.thm
+       val GEN_REWRITE_TAC :(conv -> conv) 
+                               -> rewrites -> Base_logic.Thm.thm list -> tactic
+
+    Examples of prettyprinter.
+
+      - base_rewrites();
+      val it =
+        |- (x = x) = T;  |- (T = t) = t;  |- (t = T) = t;  |- (F = t) = ~t;
+        |- (t = F) = ~t;  |- ~~t = t;  |- ~T = F;  |- ~F = T;  |- T /\ t = t;
+        |- t /\ T = t;  |- F /\ t = F;  |- t /\ F = F;  |- t /\ t = t;
+        |- T \/ t = T;  |- t \/ T = T;  |- F \/ t = t;  |- t \/ F = t;
+        |- t \/ t = t;  |- T ==> t = t;  |- t ==> T = T;  |- F ==> t = T;
+        |- t ==> t = T;  |- t ==> F = ~t;  |- (T => t1 | t2) = t1;
+        |- (F => t1 | t2) = t2;  |- (!x. t) = t;  |- (?x. t) = t;
+        |- (\x. t1) t2 = t1;  |- (FST x,SND x) = x;  |- FST (x,y) = x;
+        |- SND (x,y) = y
+        Number of rewrite rules = 31
+         : rewrites
+
+      - empty_rewrites;
+      val it =
+        <empty rule set>
+        Number of rewrite rules = 0
+         : rewrites
+
+
+72. Modified the abs_theory library to depend on the goalstack
+    library. Also modified the description of the goalstack library so
+    that it depends on "basic_hol_lib", rather than "hol_lib". Edited
+    various files in the abs_theory library sources so that they reflect the
+    fact that abs_theory is a library (for example, examples/abs_theory.tex
+    was out of date).
+
+73. The hol88 library has been reduced, since now Psyntax and Rsyntax are
+    part of the core. Various libraries, such as the reals and wellordering 
+    have been modified in minor ways to build under this new regime. For users,
+    a simple invocation of (one of)
+
+        open Psyntax;   (* gives paired syntax *)
+
+        open Rsyntax;   (* gives record syntax *)
+
+    is all that is necessary to put one in a "paired" environment or a
+    "record" environment.
+
+74. The libraries "fixpoint" and "prog_logic" both declare the constant 
+    "ITER" in their theories. Therefore a person wishing to use both
+    libraries simultaneously would not be able to. I have changed the name
+    "ITER" in the fixpoint library to be "FUNPOW". Likewise, I have changed 
+    "LUB" in the fixpoint library to "SUP". 
+
+75. Added a new directory, called "examples", at the top level of the hol90
+    directory hierarchy. This is for quick access to the various
+    examples that are available throughout the system. Currently, there are
+    entries for the following libraries:
+
+        abs_theory
+        inductive_def
+        unity
+        bmark
+
+    Also, there is John Harrison's proof of the n=4 case of Fermat's 
+    Last Theorem.
+
+76. Removed Parse.p and Parse.ps; added Parse.preterm_parser and 
+    Parse.string_to_preterm.
+
+77. Added better "theorem-counting" functionality. The interface is as 
+    before, except that "thm_count" is much more accurate. Up until now,
+    "mk_thm" covered a mixture of undifferentiated sins and necessities. Now, 
+    accurate counts are kept for each primitive rule; for the derived rules 
+    (as a whole); for when definitions and axioms are built; when a theorem 
+    is loaded in from disk; when mk_thm is called in checking for validity 
+    of tactics; and finally for anytime the user just makes a theorem.
+
+       val reset_thm_count : unit -> unit
+
+       (* Toggles switch that says whether to count inferences or not. *)
+       val counting_thms : bool -> unit
+
+       val thm_count : unit -> {ASSUME : int, REFL : int, BETA_CONV : int,
+                                SUBST : int,  ABS : int,   DISCH : int,
+                                MP : int, INST_TYPE : int, drule : int,
+                                definition : int, axiom : int,
+                                from_disk : int, valid_tac : int, other : int}
+
+    Thm_sig now supplies corresponding calls to invoke these different 
+    varieties of mk_thm. The system has not become more unsafe, just 
+    more accurate. However, it would be nice to remove some of these 
+    entrypoints.
+
+       val mk_axiom_thm : (Term.term list * Term.term) -> thm
+       val mk_definition_thm  : (Term.term list * Term.term) -> thm
+       val mk_drule_thm : (Term.term list * Term.term) -> thm
+       val mk_disk_thm  : (Term.term list * Term.term) -> thm
+       val mk_tac_thm  : (Term.term list * Term.term) -> thm
+       val mk_thm : (Term.term list * Term.term) -> thm
+
+    How should one compute inference totals? Here's one example:
+
+        let val {ABS,ASSUME,BETA_CONV,DISCH,INST_TYPE,MP,
+                 REFL,SUBST,drule,other,...} = thm_count()
+        in
+        Lib.say("Total inferences = "
+                 ^Lib.int_to_string(ABS + ASSUME + BETA_CONV + DISCH + 
+                              INST_TYPE + MP + REFL + SUBST + drule + other))
+        end;
+
+    This computes all primitive and "extended-primitive" inferences, plus
+    miscellaneous others (such as arise when axiom schemes like "num_CONV" 
+    are applied). Invoking "counting_thms true" slows the implementation 
+    down about 5%.
+
+
+78. Added some infix notation for elements of a substitution:
+
+        A |-> B = {redex = A, residue = B}
+
+    This makes writing "substitution-heavy" code a bit pleasanter. Changes to 
+    src/0/lib.{sig,sml}. "|->" is polymorphic and so it works for both type 
+    and term substitutions.
+
+
+79. Fixed a bug in prettyprinting, reported by Einar Snekkenes. The problem
+    manifested itself as 
+
+        --`let a = 1 and (b,c) = (2,3) in (a,b,c)`--;
+ 
+         val it = (--`let a = 1 and b,c = (2,3) in (b,c,a)`--) : term
+
+    Environments weren't being put together properly.
+
+80. Added the "list" library of Wai Wong and Paul Curzon. This provides
+    a theory "List", in which the major definitions of the theory "list"
+    have been loaded and bound as theorems.  Users of the type "list" 
+    should therefore be able to load this theory and use the associated 
+    reasoning facilities without stooping to the original theory of lists. 
+    The auxiliary theory "fun" has been renamed "operator" and made local 
+    to this library. Note: the library takes a lot of time and space to load, 
+    even on a 64 Meg. SPARC2. 
+
+81. Removed the functions found in "src/3/list_conv.{sig,sml}" from the 
+    system, as they are replicated in the "list" library. This  
+    require minor changes to the libraries "unity" (which used 
+    LIST_INDUCT_TAC) and "prog_logic" (which used
+    "new_list_rec_definition", a derived form of "new_recursive_definition").
+
+82. Moved the "fixpoint" library to contrib, as it is very small and has 
+    no documentation.
+
+83. Added the "CSP" library of Albert Camillieri to "contrib". This library
+    was translated to hol90 by Brian Graham.
+
+84. Changed the semantics of "load_library" so that the "theory" argument, if 
+    not the name of the current theory, will be used to make a new theory,
+    i.e., to put the system into draft mode. Before, if all the theories
+    needed to build the library were already in the ancestry, the new theory
+    would not get declared. Now the new theory gets declared, regardless.
+    In other words, only when the "theory" argument equals the current theory
+    will new_theory not get called. One consequence of this is that 
+    "load_library_in_place" is now a derived form:
+
+        fun load_library_in_place lib = load_library{lib = lib, theory = "-"}
+
+
+85. Arbitrarily replaced the name "load" from src/0/lib.{sig,sml} with the 
+    name "interpret". I think it is more intuitive this way. I also
+    fixed up the exception handling in Lib.compile and Lib.interpret: if
+    they raise an error during loading, the original setting of the 
+    "System.Control.interp" flag is restored.
+
+86. Added a function "prim_load_library" to src/0/library/lib.{sig,sml} 
+    of type
+
+        (string -> unit) -> {lib:lib, theory:string} -> unit
+
+    The first string is a "code_loader" function - it is invoked on each file
+    in the "code" section of a library. Two possible ways to use
+    this are to: compile code or intepret code. The first option is already
+    provided in the functionality of the derived form "load_library", i.e.,
+
+        val load_library = prim_load_library Lib.compile
+
+    Another specialization of "prim_load_library" would load the code quickly,
+    but execution of that code would be slow. It would be appropriate for
+    small memory machines and it would be defined:
+
+         val fast_load_library = prim_load_library Lib.interpret
+
+    This has not, however, been installed in the system.
+
+87. In hopefully the last chapter of the goalstack hegira, the goalstack
+    library has been moved back into the core of the system. It is now 
+    in the structure Goalstack, which is already open when the system
+    starts up.
+
+88. Added a new type "lambda" to term.sml. The declaration is
+
+        datatype lambda = VAR of {Name : string, Ty : Type.hol_type}
+                        | CONST of {Name : string, Ty : Type.hol_type}
+                        | COMB of {Rator : term, Rand : term}
+                        | LAMB of {Bvar : term, Body : term};
+
+    Also added a new function "dest_term" of type "term -> lambda". This 
+    is for taking apart an arbitrary term in one step. These additions are 
+    the suggestion of Morten Welinder; analogous proposals have been made 
+    in the past by Elsa Gunter. This type is currently for experimental 
+    purposes only and could be withdrawn at any moment since it provides 
+    already existing functionality. Some changes using this type have 
+    already been applied to rewriting (it didn't apparently help much).
+
+89. Some internal changes have been made: the Symtab structure has been 
+    removed; its functionality has been dispersed to Type and Term. One
+    consequence of this is that "mk_type" is now found in Type, instead 
+    of Dsyntax.
+
+90. Added the "window" library of Jim Grundy.
+
+91. Added the libraries "res_quan", and "word", thanks to Wai Wong and 
+    Paul Curzon.
+
+92. As a result of (89), "variant" now has the right behaviour when the 
+    argument variable has a name equal to that of a constant, i.e., it 
+    returns a variable with a name different than that of any (term)
+    constant in the signature at the time of call.
+
+93. Added a function "Theory.html_theory : string -> unit", which takes 
+    a string (s), looks up the theory with name "s" (it must be in 
+    the ancestry), and prints the theory out in HTML format to file
+    "s.html". The parent theories are linked to, but not themselves printed 
+    out, i.e., the function does not call itself recursively. "html_theory"
+    is a simple modification of "print_theory". It is easy to extend this
+    function to operate over parts of the ancestry. For example, to get
+    a hypertext version of the entire current theory graph, one might
+    do something like
+
+        map html_theory (current_theory()::ancestry"-");
+
+    if one had a lot of memory available. A simple utility that one 
+    could write using "html_theory" would be 
+
+        fun html_ancestry{theory, until} =
+           let val A = theory::ancestry theory
+               val stoppers = Lib.U (map ancestry until)
+               val remains = Lib.set_diff A stoppers
+           in
+           map Theory.html_theory remains
+           end;
+
+94. Fixed a bug in "new_parent". Suppose we have made a theory "A" with 
+    parent "B" in a session. In a different session, we do a 
+
+        new_theory "B";
+        new_parent "A";
+
+    This should not be allowed; otherwise various theory operations would
+    become ambiguous (which B is being referred to, for instance). This bug
+    is a problem in hol90 because we are using unique identifiers for 
+    security: two theories with different unique ids could have the same name,
+    but that should not be allowed, if both are in the same theory graph.
+
+95. Added the library "orsml" of Leonid Libkin and Elsa Gunter to contrib. 
+    This library applies a sophisticated database query language to the
+    problem of searching for various HOL objects, e.g., all the rewrites
+    possible throughout a given term, all theorems involving a
+    certain term, etc.
+    
+96. Added the libraries "mutrec" and "nested_rec" to contrib. These
+    libraries were authored by Elsa Gunter, Healfdene Goguen, and Myra
+    VanInwegen. They provide functionality to define logical datatypes
+    with mutual recursion and nested recursion.
+
+97. Added a bugfix (from Tom Melham) to num_EQ_CONV, in num_lib. Now the
+    following works, whereas it didn't earlier:
+
+       - num_EQ_CONV (--`3 = SUC(SUC(SUC 1))`--);
+
+       val it = |- (3 = SUC (SUC (SUC 1))) = F : thm
+
+98. Another name clash, this time in the contrib directory. Again, it involves
+    the theory of fixpoints. The clash is the constant "MONO", which is also
+    used in CSP. Solution: the "MONO" in "fixpoint" has now been renamed to
+    "MONOTONE". Other clashes and their resolutions (CSP is unaltered - all
+    changes were made in "fixpoint"):
+
+        CONTINUOUS  -->  CONTINUOUSF
+             CHAIN  -->  CHAINF
+                <<  -->  <<<.
+
+99. Simplified the installation procedure. Now hol90 includes the hol88 help
+    files. As a result, the hol88 help files don't have to be separately 
+    fetched from elsewhere. I hope that, over time, the hol88 help files 
+    will be replaced by their hol90 translations.
+
+100. Added a link from the hol90 manual to Kathi Finsler's Beginner's 
+     Guide for hol90.
+
+101. Removed Globals.backup_limit. This is a variable that controls how 
+     many "past states" of the goalstack are kept. Setting the limit is 
+     now done by 
+   
+         set_backup: int -> unit
+
+     The initial limit is 15. Note that setting the limit smaller than the 
+     current limit will immediately truncate the past states to the new
+     limit.
+
+102. Added "type_decl : string -> {tyc:hol_type, arity :int, theory:string}"
+     to Type, at the request of Ralph Reetz.
+
+103. Improved the basic Lexis functions and Lib.int_to_string and 
+     Lib.string_to_int so that they are more efficient. For example, they
+     don't use "explode" anymore. The implementation follows that of "charset"
+     in the SML/NJ library, due to John Reppy.
+
+104. Installed the library "part_fun" in contrib. This presents support for
+     partial functions and is due to Elsa Gunter.
+
+105. Installed the library "holML" in contrib. This is an extensive
+     development of the dynamic semantics of Standard ML. It is due to
+     Elsa Gunter, Myra VanInwegen, and Savi Maharaj. The Core and Module
+     systems are covered, along with extensions to a higher-order module
+     system. Building this library requires *serious* resources - it
+     prostrated a 64 M. Sparc10!
+
+106. Added a contrib directory "map", which contains a rudimentary HTML 
+     map of the theories of the hol90 distribution. The "top" point of the 
+     map can be accessed via the file "MAP.html"
+
+106. Changed the theories in the "real" library to use nicer-looking 
+     (symbolic) infixes. The changes are as follows:
+
+          Before         After 
+         -------         -----
+         real_add         |+|
+         real_mul         |*|
+         real_lt          |<|
+         real_gt          |>|
+         real_le          |<=|
+         real_ge          |>=|

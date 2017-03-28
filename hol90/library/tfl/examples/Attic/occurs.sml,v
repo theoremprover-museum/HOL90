@@ -1,0 +1,188 @@
+head	1.1;
+access;
+symbols
+	HOL97:1.1.4.1.0.2
+	bpHOL97:1.1.4.1
+	hol90_9_alpha:1.1.4.1
+	hol90_pre8_for_multiple_compilers:1.1.0.4
+	TFL_1:1.1.0.2;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	96.08.05.13.40.51;	author rjb;	state dead;
+branches
+	1.1.2.1
+	1.1.4.1;
+next	;
+
+1.1.2.1
+date	96.08.05.13.40.52;	author rjb;	state Exp;
+branches;
+next	;
+
+1.1.4.1
+date	96.08.05.15.40.49;	author rjb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@file occurs.sml was initially added on branch TFL_1.
+@
+text
+@@
+
+
+1.1.4.1
+log
+@Updated to TFL release 4.
+@
+text
+@a0 65
+(*---------------------------------------------------------------------------
+ * Answer to a question from Thorsten Altenkirch: does defining, e.g.,
+ * "occurs" work where the recursively defined function is passed in a 
+ * call to another function? For "occurs", this can be made to work, but it 
+ * requires the user to prove and install a congruence theorem for the
+ * function that takes "occurs" as an argument. It also requires that 
+ * "occurs" is fully eta-expanded in the recursive call. TFL can probably be
+ * altered to do this eta-expansion on-the-fly. Whether all higher-order 
+ * functions have useful congruence rules is a good question.
+ *---------------------------------------------------------------------------*)
+
+new_theory"term" handle _ => ();
+cons_path"../" theory_path;
+new_parent"kls_list";
+
+
+local open Hol_datatype
+in
+val term_ty_def = 
+     hol_datatype `term = Var of 'a
+                        | Const of 'a
+                        | App of term => term`
+end;
+
+val exists_def =
+#definer(assoc "list" (Hol_datatype.current()))
+   {name="exists", fixity=Prefix,
+    def = Term`(exists (P:'a->bool) [] = F) /\ 
+               (exists P  (CONS h t) = P h \/ exists P t)`};
+
+
+val exists_cong = Q.prove
+`!L L' P P'.
+    (L=L') /\ 
+    (!y:'a. mem y L' ==> (P y = P' y)) 
+     ==> (exists P L = exists P' L')`
+(#induct_tac (assoc"list" (Hol_datatype.current()))
+ THENL
+ [ REPEAT GEN_TAC 
+     THEN DISCH_THEN (CONJUNCTS_THEN2 (SUBST_ALL_TAC o SYM) (K ALL_TAC))
+     THEN RW_TAC[exists_def],
+   REPEAT STRIP_TAC THEN POP_ASSUM MP_TAC 
+     THEN POP_ASSUM (SUBST_ALL_TAC o SYM) 
+     THEN POP_ASSUM (ASSUME_TAC o RW_RULE[] o Q.SPEC`L`)
+     THEN RW_TAC[exists_def,definition"kls_list" "mem_def",
+                 Q.TAUT_CONV`(A \/ B ==> C) = (A ==> C) /\ (B ==> C)`]
+     THEN CONV_TAC (DEPTH_CONV FORALL_AND_CONV)
+     THEN DISCH_THEN (fn th =>
+          let val [th1,th2] = CONJUNCTS th
+          in MATCH_MP_TAC (Q.TAUT_CONV`(A=C) /\ (B=D) ==> (A \/ B = C \/ D)`) 
+               THEN CONJ_TAC THENL
+                [ (ACCEPT_TAC o RW_RULE[] o Q.SPEC`h`) th1,
+                  ANTE_RES_THEN ACCEPT_TAC th2]
+          end)]);
+
+val () = Prim.Context.write (exists_cong::Prim.Context.read());
+
+
+(*---------------------------------------------------------------------------
+ * Does a variable occur in a term?
+ *---------------------------------------------------------------------------*)
+function`(Occ (v1, Var v2) = ((v1:'a) = v2)) /\
+         (Occ (v, Const x) = F) /\
+         (Occ (v, App M N) = exists (\x. Occ(v,x)) [M;N])`;
+
+@
+
+
+1.1.2.1
+log
+@TFL version 4 for HOL.
+@
+text
+@a0 65
+(*---------------------------------------------------------------------------
+ * Answer to a question from Thorsten Altenkirch: does defining, e.g.,
+ * "occurs" work where the recursively defined function is passed in a 
+ * call to another function? For "occurs", this can be made to work, but it 
+ * requires the user to prove and install a congruence theorem for the
+ * function that takes "occurs" as an argument. It also requires that 
+ * "occurs" is fully eta-expanded in the recursive call. TFL can probably be
+ * altered to do this eta-expansion on-the-fly. Whether all higher-order 
+ * functions have useful congruence rules is a good question.
+ *---------------------------------------------------------------------------*)
+
+new_theory"term" handle _ => ();
+cons_path"../" theory_path;
+new_parent"kls_list";
+
+
+local open Hol_datatype
+in
+val term_ty_def = 
+     hol_datatype `term = Var of 'a
+                        | Const of 'a
+                        | App of term => term`
+end;
+
+val exists_def =
+#definer(assoc "list" (Hol_datatype.current()))
+   {name="exists", fixity=Prefix,
+    def = Term`(exists (P:'a->bool) [] = F) /\ 
+               (exists P  (CONS h t) = P h \/ exists P t)`};
+
+
+val exists_cong = Q.prove
+`!L L' P P'.
+    (L=L') /\ 
+    (!y:'a. mem y L' ==> (P y = P' y)) 
+     ==> (exists P L = exists P' L')`
+(#induct_tac (assoc"list" (Hol_datatype.current()))
+ THENL
+ [ REPEAT GEN_TAC 
+     THEN DISCH_THEN (CONJUNCTS_THEN2 (SUBST_ALL_TAC o SYM) (K ALL_TAC))
+     THEN RW_TAC[exists_def],
+   REPEAT STRIP_TAC THEN POP_ASSUM MP_TAC 
+     THEN POP_ASSUM (SUBST_ALL_TAC o SYM) 
+     THEN POP_ASSUM (ASSUME_TAC o RW_RULE[] o Q.SPEC`L`)
+     THEN RW_TAC[exists_def,definition"kls_list" "mem_def",
+                 Q.TAUT_CONV`(A \/ B ==> C) = (A ==> C) /\ (B ==> C)`]
+     THEN CONV_TAC (DEPTH_CONV FORALL_AND_CONV)
+     THEN DISCH_THEN (fn th =>
+          let val [th1,th2] = CONJUNCTS th
+          in MATCH_MP_TAC (Q.TAUT_CONV`(A=C) /\ (B=D) ==> (A \/ B = C \/ D)`) 
+               THEN CONJ_TAC THENL
+                [ (ACCEPT_TAC o RW_RULE[] o Q.SPEC`h`) th1,
+                  ANTE_RES_THEN ACCEPT_TAC th2]
+          end)]);
+
+val () = Prim.Context.write (exists_cong::Prim.Context.read());
+
+
+(*---------------------------------------------------------------------------
+ * Does a variable occur in a term?
+ *---------------------------------------------------------------------------*)
+function`(Occ (v1, Var v2) = ((v1:'a) = v2)) /\
+         (Occ (v, Const x) = F) /\
+         (Occ (v, App M N) = exists (\x. Occ(v,x)) [M;N])`;
+
+@

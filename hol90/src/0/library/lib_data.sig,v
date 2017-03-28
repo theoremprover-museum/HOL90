@@ -1,0 +1,142 @@
+head	1.3;
+access;
+symbols
+	HOL97:1.3.0.4
+	bpHOL97:1.3
+	hol90_9_alpha:1.3
+	hol90_pre8_for_multiple_compilers:1.3.0.2
+	hol90_pre8_after_donalds_separate_compilation_changes:1.3
+	hol90_8_after_merging_Konrad_Elsa:1.2
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.3
+date	95.10.31.15.04.33;	author drs1004;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	95.10.18.16.37.32;	author drs1004;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	95.10.16.13.30.07;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.30.07;	author rjb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.3
+log
+@First phase of hol90.8 development.  hol90 now compiles using NJSML-CM
+108.5, with separate compilation of libraries.  System dependencies
+have been isolated in the makefiles and "portable.sml".
+
+This involved a large number of enhancments to the source files,
+most of which are documented in the 7.changes file (or will be shortly).
+See also the correpsonding email corrspondence between RJB, KLS, TFM,
+JRH and DRS that happened during this development.
+@
+text
+@signature Lib_data_sig =
+sig
+type lib_id
+val new_lib_id :string -> lib_id
+val mk_lib_id :{name:string,timestamp:Portable.Time.time} -> lib_id
+val lib_id_name :lib_id -> string
+val lib_id_timestamp :lib_id -> Portable.Time.time
+val lib_id_eq :lib_id * lib_id -> bool
+
+type lib_data
+val dest_lib_data : lib_data -> {lib_id : lib_id,
+                                 doc : string,
+                                 path : string,
+                                 parents : lib_id list,
+                                 theories : string list,
+                                 code : string list,
+                                 help : string list,
+                                 loaded : string}
+
+val mk_lib_data : {lib_id : lib_id,
+                   doc : string,
+                   path : string,
+                   parents : lib_id list,
+                   theories : string list,
+                   code : string list,
+                   help : string list,
+                   loaded : string} -> lib_data
+
+end;
+@
+
+
+1.2
+log
+@Check in after merging in Konrad's changes made after
+the release of hol90.7.  This involved creating a side branch
+in which to check in Konrad's changes, then merging in that
+side branch into the main development (which contains changes
+made by Elsa Gunter).
+
+Some other small modification have been made to the source code,
+as I begun to try to make this version into a working version:
+	- hol90 will now be compiled in an environment were no
+structures can be considered opn.  This means many structures
+now need "open Lib" and other such commands at their head.
+This has not yet been completed, but has been begun.
+	- "rotl" and "rotr" have been added to Lib, something
+which I just did impulsively.   Documentation files
+have also been added in help/90.
+@
+text
+@d5 1
+a5 1
+val mk_lib_id :{name:string,timestamp:Sml_system.Time.time} -> lib_id
+d7 1
+a7 1
+val lib_id_timestamp :lib_id -> Sml_system.Time.time
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d5 1
+a5 1
+val mk_lib_id :{name:string,timestamp:time} -> lib_id
+d7 1
+a7 1
+val lib_id_timestamp :lib_id -> time
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

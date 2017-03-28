@@ -1,0 +1,72 @@
+thid = (bword_bitop, 942753076, 248953)
+axioms = []
+definitions =
+[((WXOR_DEF),
+  [],
+  `((! :(bool list -> bool) -> bool) (\(l1 :bool list).
+   ((! :(bool list -> bool) -> bool) (\(l2 :bool list).
+   (((= :bool word -> bool word -> bool) ((WXOR
+   ((WORD :bool list -> bool word) $1))
+   ((WORD :bool list -> bool word) $0)))
+   ((WORD :bool list -> bool word)
+   ((((MAP2 :(bool -> bool -> bool) -> bool list -> bool list ->
+             bool list) (\(x :bool). (\(y :bool). (~
+   (((= :bool -> bool -> bool) $1) $0))))) $1) $0)))))))`),
+ ((WOR_DEF),
+  [],
+  `((! :(bool list -> bool) -> bool) (\(l1 :bool list).
+   ((! :(bool list -> bool) -> bool) (\(l2 :bool list).
+   (((= :bool word -> bool word -> bool) ((WOR
+   ((WORD :bool list -> bool word) $1))
+   ((WORD :bool list -> bool word) $0)))
+   ((WORD :bool list -> bool word)
+   ((((MAP2 :(bool -> bool -> bool) -> bool list -> bool list ->
+             bool list) \/) $1) $0)))))))`),
+ ((WAND_DEF),
+  [],
+  `((! :(bool list -> bool) -> bool) (\(l1 :bool list).
+   ((! :(bool list -> bool) -> bool) (\(l2 :bool list).
+   (((= :bool word -> bool word -> bool) ((WAND
+   ((WORD :bool list -> bool word) $1))
+   ((WORD :bool list -> bool word) $0)))
+   ((WORD :bool list -> bool word)
+   ((((MAP2 :(bool -> bool -> bool) -> bool list -> bool list ->
+             bool list) /\) $1) $0)))))))`),
+ ((WNOT_DEF),
+  [],
+  `((! :(bool list -> bool) -> bool) (\(l :bool list).
+   (((= :bool word -> bool word -> bool) (WNOT
+   ((WORD :bool list -> bool word) $0)))
+   ((WORD :bool list -> bool word)
+   (((MAP :(bool -> bool) -> bool list -> bool list) ~) $0)))))`)]
+theorems =
+[((PBITBOP_WXOR),
+  [],
+  `((PBITBOP :(bool word -> bool word -> bool word) -> bool) WXOR)`),
+ ((PBITBOP_WOR),
+  [],
+  `((PBITBOP :(bool word -> bool word -> bool word) -> bool) WOR)`),
+ ((PBITBOP_WAND),
+  [],
+  `((PBITBOP :(bool word -> bool word -> bool word) -> bool) WAND)`),
+ ((WCAT_WNOT),
+  [],
+  `((! :(num -> bool) -> bool) (\(n1 :num).
+   ((! :(num -> bool) -> bool) (\(n2 :num).
+   (((RES_FORALL :(bool word -> bool) -> (bool word -> bool) -> bool)
+   ((PWORDLEN :num -> bool word -> bool) $1)) (\(w1 :bool word).
+   (((RES_FORALL :(bool word -> bool) -> (bool word -> bool) -> bool)
+   ((PWORDLEN :num -> bool word -> bool) $1)) (\(w2 :bool word).
+   (((= :bool word -> bool word -> bool)
+   ((WCAT :bool word # bool word -> bool word)
+   (((, :bool word -> bool word -> bool word # bool word) (WNOT $1))
+   (WNOT $0)))) (WNOT ((WCAT :bool word # bool word -> bool word)
+   (((, :bool word -> bool word -> bool word # bool word) $1)
+   $0))))))))))))`),
+ ((WNOT_WNOT),
+  [],
+  `((! :(bool word -> bool) -> bool) (\(w :bool word).
+   (((= :bool word -> bool word -> bool) (WNOT (WNOT $0))) $0)))`),
+ ((PBITOP_WNOT),
+  [],
+  `((PBITOP :(bool word -> bool word) -> bool) WNOT)`)]

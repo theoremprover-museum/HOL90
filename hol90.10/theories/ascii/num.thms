@@ -1,0 +1,54 @@
+thid = (num, 934216580, 858294)
+axioms = []
+definitions =
+[((SUC_DEF),
+  [],
+  `((! :(num -> bool) -> bool) (\(m :num). (((= :num -> num -> bool)
+   (SUC $0)) (ABS_num (SUC_REP (REP_num $0))))))`),
+ ((ZERO_DEF), [], `(((= :num -> num -> bool) 0) (ABS_num ZERO_REP))`),
+ ((num_ISO_DEF),
+  [],
+  `((/\ ((! :(num -> bool) -> bool) (\(a :num).
+   (((= :num -> num -> bool) (ABS_num (REP_num $0))) $0))))
+   ((! :(ind -> bool) -> bool) (\(r :ind). (((= :bool -> bool -> bool)
+   (IS_NUM_REP $0)) (((= :ind -> ind -> bool) (REP_num (ABS_num $0)))
+   $0)))))`),
+ ((num_TY_DEF),
+  [],
+  `((? :((num -> ind) -> bool) -> bool) (\(rep :num -> ind).
+   (((TYPE_DEFINITION :(ind -> bool) -> (num -> ind) -> bool)
+   IS_NUM_REP) $0)))`),
+ ((IS_NUM_REP),
+  [],
+  `((! :(ind -> bool) -> bool) (\(m :ind). (((= :bool -> bool -> bool)
+   (IS_NUM_REP $0)) ((! :((ind -> bool) -> bool) -> bool)
+   (\(P :ind -> bool). ((==> ((/\ ($0 ZERO_REP))
+   ((! :(ind -> bool) -> bool) (\(n :ind). ((==> ($1 $0)) ($1 (SUC_REP
+   $0))))))) ($0 $1)))))))`),
+ ((ZERO_REP_DEF),
+  [],
+  `(((= :ind -> ind -> bool) ZERO_REP) ((@ :(ind -> bool) -> ind)
+   (\(x :ind). ((! :(ind -> bool) -> bool) (\(y :ind). (~
+   (((= :ind -> ind -> bool) $1) (SUC_REP $0))))))))`),
+ ((SUC_REP_DEF),
+  [],
+  `(((= :(ind -> ind) -> (ind -> ind) -> bool) SUC_REP)
+   ((@ :((ind -> ind) -> bool) -> ind -> ind) (\(f :ind -> ind). ((/\
+   ((ONE_ONE :(ind -> ind) -> bool) $0)) (~
+   ((ONTO :(ind -> ind) -> bool) $0))))))`)]
+theorems =
+[((INDUCTION),
+  [],
+  `((! :((num -> bool) -> bool) -> bool) (\(P :num -> bool). ((==>
+   ((/\ ($0 0)) ((! :(num -> bool) -> bool) (\(n :num). ((==> ($1 $0))
+   ($1 (SUC $0))))))) ((! :(num -> bool) -> bool) (\(n :num). ($1
+   $0))))))`),
+ ((INV_SUC),
+  [],
+  `((! :(num -> bool) -> bool) (\(m :num). ((! :(num -> bool) -> bool)
+   (\(n :num). ((==> (((= :num -> num -> bool) (SUC $1)) (SUC $0)))
+   (((= :num -> num -> bool) $1) $0))))))`),
+ ((NOT_SUC),
+  [],
+  `((! :(num -> bool) -> bool) (\(n :num). (~
+   (((= :num -> num -> bool) (SUC $0)) 0))))`)]

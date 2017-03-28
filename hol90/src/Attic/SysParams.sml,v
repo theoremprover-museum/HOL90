@@ -1,0 +1,211 @@
+head	1.1;
+access;
+symbols
+	HOL97:1.1.0.2;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	97.06.11.17.46.08;	author kxs;	state dead;
+branches
+	1.1.2.1;
+next	;
+
+1.1.2.1
+date	97.06.11.17.46.09;	author kxs;	state Exp;
+branches;
+next	1.1.2.2;
+
+1.1.2.2
+date	97.06.24.14.46.20;	author kxs;	state Exp;
+branches;
+next	1.1.2.3;
+
+1.1.2.3
+date	97.07.11.15.43.58;	author kxs;	state Exp;
+branches;
+next	1.1.2.4;
+
+1.1.2.4
+date	97.07.15.13.40.36;	author kxs;	state Exp;
+branches;
+next	1.1.2.5;
+
+1.1.2.5
+date	97.07.17.15.42.41;	author mn200;	state dead;
+branches;
+next	1.1.2.6;
+
+1.1.2.6
+date	97.10.05.21.04.48;	author kxs;	state Exp;
+branches;
+next	1.1.2.7;
+
+1.1.2.7
+date	97.10.06.14.14.58;	author mn200;	state dead;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@file SysParams.sml was initially added on branch HOL97.
+@
+text
+@@
+
+
+1.1.2.1
+log
+@This is a file for holding various basic system parameters that need to be
+set before the system is built. Eventually, I would like it to be integrated
+with the preliminary processing that BUILD does; however, it is currently
+easier to have both ways of setting system parameters.
+@
+text
+@a0 59
+(*---------------------------------------------------------------------------
+ * This structure contains facts that HOL needs to know about its environment.
+ *---------------------------------------------------------------------------*)
+
+structure SysParams =
+struct
+
+(*---------------------------------------------------------------------------
+ * HOL_base_directory is only used in the preliminary stages of building
+ * the system. Use Globals.HOLdir for general use.
+ *---------------------------------------------------------------------------*)
+val HOL_base_directory  = "/home/kxs/hol/hol97/"
+val arch                = "x86";
+
+datatype thy_opt = make_binary | make_new_ascii | use_old_ascii;
+
+val theory_file_option  = make_new_ascii
+val theory_file_type    = "ascii";
+val remake_theory_files = true;
+val version_number      = "10"
+
+(*---------------------------------------------------------------------------
+
+          Stuff that comes from outside (in 9.alpha)
+
+  datatype thy_opt = make_binary 
+                 | make_new_ascii 
+                 | use_old_ascii;
+
+val theory_file_option =
+   case getEnv "THEORY_TYPE"
+   of SOME s => s
+    | NONE => raise Fail "HOL_DIR variable not bound"
+
+val HOL_base_directory =
+   case getEnv "HOL_DIR"
+   of SOME s => ref s
+    | NONE => raise Fail "HOL_DIR variable not bound"
+
+val theory_file_type = 
+    (case (!theory_file_option)
+       of make_binary => Portable.arch
+	| _ => "ascii")
+
+
+val remake_theory_files =
+    (case (!theory_file_option)
+       of use_old_ascii => false
+	| _ => true)
+
+
+val version_number =
+   case (Portable.getEnv "HOL90_VERSION")
+   of NONE => "?"
+    | SOME s => s;
+
+ *---------------------------------------------------------------------------*)
+
+end;
+@
+
+
+1.1.2.2
+log
+@Updated HOL_base_directory to /usr/groups/hol/kxs/hol97/
+@
+text
+@d12 2
+a13 2
+val HOL_base_directory  = "/usr/groups/hol/kxs/hol97/"
+val arch                = "x86-linux";
+@
+
+
+1.1.2.3
+log
+@Added the distinction between SML'90 and SML'97.
+@
+text
+@d12 1
+a12 1
+val HOL_base_directory  = "/usr/groups/hol/kxs/new/hol97/"
+a13 3
+
+datatype MLversion = Ninety | NinetySeven;
+val MLdialect = Ninety;
+@
+
+
+1.1.2.4
+log
+@This file gets changed depending on the architecture and some other
+build-time parameters.
+@
+text
+@d13 1
+a13 1
+val arch                = "sparc-solaris";
+@
+
+
+1.1.2.5
+log
+@SysParams now automatically generated from SysParams.sml.template and
+the BUILD file which knows the values of __arch__ and __HOLdir__.
+@
+text
+@@
+
+
+1.1.2.6
+log
+@INSTALL.txt tells how to build the system.
+@
+text
+@a7 2
+datatype MLversion = Ninety | NinetySeven;
+
+d12 5
+a16 3
+val HOL_base_directory  = "/Nfs/bescot/grp11/hol/kxs/new/hol97/";
+val arch                = "x86-linux";
+val MLdialect = NinetySeven;
+d29 2
+a30 2
+  datatype thy_opt = make_binary
+                 | make_new_ascii
+d43 1
+a43 1
+val theory_file_type =
+@
+
+
+1.1.2.7
+log
+@Removed SysParams.sml, because it really doesn't belong as it is
+generated automatically.
+@
+text
+@@

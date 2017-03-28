@@ -1,0 +1,201 @@
+head	1.1;
+access;
+symbols
+	HOL97:1.1.2.3.0.2
+	bpHOL97:1.1.2.3
+	hol90_9_alpha:1.1.2.3
+	TFL_1:1.1.2.1
+	hol90_pre8_for_multiple_compilers:1.1.0.2;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	96.06.29.15.11.38;	author rjb;	state dead;
+branches
+	1.1.2.1;
+next	;
+
+1.1.2.1
+date	96.06.29.15.11.39;	author rjb;	state Exp;
+branches;
+next	1.1.2.2;
+
+1.1.2.2
+date	96.08.05.15.42.20;	author rjb;	state Exp;
+branches;
+next	1.1.2.3;
+
+1.1.2.3
+date	96.08.23.10.44.34;	author rjb;	state Exp;
+branches
+	1.1.2.3.2.1;
+next	;
+
+1.1.2.3.2.1
+date	97.06.11.18.43.34;	author kxs;	state Exp;
+branches;
+next	1.1.2.3.2.2;
+
+1.1.2.3.2.2
+date	97.07.11.19.16.38;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@file thry.sml was initially added on branch hol90_pre8_for_multiple_compilers.
+@
+text
+@@
+
+
+1.1.2.1
+log
+@TFL version 1 for HOL: A well-founded recursive function definition package.
+@
+text
+@a0 39
+structure Thry : Thry_sig = 
+struct
+
+structure USyntax  = USyntax;
+structure Utils = USyntax.Utils;
+
+type Thm = Thm.thm
+type Thry = String.string;
+
+infix 4 |->;
+
+local open Utils
+      fun mk_bind {redex,residue} = (redex |-> residue)
+in val mk_tfp_subst = map mk_bind
+end;
+
+fun match_term thry tm1 tm2 = 
+   let val (th1,th2) = Match.match_term tm1 tm2
+   in (mk_tfp_subst th1, mk_tfp_subst th2)
+   end;
+
+fun match_type thry ty1 ty2 = mk_tfp_subst(Match.match_type ty1 ty2);
+
+fun typecheck thry = Lib.I
+
+fun make_definition thry s tm = (new_definition(s,tm), thry)
+
+fun datatype_facts thry =
+ let fun project (s,{axiom,case_const,case_def,constructors,definer,distinct,
+                     induct_tac,induction,nchotomy,one_one,simpls,case_cong}) =
+                 (s,{constructors = constructors,
+                     case_const = case_const,
+                     case_rewrites = [case_def],
+                     case_cong = case_cong,
+                     nchotomy = nchotomy})
+ in map project (Hol_datatype.current())
+ end;
+
+end; (* Thry *)
+@
+
+
+1.1.2.2
+log
+@Updated to TFL release 4.
+@
+text
+@a5 2
+open Mask
+infix 4 |->;
+d7 1
+a7 4
+type Type = USyntax.Type
+type Preterm = USyntax.Preterm
+type Term = USyntax.Term
+type Thm = Thms.Thm
+d10 1
+d12 2
+a13 1
+local fun mk_bind {redex,residue} = (redex |-> residue)
+d28 10
+a37 27
+(*---------------------------------------------------------------------------
+ * Accessing different parts of the underlying information for a datatype.
+ *---------------------------------------------------------------------------*)
+local open Utils
+in
+fun match_info thy s = 
+(case (Utils.assoc1 (op=) s (Hol_datatype.current()))
+ of SOME(_,{case_const,constructors,...}) => SOME{case_const=case_const,
+                                                  constructors = constructors}
+  | NONE => NONE)
+
+fun induct_info thy s = 
+(case (Utils.assoc1 (op=) s (Hol_datatype.current()))
+ of SOME(_,{nchotomy, constructors,...}) => SOME{nchotomy=nchotomy,
+                                                 constructors = constructors}
+  | NONE => NONE)
+
+fun extract_info thy = 
+ let val (rws,congs) = Utils.itlist 
+      (fn (_,{case_def, case_cong,...}) => 
+       fn (R,C) => (case_def::R, case_cong::C))
+       (Hol_datatype.current()) ([],[])
+ in
+ {case_congs = congs, case_rewrites = rws}
+ end
+end;
+
+@
+
+
+1.1.2.3
+log
+@ML-independent access to String structure.
+@
+text
+@d13 1
+a13 1
+type Thry = Portable.String.string;
+@
+
+
+1.1.2.3.2.1
+log
+@Changes to accomodate move to SML/NJ 109.26.
+@
+text
+@d17 1
+a17 1
+in fun mk_tfp_subst L = map mk_bind L
+@
+
+
+1.1.2.3.2.2
+log
+@Small changes to make CM-friendly.
+@
+text
+@d7 1
+a7 1
+infix 3 |->;
+d13 1
+a13 1
+type Thry = String.string;
+d17 1
+a17 1
+in fun mk_tfp_subst x = map mk_bind x
+d21 1
+a21 1
+   let val (th1,th2) = CoreHol.Match.match_term tm1 tm2
+d25 1
+a25 1
+fun match_type thry ty1 ty2 = mk_tfp_subst(CoreHol.Match.match_type ty1 ty2);
+d29 1
+a29 1
+fun make_definition thry s tm = (CoreHol.Const_def.new_definition(s,tm), thry)
+@

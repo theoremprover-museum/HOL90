@@ -1,0 +1,101 @@
+<TITLE>Theory: finite_functions</TITLE>
+<H1>Theory: finite_functions</H1>
+<H1>Parents</H1>
+    <UL>
+    <LI><A HREF = "set.html"><STRONG>set</STRONG></A>
+    <LI><A HREF = "partial_functions.html"><STRONG>partial_functions</STRONG></A>
+    <LI><A HREF = "HOL.html"><STRONG>HOL</STRONG></A>
+    </UL>
+
+
+<HR>
+<H1>Type constants</H1>
+    <UL>
+    <LI><STRONG>finfun</STRONG>(Arity = 2)
+    </UL>
+
+
+<HR>
+<H1>Term constants</H1>
+    <UL>
+    <LI><STRONG>finfun_apply</STRONG><EM>:('a,'b)finfun -> 'a -> 'b lift</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>finfun</STRONG><EM>:('a -> 'b lift) -> ('a,'b)finfun</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    </UL>
+
+
+<HR>
+<H1>Axioms</H1>
+<DL>
+
+</DL>
+
+
+<HR>
+<H1>Definitions</H1>
+<DL>
+<DT><STRONG>finfun_TY_DEF</STRONG>
+<DD>
+<PRE>
+|- ?rep. TYPE_DEFINITION (\f. FINITE {x | part_fun_domain f x}) rep
+</PRE>
+
+<DT><STRONG>finfun_REP_ABS_DEF</STRONG>
+<DD>
+<PRE>
+|- (!a. finfun (finfun_apply a) = a) /\
+   (!r.
+     (\f. FINITE {x | part_fun_domain f x}) r = finfun_apply (finfun r) = r)
+</PRE>
+
+</DL>
+
+
+<HR>
+<H1>Theorems</H1>
+<DL>
+<DT><STRONG>delete_lemma</STRONG>
+<DD>
+<PRE>
+|- !f x. ~(part_fun_domain (update_fun f x undefined) x)
+</PRE>
+
+<DT><STRONG>delete_smaller</STRONG>
+<DD>
+<PRE>
+|- !f y.
+     FINITE {x | part_fun_domain f x} /\ part_fun_domain f y ==>
+     (CARD {x | part_fun_domain f x} =
+      SUC (CARD {x | part_fun_domain (update_fun f y undefined) x}))
+</PRE>
+
+<DT><STRONG>empty_part_fun_domain_EMPTY</STRONG>
+<DD>
+<PRE>
+|- {x | part_fun_domain empty_part_fun x} = {}
+</PRE>
+
+<DT><STRONG>EMPTY_part_fun_domain_imp_empty_part_fun</STRONG>
+<DD>
+<PRE>
+|- !f. ({x | part_fun_domain f x} = {}) ==> (f = empty_part_fun)
+</PRE>
+
+<DT><STRONG>gen_finfun_induction</STRONG>
+<DD>
+<PRE>
+|- !P.
+     (!f.
+       (!g.
+         CARD {x | part_fun_domain (finfun_apply g) x} <
+         CARD {x | part_fun_domain (finfun_apply f) x} ==>
+         P g) ==>
+       P f) ==>
+     (!f. P f)
+</PRE>
+
+</DL>
+
+
+<HR>

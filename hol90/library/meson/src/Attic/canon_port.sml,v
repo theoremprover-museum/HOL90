@@ -1,0 +1,387 @@
+head	1.1;
+access;
+symbols
+	HOL97:1.1.0.2;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	97.06.11.16.01.59;	author mn200;	state dead;
+branches
+	1.1.2.1;
+next	;
+
+1.1.2.1
+date	97.06.11.16.01.59;	author mn200;	state Exp;
+branches;
+next	1.1.2.2;
+
+1.1.2.2
+date	97.06.20.18.45.35;	author kxs;	state Exp;
+branches;
+next	1.1.2.3;
+
+1.1.2.3
+date	97.07.14.16.49.24;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@file canon_port.sml was initially added on branch HOL97.
+@
+text
+@@
+
+
+1.1.2.1
+log
+@Modifications to the Meson library to bring it into line with the
+latest version of John Harrison's MESON_TAC in gtt (HOL Light).
+
+The additional files do the following things:
+  canon_port.sml: provide functionality similar to that of the Canon
+                  structure, but in a way that is also compatible with
+                  John's code.  (The existing Canon does not do this.)
+  jrhtactics.sml: provide a tactic mechanism that uses theorems on the
+                  assumption list rather than terms to further mimic the
+                  implementation strategy in John's code.  (The code also
+                  uses a fringe-based approach to the goal-state that is
+                  quite elegant, but this is pretty much by-the-by.)
+@
+text
+@a0 231
+structure Canon_Port = struct
+
+local
+open Theorems
+open LiteLib Equal Ho_rewrite (* Canon *)
+val TAUT = predify >- TAUT;
+in
+fun freesl tml = itlist (union o free_vars) tml [];;
+
+val NOT_EXISTS_THM = prove (
+  --`!P. ~(?x:'a. P x) = (!x. ~(P x))`--,
+  GEN_TAC THEN EQ_TAC THEN DISCH_TAC THENL [
+    GEN_TAC THEN DISCH_TAC THEN UNDISCH_TAC (--`~(?x:'a. P x)`--) THEN
+    REWRITE_TAC [] THEN EXISTS_TAC (--`x:'a`--) THEN
+    POP_ASSUM ACCEPT_TAC,
+    DISCH_THEN (CHOOSE_THEN MP_TAC) THEN ASM_REWRITE_TAC[]
+  ]);;
+
+val EXISTS_UNIQUE_THM = prove(
+  --`!P. (?!x:'a. P x) = (?x. P x) /\ (!x x'. P x /\ P x' ==> (x = x'))`--,
+  GEN_TAC THEN REWRITE_TAC[EXISTS_UNIQUE_DEF] THEN BETA_TAC THEN
+  BETA_TAC THEN REFL_TAC);;
+
+
+fun BINOP_CONV conv tm =
+  let
+    val (lop,r) = dest_comb tm
+    val (opn,l) = dest_comb lop
+  in
+    MK_COMB(AP_TERM opn (conv l),conv r)
+  end
+
+
+fun get_heads lconsts tm (sofar as (cheads,vheads)) =
+  let val (v,bod) = dest_forall tm in
+    get_heads (subtract lconsts [v]) bod sofar
+  end handle _ =>
+    let val (l,r) =  dest_conj tm handle _ => dest_disj tm
+    in
+      get_heads lconsts l (get_heads lconsts r sofar)
+    end handle _ =>
+      let val tm' = dest_neg tm
+      in
+        get_heads lconsts tm' sofar
+      end handle _ =>
+        let
+          val (hop,args) = strip_comb tm
+          val len = length args
+          val newheads =
+            if is_const hop orelse mem hop lconsts then
+              (insert (hop,len) cheads,vheads)
+            else
+              if len > 0 then
+                (cheads,insert (hop,len) vheads)
+              else
+                sofar
+        in
+          itlist (get_heads lconsts) args newheads
+        end;
+
+
+fun get_thm_heads th sofar =
+  get_heads (freesl(hyp th)) (concl th) sofar;;
+
+
+
+
+local
+  val APP_CONV =
+    let val th = prove (--`!(f:'a->'b) x. f x = I f x`--,
+                        REWRITE_TAC[I_THM])
+    in
+      REWR_CONV th
+    end
+  fun APP_N_CONV n tm =
+    if n = 1 then APP_CONV tm
+    else (RATOR_CONV (APP_N_CONV (n - 1)) THENC APP_CONV) tm
+
+  fun FOL_CONV hddata tm =
+    if is_forall tm then
+      BINDER_CONV (FOL_CONV hddata) tm
+    else
+      if is_conj tm orelse is_disj tm then
+        BINOP_CONV (FOL_CONV hddata) tm
+      else
+        let
+          val (opn,args) = strip_comb tm
+          val th = rev_itlist (C (curry MK_COMB))
+            (map (FOL_CONV hddata) args) (REFL opn)
+          val tm' = rand(concl th)
+          val n = length args - assoc opn hddata handle _ => 0
+        in
+          if n = 0 then th
+          else TRANS th (APP_N_CONV n tm')
+        end
+in
+  fun GEN_FOL_CONV (cheads,vheads) =
+    let
+      val hddata =
+        if vheads = [] then
+          let
+            val hops = mk_set (map fst cheads)
+            fun getmin h =
+              let val ns = mapfilter
+                (fn (k,n) => if k = h then n else fail()) cheads
+              in
+                (if length ns < 2 then fail() else h,
+                 end_itlist (curry min) ns)
+              end
+          in
+            mapfilter getmin hops
+          end
+        else
+          map (fn t => if is_const t andalso fst(dest_const t) = "="
+                         then (t,2) else (t,0))
+          (mk_set (map fst (vheads @@ cheads)))
+    in
+      FOL_CONV hddata
+    end
+  fun FOL_CONV tm =
+    let val headsp = get_heads [] tm ([],[])
+    in
+      GEN_FOL_CONV headsp tm
+    end
+end;
+
+fun ASM_FOL_TAC (asl,w) =
+  let val headsp = itlist get_thm_heads asl ([],[])
+  in
+    jrh.RULE_ASSUM_TAC(CONV_RULE(GEN_FOL_CONV headsp)) (asl,w)
+  end
+
+
+local (*  NNF_CONV,NNFC_CONV *)
+  val NOT_EXISTS_UNIQUE_THM = prove(
+    --`~(?!x:'a. P x) = (!x. ~P x) \/ ?x x'. P x /\ P x' /\ ~(x = x')`--,
+    mSIMP_TAC hol_ss [EXISTS_UNIQUE_THM, DE_MORGAN_THM, NOT_EXISTS_THM] THEN
+    mSIMP_TAC hol_ss [NOT_FORALL_THM, NOT_IMP, CONJ_ASSOC])
+  val common_tauts =
+    [TAUT `~(~p) = p`,
+     TAUT `~(p /\ q) = ~p \/ ~q`,
+     TAUT `~(p \/ q) = ~p /\ ~q`,
+     TAUT `~(p ==> q) = p /\ ~q`,
+     TAUT `p ==> q = ~p \/ q`,
+     NOT_FORALL_THM,
+     NOT_EXISTS_THM,
+     EXISTS_UNIQUE_THM,
+     NOT_EXISTS_UNIQUE_THM]
+  and dnf_tauts =
+    map TAUT [`~(p = q) = (p /\ ~q) \/ (~p /\ q)`,
+              `(p = q) = (p /\ q) \/ (~p /\ ~q)`]
+  and cnf_tauts =
+    map TAUT [`~(p = q) = (p \/ q) /\ (~p \/ ~q)`,
+              `(p = q) = (p \/ ~q) /\ (~p \/ q)`]
+  val NNFC_CONV =
+    GEN_REWRITE_CONV TOP_SWEEP_CONV (common_tauts @@ cnf_tauts)
+in
+  val NNF_CONV =
+    GEN_REWRITE_CONV TOP_SWEEP_CONV (common_tauts @@ dnf_tauts)
+  and NNFC_CONV =
+    let
+      fun SINGLE_SWEEP_CONV conv tm =
+        let
+          val th = conv tm
+          val tm' = rand(concl th)
+          val th' = if is_abs tm' then NNFC_CONV tm'
+                    else SUB_CONV (SINGLE_SWEEP_CONV conv) tm'
+        in
+          TRANS th th'
+        end handle _ =>
+          if is_abs tm then
+            NNFC_CONV tm
+          else
+            SUB_CONV (SINGLE_SWEEP_CONV conv) tm ;
+    in
+      SINGLE_SWEEP_CONV
+      (GEN_REWRITE_CONV I (common_tauts @@ dnf_tauts))
+    end
+end
+
+
+val DELAMB_CONV =
+  let
+    val pth = prove(
+      --`(((\x. s x) = t) = (!x:'a. s x:'b = t x)) /\
+         ((s = \x. t x) = (!x. s x = t x))`--,
+      CONV_TAC (DEPTH_CONV FUN_EQ_CONV) THEN BETA_TAC THEN
+      REWRITE_TAC [])
+    val qconv =
+      THENQC ((TOP_DEPTH_QCONV BETA_CONV),
+              (REPEATQC (THENCQC
+                         ((GEN_REWRITE_CONV
+                             ONCE_DEPTH_QCONV [pth]),
+                          (TRY_CONV(TOP_DEPTH_QCONV BETA_CONV))))))
+  in
+    TRY_CONV qconv
+  end;
+
+val PROP_CNF_CONV =
+  GEN_REWRITE_CONV REDEPTH_CONV
+   [TAUT `a \/ (b /\ c) = (a \/ b) /\ (a \/ c)`,
+    TAUT `(a /\ b) \/ c = (a \/ c) /\ (b \/ c)`,
+    GSYM CONJ_ASSOC, GSYM DISJ_ASSOC];;
+
+
+val PRESIMP_CONV =
+  GEN_REWRITE_CONV DEPTH_CONV
+   [NOT_CLAUSES, AND_CLAUSES, OR_CLAUSES, IMP_CLAUSES, EQ_CLAUSES,
+    FORALL_SIMP, EXISTS_SIMP, EXISTS_OR_THM, FORALL_AND_THM,
+    LEFT_EXISTS_AND_THM, RIGHT_EXISTS_AND_THM,
+    LEFT_FORALL_OR_THM, RIGHT_FORALL_OR_THM];
+
+
+val REFUTE_THEN =
+  let val conv = REWR_CONV(TAUT `p = ~p ==> F`)
+  in
+    fn ttac => CONV_TAC conv THEN DISCH_THEN ttac
+  end;;
+
+val SKOLEM_CONV =
+  GEN_REWRITE_CONV REDEPTH_CONV
+   [RIGHT_AND_EXISTS_THM,
+    LEFT_AND_EXISTS_THM,
+    OR_EXISTS_THM,
+    RIGHT_OR_EXISTS_THM,
+    LEFT_OR_EXISTS_THM,
+    SKOLEM_THM];
+
+end
+end;
+
+@
+
+
+1.1.2.2
+log
+@Minor alterations in order to get meson_lib to build. It still doesn't, because
+the source lacks a definition for PRENEX_CONV.
+@
+text
+@a2 6
+open Psyntax
+
+fun quote2term q tystring =
+  Parse.term_parser (QUOTE "(" :: (q @@ [QUOTE ("):"^tystring)]))
+fun predify q = quote2term q "bool"
+
+d5 2
+a6 4
+open LiteLib 
+open Equal 
+open Ho_rewrite (* Canon *)
+fun TAUT x = Ho_rewrite.TAUT(predify x);
+d27 2
+a28 2
+    val (lop,r) = Psyntax.dest_comb tm
+    val (opn,l) = Psyntax.dest_comb lop
+d66 2
+a68 1
+  val I_THM = theorem"combin" "I_THM"
+d108 1
+a108 1
+                 end_itlist (curry Portable.Int.min) ns)
+d135 1
+a135 1
+  val NOT_EXISTS_UNIQUE_THM = Tactical.prove(
+d137 2
+a138 3
+    REWRITE_TAC [EXISTS_UNIQUE_THM, DE_MORGAN_THM, NOT_EXISTS_THM] 
+    THEN CONV_TAC (REDEPTH_CONV NOT_FORALL_CONV)
+    THEN REWRITE_TAC [NOT_IMP, CONJ_ASSOC])
+@
+
+
+1.1.2.3
+log
+@Changes for CM-friendliness. Also, the library is now accessed through
+the structure mesonLib.
+@
+text
+@d1 1
+a1 2
+structure Canon_Port : Canon_Port_sig = 
+struct
+d3 1
+a3 11
+type term = CoreHol.Term.term
+type thm = CoreHol.Thm.thm
+type tactic = Abbrev.tactic
+type conv = Abbrev.conv
+type thm_tactic = Abbrev.thm_tactic;
+
+open liteLib ho_matchLib CoreHol Parse;
+open Lib Term Dsyntax Thm Drule Tactical Tactic Conv Taut_thms Thm_cont;
+open LiteLib Equal Ho_rewrite Theorems;
+open Psyntax;
+infix THEN THENC;
+d9 8
+d18 13
+a30 1
+fun freesl tml = itlist (union o free_vars) tml [];;
+a31 1
+fun TAUT x = Ho_rewrite.TAUT(predify x);
+d35 2
+a36 2
+    val (lop,r) = dest_comb tm
+    val (opn,l) = dest_comb lop
+d70 2
+a71 2
+fun get_thm_heads th sofar = 
+      get_heads (freesl(hyp th)) (concl th) sofar;;
+d75 1
+a75 1
+  val I_THM = Theory.theorem"combin" "I_THM"
+d127 12
+a138 1
+end
+d141 1
+a141 1
+local
+d144 3
+a146 4
+    REWRITE_TAC [Theorems.EXISTS_UNIQUE_THM, DE_MORGAN_THM, 
+                 Theorems.NOT_EXISTS_THM] 
+     THEN CONV_TAC (REDEPTH_CONV NOT_FORALL_CONV)
+     THEN REWRITE_TAC [NOT_IMP, CONJ_ASSOC])
+d237 1
+@

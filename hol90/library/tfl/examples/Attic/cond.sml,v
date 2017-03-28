@@ -1,0 +1,246 @@
+head	1.1;
+access;
+symbols
+	HOL97:1.1.2.2.0.2
+	bpHOL97:1.1.2.2
+	hol90_9_alpha:1.1.2.2
+	TFL_1:1.1.2.1
+	hol90_pre8_for_multiple_compilers:1.1.0.2;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	96.06.29.15.08.04;	author rjb;	state dead;
+branches
+	1.1.2.1;
+next	;
+
+1.1.2.1
+date	96.06.29.15.08.05;	author rjb;	state Exp;
+branches;
+next	1.1.2.2;
+
+1.1.2.2
+date	96.08.05.15.40.28;	author rjb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@file cond.sml was initially added on branch hol90_pre8_for_multiple_compilers.
+@
+text
+@@
+
+
+1.1.2.1
+log
+@TFL version 1 for HOL: A well-founded recursive function definition package.
+@
+text
+@a0 149
+(*---------------------------------------------------------------------------
+ * CONDITIONAL EXPRESSIONS AND THEIR NORMALIZATION (Boyer and Moore).
+ *---------------------------------------------------------------------------*)
+
+new_theory"cond" handle _ => ();
+
+
+load_library_in_place arith_lib;
+
+
+(*---------------------------------------------------------------------------
+ * Define the datatype of conditional expressions.
+ *---------------------------------------------------------------------------*)
+local open Hol_datatype
+in
+val cond_ty_def = 
+     hol_datatype `cond = A of ind
+                        | IF of cond => cond => cond`
+end;
+
+
+
+(*---------------------------------------------------------------------------
+ * Now a measure function for termination, due to Robert Shostak. 
+ *---------------------------------------------------------------------------*)
+val M_DEF = 
+  Hol_datatype.define Prefix
+        `(M (A i) = 1) /\
+         (M (IF x y z) = M x + (M x * M y) + (M x * M z))`;
+
+
+
+(*---------------------------------------------------------------------------
+ * The definition of a normalization function
+ *---------------------------------------------------------------------------*)
+val norm_def = Rfunction 
+  `measure M`
+  `(norm (A i) = A i) /\
+   (norm (IF (A x) y z) = IF (A x) (norm y) (norm z)) /\
+   (norm (IF (IF u v w) y z) = norm (IF u (IF v y z) (IF w y z)))`;
+
+
+
+(*---------------------------------------------------------------------------
+ *  Required lemma for termination.  
+ *---------------------------------------------------------------------------*)
+val M_POSITIVE = BETA_RULE
+ (Q.prove`!c. (\v. 0 < M v) c`
+  (MATCH_MP_TAC (#induction (snd cond_ty_def)) THEN BETA_TAC THEN 
+   RW_TAC[M_DEF] THEN CONV_TAC ARITH_CONV));
+
+
+val distribs = [theorem"arithmetic" "LEFT_ADD_DISTRIB",
+                theorem"arithmetic" "RIGHT_ADD_DISTRIB"];
+val assocs = [GSYM(theorem"arithmetic" "ADD_ASSOC"),
+              GSYM(theorem"arithmetic" "MULT_ASSOC")];
+val LESS_MULT2 = theorem"arithmetic" "LESS_MULT2";
+
+
+val norm_terminates = save_thm("norm_terminates", 
+Tfl.prove_termination norm_def
+(RW_TAC(M_DEF::(assocs@@distribs))
+  THEN REPEAT CONJ_TAC 
+  THEN REPEAT GEN_TAC
+  THENL
+    [ CONV_TAC ARITH_CONV,
+      CONV_TAC ARITH_CONV,
+      let val [Pu,Py,Pz] = map (Lib.C Q.SPEC M_POSITIVE) [`u`,`y`,`z`]
+      in MP_TAC(LIST_CONJ(map (MATCH_MP LESS_MULT2 o LIST_CONJ) 
+                              [[Pu,Py],[Pu,Pz]]))
+      end 
+      THEN CONV_TAC ARITH_CONV]));
+
+
+val norm_eqns = save_thm("norm_eqns",
+  RW_RULE [norm_terminates] (#rules norm_def));
+
+val norm_induction = save_thm("norm_induction",
+  RW_RULE [norm_terminates] (DISCH_ALL (#induction norm_def)));
+
+
+(*---------------------------------------------------------------------------
+ * Define it again, using a lexicographic combination of relations. This is 
+ * the version given in the Boyer-Moore book.
+ *---------------------------------------------------------------------------*)
+val TDEPTH_DEF = 
+  Hol_datatype.define Prefix
+     `(TDEPTH (A i) = 0) /\
+      (TDEPTH (IF x y z) = TDEPTH x + 1)`;
+
+val Weight_def = 
+  Hol_datatype.define Prefix
+     `(Weight (A i) = 1) /\
+      (Weight (IF x y z) = Weight x * (Weight y + Weight z))`;
+
+val Weight_positive = BETA_RULE
+ (Q.prove`!c. (\v. 0 < Weight v) c`
+  (MATCH_MP_TAC (#induction (snd cond_ty_def)) THEN BETA_TAC THEN 
+   RW_TAC(Weight_def::distribs) THEN CONJ_TAC 
+   THENL
+   [CONV_TAC ARITH_CONV,
+   REPEAT GEN_TAC THEN DISCH_THEN 
+    (fn th => MATCH_MP_TAC(theorem"arithmetic" "LESS_IMP_LESS_ADD") THEN 
+              MATCH_MP_TAC LESS_MULT2 THEN MP_TAC th)
+   THEN RW_TAC[]]));
+
+
+val point_to_prod_def = 
+Hol_datatype.define 
+          (Infix 400)   `## (f:'a->'b) (g:'a->'c) x = (f x, g x)`;
+
+(*---------------------------------------------------------------------------
+ * Notice how the lexicographic combination of measure functions gets made.
+ * It gets proved wellfounded automatically, which is nice!
+ * It might be handy to have a combinator for this case; something like
+ *
+ *    f1 XX f2 XX ... XX fn = inv_image ($< X ...X ($< X $<))
+ *                                      (f1## ... ##fn)
+ *---------------------------------------------------------------------------*)
+val Ndef = Rfunction 
+  `inv_image ($< X $<) (Weight##TDEPTH)`
+  `(N(A i) = A i) /\
+   (N(IF(A x) y z) = IF(A x) (N y) (N z)) /\
+   (N(IF(IF u v w) y z) = N(IF u (IF v y z) (IF w y z)))`;
+
+val MULTS = theorem"arithmetic" "MULT_CLAUSES";
+val ADDS = theorem"arithmetic" "ADD_CLAUSES";
+
+
+val Nterminates = save_thm("Nterminates",
+Tfl.prove_termination Ndef
+(RW_TAC[point_to_prod_def] THEN REPEAT CONJ_TAC
+ THENL
+ [ REPEAT GEN_TAC THEN DISJ1_TAC THEN RW_TAC[Weight_def,MULTS,ADDS] 
+    THEN MP_TAC (Q.SPEC`y` Weight_positive) THEN CONV_TAC ARITH_CONV,
+   REPEAT GEN_TAC THEN DISJ1_TAC THEN RW_TAC[Weight_def,MULTS,ADDS] 
+    THEN MP_TAC (Q.SPEC`z` Weight_positive) THEN CONV_TAC ARITH_CONV,
+   REPEAT GEN_TAC THEN DISJ2_TAC 
+    THEN RW_TAC([Weight_def,MULTS,ADDS]@@distribs@@assocs) THEN CONJ_TAC
+    THENL[CONV_TAC ARITH_CONV, RW_TAC[TDEPTH_DEF]] THEN CONV_TAC ARITH_CONV]));
+
+
+val Neqns = save_thm("Neqns",  RW_RULE [Nterminates] (#rules Ndef));
+
+val Ninduction = save_thm("Ninduction",
+  RW_RULE [Nterminates] (DISCH_ALL (#induction Ndef)));
+
+
+html_theory"-";
+@
+
+
+1.1.2.2
+log
+@Updated to TFL release 4.
+@
+text
+@d27 1
+a27 1
+  define Prefix
+d63 2
+a64 1
+  THEN REPEAT CONJ_TAC THEN REPEAT GEN_TAC
+d66 2
+a67 1
+    [ ALL_TAC, ALL_TAC,
+d70 3
+a72 2
+                              [[Pu,Py],[Pu,Pz]])) end]
+  THEN CONV_TAC ARITH_CONV));
+d87 1
+a87 1
+  define Prefix
+d92 1
+a92 1
+  define Prefix
+d109 2
+a110 1
+  define (Infix 400)   `## (f:'a->'b) (g:'a->'c) x = (f x, g x)`;
+d120 1
+a120 9
+
+fun Rdefine thml = 
+rfunction (Prim.postprocess{WFtac = WF_TAC[],
+                       terminator = terminator, 
+                       simplifier = tc_simplifier thml})
+          RW_RULE;
+
+
+val Ndef = Rdefine[point_to_prod_def]
+a125 1
+
+d129 1
+d132 1
+a132 1
+(REPEAT CONJ_TAC
+a147 1
+
+@

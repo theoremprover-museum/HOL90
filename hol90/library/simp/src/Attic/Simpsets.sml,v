@@ -1,0 +1,494 @@
+head	1.1;
+access;
+symbols
+	HOL97:1.1.2.2.0.2
+	bpHOL97:1.1.2.2
+	hol90_9_alpha:1.1.2.2
+	hol90_pre8_for_multiple_compilers:1.1.0.2;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	96.08.06.12.24.03;	author rjb;	state dead;
+branches
+	1.1.2.1;
+next	;
+
+1.1.2.1
+date	96.08.06.12.24.04;	author rjb;	state Exp;
+branches;
+next	1.1.2.2;
+
+1.1.2.2
+date	96.09.03.16.07.25;	author drs1004;	state Exp;
+branches
+	1.1.2.2.2.1;
+next	;
+
+1.1.2.2.2.1
+date	97.06.23.15.57.26;	author mn200;	state Exp;
+branches;
+next	1.1.2.2.2.2;
+
+1.1.2.2.2.2
+date	97.06.24.16.30.28;	author mn200;	state Exp;
+branches;
+next	1.1.2.2.2.3;
+
+1.1.2.2.2.3
+date	97.07.14.18.08.16;	author kxs;	state Exp;
+branches;
+next	1.1.2.2.2.4;
+
+1.1.2.2.2.4
+date	97.07.16.16.56.06;	author mn200;	state Exp;
+branches;
+next	1.1.2.2.2.5;
+
+1.1.2.2.2.5
+date	97.07.28.14.20.41;	author mn200;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@file Simpsets.sml was initially added on branch hol90_pre8_for_multiple_compilers.
+@
+text
+@@
+
+
+1.1.2.1
+log
+@New library simp.
+@
+text
+@a0 186
+
+structure Simpsets : Simpsets_sig =
+struct
+
+open Psyntax LiteLib Traverse Theorems Equal Simplifier Cond_rewr Ho_rewrite;
+infix |> THENQC;
+
+val _ = say "Making system simpsets...\n";
+
+(* ---------------------------------------------------------------------
+ * bool_ss
+ *   This is essentially the same as the old REWRITE_TAC []
+ *   with the "basic rewrites" plus:
+ *      - ABS_SIMP removed in favour of BETA_CONV
+ *      - COND_ID added: (P => Q | Q) = Q
+ *      - contextual rewrites for P ==> Q and P => T1 | T2 added
+ * --------------------------------------------------------------------*)
+
+fun BETA_CONVS tm = (RATOR_CONV BETA_CONVS THENQC BETA_CONV) tm
+
+val BOOL_ss =SIMPSET 
+  {convs=[{name="BETA_CONV (beta reduction)",
+           trace=2,
+           key=SOME ([],(--`(\x:'a. y:'b) z`--)),
+           conv=K (K BETA_CONV)}],
+   rewrs=[REFL_CLAUSE,  EQ_CLAUSES,
+          NOT_CLAUSES,  AND_CLAUSES,
+          OR_CLAUSES,   IMP_CLAUSES,
+          COND_CLAUSES, FORALL_SIMP,
+          EXISTS_SIMP,  COND_ID,
+          EXISTS_REFL, GSYM EXISTS_REFL,
+          EXISTS_UNIQUE_REFL, GSYM EXISTS_UNIQUE_REFL,
+          COND_BOOL_CLAUSES],
+   congs=[IMP_CONG, COND_CONG],
+   filter=SOME mk_cond_rewrs,ac=[],dprocs=[]};
+
+(*------------------------------------------------------------------------
+ * PAIR_ss
+ *------------------------------------------------------------------------*)
+
+val PAIR_ss =SIMPSET 
+  {convs=[{name="GEN_BETA_CONV (beta reduction)",
+           trace=2,
+           key=SOME ([],(--`(\(x,y):('a # 'b). y:'b) (z,w)`--)),
+           conv=K (K GEN_BETA_CONV)}],
+   rewrs=[theorem "pair" "FST", theorem "pair" "SND", 
+	  theorem "pair" "PAIR", 
+	  theorem "pair" "PAIR_EQ"],
+   filter=NONE,ac=[],dprocs=[],congs=[]};
+
+
+(*------------------------------------------------------------------------
+ * UNWIND_ss
+ *------------------------------------------------------------------------*)
+
+val UNWIND_ss = SIMPSET
+  {convs=[{name="UNWIND_EXISTS_CONV",
+           trace=1,
+           key=SOME ([],(--`?x:'a. P`--)),
+           conv=K (K Unwind.UNWIND_EXISTS_CONV)},
+          {name="UNWIND_FORALL_CONV",
+           trace=1,
+           key=SOME ([],(--`!x:'a. P`--)),
+           conv=K (K Unwind.UNWIND_FORALL_CONV)}],
+   rewrs=[],filter=NONE,ac=[],dprocs=[],congs=[]};
+
+(* ---------------------------------------------------------------------
+ * NOT_ss
+ *
+ * Moving negations inwards, eliminate disjuncts incolving negations,
+ * eliminate negations on either side of equalities.
+ * --------------------------------------------------------------------*)
+
+val NOT_ss = rewrites [NOT_IMP,
+                         DE_MORGAN_THM,
+                         NOT_FORALL_THM,
+                         NOT_EXISTS_THM,
+                         TAUT (--`~x \/ y = (x ==> y)`--),
+                         TAUT (--`x \/ ~y = (y ==> x)`--),
+                         TAUT(--`(~p = ~q) = (p = q)`--)];
+
+(* ---------------------------------------------------------------------
+ * combin_ss
+ * --------------------------------------------------------------------*)
+
+val COMBIN_ss = rewrites (map (theorem "combin") ["I_THM","I_o_ID", "K_THM", "S_THM", "o_ASSOC", "o_THM"]);
+
+fun THM thy s = theorem thy s handle _ => definition thy s;
+
+val LIST_ss = rewrites (map (THM "list") [
+        "APPEND", 
+        "EL", 
+        "EVERY_DEF",
+        "FLAT",
+        "HD",
+        "LENGTH",
+        "MAP",
+        "MAP2",
+        "NULL_DEF",
+        "SUM",
+        "TL",
+        "APPEND_ASSOC", 
+        "CONS", 
+        "CONS_11",
+        "LENGTH_APPEND",
+        "LENGTH_MAP",
+        "MAP_APPEND",
+        "NOT_CONS_NIL",
+        "NOT_NIL_CONS"]);
+
+
+(* ---------------------------------------------------------------------
+ *
+ * --------------------------------------------------------------------*)
+
+open Satisfy;
+
+val SATISFY_REDUCER =
+  let exception FACTDB of factdb;
+      fun get_db e = (raise e) handle FACTDB db => db
+  in REDUCER
+    {initial = FACTDB ([],[]),
+     apply=SATISFY_CONV o get_db o #context,
+     addcontext=(fn (ctxt,thms) => FACTDB (add_facts (get_db ctxt) thms))}
+  end;
+    
+val SATISFY_ss = dproc_ss SATISFY_REDUCER;
+
+(* ---------------------------------------------------------------------
+ * sum_ss
+ * --------------------------------------------------------------------*)
+
+
+val SUM_ss = rewrites (map (THM "sum") ["ISL","ISR","OUTL","OUTR","INL","INR"]);
+
+val bool_ss = mk_simpset [BOOL_ss];
+
+val _ = say "done!\n";
+
+end (* struct *)
+
+
+
+
+
+
+
+(* ---------------------------------------------------------------------
+ * EXISTS_NORM_ss
+ *
+ * Moving existentials 
+ *    - inwards over disjunctions
+ *    - outwards over conjunctions
+ *    - outwards from left of implications (??? - do we want this??)
+ *    - inwards into right of implications
+ * --------------------------------------------------------------------*)
+
+(*
+val EXISTS_NORM_ss =
+    pure_ss 
+    |> addrewrs [EXISTS_OR_THM, 
+        TRIV_AND_EXISTS_THM, 
+        LEFT_AND_EXISTS_THM,
+        RIGHT_AND_EXISTS_THM,
+        LEFT_IMP_EXISTS_THM,
+        TRIV_EXISTS_IMP_THM];
+
+val EXISTS_IN_ss =
+    pure_ss 
+    |> addrewrs [EXISTS_OR_THM, 
+        LEFT_EXISTS_AND_THM,
+        RIGHT_EXISTS_AND_THM,
+        LEFT_EXISTS_IMP_THM,
+        TRIV_EXISTS_IMP_THM,
+        RIGHT_EXISTS_IMP_THM];
+
+val EXISTS_OUT_ss =
+    pure_ss 
+    |> addrewrs [EXISTS_OR_THM, 
+        LEFT_AND_EXISTS_THM,
+        RIGHT_AND_EXISTS_THM,
+        LEFT_IMP_EXISTS_THM,
+        RIGHT_IMP_EXISTS_THM];
+*)
+
+
+@
+
+
+1.1.2.2
+log
+@Changes to Simplifier:
+  -  REDUCE_CONV is part of arith_ss and is called on multiplication and
+     exponentiation terms.
+  -  SUM_ss is made part of arith_ss too
+  -  A bound variable bug is fixed in opening.sml
+
+Changes to Unwind:
+
+An attempt to be clever here caused UNWIND_EXISTS_CONV to break if the
+first conjunct of the body of the clause was the one with the variable's
+definition, and was also nested.
+
+e.g. ?n. ((n = 3) /\ (n < y)) /\ P n
+failed because CONJ_TO_FRONT_CONV didn't touch the body, thinking it was
+OK, but it wasn't, because this term above doesn't match the rewrite
+theorem (which is: ?x. (x = v) /\ ...., or near enough).
+@
+text
+@d25 1
+a25 5
+	   conv=K (K BETA_CONV)},
+	  {name = "let_CONV (reduction of let terms)",
+	   trace = 2,
+	   key = SOME ([], (--`$LET (f:'a->'b) x`--)),
+	   conv = K (K let_CONV)}],
+d134 1
+a134 7
+val SUM_ss = 
+    let val s_axiom = theorem "sum" "sum_Axiom"
+        val s_distinct = prove_constructors_distinct s_axiom
+        val s_d2 = ONCE_REWRITE_RULE [EQ_SYM_EQ] s_distinct
+    in rewrites (map (THM "sum") ["ISL","ISR","OUTL","OUTR","INL","INR"] @@
+		 [prove_constructors_one_one s_axiom, s_distinct, s_d2])
+    end;
+a135 1
+
+@
+
+
+1.1.2.2.2.1
+log
+@Added code to install extra theorems in LIST_ss when the List theory
+is present among the ancestors of the current theory.
+
+Also added three other theorems that are useful (proving them on the spot).
+
+(Trailing whitespace has also been removed.)
+@
+text
+@d21 1
+a21 1
+val BOOL_ss =SIMPSET
+d45 1
+a45 1
+val PAIR_ss =SIMPSET
+d50 2
+a51 2
+   rewrs=[theorem "pair" "FST", theorem "pair" "SND",
+	  theorem "pair" "PAIR",
+d90 1
+a90 2
+val COMBIN_ss = rewrites (map (theorem "combin") [
+  "I_THM","I_o_ID", "K_THM", "S_THM", "o_ASSOC", "o_THM"]);
+a92 1
+fun okthy str = mem str (ancestry "-")
+d94 20
+a113 33
+val MAP_EQ_NIL = prove(
+  (--`!(l:'a list) (f:'a->'b). (MAP f l = []) = (l = [])`--),
+  INDUCT_THEN (theorem "list" "list_INDUCT") ASSUME_TAC THEN
+  REWRITE_TAC [definition "list" "MAP", theorem "list" "NOT_CONS_NIL"]);
+
+val quant_CONV = RAND_CONV o ABS_CONV
+val lhs_CONV   = RATOR_CONV o RAND_CONV
+val gMAP_EQ_NIL =
+  CONV_RULE (quant_CONV (quant_CONV (lhs_CONV (REWR_CONV EQ_SYM_EQ))))
+            MAP_EQ_NIL;
+
+val APP_NIL = prove(
+  (--`!(l:'a list). APPEND l [] = l`--),
+  INDUCT_THEN (theorem "list" "list_INDUCT") ASSUME_TAC THEN
+  ASM_REWRITE_TAC [definition "list" "APPEND"]);
+
+val LIST_ss = rewrites (
+  map (THM "list") [
+        "APPEND", "EL", "EVERY_DEF", "FLAT", "HD", "LENGTH", "MAP",
+        "MAP2", "NULL_DEF", "SUM", "TL", "APPEND_ASSOC", "CONS",
+        "CONS_11", "LENGTH_APPEND", "LENGTH_MAP", "MAP_APPEND",
+        "NOT_CONS_NIL", "NOT_NIL_CONS"] @@
+  (if (okthy "List") then
+     map (THM "List") [
+        "SNOC", "BUTLAST", "LAST", "REVERSE", "MAP_FLAT",
+        "MAP_FILTER", "MAP_SNOC", "FLAT_REVERSE", "FLAT_APPEND",
+        "FILTER", "SUM", "FOLDR", "FOLDL", "ELL", "ALL_EL", "SOME_EL",
+        "IS_EL", "UNZIP", "IS_PREFIX", "IS_SUFFIX", "REPLICATE", "SEG",
+        "SEG_REVERSE", "SEG_SNOC", "FIRSTN", "LASTN", "BUTFIRSTN",
+        "BUTLASTN", "ZIP", "NOT_NIL_SNOC", "NOT_SNOC_NIL", "SNOC_11",
+        "ALL_EL_APPEND"
+     ]
+   else []) @@ [MAP_EQ_NIL, gMAP_EQ_NIL, APP_NIL])
+d130 1
+a130 1
+
+d138 1
+a138 1
+val SUM_ss =
+d162 1
+a162 1
+ * Moving existentials
+d171 3
+a173 3
+    pure_ss
+    |> addrewrs [EXISTS_OR_THM,
+        TRIV_AND_EXISTS_THM,
+d180 2
+a181 2
+    pure_ss
+    |> addrewrs [EXISTS_OR_THM,
+d189 2
+a190 2
+    pure_ss
+    |> addrewrs [EXISTS_OR_THM,
+@
+
+
+1.1.2.2.2.2
+log
+@Modified BOOL_ss thus:
+  added new rewrites (excluded middle, and its symmetric pair, and some
+                      simple facts about select to rewrite out (@@x. x = y))
+
+  added eta conversions, taking care to preserve things like !x. P x
+  through use of a special conversion.  The conversion will not apply at
+  the very top level because of this.
+@
+text
+@a20 5
+fun comb_ETA_CONV t =
+    (if (not (is_exists t orelse is_forall t orelse is_select t)) then
+         RAND_CONV ETA_CONV
+     else NO_CONV) t
+
+d29 1
+a29 10
+	   conv = K (K let_CONV)},
+          {name = "ETA_CONV (eta reduction)",
+           trace = 2,
+           key = SOME ([],
+                       --`(f:('a->'b)->'c) (\x:'a. (g:'a->'b) x)`--),
+           conv = K (K comb_ETA_CONV)},
+          {name = "ETA_CONV (eta reduction)",
+           trace = 2,
+           key = SOME ([], --`\x:'a. \y:'b. (f:'a->'b->'c) x y`--),
+           conv = K (K (ABS_CONV ETA_CONV))}],
+d37 1
+a37 4
+          COND_BOOL_CLAUSES,
+          EXCLUDED_MIDDLE,
+          ONCE_REWRITE_RULE [DISJ_SYM] EXCLUDED_MIDDLE,
+          SELECT_REFL, Theorems.SELECT_REFL_2],
+@
+
+
+1.1.2.2.2.3
+log
+@The "simp" library now loads under CM.
+@
+text
+@d1 1
+d5 1
+a5 4
+open liteLib ho_matchLib;
+open Lib CoreHol;
+open Thm Theory Drule Conv Let_conv Taut_thms Rec_type_support Parse
+Drule Psyntax LiteLib Traverse Theorems Equal Simplifier Cond_rewr Ho_rewrite;
+d107 2
+a108 2
+val COMBIN_ss = rewrites (map (theorem "combin") 
+                  ["I_THM","I_o_ID", "K_THM", "S_THM", "o_ASSOC", "o_THM"]);
+@
+
+
+1.1.2.2.2.4
+log
+@Added CONG_ss to Simpsets.{sig,sml}.  This new ssdata contains the
+congruences that have been removed from BOOL_ss.  Both bool_ss and hol_ss
+are unchanged in their behaviour as these both now merge in CONG_ss.
+@
+text
+@a18 5
+ *   The convs and "basic rewrites" come from BOOL_ss, while the
+ *   contextual rewrites are found in CONG_ss.  This split is done so
+ *   that the potential inefficient context gathering required for the
+ *   congruence reasoning can be omitted in a custom simpset built from
+ *   BOOL_ss.
+d28 1
+a28 1
+val BOOL_ss = SIMPSET
+d57 2
+a58 6
+   congs = [], filter = SOME mk_cond_rewrs, ac = [], dprocs = []};
+
+val CONG_ss = SIMPSET
+  {convs = [], rewrs = [],
+   congs = [IMP_CONG, COND_CONG],
+   filter=NONE, ac=[], dprocs=[]};
+d109 1
+a109 1
+val COMBIN_ss = rewrites (map (theorem "combin")
+d181 1
+a181 1
+val bool_ss = mk_simpset [BOOL_ss, CONG_ss];
+@
+
+
+1.1.2.2.2.5
+log
+@Removed the painful rewrites of ~p \/ q --> p ==> q and p \/ ~q --> q ==> p
+from NOT_ss.  These are very annoying in conjunction with the more
+reasonable rewrites which tend to move negations inwards.  In particular,
+~(p /\ q) gets turned into p ==> ~q, which is a pain to work with, whereas
+the disjunction you'd expect is fine (in particular, it allows easy case
+splits &c.)
+@
+text
+@d106 7
+a112 3
+val NOT_ss = rewrites [NOT_IMP, DE_MORGAN_THM,
+                       NOT_FORALL_THM, NOT_EXISTS_THM,
+                       TAUT(--`(~p = ~q) = (p = q)`--)];
+@

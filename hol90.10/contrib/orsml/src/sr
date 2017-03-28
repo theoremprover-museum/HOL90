@@ -1,0 +1,45 @@
+(************************************************)
+(*          STRUCTURAL RECURSION                *)
+(************************************************)
+
+signature srsig =
+  sig
+    structure Common : commonsig
+    exception Badtypesr
+    val orsr : Common.co * (Common.co * Common.co -> Common.co)
+               -> Common.co -> Common.co
+    val sr : Common.co * (Common.co * Common.co -> Common.co)
+             -> Common.co -> Common.co
+  end
+
+functor STRREC (Common : commonsig) : srsig  =
+struct
+
+structure Common = Common
+
+local open Common in
+
+    exception Badtypesr
+
+    fun sr(e:co,f) = 
+      let fun good_sr (Set x) = 
+                    let fun make_sr [] = e |
+                            make_sr (a::X) = f(a, make_sr(X))
+                    in make_sr(x) end |
+              good_sr _  = raise Badtypesr
+    in good_sr end
+
+    fun orsr(e:co,f) = 
+      let fun good_orsr (Orset x) = 
+                    let fun make_orsr [] = e |
+                            make_orsr (a::X) = f(a, make_orsr(X))
+                    in make_orsr(x) end |
+              good_orsr _  = raise Badtypesr
+    in good_orsr end
+
+end
+
+end (* functor STRREC *)
+
+
+

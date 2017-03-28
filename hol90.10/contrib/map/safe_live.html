@@ -1,0 +1,168 @@
+<TITLE>Theory: safe_live</TITLE>
+<H1>Theory: safe_live</H1>
+<H1>Parents</H1>
+    <UL>
+    <LI><A HREF = "HOL.html"><STRONG>HOL</STRONG></A>
+    </UL>
+
+
+<HR>
+<H1>Type constants</H1>
+    <UL>
+    
+    </UL>
+
+
+<HR>
+<H1>Term constants</H1>
+    <UL>
+    <LI><STRONG>Prefix_OK</STRONG><EM>:num -> ((num -> 'a) -> bool) ->
+                                       (num -> 'a) -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>Safe</STRONG><EM>:((num -> 'a) -> bool) -> (num -> 'a) ->
+                                  bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>Live</STRONG><EM>:((num -> 'a) -> bool) -> (num -> 'a) ->
+                                  bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>Safety</STRONG><EM>:((num -> 'a) -> bool) -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>Liveness</STRONG><EM>:((num -> 'a) -> bool) -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    </UL>
+
+
+<HR>
+<H1>Axioms</H1>
+<DL>
+
+</DL>
+
+
+<HR>
+<H1>Definitions</H1>
+<DL>
+<DT><STRONG>Prefix_OK</STRONG>
+<DD>
+<PRE>
+|- !n P w. Prefix_OK n P w = (?v. (!t. t < n ==> (v t = w t)) /\ P v)
+</PRE>
+
+<DT><STRONG>Safe</STRONG>
+<DD>
+<PRE>
+|- !P w. Safe P w = (!n. Prefix_OK n P w)
+</PRE>
+
+<DT><STRONG>Live</STRONG>
+<DD>
+<PRE>
+|- !P w. Live P w = Safe P w ==> P w
+</PRE>
+
+<DT><STRONG>Safety</STRONG>
+<DD>
+<PRE>
+|- !P. Safety P = (!w. Live P w)
+</PRE>
+
+<DT><STRONG>Liveness</STRONG>
+<DD>
+<PRE>
+|- !P. Liveness P = (!w. Safe P w)
+</PRE>
+
+</DL>
+
+
+<HR>
+<H1>Theorems</H1>
+<DL>
+<DT><STRONG>Safe_Contains</STRONG>
+<DD>
+<PRE>
+|- !P w. P w ==> Safe P w
+</PRE>
+
+<DT><STRONG>Safe_Idem</STRONG>
+<DD>
+<PRE>
+|- !P. Safe (Safe P) = Safe P
+</PRE>
+
+<DT><STRONG>Safe_Mono</STRONG>
+<DD>
+<PRE>
+|- !P Q. (!w. P w ==> Q w) ==> (!w. Safe P w ==> Safe Q w)
+</PRE>
+
+<DT><STRONG>Live_Contains</STRONG>
+<DD>
+<PRE>
+|- !P w. P w ==> Live P w
+</PRE>
+
+<DT><STRONG>Safe_and_Live</STRONG>
+<DD>
+<PRE>
+|- !P w. Safe P w /\ Live P w = P w
+</PRE>
+
+<DT><STRONG>Safe_Live</STRONG>
+<DD>
+<PRE>
+|- !P w. Safe (Live P) w
+</PRE>
+
+<DT><STRONG>Live_Idem</STRONG>
+<DD>
+<PRE>
+|- !P. Live (Live P) = Live P
+</PRE>
+
+<DT><STRONG>Live_Safe</STRONG>
+<DD>
+<PRE>
+|- !P w. Live (Safe P) w
+</PRE>
+
+<DT><STRONG>Safety_Safe</STRONG>
+<DD>
+<PRE>
+|- !P. Safety (Safe P)
+</PRE>
+
+<DT><STRONG>Liveness_Live</STRONG>
+<DD>
+<PRE>
+|- !P. Liveness (Live P)
+</PRE>
+
+<DT><STRONG>Liveness_AND_Safety</STRONG>
+<DD>
+<PRE>
+|- !P. Liveness P /\ Safety P ==> (!w. P w)
+</PRE>
+
+<DT><STRONG>Strongest_safety</STRONG>
+<DD>
+<PRE>
+|- !P Q. Safety Q /\ (!w. P w ==> Q w) ==> (!w. Safe P w ==> Q w)
+</PRE>
+
+<DT><STRONG>Safety_Liveness_Decompose</STRONG>
+<DD>
+<PRE>
+|- !P. ?Q R. Safety Q /\ Liveness R /\ (!w. P w = Q w /\ R w)
+</PRE>
+
+<DT><STRONG>Exists_not_Safety</STRONG>
+<DD>
+<PRE>
+|- ?P. ~(Safety P)
+</PRE>
+
+</DL>
+
+
+<HR>

@@ -1,0 +1,46 @@
+Mutrec.
+
+The contributed library "mutrec" supplies preliminary support for
+making polymorphic mutually recursive datatype definitions and
+mutually primitive recursive function definitions over such types.
+There is a functor named MutRecTypeFunc which you apply to a
+specification and it causes the six new theorems (existence,
+uniqueness, induction, cases, and the one-to-oneness and distinctness
+of constructors) to be bound to identifiers in the top-level
+environment, and stored in the current theory under the same
+names. The names of these theorems are user supplied in the input
+structure, along with the specification.  The functor also defines
+terms for extracting the arguments of functional constructors, and
+binds these definitions, both in the theory and in the top-level
+environment, to internally generated names.
+  There is also a function define_mutual_functions for defining
+mutually recursive functions over the datatypes.  This is a slightly
+altered version from the older versions.  The new version of
+define_mutual_functions has the type
+
+val define_mutual_functions : {name:string,
+                               fixities:fixity list option,
+                               rec_axiom:thm,
+                               def:term} -> thm
+
+Notice that the fixities of the constructors is given by an optional
+list of fixity specifications.  If you wish to only have constructors
+with no special fixity status, then you may give NONE as the value for
+fixities.  Otherwise, you must use a value such as
+SOME[Prefix,Infix 600,...] to specify each speficic fixity status of
+each constructor.  Using the value NONE is the same as using the value
+SOME[Prefix,...Prefix].
+  For those who used older versions, the functor MutRecDefFunc is also
+supplied by this library and should be compatible with any working
+examples you have.  (It has been fixed to work properly with
+polymorphism.)
+
+  There is no other documentation, other than some examples given in
+the directory "example".
+
+Send queries on this package to
+
+			elsa@research.att.com
+
+
+

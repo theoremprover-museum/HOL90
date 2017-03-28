@@ -1,0 +1,166 @@
+head	1.2;
+access;
+symbols;
+locks; strict;
+comment	@# @;
+
+
+1.2
+date	96.01.04.15.59.20;	author drs1004;	state dead;
+branches;
+next	1.1;
+
+1.1
+date	95.12.18.11.36.39;	author drs1004;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.2
+log
+@io transformers moved to 0/
+@
+text
+@signature Advanced_inference_sig =
+sig
+
+
+  structure Preterm : Preterm_sig
+  type typ sharing type typ = Preterm.Term.Type.typ
+  type term sharing type term = Preterm.Term.term
+  type pretype sharing type pretype = Preterm.pretype
+  type preterm sharing type preterm = Preterm.preterm
+
+(*----------------------------------------------------------------------
+ * maximize_types
+ *
+ * USES
+ * 
+ * Used to avoid endless annotations of free types in terms.
+ *
+ * Instantiates system type variables (Stv's) in the preterm to type
+ * variables 'a1, 'a2 etc.  In general should
+ * only be passed preterms which have
+ * been had type_inference called on them, i.e. types where as many
+ * system type variables as possible have already been eliminated by
+ * type infeence.  After maximizing the
+ * types, "typecheck" will need to be called to actually produce a term.
+ * (Nb. This will check types all over again, but that's no hassle)
+ *
+ * NOTE: Type variables are allocated types 'a1, 'a2 etc.  These
+ * should not be used elsewhere in the term as this will result in 
+ * a non-maximal type.
+ * 
+ * --------------------------------------------------------------------*)
+
+  val maximize_types : preterm -> preterm
+
+(*----------------------------------------------------------------------
+ * Type tables and Sticky types
+ *
+ * USES
+ * 
+ * Used to avoid endless annotations of types in terms.
+ *
+ * apply_sticky_types : preterm -> stickyset -> preterm
+ *
+ * Apply a set of sticky-type information to help instantiate free
+ * system type variables in the preterm.
+ *
+ * Functional use is:
+ *    val tt = mk_typetable ["P" |-> (==`:bool -> bool`==)]
+ *    fun -- x y = Parse.mk_term_parser [typetable tt] x;
+ *    val tm = (--`P`--)
+ * Semi-Imperative use is:
+ *    val sticky = new_stickyset ["P" |-> (==`:bool -> bool`==)]
+ *    fun -- x y = Parse.mk_term_parser [sticky_types sticky] x;
+ *    val tm = (--`P`--)
+ * Fully imperative use is:
+ *    fun -- x y = Parse.mk_term_parser [sticky_types] x;
+ *    val _ = show_types := true;
+ *    val tm = (--`P:bool -> bool`--)
+ *    val tm = (--`P x`--)
+ *    val tm = (--`x`--)
+ * --------------------------------------------------------------------*)
+
+  
+  type typetable
+  val mk_typetable : (string * typ) list -> typetable 
+  val add_types : (string * typ) list -> typetable -> typetable
+  val remove_types : string list -> typetable -> typetable
+  val dest_typetable : typetable -> (string * typ) list
+  
+  (* fully functional - simply attaches types to unconstrained variables *)
+  val typetable : typetable -> preterm -> preterm
+
+  (* fully functional - returns a new type set where sticky types have *)
+  (* been gleaned from the preterm *)
+  val gen_apply_sticky_types : (preterm * typetable) -> (preterm * typetable)
+
+  (* semi imperative - works on a reference to a typetable, updating it with *)
+  (* new sticky types  *)
+  val new_stickyset : unit -> typetable ref
+  val apply_sticky_types : typetable ref -> preterm -> preterm
+
+  (* fully imperative - works on a built in sticky set *)
+  val sticky_types_ref : typetable ref;
+  val sticky_types : preterm -> preterm
+
+(*----------------------------------------------------------------------
+ * Interface String Maps (string mapping)
+ *
+ * USES
+ * 
+ * --------------------------------------------------------------------*)
+  type string_map
+  val mk_string_map: {term_map:(string * string) list,
+			 type_map:(string * string) list} -> string_map
+
+  val dest_string_map : string_map -> 
+      {term_map:(string * string) list, 
+       type_map:(string * string) list}
+
+  val string_map_ty : string_map -> pretype -> pretype
+  val string_map : string_map -> preterm -> preterm
+  val string_map_pp_tm : string_map -> 'a -> 'b -> term -> Portable.PrettyPrint.ppstream -> unit
+  val string_map_pp_ty : string_map -> 'a -> 'b -> typ -> Portable.PrettyPrint.ppstream -> unit
+  val install_string_map_pp : string_map -> unit
+
+
+
+(*----------------------------------------------------------------------
+ * Interface Maps (macro expansion)
+ *
+ * USES
+ * 
+ * --------------------------------------------------------------------*)
+  type imap
+  val mk_imap: {term_map:(term frag list * term) list,
+		type_map:(term frag list * typ) list} -> imap
+
+  val dest_imap : imap -> {term_map:(preterm * term) list, 
+			   type_map:(pretype * typ) list}
+
+  val imap_ty : imap -> pretype -> pretype
+  val imap : imap -> preterm -> preterm
+  val imap_pp_tm : imap -> 'a -> 'b -> term -> Portable.PrettyPrint.ppstream -> unit
+  val imap_pp_ty : imap -> 'a -> 'b -> typ -> Portable.PrettyPrint.ppstream -> unit
+  val install_imap_pp : imap -> unit
+
+end;
+
+
+
+@
+
+
+1.1
+log
+@Preterm and other changes, see 7.changes
+@
+text
+@@

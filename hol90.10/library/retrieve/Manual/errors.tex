@@ -1,0 +1,38 @@
+\section{Error messages}
+
+\index{errors!illegal pattern construction}
+This session illustrates some of the top-level error messages caused by using
+an illegal pattern constructor within a side-condition.
+
+\setcounter{sessioncount}{1}
+
+\begin{session}\begin{verbatim}
+- find_theorems ((conc (--`x:bool`--)) Where (kind Axiom))
+=               (Paths [Theory "arithmetic"]) handle e => Raise e;
+
+Exception raised at RetrieveMatching.Where:
+bad side-condition
+
+uncaught exception HOL_ERR
+- find_theorems ((conc (--`x:bool`--))
+=                   Where (((--`x:bool`--) contains (--`a * b`--))
+=                             Where ((--`a:num`--) contains (--`l - m`--))))
+=               (Paths [Theory "arithmetic"]) handle e => Raise e;
+
+Exception raised at RetrieveMatching.Where:
+bad side-condition
+
+uncaught exception HOL_ERR
+- find_theorems (((conc (--`x:bool`--))
+=                    Where ((--`x:bool`--) contains (--`a * b`--)))
+=                   Where ((--`a:num`--) contains (--`l - m`--)))
+=               (Paths [Theory "arithmetic"]) handle e => Raise e;
+Searching theory arithmetic
+val it =
+  Step
+    ([(Theorem,"arithmetic","RIGHT_SUB_DISTRIB",
+       |- !m n p. (m - n) * p = m * p - n * p)],fn) : searchstep
+#exit();
+$
+\end{verbatim}\end{session}
+

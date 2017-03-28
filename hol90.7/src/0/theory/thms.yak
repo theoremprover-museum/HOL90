@@ -1,0 +1,99 @@
+structure Theory_data = Theory_data
+structure Thm = Thm;
+structure Thy_parse = Thy_parse;
+
+type hol_thms = { thid: Theory_data.theory_id, 
+                  axioms : (string * Thm.thm) list,
+                  definitions : (string * Thm.thm) list,
+                  theorems : (string * Thm.thm) list
+                };
+%%
+%term lparen | rparen
+    | lbracket | rbracket
+    | comma
+    | eq
+    | thid
+    | axioms
+    | definitions
+    | theorems
+    | quote of string
+    | id of string
+    | num of string
+    | EOLEX
+    | EOF 
+
+%nonterm START of hol_thms
+       | CURR_THID of Theory_data.theory_id
+       | HOL_THMS of hol_thms
+       | ID of string
+       | THM of (string*Thm.thm)
+       | THM_LIST of (string*Thm.thm) list
+       | QUOTE_LIST of string list
+
+%start START
+%eop EOF EOLEX
+%pos int
+%header (functor thmsLrValsFun (structure Token : TOKEN
+                                structure Thm : Thm_sig
+                                structure Thy_parse : Thy_parse_sig
+                                structure Theory_data : Theory_data_sig
+                                sharing 
+                                  Thm = Theory_data.Thm
+                                and
+                                  Thm.Term = Thy_parse.Term
+                                  = Theory_data.Thm.Term))
+%name thms
+%noshift EOF
+%pure
+%%
+
+START : HOL_THMS (HOL_THMS)
+
+HOL_THMS : thid eq CURR_THID 
+           axioms eq lbracket THM_LIST rbracket
+           definitions eq lbracket THM_LIST rbracket
+           theorems eq lbracket THM_LIST rbracket
+           ({thid = CURR_THID,
+             axioms = THM_LIST1, 
+             definitions = THM_LIST2,
+             theorems = THM_LIST3})
+
+CURR_THID : lparen ID comma num comma num rparen
+       (Theory_data.mk_theory_id
+            {name = ID, 
+             timestamp = System.Timer.TIME{sec = string_to_int num1,
+                                           usec = string_to_int num2}})
+
+ID  : thid ("thid")
+      |
+      axioms ("axioms")
+      |
+      definitions ("definitions")
+      |
+      theorems ("theorems")
+      |
+      eq ("=")    
+      |
+      comma (",") 
+      |
+      id (id)
+
+THM : lparen 
+        lparen ID rparen comma 
+        lbracket QUOTE_LIST rbracket comma 
+        quote 
+      rparen
+      (ID,Thm.mk_disk_thm(map Thy_parse.theory_term_parser QUOTE_LIST,
+                          Thy_parse.theory_term_parser quote))
+
+THM_LIST : ([])
+           |
+           THM ([THM])
+           |
+           THM comma THM_LIST(THM::THM_LIST)
+
+QUOTE_LIST : ([])
+           |
+           quote ([quote])
+           |
+           quote comma QUOTE_LIST(quote::QUOTE_LIST)

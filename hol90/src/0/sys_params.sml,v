@@ -1,0 +1,308 @@
+head	1.3;
+access;
+symbols
+	HOL97:1.3.0.4
+	bpHOL97:1.3
+	hol90_9_alpha:1.3
+	hol90_pre8_for_multiple_compilers:1.3.0.2
+	hol90_pre8_after_donalds_separate_compilation_changes:1.3
+	hol90_8_after_merging_Konrad_Elsa:1.2
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.3
+date	95.10.31.13.56.38;	author drs1004;	state Exp;
+branches
+	1.3.4.1;
+next	1.2;
+
+1.2
+date	95.10.17.17.07.27;	author drs1004;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	95.10.16.13.29.57;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.29.57;	author rjb;	state Exp;
+branches;
+next	;
+
+1.3.4.1
+date	97.07.18.11.51.04;	author kxs;	state dead;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.3
+log
+@First phase of hol90.8 development.  hol90 now compiles using NJSML-CM
+108.5, with separate compilation of libraries.  System dependencies
+have been isolated in the makefiles and "portable.sml".
+
+This involved a large number of enhancments to the source files,
+most of which are documented in the 7.changes file (or will be shortly).
+See also the correpsonding email corrspondence between RJB, KLS, TFM,
+JRH and DRS that happened during this development.
+@
+text
+@(* ===================================================================== *)
+(* FILE          : sys_params.sml                                        *)
+(* DESCRIPTION   : Contains the system parameters that need to be        *)
+(*                 provided at building time.                            *)
+(*                                                                       *)
+(* AUTHOR        : Elsa L. Gunter, AT&T Bell Laboratories                *)
+(* DATE          : 29 September, 1992                                    *)
+(* ===================================================================== *)
+
+(* Copyright 1992 by AT&T Bell Laboratories *)
+
+structure Sys_params : Sys_params_sig =
+struct
+
+(* *************************************************************************
+ *
+ * This module codifies the arguments given to make_hol. The calling 
+ * convention for make_hol is:
+ * 
+ *     make_hol <sml> [-n | -b | -o] [-d <path>]
+ * 
+ * The default, calling make_hol with no parameters, tells the system to
+ * re-use the existing ascii theory files. One must be in hol90.4/src to
+ * invoke this. If you aren't there, the "-d" option must be used.
+ * 
+ *     -o  This is the same as calling the default.
+ * 
+ *     -n  The "-n" option tells the system to rebuild all its theories. Be
+ *         warned that a consequence of this option is that all user theories 
+ *         at the site will have to be rebuilt.
+ * 
+ *     -b  The "-b" option tells the system to build binary theories. This 
+ *         is not advised, and some editing of the sys01.sml file is 
+ *         necessary to get this approach to work.
+ * 
+ *     -d <path> This option to make_hol is used to establish the root
+ *         directory for hol90. If your current directory at the 
+ *         time of calling "make_hol" is not hol90.4/src, then you 
+ *         will need to supply the full directory path to the hol90.4 
+ *         directory.
+ * 
+ * The default and the "-n" and "-o" options entail that theory files will
+ * be in ascii. This is preferable, since ascii files are portable between
+ * architectures and are much smaller than binary theory files.
+ ***************************************************************************)
+
+datatype thy_opt = make_binary | make_new_ascii | use_old_ascii
+
+
+fun last_char str = substring (str, size str - 1, 1);
+
+fun normalize p = 
+   if (last_char p = "/")
+   then p 
+   else (p^"/");
+
+local
+fun head_dir wd =
+   let val hd_size = (size wd) - 1
+   in if last_char wd = "/"
+      then wd
+      else head_dir (substring (wd, 0, hd_size))
+   end
+in
+fun base() = head_dir (Portable.pwd ())
+end;
+
+exception MAKE_HOL_FAILED
+val argv = Portable.getArgs()
+fun fail () = (output(std_out, ("\nmake_hol failed: format is\
+                  \ \"make_hol <sml> [-n | -b | -o] [-d <path>]\"\n"));
+				raise MAKE_HOL_FAILED)
+
+local
+fun mem x [] = false | mem x (y::ys) = (x = y) orelse mem x ys
+in
+val theory_file_option =
+    if mem "-b" argv
+	then if mem "-o" argv orelse mem "-n" argv
+		 then fail()
+	     else make_binary
+    else if mem "-n" argv
+	     then if mem "-o" argv then fail() else make_new_ascii
+	 else use_old_ascii
+end
+
+fun find_directory [] = base()
+  | find_directory (flag::[]) = (case flag of "-d" => fail() | _ => base ())
+  | find_directory (flag::(rest as next::_)) =
+    (case flag of "-d" => normalize next | _ => find_directory rest)
+
+val HOL_base_directory = find_directory argv
+
+
+(*
+Manual configuration.
+
+One can manually configure the system by 
+
+    a) Setting the values of theory_file_option and HOL_base_directory in
+       this file.
+
+    b) By commenting out the code that currently sets these values in
+       this file.
+
+    c) By not using the line
+
+           $* < sys01.sml
+
+       in the make_hol shell script. Instead one would invoke sml, then do a
+   
+           use "sys01.sml";
+
+       After that finished, the rest of the make_hol shell script should be 
+       invoked.
+
+
+Here are some hints for part a.
+
+If you want ascii theory files and you want to rebuild all the
+theories anew, you should do
+
+    val theory_file_option = make_new_ascii
+
+If you want binary versions of theory files, you should use
+
+    val theory_file_option = make_binary
+
+If you chose either of the above two options, you will have to remake
+all libraries and site theories. If you use binary format you will have
+to modify the file sys01.sml too.
+
+If you wish to reuse existing ascii theory files, thereby avoiding
+having to remake libraries and local theories, you should use
+
+    val theory_file_option = use_old_ascii
+
+You will need to use the "use_old_ascii" option on all but the first
+build when building hol90 on multiple architectures which are all to
+share the same theory files.
+
+Warning: the "use_old_ascii" option is not as secure as the other two.
+It also may not always be possible when building a new version of hol90
+for the first time at your site. SYSTEM THEORY FILES MAY CHANGE BETWEEN
+RELEASES.
+
+*)
+
+end (* functor SYS_PARAMS *)
+@
+
+
+1.3.4.1
+log
+@Removed sys_params.* because it has been replaced by src/SysParams.
+@
+text
+@@
+
+
+1.2
+log
+@Keeping you up to date:
+
+I'm about to do a checkin of elsa's modifications to the hol90.7
+sources to create her hol90.pre8.  To recap what I've done:
+	- I checked out hol90 (in /usr/groups/hol/drs1004/hol90)
+		cvs co hol90
+	  (Well, to be honest, I only checked out those
+	  parts of hol90 I knew I'd be changing, e.g. not the
+	  Manual, and only parts of the library.  Checking out the
+	  entire source takes a while, mainly due to the enormous number
+	  of help files.  The limiting factor is files/second, which
+         runs at around 5 when CVS is working on nfs over a network, not
+         KB/second, which you might at first think it would be).
+
+	- By doing a recursive diff between Elsa's source and the
+	hol90.7 source I found all the changes Elsa had made to
+	source files.  I copied relevant files from Elsa's source
+	into my checked out version.  The only new files were
+		- the sml_system files in src/0
+		- some make scripts in src/.
+	Changed files were in:
+		src/{0,1,2,3}
+		library/arith/src/thm_convs.sml
+		library/list/src/list_conv1.sml
+		library/num/src/num_lib.sml
+		library/prog_logic/src/halts_logic.sml
+		library/prog_logic/src/translation.sml
+		library/prog_logic/theories/src/mk_halts.sml
+		library/real/theories/src/Make
+		library/real/theories/src/equiv.sml
+		library/real/theories/src/seq.sml
+		library/reduce/src/arithconv.sml
+		library/string/src/string_conv.sml
+		library/unity/theories/src/aux_definitions.sml
+		library/word/theories/src/*
+
+	- I will now commit these changes, with this email as the log message.
+		cvs commit
+
+	- Tomorrow I will get this version compiling
+	with NJSML 108 (I will probably add
+	the files to enable the NJSML compilation manager to make
+	this easier), then check those changes in.  I think it's
+	good to get things in a working state.
+@
+text
+@d65 1
+a65 1
+fun base() = head_dir (Sml_system.pwd ())
+d69 1
+a69 1
+val argv = Sml_system.getArgs()
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d12 1
+a12 1
+functor SYS_PARAMS () : Sys_params_sig =
+d65 1
+a65 1
+fun base() = head_dir (System.Directory.getWD ())
+d69 1
+a69 1
+val argv = System.argv()
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

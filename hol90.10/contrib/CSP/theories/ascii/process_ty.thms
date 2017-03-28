@@ -1,0 +1,208 @@
+thid = (process_ty, 784032795, 904213)
+axioms = []
+definitions =
+[((TRACES_DEF),
+  [],
+  `((! :(process -> bool) -> bool) (\(P :process).
+   (((= :string list set -> string list set -> bool) (TRACES $0))
+   ((SND :string set # string list set -> string list set)
+   (REP_process $0)))))`),
+ ((ALPHA_DEF),
+  [],
+  `((! :(process -> bool) -> bool) (\(P :process).
+   (((= :string set -> string set -> bool) (ALPHA $0))
+   ((FST :string set # string list set -> string set) (REP_process
+   $0)))))`),
+ ((process_ISO_DEF),
+  [],
+  `((/\ ((! :(process -> bool) -> bool) (\(a :process).
+   (((= :process -> process -> bool) (ABS_process (REP_process $0)))
+   $0)))) ((! :(string set # string list set -> bool) -> bool)
+   (\(r :string set # string list set). (((= :bool -> bool -> bool)
+   (((UNCURRY :(string set -> string list set -> bool) ->
+               string set # string list set -> bool)
+   (\(A :string set). (\(TR :string list set). (IS_PROCESS
+   (((, :string set -> string list set ->
+         string set # string list set) $1) $0))))) $0))
+   (((= :string set # string list set ->
+         string set # string list set -> bool) (REP_process
+   (ABS_process $0))) $0)))))`),
+ ((process_TY_DEF),
+  [],
+  `((? :((process -> string set # string list set) -> bool) -> bool)
+   (\(rep :process -> string set # string list set).
+   (((TYPE_DEFINITION :(string set # string list set -> bool) ->
+                       (process -> string set # string list set) ->
+                       bool)
+   ((UNCURRY :(string set -> string list set -> bool) ->
+              string set # string list set -> bool) (\(A :string set).
+   (\(TR :string list set). (IS_PROCESS
+   (((, :string set -> string list set ->
+         string set # string list set) $1) $0)))))) $0)))`),
+ ((IS_PROCESS),
+  [],
+  `((! :(string set -> bool) -> bool) (\(A :string set).
+   ((! :(string list set -> bool) -> bool) (\(TR :string list set).
+   (((= :bool -> bool -> bool) (IS_PROCESS
+   (((, :string set -> string list set ->
+         string set # string list set) $1) $0))) ((/\
+   (((SUBSET :string list set -> string list set -> bool) $0)
+   ((STAR :string set -> string list set) $1))) ((/\
+   (((IN :string list -> string list set -> bool) (NIL :string list))
+   $0)) ((! :(string list -> bool) -> bool) (\(s :string list).
+   ((! :(string list -> bool) -> bool) (\(t :string list). ((==>
+   (((IN :string list -> string list set -> bool)
+   (((APPEND :string list -> string list -> string list) $1) $0)) $2))
+   (((IN :string list -> string list set -> bool) $1)
+   $2)))))))))))))`)]
+theorems =
+[((PROCESS_EQ_SPLIT),
+  [],
+  `((! :(process -> bool) -> bool) (\(P :process).
+   ((! :(process -> bool) -> bool) (\(Q :process).
+   (((= :bool -> bool -> bool) (((= :process -> process -> bool) $1)
+   $0)) ((/\ (((= :string set -> string set -> bool) (ALPHA $1))
+   (ALPHA $0))) (((= :string list set -> string list set -> bool)
+   (TRACES $1)) (TRACES $0))))))))`),
+ ((TRACES_SND),
+  [],
+  `((! :(string set -> bool) -> bool) (\(x :string set).
+   ((! :(string list set -> bool) -> bool) (\(y :string list set).
+   ((==> (IS_PROCESS
+   (((, :string set -> string list set ->
+         string set # string list set) $1) $0)))
+   (((= :string list set -> string list set -> bool) (TRACES
+   (ABS_process
+   (((, :string set -> string list set ->
+         string set # string list set) $1) $0)))) $0))))))`),
+ ((ALPHA_FST),
+  [],
+  `((! :(string set -> bool) -> bool) (\(x :string set).
+   ((! :(string list set -> bool) -> bool) (\(y :string list set).
+   ((==> (IS_PROCESS
+   (((, :string set -> string list set ->
+         string set # string list set) $1) $0)))
+   (((= :string set -> string set -> bool) (ALPHA (ABS_process
+   (((, :string set -> string list set ->
+         string set # string list set) $1) $0)))) $1))))))`),
+ ((TRACES_IN_STAR),
+  [],
+  `((! :(process -> bool) -> bool) (\(P :process).
+   (((SUBSET :string list set -> string list set -> bool) (TRACES $0))
+   ((STAR :string set -> string list set) (ALPHA $0)))))`),
+ ((APPEND_IN_TRACES),
+  [],
+  `((! :(process -> bool) -> bool) (\(P :process).
+   ((! :(string list -> bool) -> bool) (\(s :string list).
+   ((! :(string list -> bool) -> bool) (\(t :string list). ((==>
+   (((IN :string list -> string list set -> bool)
+   (((APPEND :string list -> string list -> string list) $1) $0))
+   (TRACES $2))) (((IN :string list -> string list set -> bool) $1)
+   (TRACES $2)))))))))`),
+ ((NIL_IN_TRACES),
+  [],
+  `((! :(process -> bool) -> bool) (\(P :process).
+   (((IN :string list -> string list set -> bool) (NIL :string list))
+   (TRACES $0))))`),
+ ((proc_LEMMA3),
+  [],
+  `((! :(process -> bool) -> bool) (\(P :process).
+   ((! :(string set # string list set -> bool) -> bool)
+   (\(v :string set # string list set). ((==> ((/\
+   (((= :process -> process -> bool) $1) (ABS_process $0)))
+   (IS_PROCESS $0)))
+   (((SUBSET :string list set -> string list set -> bool) (TRACES $1))
+   ((STAR :string set -> string list set) (ALPHA $1))))))))`),
+ ((proc_LEMMA2),
+  [],
+  `((! :(process -> bool) -> bool) (\(P :process).
+   ((! :(string set # string list set -> bool) -> bool)
+   (\(v :string set # string list set). ((==> ((/\
+   (((= :process -> process -> bool) $1) (ABS_process $0)))
+   (IS_PROCESS $0))) ((! :(string list -> bool) -> bool)
+   (\(s :string list). ((! :(string list -> bool) -> bool)
+   (\(t :string list). ((==>
+   (((IN :string list -> string list set -> bool)
+   (((APPEND :string list -> string list -> string list) $1) $0))
+   (TRACES $3))) (((IN :string list -> string list set -> bool) $1)
+   (TRACES $3))))))))))))`),
+ ((proc_LEMMA1),
+  [],
+  `((! :(process -> bool) -> bool) (\(P :process).
+   ((! :(string set # string list set -> bool) -> bool)
+   (\(v :string set # string list set). ((==> ((/\
+   (((= :process -> process -> bool) $1) (ABS_process $0)))
+   (IS_PROCESS $0))) (((IN :string list -> string list set -> bool)
+   (NIL :string list)) (TRACES $1)))))))`),
+ ((ID_PROCESS'),
+  [],
+  `((! :(process -> bool) -> bool) (\(P :process).
+   (((= :string set # string list set ->
+         string set # string list set -> bool)
+   (((, :string set -> string list set ->
+         string set # string list set) (ALPHA $0)) (TRACES $0)))
+   (REP_process $0))))`),
+ ((ID_PROCESS),
+  [],
+  `((! :(process -> bool) -> bool) (\(P :process).
+   (((= :process -> process -> bool) (ABS_process
+   (((, :string set -> string list set ->
+         string set # string list set) (ALPHA $0)) (TRACES $0))))
+   $0)))`),
+ ((PROCESS_LEMMA6),
+  [],
+  `((! :(string set # string list set -> bool) -> bool)
+   (\(r :string set # string list set). (((= :bool -> bool -> bool)
+   (IS_PROCESS $0))
+   (((= :string set # string list set ->
+         string set # string list set -> bool) (REP_process
+   (ABS_process $0))) $0))))`),
+ ((PROCESS_LEMMA5),
+  [],
+  `((! :(process -> bool) -> bool) (\(a :process).
+   (((= :process -> process -> bool) (ABS_process (REP_process $0)))
+   $0)))`),
+ ((PROCESS_LEMMA4),
+  [],
+  `((! :(process -> bool) -> bool) (\(a :process).
+   ((? :(string set # string list set -> bool) -> bool)
+   (\(r :string set # string list set). ((/\
+   (((= :process -> process -> bool) $1) (ABS_process $0)))
+   (IS_PROCESS $0))))))`),
+ ((PROCESS_LEMMA3),
+  [],
+  `((! :(string set # string list set -> bool) -> bool)
+   (\(r :string set # string list set).
+   ((! :(string set # string list set -> bool) -> bool)
+   (\(r' :string set # string list set). ((==> (IS_PROCESS $1)) ((==>
+   (IS_PROCESS $0)) (((= :bool -> bool -> bool)
+   (((= :process -> process -> bool) (ABS_process $1)) (ABS_process
+   $0)))
+   (((= :string set # string list set ->
+         string set # string list set -> bool) $1) $0))))))))`),
+ ((PROCESS_LEMMA2),
+  [],
+  `((! :(string set # string list set -> bool) -> bool)
+   (\(r :string set # string list set). (((= :bool -> bool -> bool)
+   (IS_PROCESS $0)) ((? :(process -> bool) -> bool) (\(a :process).
+   (((= :string set # string list set ->
+         string set # string list set -> bool) $1) (REP_process
+   $0)))))))`),
+ ((PROCESS_LEMMA1),
+  [],
+  `((! :(process -> bool) -> bool) (\(a :process).
+   ((! :(process -> bool) -> bool) (\(a' :process).
+   (((= :bool -> bool -> bool)
+   (((= :string set # string list set ->
+         string set # string list set -> bool) (REP_process $1))
+   (REP_process $0))) (((= :process -> process -> bool) $1)
+   $0))))))`),
+ ((EXISTS_PROCESS),
+  [],
+  `((? :(string set # string list set -> bool) -> bool)
+   (\(P :string set # string list set).
+   (((UNCURRY :(string set -> string list set -> bool) ->
+               string set # string list set -> bool)
+   (\(A :string set). (\(TR :string list set). (IS_PROCESS
+   (((, :string set -> string list set ->
+         string set # string list set) $1) $0))))) $0)))`)]

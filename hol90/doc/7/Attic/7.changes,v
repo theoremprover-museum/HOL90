@@ -1,0 +1,384 @@
+head	1.1;
+access;
+symbols
+	HOL97:1.1.2.2.0.2
+	bpHOL97:1.1.2.2
+	hol90_9_alpha:1.1.2.2
+	hol90_pre8_for_multiple_compilers:1.1.0.2;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	96.08.23.16.32.11;	author rjb;	state dead;
+branches
+	1.1.2.1;
+next	;
+
+1.1.2.1
+date	96.08.23.16.32.12;	author rjb;	state Exp;
+branches;
+next	1.1.2.2;
+
+1.1.2.2
+date	96.09.04.12.35.17;	author rjb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@file 7.changes was initially added on branch hol90_pre8_for_multiple_compilers.
+@
+text
+@@
+
+
+1.1.2.1
+log
+@Moved 7.changes into subdirectory 7.
+@
+text
+@a0 309
+<TITLE>CHANGE LOG</TITLE>
+<H1>CHANGE LOG</H1>
+
+<OL>
+
+<LI> <A HREF = "5/5.changes">Previous change list</A>
+
+<HR>
+
+<LI> Changed Globals.version_number to 8.
+
+<HR>
+
+<LI> Did some temporary fiddling with <A HREF = "../src/0/term.sml">aconv</A>, 
+     spurred on by John Harrison's BDD work, which showed that the hidden 
+     EQ tests in SML's "=" can really save time. This still needs some 
+     thought, especially since the fiddling uses non-standardisms.
+
+<HR>
+
+<LI> Bug fix from Paul Curzon. PWORDLEN_TAC in the "word" library has been 
+   changed to use EQT_ELIM on the result of applying PWORDLEN_CONV on the
+   goal.
+
+<HR>
+
+<LI> Bug noticed by Rob Shaw in FILTER_STRIP_TAC, but originates in 
+   FILTER_DISCH_THEN. For some reason, the old hol90 version only checked the 
+   freedom of variables, instead of the entire term being filtered against.
+
+   <DL> <DT>Old hol90 code:
+     <PRE>
+     fun FILTER_DISCH_THEN (ttac:thm_tactic) tm : tactic  = fn (asl,w) =>
+       if (Dsyntax.is_imp w
+           andalso 
+           not(mem tm (Term.free_vars (#ant(Dsyntax.dest_imp w)))))
+       then Thm_cont.DISCH_THEN ttac (asl,w)
+       else raise TACTIC_ERR{function = "FILTER_DISCH_THEN",message = ""};
+     </PRE>
+
+   <DT>New (now in line with hol88 code):
+   <PRE>
+    fun FILTER_DISCH_THEN (ttac:thm_tactic) tm : tactic  = fn (asl,w) =>
+      if (Dsyntax.is_imp w andalso 
+          not(Term.free_in tm(#ant(Dsyntax.dest_imp w))))
+      then Thm_cont.DISCH_THEN ttac (asl,w)
+      else raise TACTIC_ERR{function = "FILTER_DISCH_THEN",message = ""};
+    </PRE>
+    </DL>
+
+<HR>
+
+<LI> Don Syme raised the question of making preterms public, which they
+   certainly should be. I have made them public, by changing the
+   binding to "Public_preterm_sig" in 0/preterm.sig to the following:
+   <PRE>
+      signature Public_preterm_sig =
+      sig
+        structure Term : Public_term_sig
+        datatype preterm = Var of {Name : string, Ty : Term.Type.hol_type}
+                         | Const of {Name : string, Ty : Term.Type.hol_type}
+                         | Comb of {Rator : preterm, Rand : preterm}
+                         | Abs of {Bvar : preterm, Body : preterm}
+                         | Constrained of (preterm * Term.Type.hol_type)
+                         | Antiq of Term.term
+    
+        val typecheck :preterm -> Term.term
+      end;
+   </PRE>
+   The datatype of preterms is now accessible through Parse_support.Preterm. 
+   Changes to: the argument signature to 0/preterm.sig, 0/parse.sml, and
+   sys01.sml. In Preterm, the function "typecheck" now includes the
+   formerly accessible function "typecheck_cleanup".
+
+<HR>
+
+<LI> Cosmetic modifications to 0/net.sml.
+
+<HR>
+
+<LI> "make_thm" in 0/thm.sml has been rewritten in an attempt to take 
+    advantage of partial evaluation. Before, it had a case statement that was
+    evaluated each time "make_thm" was applied. Now that evaluation should take
+    place at compile time. [Subsequent testing revealed absolutely no
+    speed up in SML/NJ. Perhaps other MLs won't optimize so much.]
+
+<HR>
+
+<LI> Added Globals.infix_at_front and Globals.stack_infixes. These are for
+   printing HOL infixes at beginning or end of lines and controlling
+   whether each argument of an infix goes on a new line. These were
+   already part of the record Globals.pp_flags, but they were somewhat
+   clumsy to modify.
+
+<HR>
+
+<LI> John Harrison found another bug in rewriting underneath lambdas. His 
+   message: 
+   <PRE>
+       At the moment, when applying conv to "\x. P[x]", we apply conv to
+       "P[x]" then try to ABS "x". If that stage fails, we pick a genvar
+       g, apply conv to "P[g]", then do ABS "g". However then we try to
+       alpha-convert back to "x" to keep the result readable. I've only
+       just observed (by wondering why a rewrite failed) that in fact we
+       should pick a variant "x'" not free in "P[g]". The real-life
+       example is:
+
+           val SELECT_UNIQUE = prove
+           (--`!P x. (!y:'a. P y = (y = x)) ==> ($@@ P = x)`--,
+           REPEAT STRIP_TAC THEN
+           GEN_REWRITE_TAC (RATOR_CONV o funpow 2 RAND_CONV)
+               empty_rewrites [GSYM ETA_AX] THEN
+           ASM_REWRITE_TAC[SELECT_REFL]);;
+
+       The last ASM_REWRITE_TAC is in this situation:
+
+           "(@@x. P x) = x"
+           1  ["!y. P y = y = x"]
+   </PRE>
+   The fix is implemented by adjusting ALPHA_CONV so that it primes the
+   bound variable if the suggested new bound variable is already free 
+   in the term, i.e.,
+   <PRE>
+       ALPHA_CONV (--`x:bool`--) (--`\y. y \/ x`--);
+
+       val it = |- (\y. y \/ x) = (\x'. x' \/ x) : thm
+   </PRE>
+
+<HR>
+
+<LI> Fixed a bug in <A HREF = "../src/0/term.sml">term_lt</A>, found by Mike 
+     Norrish. Variables and constants were not being compared properly, with 
+     the result being that "term_lt" wasn't total. 
+    <PRE>
+    Example:
+
+        val tm1 = (--`1`--) and tm2 = (--`2`--);
+
+        - Term.term_lt tm1 tm2;
+        val it = false : bool
+
+        - Term.term_lt tm2 tm1;
+        val it = false : bool
+
+        - tm1 = tm2;
+        val it = false : bool
+    </PRE>
+
+<HR>
+
+<LI> Fixed a bug in <A HREF = "../src/0/term.sml">mk_comb</A>, noticed by 
+     Ralph Reetz. "mk_comb" was propagating an exception from "list_mk_comb"
+
+<HR>
+
+<LI> Added a better handler for when writing a theory to disk
+fails. This is to help Kelly Hall figure out why the benchmark dies when
+exporting its first theory. Changes to
+ <A HREF = "../src/0/theory/io.sml">put_theory_to_disk</A>.
+
+<HR>
+
+<LI> Changed <A HREF = "../src/0/term.sml">variant</A> because it had
+the following bug. It would choose a variant <EM>v</EM> away from the
+given list of variables (as it should). Then it would check that
+<EM>v</EM> was not the name of a constant (also as it should). However,
+suppose that <EM>v</EM> was the name of a constant. Then renaming would
+occur, giving <EM>v'</EM> (as it should). Then it would stop. As it
+shouldn't: it should start the process again, checking that <EM>v'</EM>
+is not in the given list of variables, <EM>etc.</EM>.
+
+
+<HR> 
+
+<LI> "Beautified" the 
+<A HREF = "../examples/inductive_def/">inductive definition examples</A>. 
+The presentation of the rules is now less cluttered. Perhaps one day it will
+be as nice as the hol88 original. The support code :
+<PRE>
+  infix 5 -------------------------------------------------------------------;
+  fun (x ------------------------------------------------------------------- y)
+       = (x,y);
+
+  val TERM = Parse.term_parser
+  val new_inductive_definition = fn {name, fixity, patt, rules} =>
+     new_inductive_definition
+       {name = name, fixity = fixity, 
+        patt = (TERM ## map TERM) patt,
+        rules=map(fn((H,S),C) => {hypotheses=H,side_conditions=S,conclusion=C})
+                 (map ((map TERM ## map TERM) ## TERM) rules)};
+
+</PRE>
+
+<HR>
+
+<LI> Fixed the 
+<A HREF = "../help/88/ENTRIES/PROVE_HYP.doc">documentation for PROVE_HYP</A>.
+Its description of how <A HREF ="../src/1/drule.sml">PROVE_HYP</A> 
+manipulates assumptions was seriously wrong.
+
+<HR>
+
+<LI> Changed <A HREF = "../src/1/rewrite.sig">the interface</A> to the
+abstract type of <EM>rewrites</EM> used by <A HREF =
+"../src/1/rewrite.sml"> the rewriter</A>.
+
+<PRE>
+    type rewrites
+    val mk_rewrites : thm -> thm list
+    val add_rewrites : rewrites -> thm list -> rewrites
+    val dest_rewrites : rewrites -> thm list
+    val empty_rewrites : rewrites
+
+    val implicit_rewrites : unit -> rewrites
+    val set_implicit_rewrites : rewrites -> unit
+    val add_implicit_rewrites : thm list -> unit
+
+    val pp_rewrites : PP.ppstream -> rewrites -> unit
+    val bool_rewrites : rewrites
+</PRE>
+
+To summarize the changes: there is a new immutable value,
+<EM>bool_rewrites</EM>; the name of the mutable value
+<EM>base_rewrites</EM> has been changed to be
+<EM>implicit_rewrites</EM>; in fact, <EM>base</EM> has been changed to
+<EM>implicit</EM> throughout because it makes more sense; the function
+<EM>mk_rewrites</EM> has been made publically available; and finally, 
+<EM>dest_rewrites</EM> has been added for taking rewrite sets apart.
+
+
+<HR>
+
+<LI> Changed <A HREF = "../src/0/theory/theory.sml">new_parent</A> so that it
+operates atomically: if <EM>new_parent"X"</EM> fails, hol90's theory
+graph will be the same as just before <EM>new_parent"X"</EM> was
+invoked.
+
+<HR> 
+
+<LI> Fixed the <A HREF = "../help/90/mk_abs.doc">documentation
+for mk_abs</A>.  It wrongly asserted that the <EM>Body</EM> field in the
+argument had type <EM>hol_type</EM>.
+
+<HR>
+
+<LI> Karsten Nyblad at tdr.dk sent me a bugfix for the
+"rewriting-underneath-a-lambda" problem from 10. I liked his solution
+better, and have adopted it. (It means that ALPHA_CONV now has its
+hol90.7 behaviour.) The fix:
+<PRE>
+------- Patches (diff {old,new}conv.sml) ------------------------------
+302c302,314
+<              in MK_ABS (GEN Bvar (conv Body))
+---
+>                  val Body' = conv Body
+>              in ABS Bvar Body' handle _ =>
+>                     let val v = genvar (type_of Bvar)
+>                         val th1 = ALPHA_CONV v tm
+>                         val {rhs,...} = dest_eq(Thm.concl th1)
+>                         val {Body=Body',...} = dest_abs rhs (* v = Bvar *)
+>                         val eq_thm' = ABS v (conv Body')
+>                         val at = (#rhs(dest_eq(concl eq_thm')))
+>                         val v' = variant (free_vars at) Bvar
+>                         val th2 = ALPHA_CONV v' at
+>                     in
+>                         TRANS (TRANS th1 eq_thm') th2
+>                     end
+441c453,455
+<                    val th2 = ALPHA_CONV Bvar(#rhs(dest_eq(concl eq_thm')))
+---
+>                    val at = (#rhs(dest_eq(concl eq_thm')))
+>                    val v' = variant (free_vars at) Bvar
+>                    val th2 = ALPHA_CONV v' at
+
+</PRE>
+<HR>
+
+<LI>
+Added a structure Sml_system, through which almost all of the system
+dependencies have been factored.  This is basic to the way in which I
+maintained compatability with both sml-nj.93 and sml-nj.108.5 and greater.
+(elsa@@research.att.com)
+<HR>
+<LI>
+Changed LESS to LESS_DEF in mk_prim_rec.sml
+(elsa@@research.att.com)
+<HR>
+
+<LI>
+Changed GREATER to GREATER_DEF in mk_arithmetic.sml
+(elsa@@research.att.com)
+<HR>
+
+<LI>
+ Added
+<PRE>
+  print_theory_to_outstream : {outstream:outstream, theory:string} -> outstream
+  print_theory_to_file : {file:string, theory:string} -> unit
+</PRE>
+to the structure Theory.  The first function returns an outstream because
+we don't close it.  You might want to continue sending more things to it.
+With the second we do close the stream, and so we return unit.
+(elsa@@research.att.com)
+<HR>
+
+<LI> The name of the structure Bool in hol90 has been changed to
+Boolean, so that the structure Bool from sml will no longer be hidden.
+(elsa@@research.att.com)
+</OL>
+@
+
+
+1.1.2.2
+log
+@Corrected link to previous change file and tidied up HTML.
+@
+text
+@a0 2
+<HTML>
+<HEAD>
+a1 3
+</HEAD>
+
+<BODY>
+a3 2
+<H2>Changes from version 7</H2>
+
+d6 1
+a6 1
+<LI> <A HREF = "../5/5.changes">Previous change list</A>
+a308 2
+<HR>
+
+a309 3
+
+</BODY>
+</HTML>
+@

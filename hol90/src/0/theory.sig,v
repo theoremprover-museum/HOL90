@@ -1,0 +1,117 @@
+head	1.1;
+access;
+symbols;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	96.02.08.00.32.12;	author drs1004;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@New theory mechanism, by Donald Syme, and many other enhancements.
+@
+text
+@(*-----------------------------------------------------------------------
+ * Theories and Theorem I/O.  This is the primitive mechanism by which
+ * theorems can be transferred to and from an external source.
+ *
+ * PRINCIPLES
+ *   The basic idea is that a theorem can only be imported into the system
+ * if its signature (i.e. the theory in which it was developed)
+ * is consistent with the current signature of the system.
+ * Signatures correspond to sets of "extensions".  An extension is
+ * an atomic operation whereby constants, types and axioms are added to
+ * the theory. 
+ *  
+ * DETAILS
+ *
+ * The correctness of this module depends on the fact that every time an
+ * extension is made to the logic, store_extension is called.  This
+ * is done by each of the primitive extension mechanisms.
+ *
+ * new_extension 
+ *   "tyc" is a set of type constant specifications
+ *   "tmc" is a set of term constant specifications
+ *   "mk_axiom" is a function which will return an (optional) axiom once
+ *   the type and term constants given by tyc and tmc have been added
+ *   to the current signature.  The action of this function is to 
+ *   perform a single extension to the logic.  It firstly creates the
+ *   constants given by "tyc" and "tmc", then calls "mk_axiom".  The action
+ *   of creating the axiom is delayed since every primitive specification
+ *   mechanism can only create its theorem after the new type and term
+ *   constants have been introduced. (i.e. it is difficult to construct
+ *   the new axiom without having the type and term constants defined,
+ *   yet we want extension to be a atomic operation).
+ *
+ *
+ * thmdb_writer
+ * thmdb_reader
+ * 
+ *   A theorem database consists of two files, the first containing the
+ *   signature and the second containing those theorems not found
+ *   in the signature.
+ *
+ *   The first stream should be the stream for the signature file.  The
+ *   function argument is allowed to perform alpha conversion on names
+ *   of term constants and type constants.  Instantiating the first two
+ *   arguments performs the merge checks on the thmdb against the
+ *   signature that is current in the system at that time.
+ *
+ *   The value returned is a function which can be used later to read
+ *   the theorem database.  If the two files do not match an error
+ *   will be generated when the theorems are read.
+ *----------------------------------------------------------------------*)
+signature Theory_sig =
+sig
+
+    structure Thm : Thm_sig
+
+    type thm sharing type thm = Thm.thm;
+    type typ sharing type typ = Thm.Term.Type.typ;
+    type term sharing type term = Thm.Term.term;
+
+
+    val thmdb_writer : outstream * outstream -> (string * thm) list -> unit
+    val thmdb_reader : instream -> string list * (instream -> thm list)
+    val write_thmdb : string -> (string * thm) list -> unit
+    val read_thmdb : string -> string list * (unit -> thm list)
+
+    val write_consts : string -> string list * string list -> unit
+    val read_consts : string -> (string * int) list * (string * typ) list
+
+	
+    (* 
+     ({tmc : string list, tyc : string list} -> 
+     {tmc : string list, tyc : string list})
+     *)
+
+    val new_extension : 
+	{tyc: {Name:string, Arity: int} list,
+	 tmc: {Name:string, Ty:typ} list, 
+	 mk_axiom: unit -> thm option} -> thm option
+
+    (* Atomic operations *)
+    val atomic_theory_op : ('a -> 'b) -> 'a -> 'b
+
+
+(* for debugging *)
+    datatype thysig = 
+	THYSIG of ((string*int) list * (string * typ) list * string) list;
+    val extends : thysig -> thysig -> bool
+    val merge_thysig : thysig -> thysig -> thysig
+    val thysig_for_thms : thm list -> thysig
+    val current_thysig : unit -> thysig
+                         
+
+end;
+
+@

@@ -1,0 +1,276 @@
+(*======================================================================*)
+(* FILE		: group_fun.sml (formerly group_tac.ml and inst_gp.ml)	*)
+(* DESCRIPTION  : defines tactics for solving routine group membership  *)
+(*                goals, rules and tactics for reassociating		*)
+(*                subexpresions to the left or to the right, and	*)
+(*		  functions for instatiating and simplifying single	*)
+(*                theorems and the whole theory of elementary group	*)
+(*                theory with a particular instance theory.		*)
+(*									*)
+(*									*)
+(* AUTHOR	: E. L. Gunter						*)
+(* DATE		: 89.3.20						*)
+(* TRANSLATED   : 91.25.12						*)
+(*									*)
+(*======================================================================*)
+
+(* Copyright 1991 by AT&T Bell Laboratories *)
+(* Share and Enjoy *)
+
+open ExtraGeneralFunctions;
+
+
+functor GroupFunFunc(Group:GroupSig) : GroupFunSig =
+struct
+
+open Rsyntax;
+open Group;
+
+fun GROUP_ERR {function,message} = HOL_ERR{origin_structure = "GroupFunFunc",
+                                           origin_function = function,
+                                           message = message}
+
+local
+    fun get_group_info gp_thm = 
+	let
+	    val is_group = concl gp_thm
+	    val {Rator = GROUP,Rand = group_sig} = dest_comb is_group
+	    val {fst =group_set,snd = prod} = dest_pair group_sig
+	    val elt_type = (hd o (#Args) o dest_type o type_of) group_set
+	in 
+	    if #Name (dest_const GROUP) = "GROUP"
+		then {elt_type = elt_type,
+		      group_set = group_set,
+		      prod = prod,
+		      is_group = is_group}
+	    else raise GROUP_ERR {function = "get_group_info",
+				  message = "bad theorem for IsGroupThm"}
+	end
+    handle HOL_ERR _ =>
+	raise GROUP_ERR {function = "get_group_info",
+			 message = "bad theorem for IsGroupThm"}
+in
+    val {elt_type, group_set, prod, is_group} = get_group_info IsGroupThm
+end
+
+local
+    val CLOSURE = theorem "elt_gp" "CLOSURE"
+    val (tm_subs,ty_subs) = match_term (#ant(dest_imp(concl CLOSURE))) is_group
+in
+    fun inst_thm gp_thm =
+ 	 MP
+	  (STRONG_INST_TY_TERM
+	    {term_substitution = tm_subs,
+	     type_substitution = ty_subs,
+	     theorem = gp_thm})
+	  IsGroupThm
+    val INST_CLOSURE = CLOSURE
+    val INST_INV_CLOSURE = inst_thm (theorem "elt_gp" "INV_CLOSURE")
+    val INST_ID_LEMMA = inst_thm (theorem "elt_gp" "ID_LEMMA")
+    val INST_GROUP_ASSOC = inst_thm (theorem "elt_gp" "GROUP_ASSOC")
+end
+
+(*
+   GROUP_TAC : thm list -> tactic
+   GROUP_ELT_TAC : tactic
+
+   GROUP_ELT_TAC is a tactic for solving routine goals of group membership.
+   GROUP_TAC is like GROUP_ELT_TAC, except that you can supply an additional
+   list of theorems to be used in reducing goals.
+*)
+
+fun GROUP_TAC reduce_list =
+      REDUCE_TAC
+       (reduce_list @
+	[INST_CLOSURE,INST_INV_CLOSURE,(CONJUNCT1 INST_ID_LEMMA)])
+
+fun GROUP_ELT_TAC (asms,gl) =
+    GROUP_TAC [] (asms,gl)
+    handle HOL_ERR {message, ...} => raise GROUP_ERR
+                                              {function = "GROUP_ELT_TAC",
+                                               message = message}
+
+
+(*
+  GROUP_RIGHT_ASSOC_TAC : term -> tactic  (term = prod (prod a b) c)
+
+    A |-  t(prod (prod a b) c)
+   ----------------------------
+    A |-  t(prod a (prod b c))
+
+  GROUP_RIGHT_ASSOC_TAC uses GROUP_ELT_TAC to handle the group membership
+  requirements which arise.
+
+
+  GROUP_LEFT_ASSOC_TAC : term -> tactic  (term = prod a (prod b c))
+
+    A |-  t(prod a (prod b c))
+   ----------------------------
+    A |-  t(prod (prod a b) c)
+
+  GROUP_LEFT_ASSOC_TAC uses GROUP_ELT_TAC to handle the group membership
+  requirements which arise.
+*)
+
+local
+    exception ASSOC
+    val right_assoc_thm = UNDISCH_ALL (hd (IMP_CANON INST_GROUP_ASSOC))
+    val left_assoc_thm = SYM right_assoc_thm
+    fun reassoc_tac {assoc_thm, term} (asms,goal)=
+	let
+	    val (tm_subst,_) =
+		match_term (#lhs(dest_eq(concl assoc_thm))) term
+	    val (main_goal,gp_elt_goals,pf) =
+		(case
+		     NEW_SUBST1_TAC
+		     (STRONG_INST {term_substitution=tm_subst,
+				   theorem = assoc_thm})
+		     (asms,goal)
+		   of ((main_goal::gp_elt_goals),pf) =>
+		     (main_goal,gp_elt_goals,pf)
+		    | _ => raise GROUP_ERR {function = "GROUP_RIGHT_ASSOC_TAC",
+					    message = "Impossible: no goal"})
+	    val goallist =
+		(ALL_TAC main_goal)::(map GROUP_ELT_TAC gp_elt_goals)
+	    val (subgoal_list,pf_list) = split goallist
+	    val partition = map length subgoal_list
+	in
+	    ((flatten subgoal_list),
+	     pf o 
+	     (fn thm_set =>
+	      mapshape
+	      {partition = partition,
+	       functions = pf_list,
+	       unionlist = thm_set}))
+	end
+in
+    fun GROUP_RIGHT_ASSOC_TAC term (asms,goal) =
+	reassoc_tac {assoc_thm = right_assoc_thm, term = term} (asms,goal)
+	handle HOL_ERR{message,...} => 
+	    raise GROUP_ERR{function="GROUP_RIGHT_ASSOC_TAC",
+			    message =("bad term: "^message)}
+
+
+    fun GROUP_LEFT_ASSOC_TAC term (asms,goal) =
+	reassoc_tac {assoc_thm = left_assoc_thm, term = term} (asms,goal)
+	handle HOL_ERR{message,...} => 
+	    raise GROUP_ERR{function="GROUP_LEFT_ASSOC_TAC",
+			    message =("bad term: "^message)}
+
+end
+
+(*
+  return_GROUP_thm : {elt_gp_thm_name:string, rewrites: thm list} -> thm
+
+  return_GROUP_thm returns the intstantiated and simplfied version of a
+  theorem from elt_gp.th.
+
+  The string <elt_gp_thm_name> is the name of the elt_gp.th theorem to be
+  instantiated; the list <rewrites> of theorems are for use in simplifying
+  the instantiated theorem.
+*)
+
+local
+    fun NORMALIZE rewrite_list thm = REWRITE_RULE rewrite_list (BETA_RULE thm)
+in
+fun return_GROUP_thm {elt_gp_thm_name,rewrites} =
+      NORMALIZE rewrites (inst_thm (theorem "elt_gp" elt_gp_thm_name))
+      handle HOL_ERR{origin_structure,origin_function,message} =>
+	  raise GROUP_ERR {function = "return_GROUP_thm",
+			   message = ("from: "^origin_structure^"."
+                                              ^origin_function^": "^message)}
+end
+
+
+(*
+  include_GROUP_thm : {elt_gp_thm_name : string,
+		       current_thm_name : string,
+		       rewrites : thm list} -> thm
+
+  include_GROUP_thm instantiates a named theorem from elt_gp.th,
+  simplifies it, stores the result in the current theory, and returns
+  it.
+
+  The string <elt_gp_thm_name> is the name of the elt_gp.th theorem to be
+  instantiated; the string <current_thm_name> is the name under which the
+  resultant theorem will be store in the current theory; the list of
+  theorems <rewrites> are for use in simplifying the instantiated theorem,
+  prior to storing.
+*)
+
+fun include_GROUP_thm {elt_gp_thm_name,current_thm_name,rewrites} =
+    save_thm (current_thm_name,
+	      return_GROUP_thm {elt_gp_thm_name = elt_gp_thm_name,
+				rewrites = rewrites})
+    handle HOL_ERR{origin_function = "return_GROUP_thm",message,...} =>
+	raise GROUP_ERR {function = "include_GROUP_thm",
+			 message = message}
+	 | HOL_ERR{origin_structure,origin_function,message}
+           => raise GROUP_ERR {function = "include_GROUP_thm",
+                               message = ("from: "^origin_structure^"."
+                                                ^origin_function^": "^message)}
+
+
+(*
+  return_GROUP_theory : {thm_name_prefix:string,
+			 rewrites:thm list} -> (string * thm)list
+
+  return_GROUP_theory returns the list of all pairs of names of
+  theorems, prefixed by the given string <thm_name_prefix>, together with the
+  instantiated and simplfied version of the corresponding theorem from
+  elt_gp.th.
+
+  The string <thm_name_prefix> is the prefix to be added to all names of the
+  theorems from  elt_gp.th; the list of theorems <rewrites> are for use in
+  simplifying the instantiated theorems.
+*)
+
+local
+    fun NORMALIZE rewrite_list thm = REWRITE_RULE rewrite_list (BETA_RULE thm)
+in
+fun return_GROUP_theory {thm_name_prefix,rewrites} =
+      map
+       (fn (thm_name, thm) => (thm_name_prefix ^ "_" ^ thm_name,
+			       NORMALIZE rewrites (inst_thm thm)))
+       (rev (theorems "elt_gp"))
+       handle HOL_ERR{origin_structure,origin_function,message} =>
+	   raise GROUP_ERR {function = "return_GROUP_theory",
+			    message = ("from: "^origin_structure^"."
+                                               ^origin_function^": "^message)}
+end
+
+(*
+  include_GROUP_theory : {thm_name_prefix:string,
+			  rewrites: thm list} -> unit
+
+  include_GROUP_theory instantiates all the theorems from elt_gp.th,
+  simplifies them using rewrites, removes all trivial theorems, stores
+  the resulting theorems in the current theory under their old name
+  prefixed by the given string thm_name_prefix, and binds them in the
+  current environment to the names under which they were stored.
+
+  The string <thm_name_prefix> is the prefix to be added to the names of
+  all the theorems from elt_gp.th after instantiation; the list <rewrites>
+  of theorems are for use in simplifying the instantiated theorem, prior
+  to storing.
+*)
+
+local
+    val T = (--`T`--)
+in
+fun include_GROUP_theory info =
+    let
+	val thm_table =
+	      filter
+	       (fn (name,thm) => not (concl thm = T))
+	       (return_GROUP_theory info)
+    in
+	(map save_thm thm_table;
+	 add_to_sml thm_table)
+	handle HOL_ERR{origin_function = "return_GROUP_theory",message,...} =>
+	    raise GROUP_ERR {function = "include_GROUP_theory",
+			     message = message}
+    end
+end
+
+end (* functor GroupFunFunc *)

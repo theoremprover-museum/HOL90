@@ -1,0 +1,457 @@
+(* ===================================================================== *)
+(* FILE          : lib.sml                                               *)
+(* DESCRIPTION   : library of useful SML functions.                      *)
+(*                                                                       *)
+(* AUTHOR        : (c) Konrad Slind, University of Calgary               *)
+(* DATE          : August 26, 1991                                       *)
+(* ===================================================================== *)
+
+
+structure Lib : Lib_sig =
+struct
+
+fun LIB_ERR {func,mesg} =
+  Exception.HOL_ERR{origin_structure="Lib",
+                    origin_function=func,
+                    message=mesg};
+
+(*---------------------------------------------------------------------------
+ * Combinators
+ *---------------------------------------------------------------------------*)
+
+fun curry f x y = f(x,y)
+fun uncurry f (x,y) = f x y
+infix 3 ##
+fun (f ## g) (x,y) = (f x, g y)
+fun A f x = f x
+fun B f g x = f (g x)
+fun C f x y = f y x
+fun I x = x
+fun K x y = x
+fun S x y z = x z (y z)
+fun W f x = f x x
+
+fun append l1 l2 = l1@l2
+fun equal x y = (x=y);
+val concat = curry (op ^)
+fun fst (x,_) = x   and   snd (_,y) = y;
+
+
+(*---------------------------------------------------------------------------
+ * Success and failure.
+ *---------------------------------------------------------------------------*)
+fun can f x = (f x; true) handle _ => false;
+fun try f x = f x handle e => Exception.Raise e
+
+fun assert p x = 
+   if (p x) then x 
+   else raise LIB_ERR{func = "assert", mesg = "predicate not true"}
+
+
+(*---------------------------------------------------------------------------
+ * List operations
+ *---------------------------------------------------------------------------*)
+fun tryfind f = 
+   let fun F (h::t) = (f h handle _ => F t)
+         | F [] = raise LIB_ERR{func="tryfind",mesg="all applications failed"}
+   in F
+   end;
+
+(* Counting starts from 1 *)
+local fun EL_ERR s = LIB_ERR{func="el", mesg=s}
+in 
+fun el n l = 
+   if (n<1) then raise EL_ERR"index too small"
+   else (case (n,l) of (_,[]) => raise EL_ERR"index too large"
+                    | (1, h::_) => h
+                    | (n, _::rst) => el (n-1) rst)
+end;
+
+fun map2 f L1 L2 =
+ let fun mp2 [] [] L = rev L
+       | mp2 (a1::rst1) (a2::rst2) L = mp2 rst1 rst2 (f a1 a2::L)
+       | mp2 _ _ _ = raise LIB_ERR{func="map2",mesg="different length lists"}
+   in mp2 L1 L2 []
+   end;
+
+fun all p =
+   let fun every [] = true
+         | every (a::rst) = (p a) andalso every rst       
+   in every 
+   end;
+
+fun all2 p  =
+   let fun every2 [] [] = true
+         | every2 (a1::rst1) (a2::rst2) = (p a1 a2) andalso (every2 rst1 rst2)
+         | every2  _  [] = raise LIB_ERR{func = "all2",
+                                         mesg = "different length lists"}
+   in every2
+   end;
+
+val exists = List.exists;
+
+fun first p =
+   let fun oneth (a::rst) = if (p a) then a else oneth rst
+         | oneth [] = raise LIB_ERR{func="first",mesg="unsatisfied predicate"}
+   in oneth
+   end;
+
+fun split_after n alist = 
+   if (n >= 0)
+   then let fun spa 0 (L,R) = (rev L,R)
+              | spa _ (_,[]) = raise LIB_ERR{func = "split_after",
+                                     mesg = "index bigger than list length"}
+              | spa n (L,(a::rst)) = spa (n-1) (a::L, rst)
+        in spa n ([],alist)
+        end
+   else raise LIB_ERR{func = "split_after",mesg = "negative index"};
+
+
+fun itlist f L base_value =
+   let fun it [] = base_value
+         | it (a::rst) = f a (it rst)
+   in it L 
+   end;
+
+fun itlist2 f L1 L2 base_value =
+  let fun it ([],[]) = base_value
+        | it ((a::rst1),(b::rst2)) = f a b (it (rst1,rst2))
+        | it _ = raise LIB_ERR{func="itlist2",mesg="lists of different length"}
+   in  it (L1,L2)
+   end;
+
+fun rev_itlist f =
+   let fun rev_it [] base = base
+         | rev_it (a::rst) base = rev_it rst (f a base)
+   in rev_it
+   end;
+
+fun rev_itlist2 f L1 L2 =
+   let fun rev_it2 ([],[]) base = base
+         | rev_it2 ((a::rst1),(b::rst2)) base = rev_it2 (rst1,rst2) 
+                                                        (f a b base)
+         | rev_it2 _ _ = raise LIB_ERR{func="rev_itlist2",
+                                       mesg="lists of different length"}
+   in rev_it2 (L1,L2)
+   end;
+
+fun end_itlist f =
+   let fun endit [] = raise LIB_ERR{func = "end_itlist",mesg="list too short"}
+         | endit alist = 
+            let val (base::ralist) = rev alist
+            in itlist f (rev ralist) base
+            end
+   in endit
+   end;
+
+fun gather p L = itlist (fn x => fn y => if (p x) then x::y else y) L []
+
+val filter = gather;
+
+fun partition p alist = 
+   itlist (fn x => fn (L,R) => if (p x) then (x::L, R) else (L, x::R))
+          alist ([],[]);
+
+fun zip [] [] = []
+  | zip (a::b) (c::d) = (a,c)::zip b d
+  | zip _ _ = raise LIB_ERR{func = "zip",mesg = "different length lists"}
+
+fun unzip L = itlist (fn (x,y) => fn (l1,l2) =>((x::l1),(y::l2))) L ([],[]);
+
+fun combine(l1,l2) = zip l1 l2
+val split = unzip
+
+fun mapfilter f list = itlist(fn i => fn L => (f i::L) handle _ => L) list [];
+
+fun flatten [] = []
+  | flatten (h::t) = h@flatten t;
+
+fun front_last [] = raise LIB_ERR{func="front_last",mesg="empty list"}
+  | front_last [x] = ([],x)
+  | front_last (h::t) = let val (L,b) = front_last t in (h::L,b) end;
+
+fun last [] = raise LIB_ERR{func="last",mesg="empty list"}
+  | last [x] = x
+  | last (h::t) = last t
+
+fun funpow n f x =
+   let fun iter (0,res) = res
+         | iter (n,res) = iter (n-1, f res)
+   in
+   if (n<0) then x else iter(n,x) end;
+
+
+(*---------------------------------------------------------------------------
+ * For loops
+ *---------------------------------------------------------------------------*)
+fun for base top f =
+   let fun For i = if (i>top) then [] else f i::For(i+1)
+   in For base
+   end;
+
+fun for_se base top f =
+   let fun For i = if (i>top) then () else (f i; For(i+1))
+   in For base
+   end;
+
+fun list_of_array A = for 0 (Array.length A - 1) (fn i => Array.sub(A,i));
+
+(*---------------------------------------------------------------------------
+ * Assoc lists.
+ *---------------------------------------------------------------------------*)
+exception NOT_FOUND
+exception NO_CHANGE
+fun assoc item =
+   let fun assc ((key,ob)::rst) = if (item = key) then ob else assc rst
+         | assc [] = raise NOT_FOUND
+   in assc
+   end
+
+fun assoc1 item =
+   let fun assc ((entry as (key,_))::rst) = 
+             if (item = key) then SOME entry else assc rst
+         | assc [] = NONE
+    in assc
+    end;
+
+fun assoc2 item =
+   let fun assc((entry as (_,key))::rst) =
+            if (item = key) then SOME entry else assc rst
+         | assc [] = NONE
+   in assc
+   end;
+
+fun words2 sep string =
+    snd (itlist (fn ch => fn (chs,tokl) => 
+	           if (ch = sep) 
+                   then if (null chs)
+                        then ([],tokl)
+		        else ([], (Portable.implode chs :: tokl))
+	           else ((ch::chs), tokl))
+                (sep::Portable.explode string)
+                ([],[]));
+
+(*---------------------------------------------------------------------------
+ * A naive merge sort. 
+ *---------------------------------------------------------------------------*)
+fun sort P = 
+   let fun merge [] [] = []
+         | merge [] a = a
+         | merge a [] = a
+         | merge (A as (a::t1)) (B as (b::t2)) = if P a b then a::merge t1 B 
+                                                          else b::merge A t2
+       fun srt [] = []
+         | srt [a] = a
+         | srt (h1::h2::t) = srt (merge h1 h2::t)
+   in
+   srt o (map (fn x => [x]))
+   end;
+
+val int_sort = sort (curry (op <= :int*int->bool))
+
+
+(*---------------------------------------------------------------------------
+ * Substitutions.
+ *---------------------------------------------------------------------------*)
+type 'a subst = {redex:'a, residue:'a} list
+
+fun subst_assoc test =
+ let fun assc [] = NONE
+       | assc ({redex,residue}::rst) = 
+          if (test redex) then SOME(residue) else assc rst
+   in assc
+   end;
+
+infix 5 |->
+fun (r1 |-> r2) = {redex=r1, residue=r2};
+
+
+(*---------------------------------------------------------------------------
+ * Sets as lists
+ *---------------------------------------------------------------------------*)
+
+fun mem i =
+   let fun itr (a::rst) = (i=a) orelse itr rst
+         | itr [] = false
+   in itr
+   end;
+    
+fun insert i L = if (mem i L) then L else i::L
+
+fun mk_set [] = []
+  | mk_set (a::rst) = insert a (mk_set rst)
+
+fun union [] S = S
+  | union S [] = S
+  | union (a::rst) S2 = union rst (insert a S2)
+
+(* Union of a family of sets *)
+fun U set_o_sets = itlist union set_o_sets []
+
+(* All the elements in the first set that are not also in the second set. *)
+fun set_diff a b = gather (fn x => not (mem x b)) a
+val subtract = set_diff
+
+fun intersect [] _ = []
+  | intersect _ [] = []
+  | intersect S1 S2 = mk_set(gather (C mem S2) S1)
+
+fun null_intersection _  [] = true
+  | null_intersection [] _ = true
+  | null_intersection (a::rst) S = 
+        if (mem a S) 
+        then false
+        else (null_intersection rst S)
+
+fun set_eq S1 S2 = (set_diff S1 S2 = []) andalso (set_diff S2 S1 = []);
+
+(*---------------------------------------------------------------------------
+ * Opaque type set operations
+ *---------------------------------------------------------------------------*)
+fun op_mem eq_func i =
+   let val eqi = eq_func i
+       fun mem [] = false
+         | mem (a::b) = eqi a orelse mem b
+   in mem
+   end;
+
+fun op_insert eq_func =
+  let val mem = op_mem eq_func
+  in fn i => fn L => if (mem i L) then L else i::L
+  end;
+
+fun op_union eq_func =
+   let val mem = op_mem eq_func
+       val insert = op_insert eq_func
+       fun un [] [] = []
+         | un a []  = a
+         | un [] a  = a
+         | un (a::b) c = un b (insert a c)
+   in un
+   end;
+
+fun op_mk_set eqf =
+  let val insert = op_insert eqf
+      fun mkset [] = []
+        | mkset (a::rst) = insert a (mkset rst)
+  in mkset
+  end;
+
+(* Union of a family of sets *)
+fun op_U eq_func set_o_sets = itlist (op_union eq_func) set_o_sets [];
+
+fun op_intersect eq_func a b = 
+  let val mem = op_mem eq_func
+      val in_b = C mem b
+      val mk_set = op_mk_set eq_func
+   in mk_set(gather in_b a)
+   end;
+
+(*---------------------------------------------------------------------------
+ * Strings and ints 
+ *---------------------------------------------------------------------------*)
+val int_to_string = Portable.Int.toString;
+
+fun string_to_int s = 
+   case (Portable.string_to_int s)
+     of SOME i => i
+      | NONE => raise LIB_ERR{func="string_to_int", mesg = "not convertable"};
+
+val say = Portable.say;
+fun quote s = "\""^s^"\"";
+val ordof = Portable.String.ordof;
+
+(*---------------------------------------------------------------------------
+ * Files and paths
+ *---------------------------------------------------------------------------*)
+
+(* The following is equal to "(close_in(open_in s); true) handle _ => false" *)
+val file_exists_for_reading = Portable.file_exists_for_reading;
+
+fun find_path (path::rst) fstr = 
+      let val path' = path^fstr
+      in if (file_exists_for_reading path') then path' else find_path rst fstr
+      end
+  | find_path [] s = raise LIB_ERR{func="find_path", mesg="Can't find "^s^"."}
+
+
+(* From Elsa Gunter *)
+local fun all_dot_files [] = true
+        | all_dot_files ("."::files) = all_dot_files files
+        | all_dot_files (".."::files) = all_dot_files files
+        | all_dot_files  _  = false
+in
+fun clean_directory directory =
+   if all_dot_files (Portable.listDir directory) then ()
+   else case Portable.system ("/bin/rm "^directory^"/*")
+          of 0 => ()
+           | _ => raise LIB_ERR{func = "clean_directory",
+                  mesg = "can't remove some files from directory "
+                         ^quote directory^"."}
+end;
+
+(*---------------------------------------------------------------------------
+ * Try to keep empty string first in path. This is so that one can
+ * get around masking effects, e.g., one might be looking for a particular 
+ * "z.th" on the theory_path, but a "z.th" occurs "earlier" that hides the
+ * particular "z.th" being searched for. Helpful for developing local 
+ * versions of system {theories,help,libraries}.
+ *---------------------------------------------------------------------------*)
+fun cons_path s L =
+   if (mem s (!L)) then ()
+   else L := (case L of ref(""::rst) => (""::s::rst)
+                      |  otherwise   => s :: !L);
+
+fun append_path s L = if mem s (!L) then () else L := (!L)@[s];
+ 
+(*---------------------------------------------------------------------------
+ * Time
+ *---------------------------------------------------------------------------*)
+type time = Portable.Time.time
+val timestamp = Portable.Time.timestamp;
+val time_eq = Portable.Time.time_eq
+val time_lt = Portable.Time.time_lt;
+
+
+fun with_flag flag b f x =
+  let val fval = !flag
+   in flag := b;
+      f x handle e => (flag := fval; Exception.Raise e);
+      flag := fval
+   end
+
+
+val compile   = with_flag Portable.interp false Portable.use;
+val interpret = with_flag Portable.interp true Portable.use;
+ 
+(*---------------------------------------------------------------------------
+ * An abstract type of imperative streams. It would be nice to hide the 
+ * underlying type. 
+ *---------------------------------------------------------------------------*)
+abstype ('a,'b) istream = STRM of {mutator : 'a -> 'a,
+                                   project : 'a -> 'b,
+                                   state   : 'a ref,
+                                   init    : 'a}
+with
+  fun mk_istream f i g = STRM{mutator=f, project=g, state=ref i, init=i}
+  fun next(strm as STRM{mutator, state, ...}) =  
+    let val _ = state := mutator (!state)
+    in strm end;
+  fun state(STRM{project,state, ...}) = project(!state)
+  fun reset(strm as STRM{state, init, ...}) = 
+      let val _ = state := init
+      in strm end;
+end;
+
+fun use_string s =
+   let val strm = Portable.open_string (QuoteFilter.quote_filter s)
+   in  (Portable.unfiltered_use_stream strm; Portable.close_in strm)
+       handle e => (Portable.close_in strm; Exception.Raise e)
+   end;
+
+
+(* Should be generalized to an arbitrary outstream. *)
+fun mesg false _ = ()
+  | mesg true s = say(String.concat["<<HOL message: ", s, ".>>\n"]);
+
+end (* Lib *)

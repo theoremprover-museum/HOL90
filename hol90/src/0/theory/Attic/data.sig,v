@@ -1,0 +1,205 @@
+head	1.6;
+access;
+symbols
+	HOL97:1.3.0.4
+	bpHOL97:1.3
+	hol90_9_alpha:1.3
+	hol90_pre8_for_multiple_compilers:1.3.0.2
+	last_edition:1.5
+	hol90_pre8_after_donalds_separate_compilation_changes:1.3
+	hol90_8_after_merging_Konrad_Elsa:1.2
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.6
+date	96.02.08.00.23.42;	author drs1004;	state dead;
+branches;
+next	1.5;
+
+1.5
+date	96.01.04.14.07.26;	author drs1004;	state Exp;
+branches;
+next	1.4;
+
+1.4
+date	95.12.18.11.22.22;	author drs1004;	state Exp;
+branches;
+next	1.3;
+
+1.3
+date	95.10.31.15.06.17;	author drs1004;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	95.10.18.16.37.41;	author drs1004;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	95.10.16.13.30.09;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.30.09;	author rjb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.6
+log
+@New theory mechanism, by Donald Syme
+@
+text
+@signature Theory_data_sig =
+sig
+structure Thm : Thm_sig
+type theory
+type theory_id
+val mk_theory_id : {name:string, timestamp:Portable.Time.time} -> theory_id
+val theory_id : theory -> theory_id
+val theory_id_name : theory_id -> string
+val theory_id_timestamp : theory_id -> Portable.Time.time
+val theory_id_eq : (theory_id * theory_id) -> bool
+
+val theory_draft_mode : theory -> bool
+val theory_consistent_with_disk : theory -> bool
+val theory_parents : theory -> theory_id list
+val theory_type_constants 
+   : theory -> {name:string, arity :int, theory:string} list
+val theory_term_constants 
+   : theory -> {const:Thm.Term.term, theory:string} list
+val theory_axioms : theory -> (string * Thm.thm) list
+val theory_definitions : theory -> (string * Thm.thm) list
+val theory_theorems : theory -> (string * Thm.thm) list
+
+val mk_theory : theory_id -> theory
+val fresh_theory : string -> theory
+val the_current_theory : unit -> theory
+val make_current : theory -> unit
+
+val set_draft_mode : bool -> theory -> theory
+val set_consistency_with_disk : bool -> theory -> theory
+val add_parent : theory_id -> theory -> theory
+val add_type : {name:string, arity :int, theory:string}
+                -> theory -> theory
+val add_term : {const:Thm.Term.term, theory:string}
+                -> theory -> theory
+val add_axiom : (string * Thm.thm) -> theory -> theory
+val add_definition : (string * Thm.thm) -> theory -> theory 
+val add_theorem : (string * Thm.thm) -> theory -> theory
+
+val pp_theory : PP.ppstream -> theory -> unit
+end;
+@
+
+
+1.5
+log
+@Added simplifier components, added drule files, added MK_ABS_CONV, better error messages
+@
+text
+@@
+
+
+1.4
+log
+@Preterm and other changes, see 7.changes
+@
+text
+@d18 1
+a18 1
+   : theory -> {const:Thm.Term.term, theory:string, place:Thm.Term.fixity} list
+d33 1
+a33 1
+val add_term : {const:Thm.Term.term, theory:string, place:Thm.Term.fixity}
+@
+
+
+1.3
+log
+@First phase of hol90.8 development.  hol90 now compiles using NJSML-CM
+108.5, with separate compilation of libraries.  System dependencies
+have been isolated in the makefiles and "portable.sml".
+
+This involved a large number of enhancments to the source files,
+most of which are documented in the 7.changes file (or will be shortly).
+See also the correpsonding email corrspondence between RJB, KLS, TFM,
+JRH and DRS that happened during this development.
+@
+text
+@d16 1
+a16 1
+   : theory -> {tyc:Thm.Term.Type.hol_type, arity :int, theory:string} list
+d31 1
+a31 1
+val add_type : {tyc:Thm.Term.Type.hol_type, arity :int, theory:string}
+@
+
+
+1.2
+log
+@Check in after merging in Konrad's changes made after
+the release of hol90.7.  This involved creating a side branch
+in which to check in Konrad's changes, then merging in that
+side branch into the main development (which contains changes
+made by Elsa Gunter).
+
+Some other small modification have been made to the source code,
+as I begun to try to make this version into a working version:
+	- hol90 will now be compiled in an environment were no
+structures can be considered opn.  This means many structures
+now need "open Lib" and other such commands at their head.
+This has not yet been completed, but has been begun.
+	- "rotl" and "rotr" have been added to Lib, something
+which I just did impulsively.   Documentation files
+have also been added in help/90.
+@
+text
+@d6 1
+a6 1
+val mk_theory_id : {name:string, timestamp:Sml_system.Time.time} -> theory_id
+d9 1
+a9 1
+val theory_id_timestamp : theory_id -> Sml_system.Time.time
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d6 1
+a6 1
+val mk_theory_id : {name:string, timestamp:System.Timer.time} -> theory_id
+d9 1
+a9 1
+val theory_id_timestamp : theory_id -> System.Timer.time
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

@@ -1,0 +1,101 @@
+head	1.1;
+branch	1.1.1;
+access;
+symbols
+	HOL97:1.1.1.1.0.6
+	bpHOL97:1.1.1.1
+	hol90_9_alpha:1.1.1.1
+	hol90_pre8_for_multiple_compilers:1.1.1.1.0.4
+	hol90_pre8_after_donalds_separate_compilation_changes:1.1.1.1
+	hol90_8_after_merging_Konrad_Elsa:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	95.10.16.13.34.12;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.34.12;	author rjb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@\DOC PAIRED_ETA_CONV
+
+\TYPE {PAIRED_ETA_CONV : conv}
+
+\SYNOPSIS
+Performs generalized eta conversion for tupled eta-redexes.
+
+\KEYWORDS
+conversion, extentionality.
+
+\DESCRIBE
+The conversion {PAIRED_ETA_CONV} generalizes {ETA_CONV} to eta-redexes with
+tupled abstractions.
+{
+   PAIRED_ETA_CONV "\(v1..(..)..vn). f (v1..(..)..vn)"
+    = |- \(v1..(..)..vn). f (v1..(..)..vn) = f
+}
+\FAILURE
+Fails unless the given term is a paired eta-redex as illustrated above.
+
+\COMMENTS
+Note that this result cannot be achieved by ordinary eta-reduction because the
+tupled abstraction is a surface syntax for a term which does not correspond to
+a normal pattern for eta reduction. Disabling the relevant prettyprinting
+reveals the true form of a paired eta redex:
+{
+   #set_flag(`print_uncurry`,false);;
+   true : bool
+
+   #let tm = "\(x:num,y:num). FST (x,y)";;
+   tm = "UNCURRY(\x y. FST(x,y))" : term
+}
+\EXAMPLE
+The following is a typical use of the conversion:
+{
+   let SELECT_PAIR_EQ = PROVE
+    ("(@@(x:*,y:**). (a,b) = (x,y)) = (a,b)",
+     CONV_TAC (ONCE_DEPTH_CONV PAIRED_ETA_CONV) THEN
+     ACCEPT_TAC (SYM (MATCH_MP SELECT_AX (REFL "(a:*,b:**)"))));;
+}
+
+\SEEALSO
+ETA_CONV.
+
+\ENDDOC
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

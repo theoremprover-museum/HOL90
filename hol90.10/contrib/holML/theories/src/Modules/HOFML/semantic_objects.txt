@@ -1,0 +1,35 @@
+(* File: HOFML/semantic_objects.txt *)
+
+(* Description: This is a grammar for the semantic objects that I use
+   in giving the dynamic semantics of ML with higher-order functors. *)
+
+(* See thinning_functors.txt *)
+
+(* interfaces now have a funintenv component *)
+
+(* mutually recursive set *)
+int_h ::= INT_H funintenv_h (* new *) strintenv_h (var set) (excon set)
+strintenv_h ::= STRINTENV_H ((strid # int_h) list) finmap
+funintenv_h ::= FUNINTENV_H ((funid # int_h) list) finmap
+
+(* ********************** *)
+
+
+sigenv_h ::= SIGENV_H (sigid -> int_h lift)
+
+(* interface bases now have a funintenv component *)
+
+intbasis_h ::= INTBASIS_H sigenv_h strintenv_h funintenv_h
+
+(* environments now have a funenv component *)
+
+(* mutually recursive set *)
+env_h := ENV_H funenv_h strenv_h varenv exconenv 
+strenv_h := STRENV_H((strid # env_h) list) finmap
+funenv_h ::= FUNENV_H((funid # funclos_h) list) finmap
+funclos_h ::= FUNCLOS_H strid int_h strexp_h (int_h option) basis_h
+basis_h ::= BASIS_h sigenv_h env_h
+
+(* ********************** *)
+
+

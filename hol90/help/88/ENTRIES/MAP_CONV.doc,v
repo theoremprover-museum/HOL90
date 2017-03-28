@@ -1,0 +1,125 @@
+head	1.1;
+branch	1.1.1;
+access;
+symbols
+	HOL97:1.1.1.1.0.6
+	bpHOL97:1.1.1.1
+	hol90_9_alpha:1.1.1.1
+	hol90_pre8_for_multiple_compilers:1.1.1.1.0.4
+	hol90_pre8_after_donalds_separate_compilation_changes:1.1.1.1
+	hol90_8_after_merging_Konrad_Elsa:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	95.10.16.13.34.07;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.34.07;	author rjb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@\DOC MAP_CONV
+
+\TYPE {MAP_CONV : conv -> conv}
+
+\SYNOPSIS
+Compute the result of mapping a function down a list.
+
+\KEYWORDS
+conversion, list.
+
+\DESCRIBE 
+The function {MAP_CONV} is a parameterized conversion for computing the result
+of mapping a function {f:ty1->ty2} down a list {"[t1;...;tn]"} of elements of
+type {ty1}.  The first argument to {MAP_CONV} is expected to be a conversion
+that computes the result of applying the function {f} to an element of this
+list. When applied to a term {"f ti"}, this conversion should return a theorem
+of the form {|- (f ti) = ri}, where {ri} is the result of applying the function
+{f} to the element {ti}. 
+
+\noindent Given an appropriate {conv}, the conversion {MAP_CONV conv} takes a
+term of the form {"[MAP f [t1;...;tn]"} to the theorem
+{
+   |- MAP f [t1;...;tn] = [r1;...;rn] 
+} 
+\noindent where {conv "f ti"} returns {|- (f ti) = ri} for {i} from {1} to {n}.
+
+\EXAMPLE
+
+The following is a very simple example in which no computation is done for 
+applications of the function being mapped down a list:
+{
+   #MAP_CONV NO_CONV "MAP SUC [1;2;1;4]";;
+   |- MAP SUC[1;2;1;4] = [SUC 1;SUC 2;SUC 1;SUC 4]
+}
+\noindent The result just contains applications of {SUC}, since the supplied 
+conversion {ALL_CONV} does no evaulation.
+
+We now construct a conversion that maps {SUC n} for any numeral {n} to the
+numeral standing for the successor of {n}:
+{
+   #let SUC_CONV tm =
+        let n = int_of_string(fst(dest_const(rand tm))) in
+        let sucn = mk_const(string_of_int(n+1), ":num") in
+            SYM (num_CONV sucn);;
+   SUC_CONV = - : conv
+}
+\noindent The result is a conversion that inverts {num_CONV}:
+{
+   #num_CONV "4";;
+   |- 4 = SUC 3
+
+   #SUC_CONV "SUC 3";;
+   |- SUC 3 = 4
+}
+\noindent The conversion {SUC_CONV} can then be used to compute the
+result of mapping the successor function down a list of numerals:
+{
+   #MAP_CONV SUC_CONV "MAP SUC [1;2;1;4]";;
+   |- MAP SUC[1;2;1;4] = [2;3;2;5]
+}
+
+\FAILURE 
+{MAP_CONV conv} fails if applied to a term not of the form
+{"MAP f [t1;...;tn]"}.  An application of {MAP_CONV conv} to a term
+{"MAP f [t1;...;tn]"} fails unless for all {ti} in the list {[t1;...;tn]},
+evaluating {conv "f ti"} returns {|- (f ti) = ri} for some {ri}.
+
+\ENDDOC
+
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

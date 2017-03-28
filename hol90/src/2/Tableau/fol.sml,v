@@ -1,0 +1,312 @@
+head	1.1;
+access;
+symbols;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	96.02.08.00.45.45;	author drs1004;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@New theory mechanism, code reorganisation and other enhancements by Don Syme.
+@
+text
+@(* ========================================================================= *)
+(* Workhorse first order automation: first order tableaux with equality.     *)
+(* ========================================================================= *)
+
+signature FOL_sig =
+sig
+    type term sharing type term = Term.term;
+
+    val offinc : int
+    datatype fol_term = 
+	Var of int
+      | Fnapp of int * fol_term list;;
+
+    datatype fol_form = 
+	Atom of int * fol_term list
+      | Conj of fol_form * fol_form
+      | Disj of fol_form * fol_form
+      | Forall of int * fol_form;;
+	
+    val reset_vars : unit -> unit
+    val fol_of_var : term -> int
+    val hol_of_var : int -> term
+
+    val reset_consts : unit -> unit
+    val fol_of_const : term -> int
+    val hol_of_const : int -> term
+
+    val fol_of_term : term list -> term list -> term -> fol_term
+    val fol_of_atom : term list -> term list -> term -> (int * fol_term list)
+    val fol_of_literal : term list -> term list -> term -> (int * fol_term list)
+    val fol_of_form : term list -> term list -> term -> fol_form
+    val hol_of_term : fol_term -> term
+	
+    val fol_free_in : int -> fol_term -> bool
+    val fol_frees : fol_term -> int list
+    val fol_subst : (fol_term * int) list -> fol_term -> fol_term
+    val fol_substl : (fol_term * int) list -> fol_term list -> fol_term list
+    val fol_inst : (fol_term * int) list -> 'a * fol_term list -> 'a * fol_term list
+    val augment_insts : fol_term * int -> (fol_term * int) list -> (fol_term * int) list
+    val fol_unify : fol_term -> fol_term -> (fol_term * int) list -> (fol_term * int) list
+    val form_inst : (fol_term * int) list -> fol_form -> fol_form
+
+end;
+
+
+structure FOL : FOL_sig = 
+struct
+
+open Lib Pterms;
+open Refute;
+    
+val ERR = Exception.ERR "FOL";
+val WRAP_ERR = Exception.WRAP_ERR "FOL";
+    
+
+val offinc = 10000;;     (* NB: should be bigger than all variable codes.    *)
+
+(* ------------------------------------------------------------------------- *)
+(* Shadow syntax for FOL terms in NNF. Functions and predicates have         *)
+(* numeric codes, and negation is done by negating the predicate code.       *)
+(* ------------------------------------------------------------------------- *)
+
+datatype fol_term = Var of int
+                  | Fnapp of int * fol_term list;;
+
+datatype fol_form = Atom of int * fol_term list
+                  | Conj of fol_form * fol_form
+                  | Disj of fol_form * fol_form
+                  | Forall of int * fol_form;;
+
+fun rev_assoc x l = #1 (the (assoc2 x l)) handle _ => raise NOT_FOUND;
+    
+
+(* ------------------------------------------------------------------------- *)
+(* Translate a term (in NNF) into the shadow syntax.                         *)
+(* ------------------------------------------------------------------------- *)
+
+val (reset_vars,fol_of_var,hol_of_var) =
+    let val vstore = ref []
+	and gstore = ref []
+	and vcounter = ref 0 
+	fun inc_vcounter() =
+	    let val n = !vcounter 
+		val m = n + 1 
+	    in 
+		if m >= offinc then ERR("inc_vcounter","inc_vcounter: too many variables") 
+		else (vcounter := m; n) 
+	    end
+	fun reset_vars() = (vstore := []; gstore := []; vcounter := 0)
+	fun fol_of_var v =
+	    let val currentvars = !vstore 
+	    in assoc v currentvars 
+		handle _ =>
+		    let val n = inc_vcounter()
+		    in (vstore := (v,n)::currentvars; n)
+			end
+		    end
+		
+	fun hol_of_var v =
+	    rev_assoc v (!vstore)
+	    handle _ => rev_assoc v (!gstore)
+	fun hol_of_bumped_var v =
+	    hol_of_var v 
+	    handle _ => 
+		let val v' = v mod offinc 
+		    val hv' = hol_of_var v' 
+		    val gv = genvar(type_of hv') 
+		in (gstore := (gv,v)::(!gstore); gv)
+		end
+    in ( reset_vars,fol_of_var,hol_of_bumped_var)
+    end;
+    
+
+val (reset_consts,fol_of_const,hol_of_const) =
+  let val cstore = ref ([]:(term * int)list)
+      and ccounter = ref 2
+      fun reset_consts() = (cstore := [(falsity,1)]; ccounter := 2)
+      fun fol_of_const c =
+	  let val currentconsts = !cstore
+	  in assoc c currentconsts 
+	      handle _ => 
+		  let val n = !ccounter 
+		  in (ccounter := n + 1; cstore := (c,n)::currentconsts; n)
+		  end
+	  end
+      fun hol_of_const c = rev_assoc c (!cstore)
+  in (reset_consts,fol_of_const,hol_of_const)
+  end;;
+
+fun fol_of_term env consts tm =
+  if is_var tm andalso not (mem tm consts) then
+    Var(fol_of_var tm)
+  else
+    let val (f,args) = strip_comb tm
+    in if mem f env then ERR("fol_of_term","higher order") 
+       else let val ff = fol_of_const f
+	    in Fnapp(ff,map (fol_of_term env consts) args)
+	    end
+    end;;
+
+fun fol_of_atom env consts tm =
+  let val (f,args) = strip_comb tm
+  in if mem f env then ERR("fol_of_atom","higher order") else
+      let val ff = fol_of_const f
+      in (ff,map (fol_of_term env consts) args)
+      end
+  end;;
+
+fun fol_of_literal env consts tm =
+    let val tm' = dest_neg tm 
+	val (p,a) = fol_of_atom env consts tm'
+    in (~p,a)
+    end
+    handle _ => fol_of_atom env consts tm;;
+
+fun fol_of_form env consts tm =
+  let val (v,bod) = dest_forall tm 
+      val fv = fol_of_var v 
+      val fbod = fol_of_form (v::env) (subtract consts [v]) bod 
+  in  Forall(fv,fbod)
+  end
+  handle _ => 
+      let val (l,r) = dest_conj tm 
+	  val fl = fol_of_form env consts l
+	  and fr = fol_of_form env consts r 
+      in Conj(fl,fr)
+      end
+  handle _ => 
+      let val (l,r) = dest_disj tm 
+	  val fl = fol_of_form env consts l
+	  and fr = fol_of_form env consts r 
+      in Disj(fl,fr)
+      end
+  handle _ =>
+      Atom(fol_of_literal env consts tm);;
+
+(* ------------------------------------------------------------------------- *)
+(* Conversion of a FOL shadow term back into HOL.                            *)
+(* ------------------------------------------------------------------------- *)
+
+fun hol_of_term tm =
+  case tm of
+    Var v => hol_of_var v
+  | Fnapp(f,args) => list_mk_comb(hol_of_const f,map hol_of_term args);;
+
+(* ------------------------------------------------------------------------- *)
+(* A few handy functions on the shadow syntax.                               *)
+(* ------------------------------------------------------------------------- *)
+
+fun fol_free_in v tm =
+  case tm of
+    Var x => x = v
+  | Fnapp(_,lis) => exists (fol_free_in v) lis;;
+
+val fol_frees =
+  let fun fol_frees tm acc =
+      case tm of
+	  Var x => insert x acc
+	| Fnapp(_,lis) => itlist fol_frees lis acc 
+  in fn tm => fol_frees tm []
+  end;;
+
+fun raw_fol_subst theta tm =
+  case tm of
+    Var v => (rev_assoc v theta handle _ => raise UNCHANGED)
+  | Fnapp(f,args) => Fnapp(f,appl_qfun (raw_fol_subst theta) args);;
+
+fun fol_subst theta = qfun_to_fun (raw_fol_subst theta);
+    
+fun fol_substl theta =
+    qfun_to_fun (appl_qfun (raw_fol_subst theta));
+    
+
+fun fol_inst theta (at as (p,args)) =
+  (p,appl_qfun (raw_fol_subst theta) args)
+  handle UNCHANGED => at;;
+
+(* ------------------------------------------------------------------------- *)
+(* Stick another instantiation into a list.                                  *)
+(* ------------------------------------------------------------------------- *)
+
+val raw_augment_insts =
+  let fun augment1 theta (s,x) =
+    let val s' = raw_fol_subst theta s 
+    in if fol_free_in x s andalso not(s = Var(x)) then
+	ERR("augment1","Occurs check")
+       else (s',x) 
+    end
+  in
+    fn p => fn insts => p::(qfun_to_fun (appl_qfun (augment1 [p])) insts)
+  end;;
+
+fun augment_insts (t,v) insts =
+    let val t' = fol_subst insts t
+	val p = (t',v)
+    in case t' of
+	Var(w) => 
+	    if w <= v then
+		if w = v then insts
+                else raw_augment_insts p insts
+	    else raw_augment_insts (Var(v),w) insts
+      | _ => if fol_free_in v t' then ERR("augment_insts","Occurs check")
+	     else raw_augment_insts p insts
+    end;;
+
+(* ------------------------------------------------------------------------- 
+ * Unification.                                                              
+ *
+ * fol_unify (Var 1) (Var 2) [];
+ 
+ * ------------------------------------------------------------------------- *)
+
+fun fol_unify tm1 tm2 sofar =
+    case tm1 of
+	Var(x) =>
+	    (let val tm1' = rev_assoc x sofar 
+	     in fol_unify tm1' tm2 sofar
+	     end 
+		 handle NOT_FOUND =>
+		     augment_insts (tm2,x) sofar)
+  | Fnapp(f1,args1) =>
+      case tm2 of
+	  Var(y) =>
+	      (let val tm2' = rev_assoc y sofar 
+	       in fol_unify tm1 tm2' sofar
+	       end
+		   handle NOT_FOUND =>
+		       augment_insts (tm1,y) sofar)
+	| Fnapp(f2,args2) =>
+	      if f1 = f2 then rev_itlist2 fol_unify args1 args2 sofar
+	      else ERR("fol_unify","No match");;
+
+(* ------------------------------------------------------------------------- *)
+(* Perform instantiation of a formula.                                       *)
+(* ------------------------------------------------------------------------- *)
+
+fun form_inst i f =
+  case f of
+    Conj(f1,f2) => Conj(form_inst i f1,form_inst i f2)
+  | Disj(f1,f2) => Disj(form_inst i f1,form_inst i f2)
+  | Forall(v,f1) => let val i' = filter (fn x => not (v = snd x)) i 
+		    in Forall(v,form_inst i' f1)
+		    end
+  | Atom a => Atom(fol_inst i a);;
+
+
+end;
+
+
+@

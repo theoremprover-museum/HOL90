@@ -1,0 +1,1854 @@
+<TITLE>Theory: REAL</TITLE>
+<H1>Theory: REAL</H1>
+<H1>Parents</H1>
+    <UL>
+    <LI><A HREF = "REALAX.html"><STRONG>REALAX</STRONG></A>
+    </UL>
+
+
+<HR>
+<H1>Type constants</H1>
+    <UL>
+    
+    </UL>
+
+
+<HR>
+<H1>Term constants</H1>
+    <UL>
+    <LI><STRONG>&</STRONG><EM>:num -> real</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>--</STRONG><EM>:real -> real</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>inv</STRONG><EM>:real -> real</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>|-|</STRONG><EM>:real -> real -> real</EM>
+        <STRONG>{</STRONG>fixity  = Infix 500<STRONG>}</STRONG>
+    <LI><STRONG>|<=|</STRONG><EM>:real -> real -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Infix 450<STRONG>}</STRONG>
+    <LI><STRONG>|>|</STRONG><EM>:real -> real -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Infix 450<STRONG>}</STRONG>
+    <LI><STRONG>|>=|</STRONG><EM>:real -> real -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Infix 450<STRONG>}</STRONG>
+    <LI><STRONG>/</STRONG><EM>:real -> real -> real</EM>
+        <STRONG>{</STRONG>fixity  = Infix 600<STRONG>}</STRONG>
+    <LI><STRONG>abs</STRONG><EM>:real -> real</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>pow</STRONG><EM>:real -> num -> real</EM>
+        <STRONG>{</STRONG>fixity  = Infix 700<STRONG>}</STRONG>
+    <LI><STRONG>sup</STRONG><EM>:(real -> bool) -> real</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>sumc</STRONG><EM>:num -> num -> (num -> real) -> real</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>sum</STRONG><EM>:num # num -> (num -> real) -> real</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    </UL>
+
+
+<HR>
+<H1>Axioms</H1>
+<DL>
+
+</DL>
+
+
+<HR>
+<H1>Definitions</H1>
+<DL>
+<DT><STRONG>real_of_num</STRONG>
+<DD>
+<PRE>
+|- (& 0 = r0) /\ (!n. & (SUC n) = & n |+| r1)
+</PRE>
+
+<DT><STRONG>neg</STRONG>
+<DD>
+<PRE>
+|- -- = real_neg
+</PRE>
+
+<DT><STRONG>inv</STRONG>
+<DD>
+<PRE>
+|- inv = real_inv
+</PRE>
+
+<DT><STRONG>real_sub</STRONG>
+<DD>
+<PRE>
+|- !x y. x |-| y = x |+| -- y
+</PRE>
+
+<DT><STRONG>|<=|</STRONG>
+<DD>
+<PRE>
+|- !x y. x |<=| y = ~(y |<| x)
+</PRE>
+
+<DT><STRONG>real_gt</STRONG>
+<DD>
+<PRE>
+|- !x y. x |>| y = y |<| x
+</PRE>
+
+<DT><STRONG>real_ge</STRONG>
+<DD>
+<PRE>
+|- !x y. x |>=| y = y |<=| x
+</PRE>
+
+<DT><STRONG>real_div</STRONG>
+<DD>
+<PRE>
+|- !x y. x / y = x |*| inv y
+</PRE>
+
+<DT><STRONG>abs</STRONG>
+<DD>
+<PRE>
+|- !x. abs x = ((& 0 |<=| x) => x | (-- x))
+</PRE>
+
+<DT><STRONG>pow</STRONG>
+<DD>
+<PRE>
+|- (!x. x pow 0 = & 1) /\ (!x n. x pow SUC n = x |*| x pow n)
+</PRE>
+
+<DT><STRONG>sup</STRONG>
+<DD>
+<PRE>
+|- !P. sup P = (@s. !y. (?x. P x /\ y |<| x) = y |<| s)
+</PRE>
+
+<DT><STRONG>sumc</STRONG>
+<DD>
+<PRE>
+|- (!n f. sumc n 0 f = & 0) /\
+   (!n m f. sumc n (SUC m) f = sumc n m f |+| f (n + m))
+</PRE>
+
+<DT><STRONG>SUM_DEF</STRONG>
+<DD>
+<PRE>
+|- !m n f. sum (m,n) f = sumc m n f
+</PRE>
+
+</DL>
+
+
+<HR>
+<H1>Theorems</H1>
+<DL>
+<DT><STRONG>REAL_0</STRONG>
+<DD>
+<PRE>
+|- r0 = & 0
+</PRE>
+
+<DT><STRONG>REAL_1</STRONG>
+<DD>
+<PRE>
+|- r1 = & 1
+</PRE>
+
+<DT><STRONG>REAL_10</STRONG>
+<DD>
+<PRE>
+|- ~(& 1 = & 0)
+</PRE>
+
+<DT><STRONG>REAL_ADD_SYM</STRONG>
+<DD>
+<PRE>
+|- !x y. x |+| y = y |+| x
+</PRE>
+
+<DT><STRONG>REAL_ADD_ASSOC</STRONG>
+<DD>
+<PRE>
+|- !x y z. x |+| y |+| z = (x |+| y) |+| z
+</PRE>
+
+<DT><STRONG>REAL_ADD_LID</STRONG>
+<DD>
+<PRE>
+|- !x. & 0 |+| x = x
+</PRE>
+
+<DT><STRONG>REAL_ADD_LINV</STRONG>
+<DD>
+<PRE>
+|- !x. -- x |+| x = & 0
+</PRE>
+
+<DT><STRONG>REAL_LDISTRIB</STRONG>
+<DD>
+<PRE>
+|- !x y z. x |*| (y |+| z) = x |*| y |+| x |*| z
+</PRE>
+
+<DT><STRONG>REAL_LT_TOTAL</STRONG>
+<DD>
+<PRE>
+|- !x y. (x = y) \/ x |<| y \/ y |<| x
+</PRE>
+
+<DT><STRONG>REAL_LT_REFL</STRONG>
+<DD>
+<PRE>
+|- !x. ~(x |<| x)
+</PRE>
+
+<DT><STRONG>REAL_LT_TRANS</STRONG>
+<DD>
+<PRE>
+|- !x y z. x |<| y /\ y |<| z ==> x |<| z
+</PRE>
+
+<DT><STRONG>REAL_LT_IADD</STRONG>
+<DD>
+<PRE>
+|- !x y z. y |<| z ==> x |+| y |<| x |+| z
+</PRE>
+
+<DT><STRONG>REAL_SUP_ALLPOS</STRONG>
+<DD>
+<PRE>
+|- !P.
+     (!x. P x ==> & 0 |<| x) /\ (?x. P x) /\ (?z. !x. P x ==> x |<| z) ==>
+     (?s. !y. (?x. P x /\ y |<| x) = y |<| s)
+</PRE>
+
+<DT><STRONG>REAL_MUL_SYM</STRONG>
+<DD>
+<PRE>
+|- !x y. x |*| y = y |*| x
+</PRE>
+
+<DT><STRONG>REAL_MUL_ASSOC</STRONG>
+<DD>
+<PRE>
+|- !x y z. x |*| y |*| z = (x |*| y) |*| z
+</PRE>
+
+<DT><STRONG>REAL_MUL_LID</STRONG>
+<DD>
+<PRE>
+|- !x. & 1 |*| x = x
+</PRE>
+
+<DT><STRONG>REAL_MUL_LINV</STRONG>
+<DD>
+<PRE>
+|- !x. ~(x = & 0) ==> (inv x |*| x = & 1)
+</PRE>
+
+<DT><STRONG>REAL_LT_MUL</STRONG>
+<DD>
+<PRE>
+|- !x y. & 0 |<| x /\ & 0 |<| y ==> & 0 |<| x |*| y
+</PRE>
+
+<DT><STRONG>REAL_ADD_RID</STRONG>
+<DD>
+<PRE>
+|- !x. x |+| & 0 = x
+</PRE>
+
+<DT><STRONG>REAL_ADD_RINV</STRONG>
+<DD>
+<PRE>
+|- !x. x |+| -- x = & 0
+</PRE>
+
+<DT><STRONG>REAL_MUL_RID</STRONG>
+<DD>
+<PRE>
+|- !x. x |*| & 1 = x
+</PRE>
+
+<DT><STRONG>REAL_MUL_RINV</STRONG>
+<DD>
+<PRE>
+|- !x. ~(x = & 0) ==> (x |*| inv x = & 1)
+</PRE>
+
+<DT><STRONG>REAL_RDISTRIB</STRONG>
+<DD>
+<PRE>
+|- !x y z. (x |+| y) |*| z = x |*| z |+| y |*| z
+</PRE>
+
+<DT><STRONG>REAL_EQ_LADD</STRONG>
+<DD>
+<PRE>
+|- !x y z. (x |+| y = x |+| z) = y = z
+</PRE>
+
+<DT><STRONG>REAL_EQ_RADD</STRONG>
+<DD>
+<PRE>
+|- !x y z. (x |+| z = y |+| z) = x = y
+</PRE>
+
+<DT><STRONG>REAL_ADD_LID_UNIQ</STRONG>
+<DD>
+<PRE>
+|- !x y. (x |+| y = y) = x = & 0
+</PRE>
+
+<DT><STRONG>REAL_ADD_RID_UNIQ</STRONG>
+<DD>
+<PRE>
+|- !x y. (x |+| y = x) = y = & 0
+</PRE>
+
+<DT><STRONG>REAL_LNEG_UNIQ</STRONG>
+<DD>
+<PRE>
+|- !x y. (x |+| y = & 0) = x = -- y
+</PRE>
+
+<DT><STRONG>REAL_RNEG_UNIQ</STRONG>
+<DD>
+<PRE>
+|- !x y. (x |+| y = & 0) = y = -- x
+</PRE>
+
+<DT><STRONG>REAL_NEG_ADD</STRONG>
+<DD>
+<PRE>
+|- !x y. -- (x |+| y) = -- x |+| -- y
+</PRE>
+
+<DT><STRONG>REAL_MUL_LZERO</STRONG>
+<DD>
+<PRE>
+|- !x. & 0 |*| x = & 0
+</PRE>
+
+<DT><STRONG>REAL_MUL_RZERO</STRONG>
+<DD>
+<PRE>
+|- !x. x |*| & 0 = & 0
+</PRE>
+
+<DT><STRONG>REAL_NEG_LMUL</STRONG>
+<DD>
+<PRE>
+|- !x y. -- (x |*| y) = -- x |*| y
+</PRE>
+
+<DT><STRONG>REAL_NEG_RMUL</STRONG>
+<DD>
+<PRE>
+|- !x y. -- (x |*| y) = x |*| -- y
+</PRE>
+
+<DT><STRONG>REAL_NEGNEG</STRONG>
+<DD>
+<PRE>
+|- !x. -- (-- x) = x
+</PRE>
+
+<DT><STRONG>REAL_NEG_MUL2</STRONG>
+<DD>
+<PRE>
+|- !x y. -- x |*| -- y = x |*| y
+</PRE>
+
+<DT><STRONG>REAL_ENTIRE</STRONG>
+<DD>
+<PRE>
+|- !x y. (x |*| y = & 0) = (x = & 0) \/ (y = & 0)
+</PRE>
+
+<DT><STRONG>REAL_LT_LADD</STRONG>
+<DD>
+<PRE>
+|- !x y z. x |+| y |<| x |+| z = y |<| z
+</PRE>
+
+<DT><STRONG>REAL_LT_RADD</STRONG>
+<DD>
+<PRE>
+|- !x y z. x |+| z |<| y |+| z = x |<| y
+</PRE>
+
+<DT><STRONG>REAL_NOT_LT</STRONG>
+<DD>
+<PRE>
+|- !x y. ~(x |<| y) = y |<=| x
+</PRE>
+
+<DT><STRONG>REAL_LT_ANTISYM</STRONG>
+<DD>
+<PRE>
+|- !x y. ~(x |<| y /\ y |<| x)
+</PRE>
+
+<DT><STRONG>REAL_LT_GT</STRONG>
+<DD>
+<PRE>
+|- !x y. x |<| y ==> ~(y |<| x)
+</PRE>
+
+<DT><STRONG>REAL_NOT_LE</STRONG>
+<DD>
+<PRE>
+|- !x y. ~(x |<=| y) = y |<| x
+</PRE>
+
+<DT><STRONG>REAL_LE_TOTAL</STRONG>
+<DD>
+<PRE>
+|- !x y. x |<=| y \/ y |<=| x
+</PRE>
+
+<DT><STRONG>REAL_LET_TOTAL</STRONG>
+<DD>
+<PRE>
+|- !x y. x |<=| y \/ y |<| x
+</PRE>
+
+<DT><STRONG>REAL_LTE_TOTAL</STRONG>
+<DD>
+<PRE>
+|- !x y. x |<| y \/ y |<=| x
+</PRE>
+
+<DT><STRONG>REAL_LE_REFL</STRONG>
+<DD>
+<PRE>
+|- !x. x |<=| x
+</PRE>
+
+<DT><STRONG>REAL_LE_LT</STRONG>
+<DD>
+<PRE>
+|- !x y. x |<=| y = x |<| y \/ (x = y)
+</PRE>
+
+<DT><STRONG>REAL_LT_LE</STRONG>
+<DD>
+<PRE>
+|- !x y. x |<| y = x |<=| y /\ ~(x = y)
+</PRE>
+
+<DT><STRONG>REAL_LT_IMP_LE</STRONG>
+<DD>
+<PRE>
+|- !x y. x |<| y ==> x |<=| y
+</PRE>
+
+<DT><STRONG>REAL_LTE_TRANS</STRONG>
+<DD>
+<PRE>
+|- !x y z. x |<| y /\ y |<=| z ==> x |<| z
+</PRE>
+
+<DT><STRONG>REAL_LET_TRANS</STRONG>
+<DD>
+<PRE>
+|- !x y z. x |<=| y /\ y |<| z ==> x |<| z
+</PRE>
+
+<DT><STRONG>REAL_LE_TRANS</STRONG>
+<DD>
+<PRE>
+|- !x y z. x |<=| y /\ y |<=| z ==> x |<=| z
+</PRE>
+
+<DT><STRONG>REAL_LE_ANTISYM</STRONG>
+<DD>
+<PRE>
+|- !x y. x |<=| y /\ y |<=| x = x = y
+</PRE>
+
+<DT><STRONG>REAL_LET_ANTISYM</STRONG>
+<DD>
+<PRE>
+|- !x y. ~(x |<| y /\ y |<=| x)
+</PRE>
+
+<DT><STRONG>REAL_LTE_ANTSYM</STRONG>
+<DD>
+<PRE>
+|- !x y. ~(x |<=| y /\ y |<| x)
+</PRE>
+
+<DT><STRONG>REAL_NEG_LT0</STRONG>
+<DD>
+<PRE>
+|- !x. -- x |<| & 0 = & 0 |<| x
+</PRE>
+
+<DT><STRONG>REAL_NEG_GT0</STRONG>
+<DD>
+<PRE>
+|- !x. & 0 |<| -- x = x |<| & 0
+</PRE>
+
+<DT><STRONG>REAL_NEG_LE0</STRONG>
+<DD>
+<PRE>
+|- !x. -- x |<=| & 0 = & 0 |<=| x
+</PRE>
+
+<DT><STRONG>REAL_NEG_GE0</STRONG>
+<DD>
+<PRE>
+|- !x. & 0 |<=| -- x = x |<=| & 0
+</PRE>
+
+<DT><STRONG>REAL_LT_NEGTOTAL</STRONG>
+<DD>
+<PRE>
+|- !x. (x = & 0) \/ & 0 |<| x \/ & 0 |<| -- x
+</PRE>
+
+<DT><STRONG>REAL_LE_NEGTOTAL</STRONG>
+<DD>
+<PRE>
+|- !x. & 0 |<=| x \/ & 0 |<=| -- x
+</PRE>
+
+<DT><STRONG>REAL_LE_MUL</STRONG>
+<DD>
+<PRE>
+|- !x y. & 0 |<=| x /\ & 0 |<=| y ==> & 0 |<=| x |*| y
+</PRE>
+
+<DT><STRONG>REAL_LE_SQUARE</STRONG>
+<DD>
+<PRE>
+|- !x. & 0 |<=| x |*| x
+</PRE>
+
+<DT><STRONG>REAL_LE_01</STRONG>
+<DD>
+<PRE>
+|- & 0 |<=| & 1
+</PRE>
+
+<DT><STRONG>REAL_LT_01</STRONG>
+<DD>
+<PRE>
+|- & 0 |<| & 1
+</PRE>
+
+<DT><STRONG>REAL_LE_LADD</STRONG>
+<DD>
+<PRE>
+|- !x y z. x |+| y |<=| x |+| z = y |<=| z
+</PRE>
+
+<DT><STRONG>REAL_LE_RADD</STRONG>
+<DD>
+<PRE>
+|- !x y z. x |+| z |<=| y |+| z = x |<=| y
+</PRE>
+
+<DT><STRONG>REAL_LT_ADD2</STRONG>
+<DD>
+<PRE>
+|- !w x y z. w |<| x /\ y |<| z ==> w |+| y |<| x |+| z
+</PRE>
+
+<DT><STRONG>REAL_LE_ADD2</STRONG>
+<DD>
+<PRE>
+|- !w x y z. w |<=| x /\ y |<=| z ==> w |+| y |<=| x |+| z
+</PRE>
+
+<DT><STRONG>REAL_LE_ADD</STRONG>
+<DD>
+<PRE>
+|- !x y. & 0 |<=| x /\ & 0 |<=| y ==> & 0 |<=| x |+| y
+</PRE>
+
+<DT><STRONG>REAL_LT_ADD</STRONG>
+<DD>
+<PRE>
+|- !x y. & 0 |<| x /\ & 0 |<| y ==> & 0 |<| x |+| y
+</PRE>
+
+<DT><STRONG>REAL_LT_ADDNEG</STRONG>
+<DD>
+<PRE>
+|- !x y z. y |<| x |+| -- z = y |+| z |<| x
+</PRE>
+
+<DT><STRONG>REAL_LT_ADDNEG2</STRONG>
+<DD>
+<PRE>
+|- !x y z. x |+| -- y |<| z = x |<| z |+| y
+</PRE>
+
+<DT><STRONG>REAL_LT_ADD1</STRONG>
+<DD>
+<PRE>
+|- !x y. x |<=| y ==> x |<| y |+| & 1
+</PRE>
+
+<DT><STRONG>REAL_SUB_ADD</STRONG>
+<DD>
+<PRE>
+|- !x y. (x |-| y) |+| y = x
+</PRE>
+
+<DT><STRONG>REAL_SUB_ADD2</STRONG>
+<DD>
+<PRE>
+|- !x y. y |+| (x |-| y) = x
+</PRE>
+
+<DT><STRONG>REAL_SUB_REFL</STRONG>
+<DD>
+<PRE>
+|- !x. x |-| x = & 0
+</PRE>
+
+<DT><STRONG>REAL_SUB_0</STRONG>
+<DD>
+<PRE>
+|- !x y. (x |-| y = & 0) = x = y
+</PRE>
+
+<DT><STRONG>REAL_LE_DOUBLE</STRONG>
+<DD>
+<PRE>
+|- !x. & 0 |<=| x |+| x = & 0 |<=| x
+</PRE>
+
+<DT><STRONG>REAL_LE_NEGL</STRONG>
+<DD>
+<PRE>
+|- !x. -- x |<=| x = & 0 |<=| x
+</PRE>
+
+<DT><STRONG>REAL_LE_NEGR</STRONG>
+<DD>
+<PRE>
+|- !x. x |<=| -- x = x |<=| & 0
+</PRE>
+
+<DT><STRONG>REAL_NEG_EQ0</STRONG>
+<DD>
+<PRE>
+|- !x. (-- x = & 0) = x = & 0
+</PRE>
+
+<DT><STRONG>REAL_NEG_0</STRONG>
+<DD>
+<PRE>
+|- -- (& 0) = & 0
+</PRE>
+
+<DT><STRONG>REAL_NEG_SUB</STRONG>
+<DD>
+<PRE>
+|- !x y. -- (x |-| y) = y |-| x
+</PRE>
+
+<DT><STRONG>REAL_SUB_LT</STRONG>
+<DD>
+<PRE>
+|- !x y. & 0 |<| x |-| y = y |<| x
+</PRE>
+
+<DT><STRONG>REAL_SUB_LE</STRONG>
+<DD>
+<PRE>
+|- !x y. & 0 |<=| x |-| y = y |<=| x
+</PRE>
+
+<DT><STRONG>REAL_ADD_SUB</STRONG>
+<DD>
+<PRE>
+|- !x y. (x |+| y) |-| x = y
+</PRE>
+
+<DT><STRONG>REAL_EQ_LMUL</STRONG>
+<DD>
+<PRE>
+|- !x y z. (x |*| y = x |*| z) = (x = & 0) \/ (y = z)
+</PRE>
+
+<DT><STRONG>REAL_EQ_RMUL</STRONG>
+<DD>
+<PRE>
+|- !x y z. (x |*| z = y |*| z) = (z = & 0) \/ (x = y)
+</PRE>
+
+<DT><STRONG>REAL_SUB_LDISTRIB</STRONG>
+<DD>
+<PRE>
+|- !x y z. x |*| (y |-| z) = x |*| y |-| x |*| z
+</PRE>
+
+<DT><STRONG>REAL_SUB_RDISTRIB</STRONG>
+<DD>
+<PRE>
+|- !x y z. (x |-| y) |*| z = x |*| z |-| y |*| z
+</PRE>
+
+<DT><STRONG>REAL_NEG_EQ</STRONG>
+<DD>
+<PRE>
+|- !x y. (-- x = y) = x = -- y
+</PRE>
+
+<DT><STRONG>REAL_NEG_MINUS1</STRONG>
+<DD>
+<PRE>
+|- !x. -- x = -- (& 1) |*| x
+</PRE>
+
+<DT><STRONG>REAL_INV_NZ</STRONG>
+<DD>
+<PRE>
+|- !x. ~(x = & 0) ==> ~(inv x = & 0)
+</PRE>
+
+<DT><STRONG>REAL_INVINV</STRONG>
+<DD>
+<PRE>
+|- !x. ~(x = & 0) ==> (inv (inv x) = x)
+</PRE>
+
+<DT><STRONG>REAL_LT_IMP_NE</STRONG>
+<DD>
+<PRE>
+|- !x y. x |<| y ==> ~(x = y)
+</PRE>
+
+<DT><STRONG>REAL_INV_POS</STRONG>
+<DD>
+<PRE>
+|- !x. & 0 |<| x ==> & 0 |<| inv x
+</PRE>
+
+<DT><STRONG>REAL_LT_LMUL_0</STRONG>
+<DD>
+<PRE>
+|- !x y. & 0 |<| x ==> (& 0 |<| x |*| y = & 0 |<| y)
+</PRE>
+
+<DT><STRONG>REAL_LT_RMUL_0</STRONG>
+<DD>
+<PRE>
+|- !x y. & 0 |<| y ==> (& 0 |<| x |*| y = & 0 |<| x)
+</PRE>
+
+<DT><STRONG>REAL_LT_LMUL</STRONG>
+<DD>
+<PRE>
+|- !x y z. & 0 |<| x ==> (x |*| y |<| x |*| z = y |<| z)
+</PRE>
+
+<DT><STRONG>REAL_LT_RMUL</STRONG>
+<DD>
+<PRE>
+|- !x y z. & 0 |<| z ==> (x |*| z |<| y |*| z = x |<| y)
+</PRE>
+
+<DT><STRONG>REAL_LT_RMUL_IMP</STRONG>
+<DD>
+<PRE>
+|- !x y z. x |<| y /\ & 0 |<| z ==> x |*| z |<| y |*| z
+</PRE>
+
+<DT><STRONG>REAL_LT_LMUL_IMP</STRONG>
+<DD>
+<PRE>
+|- !x y z. y |<| z /\ & 0 |<| x ==> x |*| y |<| x |*| z
+</PRE>
+
+<DT><STRONG>REAL_LINV_UNIQ</STRONG>
+<DD>
+<PRE>
+|- !x y. (x |*| y = & 1) ==> (x = inv y)
+</PRE>
+
+<DT><STRONG>REAL_RINV_UNIQ</STRONG>
+<DD>
+<PRE>
+|- !x y. (x |*| y = & 1) ==> (y = inv x)
+</PRE>
+
+<DT><STRONG>REAL_NEG_INV</STRONG>
+<DD>
+<PRE>
+|- !x. ~(x = & 0) ==> (-- (inv x) = inv (-- x))
+</PRE>
+
+<DT><STRONG>REAL_INV_1OVER</STRONG>
+<DD>
+<PRE>
+|- !x. inv x = & 1 / x
+</PRE>
+
+<DT><STRONG>REAL_LE_ADDR</STRONG>
+<DD>
+<PRE>
+|- !x y. x |<=| x |+| y = & 0 |<=| y
+</PRE>
+
+<DT><STRONG>REAL_LE_ADDL</STRONG>
+<DD>
+<PRE>
+|- !x y. y |<=| x |+| y = & 0 |<=| x
+</PRE>
+
+<DT><STRONG>REAL_LT_ADDR</STRONG>
+<DD>
+<PRE>
+|- !x y. x |<| x |+| y = & 0 |<| y
+</PRE>
+
+<DT><STRONG>REAL_LT_ADDL</STRONG>
+<DD>
+<PRE>
+|- !x y. y |<| x |+| y = & 0 |<| x
+</PRE>
+
+<DT><STRONG>REAL</STRONG>
+<DD>
+<PRE>
+|- !n. & (SUC n) = & n |+| & 1
+</PRE>
+
+<DT><STRONG>REAL_POS</STRONG>
+<DD>
+<PRE>
+|- !n. & 0 |<=| & n
+</PRE>
+
+<DT><STRONG>REAL_LE</STRONG>
+<DD>
+<PRE>
+|- !m n. & m |<=| & n = m <= n
+</PRE>
+
+<DT><STRONG>REAL_LT</STRONG>
+<DD>
+<PRE>
+|- !m n. & m |<| & n = m < n
+</PRE>
+
+<DT><STRONG>REAL_INJ</STRONG>
+<DD>
+<PRE>
+|- !m n. (& m = & n) = m = n
+</PRE>
+
+<DT><STRONG>REAL_ADD</STRONG>
+<DD>
+<PRE>
+|- !m n. & m |+| & n = & (m + n)
+</PRE>
+
+<DT><STRONG>REAL_MUL</STRONG>
+<DD>
+<PRE>
+|- !m n. & m |*| & n = & (m * n)
+</PRE>
+
+<DT><STRONG>REAL_INV1</STRONG>
+<DD>
+<PRE>
+|- inv (& 1) = & 1
+</PRE>
+
+<DT><STRONG>REAL_OVER1</STRONG>
+<DD>
+<PRE>
+|- !x. x / & 1 = x
+</PRE>
+
+<DT><STRONG>REAL_DIV_REFL</STRONG>
+<DD>
+<PRE>
+|- !x. ~(x = & 0) ==> (x / x = & 1)
+</PRE>
+
+<DT><STRONG>REAL_DIV_LZERO</STRONG>
+<DD>
+<PRE>
+|- !x. & 0 / x = & 0
+</PRE>
+
+<DT><STRONG>REAL_LT_NZ</STRONG>
+<DD>
+<PRE>
+|- !n. ~(& n = & 0) = & 0 |<| & n
+</PRE>
+
+<DT><STRONG>REAL_NZ_IMP_LT</STRONG>
+<DD>
+<PRE>
+|- !n. ~(n = 0) ==> & 0 |<| & n
+</PRE>
+
+<DT><STRONG>REAL_LT_RDIV_0</STRONG>
+<DD>
+<PRE>
+|- !y z. & 0 |<| z ==> (& 0 |<| y / z = & 0 |<| y)
+</PRE>
+
+<DT><STRONG>REAL_LT_RDIV</STRONG>
+<DD>
+<PRE>
+|- !x y z. & 0 |<| z ==> (x / z |<| y / z = x |<| y)
+</PRE>
+
+<DT><STRONG>REAL_LT_FRACTION_0</STRONG>
+<DD>
+<PRE>
+|- !n d. ~(n = 0) ==> (& 0 |<| d / & n = & 0 |<| d)
+</PRE>
+
+<DT><STRONG>REAL_LT_MULTIPLE</STRONG>
+<DD>
+<PRE>
+|- !n d. 1 < n ==> (d |<| & n |*| d = & 0 |<| d)
+</PRE>
+
+<DT><STRONG>REAL_LT_FRACTION</STRONG>
+<DD>
+<PRE>
+|- !n d. 1 < n ==> (d / & n |<| d = & 0 |<| d)
+</PRE>
+
+<DT><STRONG>REAL_LT_HALF1</STRONG>
+<DD>
+<PRE>
+|- !d. & 0 |<| d / & 2 = & 0 |<| d
+</PRE>
+
+<DT><STRONG>REAL_LT_HALF2</STRONG>
+<DD>
+<PRE>
+|- !d. d / & 2 |<| d = & 0 |<| d
+</PRE>
+
+<DT><STRONG>REAL_DOUBLE</STRONG>
+<DD>
+<PRE>
+|- !x. x |+| x = & 2 |*| x
+</PRE>
+
+<DT><STRONG>REAL_DIV_LMUL</STRONG>
+<DD>
+<PRE>
+|- !x y. ~(y = & 0) ==> (y |*| (x / y) = x)
+</PRE>
+
+<DT><STRONG>REAL_DIV_RMUL</STRONG>
+<DD>
+<PRE>
+|- !x y. ~(y = & 0) ==> ((x / y) |*| y = x)
+</PRE>
+
+<DT><STRONG>REAL_HALF_DOUBLE</STRONG>
+<DD>
+<PRE>
+|- !x. x / & 2 |+| x / & 2 = x
+</PRE>
+
+<DT><STRONG>REAL_DOWN</STRONG>
+<DD>
+<PRE>
+|- !x. & 0 |<| x ==> (?y. & 0 |<| y /\ y |<| x)
+</PRE>
+
+<DT><STRONG>REAL_DOWN2</STRONG>
+<DD>
+<PRE>
+|- !x y. & 0 |<| x /\ & 0 |<| y ==> (?z. & 0 |<| z /\ z |<| x /\ z |<| y)
+</PRE>
+
+<DT><STRONG>REAL_SUB_SUB</STRONG>
+<DD>
+<PRE>
+|- !x y. (x |-| y) |-| x = -- y
+</PRE>
+
+<DT><STRONG>REAL_LT_ADD_SUB</STRONG>
+<DD>
+<PRE>
+|- !x y z. x |+| y |<| z = x |<| z |-| y
+</PRE>
+
+<DT><STRONG>REAL_LT_SUB_RADD</STRONG>
+<DD>
+<PRE>
+|- !x y z. x |-| y |<| z = x |<| z |+| y
+</PRE>
+
+<DT><STRONG>REAL_LT_SUB_LADD</STRONG>
+<DD>
+<PRE>
+|- !x y z. x |<| y |-| z = x |+| z |<| y
+</PRE>
+
+<DT><STRONG>REAL_LE_SUB_LADD</STRONG>
+<DD>
+<PRE>
+|- !x y z. x |<=| y |-| z = x |+| z |<=| y
+</PRE>
+
+<DT><STRONG>REAL_LE_SUB_RADD</STRONG>
+<DD>
+<PRE>
+|- !x y z. x |-| y |<=| z = x |<=| z |+| y
+</PRE>
+
+<DT><STRONG>REAL_LT_NEG</STRONG>
+<DD>
+<PRE>
+|- !x y. -- x |<| -- y = y |<| x
+</PRE>
+
+<DT><STRONG>REAL_LE_NEG</STRONG>
+<DD>
+<PRE>
+|- !x y. -- x |<=| -- y = y |<=| x
+</PRE>
+
+<DT><STRONG>REAL_ADD2_SUB2</STRONG>
+<DD>
+<PRE>
+|- !a b c d. (a |+| b) |-| (c |+| d) = (a |-| c) |+| (b |-| d)
+</PRE>
+
+<DT><STRONG>REAL_SUB_LZERO</STRONG>
+<DD>
+<PRE>
+|- !x. & 0 |-| x = -- x
+</PRE>
+
+<DT><STRONG>REAL_SUB_RZERO</STRONG>
+<DD>
+<PRE>
+|- !x. x |-| & 0 = x
+</PRE>
+
+<DT><STRONG>REAL_LET_ADD2</STRONG>
+<DD>
+<PRE>
+|- !w x y z. w |<=| x /\ y |<| z ==> w |+| y |<| x |+| z
+</PRE>
+
+<DT><STRONG>REAL_LTE_ADD2</STRONG>
+<DD>
+<PRE>
+|- !w x y z. w |<| x /\ y |<=| z ==> w |+| y |<| x |+| z
+</PRE>
+
+<DT><STRONG>REAL_LET_ADD</STRONG>
+<DD>
+<PRE>
+|- !x y. & 0 |<=| x /\ & 0 |<| y ==> & 0 |<| x |+| y
+</PRE>
+
+<DT><STRONG>REAL_LTE_ADD</STRONG>
+<DD>
+<PRE>
+|- !x y. & 0 |<| x /\ & 0 |<=| y ==> & 0 |<| x |+| y
+</PRE>
+
+<DT><STRONG>REAL_LT_MUL2</STRONG>
+<DD>
+<PRE>
+|- !x1 x2 y1 y2.
+     & 0 |<=| x1 /\ & 0 |<=| y1 /\ x1 |<| x2 /\ y1 |<| y2 ==>
+     x1 |*| y1 |<| x2 |*| y2
+</PRE>
+
+<DT><STRONG>REAL_LT_INV</STRONG>
+<DD>
+<PRE>
+|- !x y. & 0 |<| x /\ x |<| y ==> inv y |<| inv x
+</PRE>
+
+<DT><STRONG>REAL_SUB_LNEG</STRONG>
+<DD>
+<PRE>
+|- !x y. -- x |-| y = -- (x |+| y)
+</PRE>
+
+<DT><STRONG>REAL_SUB_RNEG</STRONG>
+<DD>
+<PRE>
+|- !x y. x |-| -- y = x |+| y
+</PRE>
+
+<DT><STRONG>REAL_SUB_NEG2</STRONG>
+<DD>
+<PRE>
+|- !x y. -- x |-| -- y = y |-| x
+</PRE>
+
+<DT><STRONG>REAL_SUB_TRIANGLE</STRONG>
+<DD>
+<PRE>
+|- !a b c. (a |-| b) |+| (b |-| c) = a |-| c
+</PRE>
+
+<DT><STRONG>REAL_EQ_SUB_LADD</STRONG>
+<DD>
+<PRE>
+|- !x y z. (x = y |-| z) = x |+| z = y
+</PRE>
+
+<DT><STRONG>REAL_EQ_SUB_RADD</STRONG>
+<DD>
+<PRE>
+|- !x y z. (x |-| y = z) = x = z |+| y
+</PRE>
+
+<DT><STRONG>REAL_INV_MUL</STRONG>
+<DD>
+<PRE>
+|- !x y. ~(x = & 0) /\ ~(y = & 0) ==> (inv (x |*| y) = inv x |*| inv y)
+</PRE>
+
+<DT><STRONG>REAL_LE_LMUL</STRONG>
+<DD>
+<PRE>
+|- !x y z. & 0 |<| x ==> (x |*| y |<=| x |*| z = y |<=| z)
+</PRE>
+
+<DT><STRONG>REAL_LE_RMUL</STRONG>
+<DD>
+<PRE>
+|- !x y z. & 0 |<| z ==> (x |*| z |<=| y |*| z = x |<=| y)
+</PRE>
+
+<DT><STRONG>REAL_SUB_INV2</STRONG>
+<DD>
+<PRE>
+|- !x y.
+     ~(x = & 0) /\ ~(y = & 0) ==> (inv x |-| inv y = (y |-| x) / (x |*| y))
+</PRE>
+
+<DT><STRONG>REAL_SUB_SUB2</STRONG>
+<DD>
+<PRE>
+|- !x y. x |-| x |-| y = y
+</PRE>
+
+<DT><STRONG>REAL_ADD_SUB2</STRONG>
+<DD>
+<PRE>
+|- !x y. x |-| (x |+| y) = -- y
+</PRE>
+
+<DT><STRONG>REAL_MEAN</STRONG>
+<DD>
+<PRE>
+|- !x y. x |<| y ==> (?z. x |<| z /\ z |<| y)
+</PRE>
+
+<DT><STRONG>REAL_EQ_LMUL2</STRONG>
+<DD>
+<PRE>
+|- !x y z. ~(x = & 0) ==> ((y = z) = x |*| y = x |*| z)
+</PRE>
+
+<DT><STRONG>REAL_LE_MUL2</STRONG>
+<DD>
+<PRE>
+|- !x1 x2 y1 y2.
+     & 0 |<=| x1 /\ & 0 |<=| y1 /\ x1 |<=| x2 /\ y1 |<=| y2 ==>
+     x1 |*| y1 |<=| x2 |*| y2
+</PRE>
+
+<DT><STRONG>REAL_LE_LDIV</STRONG>
+<DD>
+<PRE>
+|- !x y z. & 0 |<| x /\ y |<=| z |*| x ==> y / x |<=| z
+</PRE>
+
+<DT><STRONG>REAL_LE_RDIV</STRONG>
+<DD>
+<PRE>
+|- !x y z. & 0 |<| x /\ y |*| x |<=| z ==> y |<=| z / x
+</PRE>
+
+<DT><STRONG>REAL_LT_1</STRONG>
+<DD>
+<PRE>
+|- !x y. & 0 |<=| x /\ x |<| y ==> x / y |<| & 1
+</PRE>
+
+<DT><STRONG>REAL_LE_LMUL_IMP</STRONG>
+<DD>
+<PRE>
+|- !x y z. & 0 |<=| x /\ y |<=| z ==> x |*| y |<=| x |*| z
+</PRE>
+
+<DT><STRONG>REAL_LE_RMUL_IMP</STRONG>
+<DD>
+<PRE>
+|- !x y z. & 0 |<=| x /\ y |<=| z ==> y |*| x |<=| z |*| x
+</PRE>
+
+<DT><STRONG>REAL_EQ_IMP_LE</STRONG>
+<DD>
+<PRE>
+|- !x y. (x = y) ==> x |<=| y
+</PRE>
+
+<DT><STRONG>REAL_INV_LT1</STRONG>
+<DD>
+<PRE>
+|- !x. & 0 |<| x /\ x |<| & 1 ==> & 1 |<| inv x
+</PRE>
+
+<DT><STRONG>REAL_POS_NZ</STRONG>
+<DD>
+<PRE>
+|- !x. & 0 |<| x ==> ~(x = & 0)
+</PRE>
+
+<DT><STRONG>REAL_EQ_RMUL_IMP</STRONG>
+<DD>
+<PRE>
+|- !x y z. ~(z = & 0) /\ (x |*| z = y |*| z) ==> (x = y)
+</PRE>
+
+<DT><STRONG>REAL_EQ_LMUL_IMP</STRONG>
+<DD>
+<PRE>
+|- !x y z. ~(x = & 0) /\ (x |*| y = x |*| z) ==> (y = z)
+</PRE>
+
+<DT><STRONG>REAL_FACT_NZ</STRONG>
+<DD>
+<PRE>
+|- !n. ~(& (FACT n) = & 0)
+</PRE>
+
+<DT><STRONG>REAL_DIFFSQ</STRONG>
+<DD>
+<PRE>
+|- !x y. (x |+| y) |*| (x |-| y) = x |*| x |-| y |*| y
+</PRE>
+
+<DT><STRONG>REAL_POASQ</STRONG>
+<DD>
+<PRE>
+|- !x. & 0 |<| x |*| x = ~(x = & 0)
+</PRE>
+
+<DT><STRONG>REAL_SUMSQ</STRONG>
+<DD>
+<PRE>
+|- !x y. (x |*| x |+| y |*| y = & 0) = (x = & 0) /\ (y = & 0)
+</PRE>
+
+<DT><STRONG>REAL_EQ_NEG</STRONG>
+<DD>
+<PRE>
+|- !x y. (-- x = -- y) = x = y
+</PRE>
+
+<DT><STRONG>REAL_DIV_MUL2</STRONG>
+<DD>
+<PRE>
+|- !x z. ~(x = & 0) /\ ~(z = & 0) ==> (!y. y / z = (x |*| y) / (x |*| z))
+</PRE>
+
+<DT><STRONG>REAL_MIDDLE1</STRONG>
+<DD>
+<PRE>
+|- !a b. a |<=| b ==> a |<=| (a |+| b) / & 2
+</PRE>
+
+<DT><STRONG>REAL_MIDDLE2</STRONG>
+<DD>
+<PRE>
+|- !a b. a |<=| b ==> (a |+| b) / & 2 |<=| b
+</PRE>
+
+<DT><STRONG>ABS_ZERO</STRONG>
+<DD>
+<PRE>
+|- !x. (abs x = & 0) = x = & 0
+</PRE>
+
+<DT><STRONG>ABS_0</STRONG>
+<DD>
+<PRE>
+|- abs (& 0) = & 0
+</PRE>
+
+<DT><STRONG>ABS_1</STRONG>
+<DD>
+<PRE>
+|- abs (& 1) = & 1
+</PRE>
+
+<DT><STRONG>ABS_NEG</STRONG>
+<DD>
+<PRE>
+|- !x. abs (-- x) = abs x
+</PRE>
+
+<DT><STRONG>ABS_TRIANGLE</STRONG>
+<DD>
+<PRE>
+|- !x y. abs (x |+| y) |<=| abs x |+| abs y
+</PRE>
+
+<DT><STRONG>ABS_POS</STRONG>
+<DD>
+<PRE>
+|- !x. & 0 |<=| abs x
+</PRE>
+
+<DT><STRONG>ABS_MUL</STRONG>
+<DD>
+<PRE>
+|- !x y. abs (x |*| y) = abs x |*| abs y
+</PRE>
+
+<DT><STRONG>ABS_LT_MUL2</STRONG>
+<DD>
+<PRE>
+|- !w x y z. abs w |<| y /\ abs x |<| z ==> abs (w |*| x) |<| y |*| z
+</PRE>
+
+<DT><STRONG>ABS_SUB</STRONG>
+<DD>
+<PRE>
+|- !x y. abs (x |-| y) = abs (y |-| x)
+</PRE>
+
+<DT><STRONG>ABS_NZ</STRONG>
+<DD>
+<PRE>
+|- !x. ~(x = & 0) = & 0 |<| abs x
+</PRE>
+
+<DT><STRONG>ABS_INV</STRONG>
+<DD>
+<PRE>
+|- !x. ~(x = & 0) ==> (abs (inv x) = inv (abs x))
+</PRE>
+
+<DT><STRONG>ABS_ABS</STRONG>
+<DD>
+<PRE>
+|- !x. abs (abs x) = abs x
+</PRE>
+
+<DT><STRONG>ABS_LE</STRONG>
+<DD>
+<PRE>
+|- !x. x |<=| abs x
+</PRE>
+
+<DT><STRONG>ABS_REFL</STRONG>
+<DD>
+<PRE>
+|- !x. (abs x = x) = & 0 |<=| x
+</PRE>
+
+<DT><STRONG>ABS_N</STRONG>
+<DD>
+<PRE>
+|- !n. abs (& n) = & n
+</PRE>
+
+<DT><STRONG>ABS_BETWEEN</STRONG>
+<DD>
+<PRE>
+|- !x y d. & 0 |<| d /\ x |-| d |<| y /\ y |<| x |+| d = abs (y |-| x) |<| d
+</PRE>
+
+<DT><STRONG>ABS_BOUND</STRONG>
+<DD>
+<PRE>
+|- !x y d. abs (x |-| y) |<| d ==> y |<| x |+| d
+</PRE>
+
+<DT><STRONG>ABS_STILLNZ</STRONG>
+<DD>
+<PRE>
+|- !x y. abs (x |-| y) |<| abs y ==> ~(x = & 0)
+</PRE>
+
+<DT><STRONG>ABS_CASES</STRONG>
+<DD>
+<PRE>
+|- !x. (x = & 0) \/ & 0 |<| abs x
+</PRE>
+
+<DT><STRONG>ABS_BETWEEN1</STRONG>
+<DD>
+<PRE>
+|- !x y z. x |<| z /\ abs (y |-| x) |<| z |-| x ==> y |<| z
+</PRE>
+
+<DT><STRONG>ABS_SIGN</STRONG>
+<DD>
+<PRE>
+|- !x y. abs (x |-| y) |<| y ==> & 0 |<| x
+</PRE>
+
+<DT><STRONG>ABS_SIGN2</STRONG>
+<DD>
+<PRE>
+|- !x y. abs (x |-| y) |<| -- y ==> x |<| & 0
+</PRE>
+
+<DT><STRONG>ABS_DIV</STRONG>
+<DD>
+<PRE>
+|- !y. ~(y = & 0) ==> (!x. abs (x / y) = abs x / abs y)
+</PRE>
+
+<DT><STRONG>ABS_CIRCLE</STRONG>
+<DD>
+<PRE>
+|- !x y h. abs h |<| abs y |-| abs x ==> abs (x |+| h) |<| abs y
+</PRE>
+
+<DT><STRONG>REAL_SUB_ABS</STRONG>
+<DD>
+<PRE>
+|- !x y. abs x |-| abs y |<=| abs (x |-| y)
+</PRE>
+
+<DT><STRONG>ABS_SUB_ABS</STRONG>
+<DD>
+<PRE>
+|- !x y. abs (abs x |-| abs y) |<=| abs (x |-| y)
+</PRE>
+
+<DT><STRONG>ABS_BETWEEN2</STRONG>
+<DD>
+<PRE>
+|- !x0 x y0 y.
+     x0 |<| y0 /\
+     abs (x |-| x0) |<| (y0 |-| x0) / & 2 /\
+     abs (y |-| y0) |<| (y0 |-| x0) / & 2 ==>
+     x |<| y
+</PRE>
+
+<DT><STRONG>ABS_BOUNDS</STRONG>
+<DD>
+<PRE>
+|- !x k. abs x |<=| k = -- k |<=| x /\ x |<=| k
+</PRE>
+
+<DT><STRONG>POW_0</STRONG>
+<DD>
+<PRE>
+|- !n. & 0 pow SUC n = & 0
+</PRE>
+
+<DT><STRONG>POW_NZ</STRONG>
+<DD>
+<PRE>
+|- !c n. ~(c = & 0) ==> ~(c pow n = & 0)
+</PRE>
+
+<DT><STRONG>POW_INV</STRONG>
+<DD>
+<PRE>
+|- !c. ~(c = & 0) ==> (!n. inv (c pow n) = inv c pow n)
+</PRE>
+
+<DT><STRONG>POW_ABS</STRONG>
+<DD>
+<PRE>
+|- !c n. abs c pow n = abs (c pow n)
+</PRE>
+
+<DT><STRONG>POW_PLUS1</STRONG>
+<DD>
+<PRE>
+|- !e. & 0 |<| e ==> (!n. & 1 |+| & n |*| e |<=| (& 1 |+| e) pow n)
+</PRE>
+
+<DT><STRONG>POW_ADD</STRONG>
+<DD>
+<PRE>
+|- !c m n. c pow (m + n) = c pow m |*| c pow n
+</PRE>
+
+<DT><STRONG>POW_1</STRONG>
+<DD>
+<PRE>
+|- !x. x pow 1 = x
+</PRE>
+
+<DT><STRONG>POW_2</STRONG>
+<DD>
+<PRE>
+|- !x. x pow 2 = x |*| x
+</PRE>
+
+<DT><STRONG>POW_POS</STRONG>
+<DD>
+<PRE>
+|- !x. & 0 |<=| x ==> (!n. & 0 |<=| x pow n)
+</PRE>
+
+<DT><STRONG>POW_LE</STRONG>
+<DD>
+<PRE>
+|- !n x y. & 0 |<=| x /\ x |<=| y ==> x pow n |<=| y pow n
+</PRE>
+
+<DT><STRONG>POW_M1</STRONG>
+<DD>
+<PRE>
+|- !n. abs (-- (& 1) pow n) = & 1
+</PRE>
+
+<DT><STRONG>POW_MUL</STRONG>
+<DD>
+<PRE>
+|- !n x y. (x |*| y) pow n = x pow n |*| y pow n
+</PRE>
+
+<DT><STRONG>REAL_LE_POW2</STRONG>
+<DD>
+<PRE>
+|- !x. & 0 |<=| x pow 2
+</PRE>
+
+<DT><STRONG>ABS_POW2</STRONG>
+<DD>
+<PRE>
+|- !x. abs (x pow 2) = x pow 2
+</PRE>
+
+<DT><STRONG>REAL_POW2_ABS</STRONG>
+<DD>
+<PRE>
+|- !x. abs x pow 2 = x pow 2
+</PRE>
+
+<DT><STRONG>REAL_LE1_POW2</STRONG>
+<DD>
+<PRE>
+|- !x. & 1 |<=| x ==> & 1 |<=| x pow 2
+</PRE>
+
+<DT><STRONG>REAL_LT1_POW2</STRONG>
+<DD>
+<PRE>
+|- !x. & 1 |<| x ==> & 1 |<| x pow 2
+</PRE>
+
+<DT><STRONG>POW_POS_LT</STRONG>
+<DD>
+<PRE>
+|- !x n. & 0 |<| x ==> & 0 |<| x pow SUC n
+</PRE>
+
+<DT><STRONG>POW_2_LE1</STRONG>
+<DD>
+<PRE>
+|- !n. & 1 |<=| & 2 pow n
+</PRE>
+
+<DT><STRONG>POW_2_LT</STRONG>
+<DD>
+<PRE>
+|- !n. & n |<| & 2 pow n
+</PRE>
+
+<DT><STRONG>POW_MINUS1</STRONG>
+<DD>
+<PRE>
+|- !n. -- (& 1) pow (2 * n) = & 1
+</PRE>
+
+<DT><STRONG>POW_LT</STRONG>
+<DD>
+<PRE>
+|- !n x y. & 0 |<=| x /\ x |<| y ==> x pow SUC n |<| y pow SUC n
+</PRE>
+
+<DT><STRONG>POW_EQ</STRONG>
+<DD>
+<PRE>
+|- !n x y. & 0 |<=| x /\ & 0 |<=| y /\ (x pow SUC n = y pow SUC n) ==> (x = y)
+</PRE>
+
+<DT><STRONG>POW_ZERO</STRONG>
+<DD>
+<PRE>
+|- !n x. (x pow n = & 0) ==> (x = & 0)
+</PRE>
+
+<DT><STRONG>POW_ZERO_EQ</STRONG>
+<DD>
+<PRE>
+|- !n x. (x pow SUC n = & 0) = x = & 0
+</PRE>
+
+<DT><STRONG>REAL_SUP_SOMEPOS</STRONG>
+<DD>
+<PRE>
+|- !P.
+     (?x. P x /\ & 0 |<| x) /\ (?z. !x. P x ==> x |<| z) ==>
+     (?s. !y. (?x. P x /\ y |<| x) = y |<| s)
+</PRE>
+
+<DT><STRONG>SUP_LEMMA1</STRONG>
+<DD>
+<PRE>
+|- !P s d.
+     (!y. (?x. (\x. P (x |+| d)) x /\ y |<| x) = y |<| s) ==>
+     (!y. (?x. P x /\ y |<| x) = y |<| s |+| d)
+</PRE>
+
+<DT><STRONG>SUP_LEMMA2</STRONG>
+<DD>
+<PRE>
+|- !P. (?x. P x) ==> (?d x. (\x. P (x |+| d)) x /\ & 0 |<| x)
+</PRE>
+
+<DT><STRONG>SUP_LEMMA3</STRONG>
+<DD>
+<PRE>
+|- !d. (?z. !x. P x ==> x |<| z) ==> (?z. !x. (\x. P (x |+| d)) x ==> x |<| z)
+</PRE>
+
+<DT><STRONG>REAL_SUP_EXISTS</STRONG>
+<DD>
+<PRE>
+|- !P.
+     (?x. P x) /\ (?z. !x. P x ==> x |<| z) ==>
+     (?s. !y. (?x. P x /\ y |<| x) = y |<| s)
+</PRE>
+
+<DT><STRONG>REAL_SUP</STRONG>
+<DD>
+<PRE>
+|- !P.
+     (?x. P x) /\ (?z. !x. P x ==> x |<| z) ==>
+     (!y. (?x. P x /\ y |<| x) = y |<| sup P)
+</PRE>
+
+<DT><STRONG>REAL_SUP_UBOUND</STRONG>
+<DD>
+<PRE>
+|- !P. (?x. P x) /\ (?z. !x. P x ==> x |<| z) ==> (!y. P y ==> y |<=| sup P)
+</PRE>
+
+<DT><STRONG>SETOK_LE_LT</STRONG>
+<DD>
+<PRE>
+|- !P.
+     (?x. P x) /\ (?z. !x. P x ==> x |<=| z) =
+     (?x. P x) /\ (?z. !x. P x ==> x |<| z)
+</PRE>
+
+<DT><STRONG>REAL_SUP_LE</STRONG>
+<DD>
+<PRE>
+|- !P.
+     (?x. P x) /\ (?z. !x. P x ==> x |<=| z) ==>
+     (!y. (?x. P x /\ y |<| x) = y |<| sup P)
+</PRE>
+
+<DT><STRONG>REAL_SUP_UBOUND_LE</STRONG>
+<DD>
+<PRE>
+|- !P. (?x. P x) /\ (?z. !x. P x ==> x |<=| z) ==> (!y. P y ==> y |<=| sup P)
+</PRE>
+
+<DT><STRONG>REAL_ARCH</STRONG>
+<DD>
+<PRE>
+|- !x. & 0 |<| x ==> (!y. ?n. y |<| & n |*| x)
+</PRE>
+
+<DT><STRONG>REAL_ARCH_LEAST</STRONG>
+<DD>
+<PRE>
+|- !y.
+     & 0 |<| y ==>
+     (!x. & 0 |<=| x ==> (?n. & n |*| y |<=| x /\ x |<| & (SUC n) |*| y))
+</PRE>
+
+<DT><STRONG>sum</STRONG>
+<DD>
+<PRE>
+|- !f n m.
+     (sum (n,0) f = & 0) /\ (sum (n,SUC m) f = sum (n,m) f |+| f (n + m))
+</PRE>
+
+<DT><STRONG>SUM_TWO</STRONG>
+<DD>
+<PRE>
+|- !f n p. sum (0,n) f |+| sum (n,p) f = sum (0,n + p) f
+</PRE>
+
+<DT><STRONG>SUM_DIFF</STRONG>
+<DD>
+<PRE>
+|- !f m n. sum (m,n) f = sum (0,m + n) f |-| sum (0,m) f
+</PRE>
+
+<DT><STRONG>ABS_SUM</STRONG>
+<DD>
+<PRE>
+|- !f m n. abs (sum (m,n) f) |<=| sum (m,n) (\n. abs (f n))
+</PRE>
+
+<DT><STRONG>SUM_LE</STRONG>
+<DD>
+<PRE>
+|- !f g m n.
+     (!r. m <= r /\ r < n + m ==> f r |<=| g r) ==>
+     sum (m,n) f |<=| sum (m,n) g
+</PRE>
+
+<DT><STRONG>SUM_EQ</STRONG>
+<DD>
+<PRE>
+|- !f g m n.
+     (!r. m <= r /\ r < n + m ==> (f r = g r)) ==> (sum (m,n) f = sum (m,n) g)
+</PRE>
+
+<DT><STRONG>SUM_POS</STRONG>
+<DD>
+<PRE>
+|- !f. (!n. & 0 |<=| f n) ==> (!m n. & 0 |<=| sum (m,n) f)
+</PRE>
+
+<DT><STRONG>SUM_POS_GEN</STRONG>
+<DD>
+<PRE>
+|- !f m. (!n. m <= n ==> & 0 |<=| f n) ==> (!n. & 0 |<=| sum (m,n) f)
+</PRE>
+
+<DT><STRONG>SUM_ABS</STRONG>
+<DD>
+<PRE>
+|- !f m n. abs (sum (m,n) (\m. abs (f m))) = sum (m,n) (\m. abs (f m))
+</PRE>
+
+<DT><STRONG>SUM_ABS_LE</STRONG>
+<DD>
+<PRE>
+|- !f m n. abs (sum (m,n) f) |<=| sum (m,n) (\n. abs (f n))
+</PRE>
+
+<DT><STRONG>SUM_ZERO</STRONG>
+<DD>
+<PRE>
+|- !f N.
+     (!n. n >= N ==> (f n = & 0)) ==> (!m n. m >= N ==> (sum (m,n) f = & 0))
+</PRE>
+
+<DT><STRONG>SUM_ADD</STRONG>
+<DD>
+<PRE>
+|- !f g m n. sum (m,n) (\n. f n |+| g n) = sum (m,n) f |+| sum (m,n) g
+</PRE>
+
+<DT><STRONG>SUM_CMUL</STRONG>
+<DD>
+<PRE>
+|- !f c m n. sum (m,n) (\n. c |*| f n) = c |*| sum (m,n) f
+</PRE>
+
+<DT><STRONG>SUM_NEG</STRONG>
+<DD>
+<PRE>
+|- !f n d. sum (n,d) (\n. -- (f n)) = -- (sum (n,d) f)
+</PRE>
+
+<DT><STRONG>SUM_SUB</STRONG>
+<DD>
+<PRE>
+|- !f g m n. sum (m,n) (\n. f n |-| g n) = sum (m,n) f |-| sum (m,n) g
+</PRE>
+
+<DT><STRONG>SUM_SUBST</STRONG>
+<DD>
+<PRE>
+|- !f g m n.
+     (!p. m <= p /\ p < m + n ==> (f p = g p)) ==> (sum (m,n) f = sum (m,n) g)
+</PRE>
+
+<DT><STRONG>SUM_NSUB</STRONG>
+<DD>
+<PRE>
+|- !n f c. sum (0,n) f |-| & n |*| c = sum (0,n) (\p. f p |-| c)
+</PRE>
+
+<DT><STRONG>SUM_BOUND</STRONG>
+<DD>
+<PRE>
+|- !f k m n.
+     (!p. m <= p /\ p < m + n ==> f p |<=| k) ==> sum (m,n) f |<=| & n |*| k
+</PRE>
+
+<DT><STRONG>SUM_GROUP</STRONG>
+<DD>
+<PRE>
+|- !n k f. sum (0,n) (\m. sum (m * k,k) f) = sum (0,n * k) f
+</PRE>
+
+<DT><STRONG>SUM_1</STRONG>
+<DD>
+<PRE>
+|- !f n. sum (n,1) f = f n
+</PRE>
+
+<DT><STRONG>SUM_2</STRONG>
+<DD>
+<PRE>
+|- !f n. sum (n,2) f = f n |+| f (n + 1)
+</PRE>
+
+<DT><STRONG>SUM_OFFSET</STRONG>
+<DD>
+<PRE>
+|- !f n k. sum (0,n) (\m. f (m + k)) = sum (0,n + k) f |-| sum (0,k) f
+</PRE>
+
+<DT><STRONG>SUM_REINDEX</STRONG>
+<DD>
+<PRE>
+|- !f m k n. sum (m + k,n) f = sum (m,n) (\r. f (r + k))
+</PRE>
+
+<DT><STRONG>SUM_0</STRONG>
+<DD>
+<PRE>
+|- !m n. sum (m,n) (\r. & 0) = & 0
+</PRE>
+
+<DT><STRONG>SUM_PERMUTE_0</STRONG>
+<DD>
+<PRE>
+|- !n p.
+     (!y. y < n ==> (?!x. x < n /\ (p x = y))) ==>
+     (!f. sum (0,n) (\n. f (p n)) = sum (0,n) f)
+</PRE>
+
+<DT><STRONG>SUM_CANCEL</STRONG>
+<DD>
+<PRE>
+|- !f n d. sum (n,d) (\n. f (SUC n) |-| f n) = f (n + d) |-| f n
+</PRE>
+
+</DL>
+
+
+<HR>

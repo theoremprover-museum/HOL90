@@ -1,0 +1,246 @@
+head	1.1;
+access;
+symbols
+	HOL97:1.1.0.2;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	97.07.15.12.54.05;	author kxs;	state dead;
+branches
+	1.1.2.1;
+next	;
+
+1.1.2.1
+date	97.07.15.12.54.06;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@file tabLib.sml was initially added on branch HOL97.
+@
+text
+@@
+
+
+1.1.2.1
+log
+@The Tableaux library now loads under CM. The entrypoint is the structure
+"tabLib".
+@
+text
+@a0 206
+(* ========================================================================= *)
+(* Workhorse first order automation: first order tableaux with equality.     *)
+(* ========================================================================= *)
+
+structure tabLib : tabLib_sig = 
+struct
+
+ type term     = CoreHol.Term.term
+ type thm      = CoreHol.Thm.thm
+ type tactic   = Abbrev.tactic
+ type conv     = Abbrev.conv
+
+open liteLib folLib refuteLib;
+open Exception Lib LiteLib CoreHol;
+open Term Dsyntax Thm Conv Drule Equal;
+open Trace Canon FOL FOL_HOL Psyntax;
+
+infix THENQC;
+    
+fun WRAP_ERR x = STRUCT_WRAP "TAB" x;
+
+val _ = say "Adding Tableaux decision procedure...";
+    
+
+val inferences = ref 0;; (* Inference counter   *)
+
+(* ------------------------------------------------------------------------- *)
+(* Control cacheing of continuations.                                        *)
+(* ------------------------------------------------------------------------- *)
+
+val cache = ref true;;
+
+(* ------------------------------------------------------------------------- *)
+(* Cacheing continuations -- just an idea...                                 *)
+(* ------------------------------------------------------------------------- *)
+
+fun cachecont f =
+    let val memory = ref [] 
+    in fn x =>
+	if mem x (!memory) then failwith "cachecont"
+	else (memory := x::(!memory); f x)
+    end;;
+
+(* ------------------------------------------------------------------------- *)
+(* Type for proof logging by tableaux.                                       *)
+(* ------------------------------------------------------------------------- *)
+
+datatype prooflog = 
+    Literal
+  | Requeue
+  | Conjunctive
+  | Disjunctive
+  | Universal of int;;
+
+(* ------------------------------------------------------------------------- *)
+(* Basic tableau procedure on shadow syntax.                                 *)
+(* ------------------------------------------------------------------------- *)
+
+val varlim = ref 0;;
+
+fun tab (insts_offset as (insts,offset)) (forms,lits,fvs) cont =
+  if fvs > (!varlim) then failwith "tab: Overflow" else
+      let val fm = hd forms and unexp = tl forms 
+      in case fm of
+	  Conj(f1,f2) =>
+	      let val (inso,pr) = 
+		  tab insts_offset (f1::f2::unexp,lits,fvs) cont 
+	      in (inso,Conjunctive::pr)
+	      end
+	| Disj(f1,f2) =>
+	      let val (ino,pr) = tab insts_offset (f1::unexp,lits,fvs)
+		  (cachecont(fn io => tab io (f2::unexp,lits,fvs) cont)) 
+	      in (ino,Disjunctive::pr)
+	      end
+	| Forall(v,f) =>
+	      let val v' = v + offset 
+		  val f' = form_inst [(Var v',v)] f 
+		  val (ins,pr) = tab (insts,offset+offinc)
+		      (f'::(unexp@@[fm]),lits,fvs+1) cont
+	      in (ins,(Universal(v')::pr))
+	      end
+	| Atom(p,a) =>
+	      let val posslits = map snd (filter (fn x => (fst x = (~p))) lits) 
+	      in tryfind (fn l =>
+			  let val i = rev_itlist2 fol_unify a l insts 
+			      val (jo,pr) = cont (i,offset)
+			  in (jo,Literal::pr)
+			  end) posslits
+		  handle HOL_ERR _ => 
+		      let val (inso,pr) = tab insts_offset (unexp,(p,a)::lits,fvs) cont
+		      in  (inso,Requeue::pr)
+		      end
+	      end
+      end;;
+
+(* ------------------------------------------------------------------------- *)
+(* Outer wrapper, with iterative deepening.                                  *)
+(* ------------------------------------------------------------------------- *)
+
+fun tab_prove ftm =
+    let val arg = ([ftm],[],0) 
+	val _ = varlim := 0
+	fun basic_tab_prove n =
+	    let val _ = varlim := n;
+		val _ = trace(0,TEXT ("Trying varlim = "^(int_to_string n)))
+	    in tab ([],2 * offinc) arg (fn i => (i,[]))
+	    end
+	fun tab_prove' n =
+	    if n > 40 then failwith "tab_prove: overflow"
+	    else basic_tab_prove n
+		handle HOL_ERR _ => tab_prove' (n + 1)
+    in tab_prove' 0
+    end
+    handle e => WRAP_ERR("tab_prove",e);
+    
+
+(* ------------------------------------------------------------------------- *)
+(* Reconstruct a proof in HOL from the tableau log.                          *)
+(* ------------------------------------------------------------------------- *)
+
+fun tableau_to_hol insts pr tms lits =
+    let val rpr = tl pr 
+    in case (hd pr) of
+	Literal =>
+	    let val tm = hd tms 
+	    in ((if is_neg tm then EQ_MP (EQF_INTRO(ASSUME tm)) (ASSUME (rand tm))
+		else EQ_MP (EQF_INTRO(ASSUME(mk_neg tm))) (ASSUME tm)),
+		rpr)
+	    end
+      | Requeue => tableau_to_hol insts rpr (tl tms) ((hd tms)::lits)
+      | Conjunctive =>
+	    let val (t1,t2) = dest_conj (hd tms) 
+		val (th,prem) = 
+		    tableau_to_hol insts rpr (t1::t2::(tl tms)) lits 
+		val tha = ASSUME (hd tms)
+	    in (PROVE_HYP (CONJUNCT2 tha) (PROVE_HYP (CONJUNCT1 tha) th),prem)
+	    end
+      | Disjunctive =>
+	    let val (t1,t2) = dest_disj (hd tms)
+		val rtms = tl tms 
+		val (th1,prem) = tableau_to_hol insts rpr (t1::rtms) lits 
+		val (th2,pret) = tableau_to_hol insts prem (t2::rtms) lits 
+	    in (DISJ_CASES (ASSUME (hd tms)) th1 th2,pret)
+	    end
+      | Universal(i) =>
+	    let val i' = (rev_assoc i insts) handle Subscript => Var(i) 
+		val th = ASSUME (hd tms) 
+		val ith = SPEC (hol_of_term i') th 
+		val (rth,prem) = tableau_to_hol insts rpr
+		    ((concl ith)::(tl tms)@@[hd tms]) lits
+	    in (PROVE_HYP ith rth,prem)
+	    end
+    end
+    handle e => WRAP_ERR("tableau_to_hol",e);
+
+(* ------------------------------------------------------------------------- *)
+(* Perform tableau refutation of an term (in NNF).                           *)
+(* ------------------------------------------------------------------------- *)
+
+fun SIMPLE_TABLEAU_REFUTE tm =
+    let val lconsts = free_vars tm 
+	val ftm = fol_of_form [] lconsts tm 
+	val ((insts,offset),proof) = tab_prove ftm 
+	val (thm,rpr) = tableau_to_hol insts proof [tm] [] 
+    in
+	if rpr = [] then thm else failwith "SIMPLE_TABLEAU_REFUTE"
+    end
+    handle e => WRAP_ERR("SIMPLE_TABLEAU_REFUTE",e);
+
+(* ------------------------------------------------------------------------- 
+ * Overall tableau procedure: proves a term.                                 
+ * 
+ *  
+ * val PROP_3 = prove
+ *  ((--`~(p ==> q) ==> q ==> p`--),
+ *   TAB_TAC);;
+ * 
+ * val MPRED_19 = prove
+ *  ((--`?x:'a. !y z. (P y ==> Q z) ==> P x ==> Q x`--),
+ *   TAB_TAC);;
+ * 
+ * 
+ * ------------------------------------------------------------------------- *)
+
+
+val TAB = 
+    (fn tm =>
+	 ((* reset_vars(); reset_consts(); *)
+	 let val (avs,t) = strip_forall tm
+	     val th = REFUTE (TOP_DEPTH_QCONV BETA_CONV THENQC 
+			      UNLAMB_CONV) FOL_CONV false
+		 (CONV_THEN_REFUTE DISJPATH_CONV SIMPLE_TABLEAU_REFUTE) t 
+	 in GENL avs th
+	 end));;
+
+fun TAB_CONV ths =
+  CONV_OF_PROVER TAB ths;;
+
+fun TAB_TAC ths (asl,w) =
+    CONV_TAC (TAB_CONV (ths@@ map ASSUME asl)) (asl,w);;
+
+val _ = say "done!\n";
+
+end (* struct *)
+
+
+@

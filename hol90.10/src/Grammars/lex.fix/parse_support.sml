@@ -1,0 +1,530 @@
+functor PARSE_SUPPORT (structure Lexis: Lexis_sig
+                       structure Preterm : Preterm_sig
+                       structure Dsyntax : Dsyntax_sig
+                       sharing
+                         Preterm.Term = Dsyntax.Term) :Parse_support_sig =
+struct
+structure Preterm = Preterm;
+structure Term = Preterm.Term;
+open Preterm;
+open Term;
+open Type;
+
+fun PARSE_SUPPORT_ERR{function,message} = 
+              HOL_ERR{origin_structure = "Parse_support",
+                      origin_function = function,
+                      message = message}
+
+(*---------------------------------------------------------------------------
+ * For defining recursive concrete types.
+ *---------------------------------------------------------------------------*)
+datatype arg = Rec_occ | Hty of hol_type;
+
+(*---------------------------------------------------------------------------
+ * The three kinds of objects parsable by the hol_yak file: preterms, types
+ * and datatype declarations.
+ *---------------------------------------------------------------------------*)
+datatype parse = 
+     PTM of Preterm.preterm
+   | TY of hol_type
+   | TY_SPEC of {ty_name: string,
+                 clauses: {constructor:string, args:arg list} list}
+
+
+
+type env = {scope : (string * hol_type) list, 
+            free  : (string * hol_type) list};
+
+fun lookup_fvar(s,({free,...}:env)) = assoc s free;
+fun lookup_bvar(s,({scope,...}:env)) = assoc s scope;
+fun add_free(b,{scope,free}) = {scope=scope, free=b::free}
+fun add_scope(b,{scope,free}) = {scope=b::scope, free=free};
+
+val empty_env = {scope = [], free = []};
+
+type preterm_in_env = env -> (Preterm.preterm * env)
+
+(*---------------------------------------------------------------------------
+ * Denotes a lambda-bound variable. These are treated as functions from
+ * preterms (bodies) to preterm (abstractions).
+ *---------------------------------------------------------------------------*)
+type bvar_in_env = env -> (Preterm.preterm -> Preterm.preterm) * env
+
+(*---------------------------------------------------------------------------
+ * Denotes a variable bound by a binder ("\\" or a constant, e.g., 
+ * "!", "?", "@"). Hence, it takes a binder and returns a function from 
+ * the body to a preterm (plus of course, any changes to the env).
+ *---------------------------------------------------------------------------*)
+type binder_in_env = string -> bvar_in_env
+
+
+
+
+(*---------------------------------------------------------------------------
+ * Top level parse terms 
+ *---------------------------------------------------------------------------*)
+fun make_preterm tm_in_e = PTM(fst(tm_in_e empty_env))
+
+
+(*---------------------------------------------------------------------------
+ * Antiquotes 
+ *---------------------------------------------------------------------------*)
+fun make_aq tm E = (Preterm.Antiq tm, E)
+
+
+(*---------------------------------------------------------------------------
+ * Getting constants from the symbol table
+ *---------------------------------------------------------------------------*)
+fun gen_const s = 
+   let val Preterm.Term.Const(c as {Name,Ty}) = Term.lookup_const s
+   in Preterm.Const 
+        (case (Type.rename_tv Ty)
+           of NO_CHANGE => c
+            |  (CHANGED ty) => {Name = Name, Ty = ty})
+   end;
+
+
+
+(*---------------------------------------------------------------------------
+ * Binding occurrences of variables
+ *---------------------------------------------------------------------------*)
+fun make_binding_occ s "\\" E = 
+     let val ntv = new_type_var()
+     in ((fn b => Preterm.Abs{Bvar = Preterm.Var{Name = s, Ty = ntv}, 
+                              Body = b}),
+         add_scope((s,ntv),E))
+     end
+  | make_binding_occ s binder E =
+     let val ntv = new_type_var()
+     in ((fn b => Preterm.Comb{Rator=gen_const binder,
+                             Rand=Preterm.Abs{Bvar=Preterm.Var{Name=s,Ty=ntv},
+                                              Body = b}}),
+         add_scope((s,ntv),E))
+     end;
+
+fun make_aq_binding_occ aq "\\" E = 
+     ((fn b => Preterm.Abs{Bvar=Preterm.Antiq aq,Body=b}), E)
+  | make_aq_binding_occ aq binder E = 
+        ((fn b => Preterm.Comb{Rator = gen_const binder,
+                               Rand = Preterm.Abs{Bvar = Preterm.Antiq aq,
+                                                  Body = b}}),  E);
+
+(*---------------------------------------------------------------------------
+ * Free occurrences of variables in the body
+ *---------------------------------------------------------------------------*)
+fun make_free_var (s,E) =
+   (Preterm.Var{Name = s, Ty = lookup_fvar(s,E)}, E)
+   handle NOT_FOUND 
+   => let val tyv = new_type_var()
+      in (Preterm.Var{Name = s, Ty = tyv}, add_free((s,tyv),E))
+      end;
+
+(*---------------------------------------------------------------------------
+ * Bound occurrences in the body
+ *---------------------------------------------------------------------------*)
+fun make_bvar (s,E) =(Preterm.Var{Name = s, Ty = lookup_bvar(s,E)},E);
+
+
+(*---------------------------------------------------------------------------
+ * Constants not in the symbol table: numeric and string literals.
+ *---------------------------------------------------------------------------*)
+
+(*---------------------------------------------------------------------------
+ * Makes the assumption that s is already quoted
+ *---------------------------------------------------------------------------*)
+fun make_string s E = 
+   let val atom = {Name = s, Ty = Type.mk_type{Tyop="string",Args=[]}}
+       val tag = if (Globals.strings_defined()) 
+                 then Preterm.Const 
+                 else Preterm.Var
+   in
+   (tag atom, E)
+   end;
+
+
+(* Atoms *)
+(*---------------------------------------------------------------------------
+ * Identifiers work as follows: look for the string in the scope;
+ * if it's there, put the var. Otherwise, the string might be a constant;
+ * look in the symbol table. If it's there, rename any type variables in 
+ * its binding. Then make a Const out of it. Otherwise, it's not in the scope
+ * and not in the symtab, hence is a free variable. Generate a new type
+ * variable and bind the term variable to it in E; also we return a var 
+ * that has the new type variable as its type.
+ *
+ * Free vars are placed in the "free" part of the environment; this is a
+ * set. Bound vars are placed at the front of the "scope". When we come out
+ * of an Abs, we return the scope in effect when entering the Abs, but the
+ * "free"s include new ones found in the body of the Abs.
+ *
+ * Note: this should check whether the prospective identifier is a 
+ * reserved word  or not.
+ *---------------------------------------------------------------------------*)
+fun make_atom s E =
+   make_bvar(s,E)
+   handle NOT_FOUND
+   => (gen_const s, E)
+      handle NOT_FOUND
+      => if (Lexis.is_num_literal s)
+         then if (Globals.nums_defined())
+              then (Preterm.Const
+                      {Name=s,  Ty=Type.mk_type{Tyop="num",Args=[]}}, E)
+              else make_free_var (s,E)
+         else make_free_var (s,E);
+
+
+(*---------------------------------------------------------------------------
+ * Combs 
+ *---------------------------------------------------------------------------*)
+fun list_make_comb (tm1::(rst as (_::_))) E =
+   rev_itlist (fn tm => fn (trm,e) => 
+                 let val (tm',e') = tm e
+                 in (Preterm.Comb{Rator = trm, Rand = tm'}, e')
+                 end)
+              rst (tm1 E) ;
+
+                                 
+(*---------------------------------------------------------------------------
+ * Abstractions, iterated and vstructs.
+ * The thing to know about parsing abstractions is that an abstraction is 
+ * a function from the string identifying the binder to an env to a 
+ * pair. The first member of the pair is a function that will take the body
+ * of the abstraction and produce a lambda term, essentially by clapping 
+ * on whatever variables, or applying whatever constants necessary. The second
+ * member of the pair is the environment previous to entering the abstraction
+ * plus whatever new free variables were found in the body of the abstraction.
+ *
+ * Could just return (F tm', E), except that we may add free variables
+ * found in tm to E.
+ *---------------------------------------------------------------------------*)
+
+fun bind_term binder alist tm (E as {scope=scope0,...}:env) =
+   let val (E',F) = 
+          rev_itlist (fn a => fn (e,f) => 
+                        let val (g,e') = a binder e
+                        in (e', f o g)
+                        end)
+                     alist (E,I)
+       val (tm',({free=free1,...}:env)) = tm E'
+   in
+   (F tm', {scope=scope0,free=free1})
+   end;
+
+
+fun restr_binder s = 
+   assoc s (Dsyntax.binder_restrictions())
+   handle NOT_FOUND 
+   => raise PARSE_SUPPORT_ERR{function = "restr_binder",
+                      message = "no restriction associated with "^Lib.quote s}
+
+fun bind_restr_term binder vlist restr tm (E as {scope=scope0,...}:env) =
+   let fun replicate_rbinder e = 
+            (gen_const (restr_binder binder),e)
+            handle NOT_FOUND
+            => raise PARSE_SUPPORT_ERR{function = "bind_restr_term",
+             message = "Can't find constant associated with "^Lib.quote binder}
+       val (E',F) = 
+          rev_itlist (fn v => fn (e,f)
+             => let val (prefix,e') = list_make_comb[replicate_rbinder,restr] e
+                val (g,e'') = v "\\" e'
+                fun make_cmb ptm = Preterm.Comb{Rator = prefix, Rand = ptm}
+            in (e'', f o make_cmb o g)
+            end)
+         vlist (E,I)
+       val (tm',({free=free1,...}:env)) = tm E'
+   in
+   (F tm', {scope=scope0,free=free1})
+   end;
+
+
+fun make_vstruct bv_list binder E = 
+   let fun loop ([],_) = raise PARSE_SUPPORT_ERR{function="make_vstruct",
+                                        message = "impl. error, empty vstruct"}
+         | loop ([v],E) = v "\\" E
+         | loop ((v::rst),E) = 
+               let val (f,e) = v "\\" E
+                   val (F,E') = loop(rst,e)
+               in ((fn b => Preterm.Comb{Rator = gen_const "UNCURRY",
+                                         Rand = f(F b)}), E')
+               end
+       val (F,E') = loop(bv_list,E)
+   in
+   case binder 
+     of "\\" => (F,E')
+      | _ => ((fn b => Preterm.Comb{Rator=gen_const binder,Rand=F b}), E')
+   end;
+
+
+local
+fun domty(Tyapp{Tyop="fun",Args=[ty,_]}) = ty
+fun ranty(Tyapp{Tyop="fun",Args=[_,ty]}) = ty
+fun bv_type(Preterm.Abs{Bvar = Preterm.Var{Ty, ...},...}) = Ty
+  | bv_type(Preterm.Comb{Rator = Preterm.Const{Name = "UNCURRY", Ty},...}) = 
+          domty(ranty Ty)
+  | bv_type(Preterm.Comb{Rator = Preterm.Const{Name,Ty},...}) = 
+      if (Term.is_binder Name)
+      then domty(domty Ty)
+      else raise PARSE_SUPPORT_ERR{function = "make_constrained_vstruct",
+                                      message = Lib.quote Name^" not a binder"}
+  | bv_type _ = raise PARSE_SUPPORT_ERR{function = "make_constrained_vstruct",
+					message = "bad_type"}
+in
+fun make_constrained_vstruct bv ty s E =
+   let val (f,E') = bv s E
+   in ((fn tm => let val bv_closed = f tm
+                 in (unify (bv_type bv_closed) ty; bv_closed) end), E')
+   end
+end;
+
+
+
+(*---------------------------------------------------------------------------
+ * Let bindings 
+ *---------------------------------------------------------------------------*)
+fun make_let bindings tm env =
+   let val {body_bvars, args, E} =
+          itlist (fn (bvs,arg) => fn {body_bvars,args,E} =>
+                    let val (b::rst) = bvs
+                        val (arg',E') = case rst
+                                          of [] => arg E
+                                           | L => bind_term "\\" L arg E
+                    in
+                    {body_bvars = b::body_bvars, args = arg'::args, E = E'}
+                    end)
+                 bindings {body_bvars = [], args = [], E = env}
+       val (core,E') = bind_term "\\" body_bvars tm E
+   in
+   ( rev_itlist (fn arg => fn core => 
+                   Preterm.Comb{Rator = Preterm.Comb{Rator=gen_const "LET",
+                                                     Rand = core},
+                                Rand = arg})
+                args core,
+     E')
+   end
+   handle _ => raise PARSE_SUPPORT_ERR{function = "make_let",
+				       message = "bad let structure"};
+
+
+(*---------------------------------------------------------------------------
+ * Enumerated lists and sets (nearly identical treatment)
+ *
+ * This is a bit tricky in the case that alist = [], for we still do a
+ * make_atom "CONS". But we know that "CONS" is already in the symtab, hence
+ * make_atom "CONS" E = (Const{Name = "CONS", Ty = ...},E') and E = E'.
+ * So nothing new can get added to the environment. When it builds the 
+ * environment, it goes right-to-left in the list, so maybe error messages
+ * will be puzzling.
+ *---------------------------------------------------------------------------*)
+fun make_list alist E =
+   let val (cons,E') = make_atom "::" E   
+   in
+   itlist (fn h => fn (L,E) =>
+             let val (h',E') = h E
+             in (Preterm.Comb{Rator = Preterm.Comb{Rator = cons, Rand = h'},
+                              Rand = L}, E')
+             end)
+          alist (make_atom "NIL" E')
+    end;
+
+fun make_set_const fname s E = 
+   (gen_const s,E)
+   handle CANT_FIND =>
+    raise PARSE_SUPPORT_ERR{function = fname,
+                    message="The theory "^Lib.quote "set"^" is not loaded"};
+
+(*---------------------------------------------------------------------------
+ * You can't make a set unless the theory of sets is an ancestor. 
+ *  The calls to make_set_const ensure this.
+ *---------------------------------------------------------------------------*)
+fun make_set [] E = make_set_const "make_set" "EMPTY" E
+  | make_set alist E =
+      let val (insert,_) = make_set_const "make_set" "INSERT" []
+          val empty_in_env = make_set_const "make_set" "EMPTY" E
+      in itlist(fn h => fn (L,E) =>
+                  let val (h',E') = h E
+                  in (Preterm.Comb{Rator = Preterm.Comb{Rator = insert, 
+                                                        Rand = h'},
+                                   Rand = L}, E')
+                  end)
+               alist empty_in_env
+      end;
+
+
+(*---------------------------------------------------------------------------
+ * Set abstractions {tm1 | tm2}. The complicated rigamarole at the front is 
+ * so that new type variables only get made once per free var, although we 
+ * compute the free vars for tm1 and tm2 separately.
+ *
+ * Warning: apt not to work if you want to "antiquote in" free variables that
+ * will subsequently get bound in the set abstraction.
+ *---------------------------------------------------------------------------*)
+fun make_set_abs (tm1,tm2) (E as {scope=scope0,...}:env) = 
+   let val (_,(e1:env)) = tm1 empty_env
+       val (_,(e2:env)) = tm2 empty_env
+       val (_,(e3:env)) = tm2 e1
+       val tm1_fv_names = map fst (#free e1)
+       val tm2_fv_names = map fst (#free e2)
+       val fv_names = intersect tm1_fv_names tm2_fv_names
+       val init_fv = #free e3
+   in
+   case (gather (fn (name,_) => mem name fv_names) init_fv)
+     of [] => raise PARSE_SUPPORT_ERR{function="make_set_abs",
+                                message="no free variables in set abstraction"}
+      | quants => 
+         let val quants' = 
+           map (fn (bnd as (Name,Ty)) =>
+                     (fn (s:string) => fn E => 
+                       ((fn b => Preterm.Abs{Bvar=Preterm.Var{Name=Name,Ty=Ty},
+                                             Body=b}),
+                                add_scope(bnd,E))))
+               (rev quants) (* make_vstruct expects reverse occ. order *)
+         in list_make_comb
+               [(make_set_const "make_set_abs" "GSPEC"),
+                (bind_term "\\" [make_vstruct quants']
+                                (list_make_comb[make_atom",",tm1,tm2]))] E
+         end
+   end;
+
+
+(*---------------------------------------------------------------------------
+ * Type constraints
+ *---------------------------------------------------------------------------*)
+fun make_constrained tm ty E =
+   let val (tm',E') = tm E
+   in (Preterm.Constrained(tm', ty), E')
+   end;
+
+
+
+(*---------------------------------------------------------------------------
+ * Types 
+ *---------------------------------------------------------------------------*)
+
+fun make_atomic_type s = Type.mk_type{Tyop = s, Args = []}
+
+fun make_type_app (s,tylist) = Type.mk_type{Tyop = s, Args = tylist}
+
+
+
+(*---------------------------------------------------------------------------
+ * Clauses in type specifications
+ *
+ * Recursive occurrences of the defined type are marked with (Stv ~1), a 
+ * nonsense type variable, in order to stay within the the type of 
+ * hol_types (this saves on creating a new type built from Rec_occs and 
+ * normal hol_types).
+ *---------------------------------------------------------------------------*)
+val rec_occ = Stv ~1
+fun make_type_clause {constructor, args} =
+   let fun check (Tyapp{Args,...}) =  (map check Args; ())
+         | check ty = 
+             if (ty = rec_occ)
+             then raise PARSE_SUPPORT_ERR{function="make_type_clause.check",
+                                message="recursive occurrence of defined type \
+                                        \is deeper than the first level"}
+             else ()
+       fun munge (ty as Tyapp{Args,...}) = (map check Args; Hty ty)
+         | munge ty = if (ty = rec_occ)
+                      then Rec_occ
+                      else Hty ty
+     in {constructor=constructor, args = map munge args}
+     end;
+
+
+
+(*---------------------------------------------------------------------------
+ * Precedence. For info, see doc/syntax.html
+ *---------------------------------------------------------------------------*)
+
+val dummy_least_infix = Preterm.Const{Name = "", Ty = Stv ~1}
+
+fun prec (tm as Preterm.Const{Name, ...}) =
+        if (tm = dummy_least_infix) then ~1 else Term.prec_of_term Name
+  | prec (Preterm.Constrained(tm,_)) = prec tm;
+
+fun is_infix_term (Preterm.Const{Name,...}) = Term.is_infix Name
+  | is_infix_term (Preterm.Constrained(tm,_)) = is_infix_term tm
+  | is_infix_term _ = false
+
+fun is_neg(Preterm.Const{Name = "~",...}) = true
+  | is_neg(Preterm.Constrained(tm,_)) = is_neg tm
+  | is_neg _ = false
+
+
+fun list_make_list tmlist E =
+   let val (L,E') = 
+     rev_itlist(fn tm => fn (L,E) =>
+                  let val (tm',E') = tm E
+                  in ((tm'::L),E')
+                  end) tmlist ([],E)
+   in (rev L, E')
+   end;
+
+fun G [] (f,arg) = [(f,arg)]
+  | G (stk as ((g,tm)::stk')) (f,arg) = 
+        if (prec g >= prec f)
+        then let val tm' = Preterm.Comb{Rator = Preterm.Comb{Rator=g,Rand=arg},
+                                        Rand = tm}
+             in G stk' (f,tm')
+             end
+        else ((f,arg)::stk);
+
+local
+fun lc [] tm = tm
+  | lc (a::rst) tm = lc rst (Preterm.Comb{Rator = tm, Rand = a})
+fun list_comb (a::L) = lc L a
+  | list_comb [] = raise PARSE_SUPPORT_ERR{function="prec_parse",
+                                message = "an infix is being used as a prefix"}
+fun make_neg tm [] = tm
+  | make_neg tm L = Preterm.Comb{Rator = tm, Rand = list_comb L}
+in
+fun prec_parse [f] E = f E
+  | prec_parse cl_list E =
+   let val (tm_list,E') = list_make_list cl_list E
+       fun pass tm (L,stk) =
+           if (is_infix_term tm)
+           then ([], G stk (tm, list_comb L))
+           else if (is_neg tm) then ([make_neg tm L], stk)
+                                else (tm::L, stk)
+       val (L,stk) = itlist pass tm_list ([],[])
+       val [(_,tm)] = G stk (dummy_least_infix,list_comb L)
+   in
+   (tm,E')
+   end
+end;
+
+
+
+(*---------------------------------------------------------------------------
+ * Used in hol_lex. Could possibly be done through make_atom.
+ *---------------------------------------------------------------------------*)
+val is_binder = Term.is_binder;
+
+fun extract_type_antiq(Preterm.Term.ty_antiq ty) = ty
+  | extract_type_antiq _ = raise PARSE_SUPPORT_ERR
+                                 {function = "extract_type_antiq",
+                                  message = "Bad syntax in type antiquote"};
+
+
+
+(*---------------------------------------------------------------------------
+ * Support for people hacking the HOL lexer/parser. To be invoked in a
+ * yak process, which hol90 is not.
+ *
+  fun mk_hol_parser hol_root_dir lex_file yak_file =
+     let val sig_sed = hol_root_dir^"tools/sig.sed"
+         val sml_sed = hol_root_dir^"tools/sml.sed"
+         val yak_sig = yak_file^".sig"
+         val yak_sml = yak_file^".sml"
+     in
+       LexGen.lexGen lex_file; 
+       ParseGen.parseGen yak_file;
+       System.system ("sed -f "^sig_sed^" "^yak_sig^" > tmp1");
+       System.system ("mv tmp1 "^yak_sig);
+       System.system ("sed -f "^sml_sed^" "^yak_sml^" > tmp1");
+       System.system ("mv tmp1 "^yak_sml)
+     end;
+ *---------------------------------------------------------------------------*)
+
+
+end; (* PARSE_SUPPORT *)

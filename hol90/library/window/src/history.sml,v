@@ -1,0 +1,206 @@
+head	1.1;
+branch	1.1.1;
+access;
+symbols
+	HOL97:1.1.1.1.0.6
+	bpHOL97:1.1.1.1
+	hol90_9_alpha:1.1.1.1
+	hol90_pre8_for_multiple_compilers:1.1.1.1.0.4
+	hol90_pre8_after_donalds_separate_compilation_changes:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	95.10.16.13.33.12;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.33.12;	author rjb;	state Exp;
+branches
+	1.1.1.1.6.1;
+next	;
+
+1.1.1.1.6.1
+date	97.07.15.13.09.27;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@(*--------------------------------------------------------------------------*)
+(*                  Copyright (c) Jim Grundy 1992                           *)
+(*                  All rights reserved                                     *)
+(*                                                                          *)
+(* Jim Grundy, hereafter referred to as `the Author', retains the copyright *)
+(* and all other legal rights to the Software contained in this file,       *)
+(* hereafter referred to as `the Software'.                                 *)
+(*                                                                          *)
+(* The Software is made available free of charge on an `as is' basis. No    *)
+(* guarantee, either express or implied, of maintenance, reliability,       *)
+(* merchantability or suitability for any purpose is made by the Author.    *)
+(*                                                                          *)
+(* The user is granted the right to make personal or internal use of the    *)
+(* Software provided that both:                                             *)
+(* 1. The Software is not used for commercial gain.                         *)
+(* 2. The user shall not hold the Author liable for any consequences        *)
+(*    arising from use of the Software.                                     *)
+(*                                                                          *)
+(* The user is granted the right to further distribute the Software         *)
+(* provided that both:                                                      *)
+(* 1. The Software and this statement of rights are not modified.           *)
+(* 2. The Software does not form part or the whole of a system distributed  *)
+(*    for commercial gain.                                                  *)
+(*                                                                          *)
+(* The user is granted the right to modify the Software for personal or     *)
+(* internal use provided that all of the following conditions are observed: *)
+(* 1. The user does not distribute the modified software.                   *)
+(* 2. The modified software is not used for commercial gain.                *)
+(* 3. The Author retains all rights to the modified software.               *)
+(*                                                                          *)
+(* Anyone seeking a licence to use this software for commercial purposes is *)
+(* invited to contact the Author.                                           *)
+(*--------------------------------------------------------------------------*)
+(*==========================================================================*)
+(* CONTENTS: interactive front end to the window infernce library.          *)
+(*==========================================================================*)
+(*$Id: history.sml,v 4.1 1994/09/10 03:42:51 jim Exp $*)
+
+(* A General History Mechanism is defined.                                  *)
+abstype 'a history = HIST of (    (unit -> 'a)
+                              * (('a -> 'a) -> unit)
+                              * (unit -> unit)
+                              * (unit -> unit)
+                              * (int -> unit))
+with
+    (* Create a new history with intial size size and state state.          *)
+    fun new_history size state =
+        let val len = ref size
+            and past = ref [state]
+            and future = ref []
+        in
+            assert (fn n => n >= 1) size;
+            HIST(   (* present *)
+                fn () => hd (!past)
+            ,   (* do *)    
+                fn f =>
+                    let val (hist as (pres::_)) = !past in
+                        past := front (!len) ((f pres)::hist);
+                        future := []
+                    end
+            ,   (* undo *)
+                fn () => 
+                    let val (pres::old) = !past in
+                        assert (not o null) old;
+                        past := old;
+                        future := pres::(!future)
+                    end handle _ =>
+                            WIN_ERR{function="undo",message="nothing done"}
+            ,   (* redo *)
+                fn () =>
+                    let val (new::newer) = (!future) in
+                        past := front (!len) (new::(!past));
+                        future := newer
+                    end handle _ =>
+                            WIN_ERR{function="redo",message="nothing to redo"}
+            ,   (* set size *)
+                fn size => (
+                    assert (fn n => n >= 1) size;
+                    len := size) handle _ =>
+                        WIN_ERR{function="set_size",message="at least 1"}
+            )
+        end handle _ => WIN_ERR{function="set_size",message="at least 1"}
+    (* Return the current state of the history.                             *)
+    and present (HIST (f,_,_,_,_)) = f ()
+    (* Makes (event (present hist)) the current state                       *)
+    and dodo (HIST (_,f,_,_,_)) = f
+    (* Undoes the last event.                                               *)
+    and undo (HIST (_,_,f,_,_)) = f ()
+    (* Undoes an undo, but only if no interveening event has occured.       *)
+    and redo (HIST (_,_,_,f,_)) = f ()
+    (* Set the maximum number of states saved, and hence that can be undone.*)
+    and set_size (HIST (_,_,_,_,f)) = f
+end;
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@
+
+
+1.1.1.1.6.1
+log
+@The window library loads under CM. The entrypoint is the structure
+windowLib.
+@
+text
+@d35 1
+a35 1
+(* CONTENTS: interactive front end to the window inference library.         *)
+d37 1
+a37 1
+(*$Id: history.sml,v 1.1.1.1 1995/10/16 13:33:12 rjb Exp $*)
+d40 1
+a40 14
+
+structure History : sig 
+                      type 'a history
+                      val new_history : int -> 'a -> 'a history
+                      val present : 'a history -> 'a
+                      val dodo : 'a history -> ('a -> 'a) -> unit
+                      val undo : 'a history -> unit
+                      val redo : 'a history -> unit
+                      val set_size : 'a history -> int -> unit
+                    end =
+struct
+
+open ML_ext Lib;
+abstype 'a history = HIST of    (unit -> 'a)
+d44 1
+a44 1
+                              * (int -> unit)
+a45 1
+
+a82 1
+
+a84 1
+
+a86 1
+
+a88 1
+
+a90 1
+
+d93 1
+a93 4
+
+end; (* abstype *)
+
+end; (* History *)
+@

@@ -1,0 +1,98 @@
+<TITLE>Theory: hoare_thms</TITLE>
+<H1>Theory: hoare_thms</H1>
+<H1>Parents</H1>
+    <UL>
+    <LI><A HREF = "semantics.html"><STRONG>semantics</STRONG></A>
+    </UL>
+
+
+<HR>
+<H1>Type constants</H1>
+    <UL>
+    
+    </UL>
+
+
+<HR>
+<H1>Term constants</H1>
+    <UL>
+    
+    </UL>
+
+
+<HR>
+<H1>Axioms</H1>
+<DL>
+
+</DL>
+
+
+<HR>
+<H1>Definitions</H1>
+<DL>
+
+</DL>
+
+
+<HR>
+<H1>Theorems</H1>
+<DL>
+<DT><STRONG>SKIP_THM</STRONG>
+<DD>
+<PRE>
+|- !p. MK_SPEC (p,MK_SKIP,p)
+</PRE>
+
+<DT><STRONG>ASSIGN_THM</STRONG>
+<DD>
+<PRE>
+|- !p x e. MK_SPEC ((\s. p (BND x (e s) s)),MK_ASSIGN (x,e),p)
+</PRE>
+
+<DT><STRONG>SEQ_THM</STRONG>
+<DD>
+<PRE>
+|- !p q r c c'.
+     MK_SPEC (p,c,q) /\ MK_SPEC (q,c',r) ==> MK_SPEC (p,MK_SEQ (c,c'),r)
+</PRE>
+
+<DT><STRONG>IF1_THM</STRONG>
+<DD>
+<PRE>
+|- !p q c b.
+     MK_SPEC ((\s. p s /\ b s),c,q) /\ (!s. p s /\ ~(b s) ==> q s) ==>
+     MK_SPEC (p,MK_IF1 (b,c),q)
+</PRE>
+
+<DT><STRONG>IF2_THM</STRONG>
+<DD>
+<PRE>
+|- !p q c c' b.
+     MK_SPEC ((\s. p s /\ b s),c,q) /\ MK_SPEC ((\s. p s /\ ~(b s)),c',q) ==>
+     MK_SPEC (p,MK_IF2 (b,c,c'),q)
+</PRE>
+
+<DT><STRONG>PRE_STRENGTH_THM</STRONG>
+<DD>
+<PRE>
+|- !p p' q c. (!s. p' s ==> p s) /\ MK_SPEC (p,c,q) ==> MK_SPEC (p',c,q)
+</PRE>
+
+<DT><STRONG>POST_WEAK_THM</STRONG>
+<DD>
+<PRE>
+|- !p q q' c. MK_SPEC (p,c,q) /\ (!s. q s ==> q' s) ==> MK_SPEC (p,c,q')
+</PRE>
+
+<DT><STRONG>WHILE_THM</STRONG>
+<DD>
+<PRE>
+|- !p c b.
+     MK_SPEC ((\s. p s /\ b s),c,p) ==>
+     MK_SPEC (p,MK_WHILE (b,c),(\s. p s /\ ~(b s)))
+</PRE>
+
+</DL>
+
+
+<HR>

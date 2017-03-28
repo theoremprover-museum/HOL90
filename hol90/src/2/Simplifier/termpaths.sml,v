@@ -1,0 +1,82 @@
+head	1.1;
+access;
+symbols;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	96.01.04.14.06.40;	author drs1004;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@Added simplifier components, added drule files, added MK_ABS_CONV, better error messages
+@
+text
+@(*====================================================================
+ *
+ * Term_paths
+ *
+ * type termpath
+ * type termbranch
+ * 	Data type of navigation markers through HOL terms.
+ *
+ * val lookup_termpath
+ *
+ * use "../tkhol/hol90_termpaths/src/termpaths.sig";
+ * use "../tkhol/hol90_termpaths/src/termpaths.sml";
+ *====================================================================*)
+ 
+signature Term_paths_sig =
+sig
+   	
+   datatype termbranch = 
+   	RATOR | 
+   	RAND | 
+   	BODY;
+      
+   type termpath; (* = termbranch list *)
+   
+   val lookup_branch : termbranch -> Term.term -> Term.term;
+   val lookup_path : termpath -> Term.term -> Term.term;
+   
+end;
+
+(*====================================================================
+ *
+ * structure Term_paths
+ *                                                                    
+ * use "hol90_termpaths/src/termpaths.sig";
+ * use "hol90_termpaths/src/termpaths.sml";
+ *====================================================================*)
+
+structure Term_paths: Term_paths_sig =
+struct
+   open Term;
+   open Dsyntax;
+   open Lib;
+   datatype termbranch = 
+   	RATOR | 
+   	RAND | 
+   	BODY;
+
+   type termpath = termbranch list;
+       
+   fun lookup_branch RATOR tm = (rator tm)
+     | lookup_branch RAND tm = (rand tm)
+     | lookup_branch BODY tm = (body tm);
+     
+   fun lookup_path tp tm = rev_itlist lookup_branch tp tm;
+
+end;
+
+
+
+@

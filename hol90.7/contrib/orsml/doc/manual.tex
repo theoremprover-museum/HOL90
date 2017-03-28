@@ -1,0 +1,803 @@
+\documentstyle [11pt]{article}
+
+\parindent=0cm
+\parskip=0.2cm
+\setlength{\textwidth}{17cm}
+\setlength{\oddsidemargin}{-0.24cm}
+\setlength{\evensidemargin}{-0.24cm}
+\setlength{\topmargin}{+0.0cm}
+\setlength{\headheight}{0cm}
+\setlength{\textheight}{22cm}
+\setlength{\headsep}{0cm}
+
+\begin{document}
+\sloppy
+
+\pagestyle{plain}
+\pagenumbering{arabic}
+
+\title{OR-SML 2.4\\ System Manual for the HOL90 library version }
+\author{Leonid Libkin and Elsa L. Gunter\\ AT\&T Bell Laboratories}
+\date{October 12, 1994}
+
+\maketitle
+
+\newcommand{\putit}[1]{\\ {\tt #1} \\}
+\newcommand{\putin}[1]{\\ {\tt #1} \\}
+
+\section{Using OR-SML in HOL90}
+
+To make the contributed library {\tt orsml} available to be used in
+HOL90, the description file for OR-SML must first exist.  If
+OR-SML came with the version of HOL90 you are currently using, then
+this description file should have been created as part of the building
+process of HOL90.  If you are adding OR-SML to a version of HOL90
+without it, then you must begin by creating the description file.  To
+do so requires write-access to the directory
+\begin{flushleft}\tt
+$\langle{\it HOLdir\/}\rangle$/contrib/desc
+\end{flushleft}
+The descrition file is made and installed execute the following
+\begin{flushleft}\tt
+\% cd $\langle{\it HOLdir\/}\rangle$/contrib/orsml\\
+\% make\_orsml {\it hol90}
+\end{flushleft}
+where {\it hol90\/} it the command to run HOL90 at your site.
+
+Once the library description file for OR-SML has been created, you may
+load OR-SML into HOL90 at any time by executing
+\begin{verbatim}
+val _ = load_library_in_place (find_library "orsml");
+\end{verbatim}
+This will create four structures, {\tt HolDbData}, {\tt Orsml},
+{\tt Set}, and {\tt Hol\_queries}.  You may wish to open these
+structures, but you should be aware that this may hide bindings from
+other parts of HOL90.
+
+\section{Description of OR-SML}
+
+\subsection{Types}
+OR-SML gives you three new types: {\tt co\_type}, the type of types of
+complex objects; {\tt co}, the type of complex objects, and
+{\tt hol\_theory\_data} (also known as {\tt base}), the 
+new base type added to view HOL90 types, terms, theorems, and theories
+as OR-SML complex objects.
+
+
+\subsection{Working with {\tt co\_type}}
+
+There is very little you can do with {\tt co\_type}. You can infer it by
+calling a function {\tt typeof : co ->} {\tt co\_type}
+and you can
+normalize it by calling {\tt normalize : co\_type -> co\_type} which
+takes a type and returns its normal form.
+
+
+
+\subsection{Creating complex objects}
+
+You can create objects of base type by using the following datatype
+found in the structure {\tt HolDbData}:
+\begin{verbatim}
+datatype hol_theory_data =
+    Type of hol_type
+  | Term of term
+  | Thm of thm
+  | Parent of {thy_name : string, parent : string}
+  | TypeOp of {thy_name : string, tyop :{Name : string, Arity : int}}
+  | Constant of {thy_name : string, constant : term}
+  | Infix of {thy_name : string, constant : term}
+  | Binder of {thy_name : string, constant : term}
+  | Axiom of {thy_name : string, theorem : (string * thm)}
+  | Definition of {thy_name : string, theorem : (string * thm)}
+  | StoredThm of {thy_name : string, theorem :(string * thm)}
+\end{verbatim}
+
+The following functions are provided to help you create objects.\\
+{\tt val mkintco : int -> co}\\
+{\tt val mkboolco : bool -> co}\\
+These two functions take int or bool and return it in the form of
+complex object.\\
+{\tt val mksetint : int list -> co}\\
+{\tt val mkorsint : int list -> co}\\
+These two functions take a list of integers and return a complex object 
+which is a set (or or-set) of those integers.\\
+{\tt val mksetco : co list -> co}\\
+ {\tt val mkorsco : co list -> co}\\
+These two functions take a list of complex objects $c_1,\ldots,c_n$
+and convert it to a set $\{c_1,\ldots,c_n\}$ (or or-set $\langle
+c_1,\ldots,c_n\rangle$) which is of type {\tt co}.
+\putit{val mkprodco : co * co -> co}
+This function takes two complex objects $c_1$ and $c_2$ and returns a 
+complex object $(c_1,c_2)$.
+Finally, 
+\putit{val mkbaseco : base -> co} 
+takes an element of a base type and returns it in the form of complex
+object.
+
+For example, to create a set of orsets of theorems you can do the
+following:
+{\small \begin{verbatim}
+- open HolDbData Orsml Hol_queries;
+
+...
+
+
+- val a = [[TRUTH, EQ_SYM_EQ], [ETA_AX, num_CONV (--`2`--)]];
+val a = [[|- T,|- !x y. (x = y) = y = x],[|- !t. (\x. t x) = t,|- 2 = SUC 1]]
+  : thm list list
+- val co_a = mksetco(map (fn z => mkorsco(map (mkbaseco o Thm) z)) a);
+val co_a =
+  {<(Thm (|- 2 = SUC 1)), (Thm (|- !t. (\x. t x) = t))>,
+   <(Thm (|- !x y. (x = y) = y = x)), (Thm (|- T))>} :: {<hol_theory_data>}
+  : co
+\end{verbatim} }
+
+To distinguish OR-SML from SML types, we use {\tt ::} for the former.
+Every complex object has type {\tt co} in SML; however, its type as a
+complex object type is given by the type system (1). The last output
+above says that {\tt co\_a} is a complex object, whose complex object
+type is $\{\langle {\tt hol\_theory\_data} \rangle\}$.
+
+
+\subsection{Operations on complex objects}
+
+Below is the list of the operations on complex objects that constitute
+the algebra for sets and or-sets.
+
+\begin{enumerate}
+\item Identity:  {\tt val id : co -> co}. Semantics: $id(x) = x$. 
+\item Composition:  {\tt val comp : ('a -> 'b) * (co -> 'a) -> co ->
+'b}.  Semantics: $comp(f,g)(x) = f(g(x))$.
+\item First projection: {\tt val p1 : co -> co}. Semantics:
+$p_1((x,y)) = x$.
+\item Second projection: {\tt    val p2 : co -> co}. Semantics:
+$p_2((x,y)) = y$. 
+\item Pairing:  {\tt  val pair : (co -> co) * (co -> co) -> co -> co}.
+Semantics: $pair(f,g)(x) = (f(x),g(x))$.
+\item Bang: {\tt val bang : co -> co}. Semantics: $bang(x) = ()$ where
+$()$ is the unique element of type $unit$.
+\item Singleton: {\tt   val sng : co -> co}. Semantics: $sng(x) =
+\{x\}$. 
+\item Or-singleton: {\tt   val orsng : co -> co}. Semantics: $orsng(x)
+= \langle x \rangle$.
+\item Union of sets:  {\tt  val union : co * co -> co}.
+\item Union of or-sets: {\tt   val orunion : co * co -> co}.
+\item Flattening: {\tt   val flat : co -> co}. Semantics: $flat
+(\{X_1,\ldots,X_n\}) = X_1 \cup \ldots \cup X_n$.
+\item Flatten for or-sets: {\tt   val orflat : co -> co}. Similar to
+flattening. 
+\item Empty set: {\tt   val emptyset : co -> co}. Semantics:
+$emptyset(\;()\;) = \emptyset$; on other objects $emptyset$ is undefined.
+\item Empty or-set: {\tt   val emptyorset : co -> co}. Semantics:
+similar to empty set.
+\item Empty set and or-set as values: {\tt val empty : co} and {\tt
+val orempty : co}. 
+\item Pairwith : {\tt  val pairwith : co * co -> co}.
+Semantics: ${\it pairwith}(a,\{x_1,\ldots,x_n\}) =
+\{(a,x_1),\ldots,(a,x_n)\}$. 
+\item  Pairwith for or-sets:  {\tt  val orpairwith : co * co -> co}.
+\item Mapping: {\tt val smap : (co -> co) -> co -> co}. Semantics:
+given a function $f$ from complex objects to complex objects, $smap
+\;\; f\;\;\{x_1,\ldots,x_n\} = \{f(x_1),\ldots,f(x_n)\}$.
+\item Mapping for or-sets:  {\tt val orsmap : (co -> co) -> co -> co}.
+Semantics: similar to {\tt smap}. 
+\item Alpha : {\tt val alpha : co -> co}. Semantics:
+{\it alpha\/} takes a set of or-sets, and returns an or-set of sets, which
+contain one element from each of the or-sets in the input. For
+example, ${\it alpha} (\{\langle 1,2 \rangle,\langle 3,4\rangle\}) =
+\langle \{1,3\},\{1,4\},\{2,3\},\{2,4\}\rangle$.
+\item Negation for booleans: {\tt val neg : co -> co}. This is
+negation for booleans in the form of complex objects.
+\item Equality test: {\tt  val eq : co * co -> co}. Semantics: $eq(x,y)$
+returns true or false in the form of a complex object depending on
+whether $x$ and $y$ are equal.
+\item Conditional:  {\tt val cond : co * ('a -> 'b) * ('a -> 'b) -> 'a
+-> 'b}. Given two functions $f, g: \beta \to \gamma$ and an object $o:
+\beta$, $cond(x,f,g)(o)$ is $f(o)$ if $x$ is the boolean true in the form
+of a complex object, $g(o)$ if $x$ is the boolean false in the form of a
+complex object, and does not type check otherwise.
+\end{enumerate}
+
+Since there is only one type for all complex objects, there is no
+typechecking problem from ML's point of view. However, an expression
+may not type check as an expression of the algebra. In this case an
+exception will be raised, telling you which operation failed. For
+example, {\tt Badtypeunion} or {\tt Badtypesng} etc.
+
+
+A few arithmetic operations  are included:
+\begin{enumerate}
+\item Addition: {\tt  val plus : co * co -> co}. 
+\item Multiplication: {\tt   val mult : co * co -> co}.
+\item Modified subtraction {\tt    val monus : co * co -> co}.
+($monus(n,m)$ is $n-m$ if $n-m > 0$ and $0$ otherwise). 
+\item Generator of the set of all smaller numbers: {\tt gen : co ->
+co}. Semantics: $gen(n) = \{0,1,\ldots,n\}$.
+\item Summation over a set: {\tt val sum : (co -> co) -> co -> co}. If
+$f : s \to int$, then for a set $X = \{x_1,\ldots,x_n\}$ of type $\{s\}$,
+$sum \;f\;X = f(x_1) + \ldots + f(x_n)$.
+\item Summation over an or-set: {\tt val sum : (co -> co) -> co -> co}.
+Semantics is similar to {\tt sum}. 
+\end{enumerate}
+
+An exception {\tt Badtypearith} will be raised if an expression
+involving arithmetic operations does not typecheck.
+
+{\em Example}:
+
+{\small \begin{verbatim}
+- val one = mkintco 1;
+val one = 1 :: int : co
+- fun card x = sum (fn _ => one) x;
+val card = fn : co -> co
+- val a = mkorsco(map(fn z => mksetco(map mkintco z)) [[1,2],[3,4],[5,6,7]]);
+val a = <{1, 2}, {3, 4}, {5, 6, 7}> :: <{int}> : co
+- orsmap card a;
+val it = <2, 3> :: <int> : co
+- val c = mkorsco(map(fn z => mksetco(map(fn w => mksetco(map mkintco w))z))
+                     [[[1,2],[3,4]],[[5,6],[7,8,9]]]);
+val c = <{{1, 2}, {3, 4}}, {{5, 6}, {7, 8, 9}}> :: <{{int}}> : co
+- orsum (sum card) c;
+val it = 9 :: int : co
+\end{verbatim} }
+
+\subsection{Operations involving the base type}
+
+The system allows you to write a operations involving the base type
+and use it with other OR-SML operations. Since all complex objects
+have SML type {\tt co}, there are four functions in the structure {\tt
+Orsml} that take a user-defined operations on the base type and return
+a function that can be used in OR-SML.
+
+The function {\tt apply : (base list -> base) -> co -> co} takes a
+function {\tt f : base list -> base} and returns a function from {\tt
+co} to {\tt co} representing the action of {\tt f} on complex objects.
+For example, if {\tt val f\_co = apply f}, then {\tt f\_co} applied to
+a complex object $(r_1,(r_2,r_3))$ yields {\tt f [$r_1$,$r_2$,$r_3$]}
+in form of a complex object.
+
+In practice, most of the operations one would want are unary or
+binary.  Therefore, OR-SML has a special feature that allows you to
+apply binary and unary functions on base types. 
+
+The function {\tt apply\_unary : (base -> base) -> co -> co} takes a
+unary function on the base type and returns it as a function on complex
+objects. The function {\tt apply\_binary : (base * base -> base) ->
+co -> co} takes a binary function on the base type and return it as a
+function on complex objects. The input to the result of {\tt
+apply\_binary}  is required to be a complex object whose complex
+object type is $t \times s$. If you want the result of an application
+of a binary operator to be a function of type {\tt co * co -> co},
+then use the function {\tt  apply\_op2 : (base * base -> base) -> co *
+co -> co}.
+
+Finally, if you want to have a test of a property of elements of
+base type as a test for complex objects (that you can use in a
+conditional, for example), use {\tt apply\_test : (base -> bool) -> co
+-> co}.
+
+Because the base type for interfacing HOL90 to OR-SML is an
+amalgamation of different kinds of information, including types, terms
+and theorems, there are aditional functions in the structure {\tt
+Hol\_queries} to change tests on each of types, terms and theorems into
+the base type.  These functions are
+{\tt type\_test : (hol\_type -> bool) -> hol\_theory\_data -> bool},
+{\tt term\_test : (term -> bool) -> hol\_theory\_data -> bool}, and
+{\tt thm\_test : (thm -> bool) -> hol\_theory\_data -> bool}.  These
+can all be written using the constructors for {\tt hol\_theory\_data}.
+The function {\tt type\_test} applies the test to the type inside the
+constructor {\tt Type}, and otherwise returns false.  The function
+{\tt term\_test} applies the test to the term component inside any of
+the constructors {\tt Term}, {\tt Constant}, {\tt Infix} and {\tt
+Binder}, and otherwise returns false.  Similarly, {\tt thm\_test}
+applies its test to the theorem component inside any of the
+constructors {\tt Thm}, {\tt Axiom}, {\tt Definition}, and {\tt
+StoredThm}, and otherwise returns false.
+
+An important class of objects we wish to manipulate as complex objects is
+the theories of HOL90.  There are two functions in the structure {\tt
+Hol\_queries} for creating complex objects from theories:
+{\tt mk\_theory\_db : string -> co} and
+{\tt mk\_all\_theories\_db : unit -> co}.  The argument to {\tt
+mk\_theory\_db} is the name of a theory, and it creates a complex
+object which is the set of entires from the theory.  The
+function {\tt mk\_all\_theories\_db} creates a complex object
+which is the set of all the entires in all the theories available in
+the running system.  To be able find all the theorems in a given theory
+that satisfy a given test, use {\tt db\_find\_thms : {test:thm ->
+bool, theory:string} -> co}, and to find all theorems in any theory,
+use {\tt db\_find\_all\_thms : (thm -> bool) -> co}.  Lastly, a very
+common kind of query one wants to preform is to find all theorems that
+contain a subterm matching a given subterm.  To facilitate this
+particular query, use {\tt seek : \{pattern:term, theory:string\} ->
+base list} for looking in one theory at a time, or {\tt seek\_all :
+term -> base list} for looking in all the theories at once.
+
+
+{\em Example:}
+
+{\small \begin{verbatim}
+- val min = mk_theory_db "min";
+val min =
+  {(Binder{constant = (--`$@--)`, thy_name = "min"}),
+   (Infix{constant = (--`$=--)`, thy_name = "min"}),
+   (Infix{constant = (--`$==>--)`, thy_name = "min"}),
+   (Constant{constant = (--`$=--)`, thy_name = "min"}),
+   (Constant{constant = (--`$==>--)`, thy_name = "min"}),
+   (Constant{constant = (--`$@--)`, thy_name = "min"}),
+   (TypeOp{tyop = {Name = "bool", Arity = 0}, thy_name = "min"}),
+   (TypeOp{tyop = {Name = "ind", Arity = 0}, thy_name = "min"}),
+   (TypeOp{tyop = {Name = "fun", Arity = 2}, thy_name = "min"})
+   } :: {hol_theory_data} : co
+- card min;
+val it = 9 :: int : co
+- val zero = mkintco 0;
+val zero = 0 :: int : co
+- val is_def = apply_test (fn (Definition _) => true | _ => false);
+val is_def = fn : co -> co
+- fun chi_def entry = cond(is_def entry,fn () => one, fn () => zero) ();
+val chi_def = fn : co -> co
+- val total_defs = sum chi_def (mk_all_theories_db());
+val total_defs = 101 :: int : co
+- fun is_cond_rewrite thm =
+  let val body = #2(strip_forall (concl thm))
+  in is_imp body andalso is_eq (#conseq(dest_imp body)) end;
+val is_cond_rewrite = fn : thm -> bool
+- val total_cond_eq_thms = card (db_find_all_thms is_cond_rewrite);
+val total_cond_eq_thms = 17 :: int : co
+- db_find_thms {theory = "bool", test = is_exists o concl};
+val it =
+  {(Axiom{theorem = ("INFINITY_AX",
+     |- ?f. ONE_ONE f /\ ~(ONTO f)),
+     thy_name = "bool"})} :: {hol_theory_data} : co
+- seek_all (--`a + b < c`--);
+val it =
+  [StoredThm
+     {theorem=("LESS_EQ_MONO_ADD_EQ",|- !m n p. m + p <= n + p = m <= n),
+      thy_name="arithmetic"},
+   StoredThm
+     {theorem=("LESS_EQ_LESS_EQ_MONO",
+               |- !m n p q. m <= p /\ n <= q ==> m + n <= p + q),
+      thy_name="arithmetic"},
+   StoredThm
+     {theorem=("ADD_MONO_LESS_EQ",|- !m n p. m + n <= m + p = n <= p),
+      thy_name="arithmetic"},
+   StoredThm
+     {theorem=("SUB_LEFT_LESS_EQ",
+               |- !m n p. m <= n - p = m + p <= n \/ m <= 0),
+      thy_name="arithmetic"}] : hol_theory_data list
+
+\end{verbatim} }
+
+\subsection{Destruction of complex objects}
+
+It may be the case that after evaluating your query, you may need to
+write some program to deal with the result. Since all operations of
+OR-SML work with type {\tt co}, you may need a way out of complex
+objects to the usual ML types. There is a substructure {\tt DEST} of
+the structure {\tt Orsml} which contains some functions to destructure
+complex objects.
+
+{\tt DEST} includes the following
+functions:
+\begin{enumerate}
+\item String representation of complex objects: {\tt val string\_of\_co
+: co -> string}. It takes a complex objects and returns you a string
+you would see if you used {\tt show}. You may then analyze the string
+(for example, to see if an object has a certain subobject like integer
+{\tt 3}). 
+\item Making list of complex objects: 
+{\tt val co\_to\_list : co -> co list}. This
+function takes a complex object and, if the object is 
+\subitem a set, it returns the list of elements of the set;
+\subitem an or-set, it returns the list of elements of the or-set;
+\subitem a pair $(x,y)$, it returns 
+the two-element list {\tt [$x$,$y$]}. 
+\subitem an integer (boolean, string, element of a base type or unit)
+it returns the singleton list containing the complex
+object.
+\item Making integers: {\tt val co\_to\_int : co -> int}. This
+function takes a complex object and, if it is an integer $i$, returns $i$.
+It raises exception {\tt Cannotdestroy} otherwise.
+\item Making booleans: {\tt val co\_to\_bool : co -> bool}. This
+function takes a complex object and, if it is a boolean value $t$, returns $t$.
+It raises  {\tt Cannotdestroy} otherwise.
+\item Making strings: {\tt val co\_to\_string : co -> string}. This
+function takes a complex object and, if it is a string $s$, returns $s$.
+It raises  {\tt Cannotdestroy} otherwise.
+\item Making elements of base type {\tt val co\_to\_base : co ->
+base}. This
+function takes a complex object and, if it is an element  $b$ of base
+type, returns $b$. 
+It raises  {\tt Cannotdestroy} otherwise.
+\end{enumerate}
+
+
+\subsection{Duplicate elimination}
+
+OR-SML works with sets and or-sets, and hence duplicates are always
+eliminated. However, there is a way to disable duplicate elimination
+by saying {\tt Dup\_elim := false}. If later {\tt Dup\_elim := true}
+is entered, OR-SML resumes eliminating duplicates from sets and
+or-sets. For example,
+
+{\small
+\begin{verbatim}
+- val a = mksetco (map mkintco [1,1,2,2]);
+val a = {1, 2} :: {int} : co
+- Dup_elim := false;
+val it = () : unit
+- val b = mksetco (map mkintco [1,1,3,3]);
+val b = {1, 1, 3, 3} :: {int} : co
+- union (a,b);
+val it = {1, 2, 1, 1, 3, 3} :: {int} : co
+- Dup_elim := true;
+val it = () : unit
+- union (a,b);
+val it = {1, 2, 3} :: {int} : co
+\end{verbatim}
+}
+
+
+You may also force duplicate elimination by using the function {\tt
+dupelim : co -> co}. For example:
+
+{\small
+\begin{verbatim}
+- Dup_elim := false;
+val it = () : unit
+- val x = mksetco (map (mkorsco o (map mkintco))[[1,1,2],[1,1,2],[2,2,3,3]]);
+val x = {<1, 1, 2>, <1, 1, 2>, <2, 2, 3, 3>} :: {<int>} : co
+- dupelim x;
+val it = {<1, 2>, <2, 3>} :: {<int>} : co
+- Dup_elim := true;
+val it = () : unit
+\end{verbatim}
+}
+
+
+\subsection{Normalization}
+
+
+Normalization of complex objects is also one of the primitives of OR-SML.
+It is called {\tt normal} and its type is {\tt co -> co}. For example,
+
+{\small \begin{verbatim}
+- val a = mksetco(map (fn (x,y) => mkprodco(mkintco x,mkorsco (map mkintco y)))
+                      [(1,[2,3]),(2,[3,4,5,6]),(3,[7])]);
+val a = {(1, <2, 3>), (3, <7>), (2, <3, 4, 5, 6>)} :: {(int * <int>)} : co
+- normal a;
+val it =
+  <{(1, 2), (2, 3), (3, 7)}, {(1, 2), (2, 4), (3, 7)},
+   {(1, 3), (2, 3), (3, 7)}, {(1, 3), (2, 4), (3, 7)},
+   {(1, 2), (2, 5), (3, 7)}, {(1, 2), (2, 6), (3, 7)},
+   {(1, 3), (2, 5), (3, 7)}, {(1, 3), (2, 6), (3, 7)}> :: <{(int * int)}> : co
+\end{verbatim} }
+
+This normalization produces all entries in the normal form, before any
+conceptual queries may be asked. There is a better form of
+normalization, given by the following primitive:
+
+{\tt norm : (co -> co) * 'a * (co * 'a -> 'a) * ((co * bool) * 'a -> 'b) -> co -> 'b}
+
+One can think of {\tt norm} as a function that takes four arguments
+and returns a function of type {\tt co -> 'b} (i.e. the result may be
+of any type). In a declaration 
+
+{\small
+\begin{verbatim}
+- val f = norm(cond,init,update,out);
+\end{verbatim}
+}
+
+{\tt cond} is a function of type {\tt co -> co} whose true type is $t'
+\to bool$. {\tt init} is an initial value. {\tt update : co * 'a -> 'a} takes
+a complex object whose true type is $t'$ and an object of the same
+type as {\tt init} and produces an object of the same type as {\tt
+init}. Finally, {\tt out : (co * bool) * 'a -> 'b} takes a complex
+object whose true type is $t'$, a boolean value, and a value of the
+same type as {\tt init}, and produces some value of type {\tt 'b}.
+
+Then {\tt f} is a function that takes a complex object $o$ of true type
+$t$ such that entries of the normal form of $o$ have type $t'$. It
+produces a value of type {\tt 'b} using the following algorithm.
+
+First, an accumulator is created and {\tt init} is put in it. Then
+elements of the normal form of $o$ are produced one-by-one. For each
+entry $x$, when it is produced, the following is done. First, {\tt
+update} is applied to it and the accumulator to produce the new
+accumulator value. Second, the condition {\tt cond} is tested. If it
+is true, the loop is broken, otherwise the next normal form value is
+produced. 
+
+When the loop is either broken or finished (when all normal form
+entries have been produced), a boolean value {\tt y} is set to {\tt
+true} or {\tt false} respectively, and {\tt out} is applied to the
+last normal form entry, {\tt y} and the accumulator value to produce
+the result.
+
+The main advantage of {\tt norm} is its space efficiency: once the
+computation on a normal form entry is completed, the space occupied by
+it is reused for the next entry.
+
+Consider two simple applications of {\tt norm}.
+
+{\small
+\begin{verbatim}
+- val normal_entries = norm ((fn _ => mkboolco(false)), 
+                             (orempty),
+                             (fn (x,Y) => orunion(orsng(x),Y)),
+                             (fn (_,y) => y));
+val normal_entries : co -> co
+
+- fun exists p = norm(p,false,(fn _ => false),(fn (v,w) => v));
+val exists : (co -> co) -> co -> co * bool
+\end{verbatim}
+}
+
+{\tt normal\_entries : co -> co} produces all normal form entries,
+without doing any duplicate elimination. It is space efficient and
+works much faster than {\tt normal}.
+
+{\tt exists} takes a test on normal form entries and an or-object and
+produces a pair $(x,b)$ where $b = true$ means that no element in the
+normal form satisfies the test, and for $b = false$, $x$ is a normal
+form entry satisfying the test.
+
+
+One particularly important application of {\tt norm} is the following
+function 
+
+{\small
+\begin{verbatim}
+val normal_time : co * (co -> 'a) * ('a * 'a -> bool) * real -> co * bool
+\end{verbatim}
+}
+
+This function allows to run the normalization process for a given
+amount of time, and returns the best result according to the
+user-defined criterion. 
+In a declaration
+
+{\small
+\begin{verbatim}
+normal_time (obj, criterion, compare, time);
+\end{verbatim}
+}
+
+{\tt obj} is an or-object, {\tt criterion} is a function whose
+arguments are normal form entries of {\tt obj} and {\tt compare}
+defines comparison test on its range (for example, $\leq$ for reals
+and integers). {\tt time} gives the time (in seconds) the process is
+allowed to run.
+
+Then for {\tt time} seconds normal form entries are produced, and {\tt
+criterion} is applied to them. When {\tt time} is out or all entries
+have been produced, the entry with the best value of {\tt criterion}
+is returned. (``Best'' is determined according to {\tt compare}. For
+example, if {\tt compare} is $\leq$, then best means maximal). The
+boolean flag is true if all normal form entries have been checked.
+
+
+
+{\em Remark.}  It {\em does} look horrible, but it's worthwhile to
+understand how {\tt norm} works because it is {\em much} faster than
+the usual normalization. For example, for existential queries, {\tt
+exists} produced an answer in one of our examples in 0.02sec, when
+computing the whole normal form took almost 2 hours! We also had
+applictions of {\tt normal\_time} which produced a result within 2\%
+of the optimal in a few seconds, when going over the normal form took
+hours. 
+
+
+
+
+\subsection{Displaying complex objects}
+
+There are various for printing objects. Objects themselves can printed
+using one of the three styles: style 1 -- an object is not printed (it
+is helpful if large objects are produced); style 2 -- new elements of
+or-sets tend to start on a new line (better suited for printing
+normalized objects); style 3 -- tends to use as much of the line as
+reasonable. Types that follow the object can be printed using one
+the three styles as well: style 1 -- type is not printed; style 2 --
+parentheses are not used for printing product types; style 3 --
+parentheses are used for printing product types. These styles can be
+combined freely with exception of style 1 for objects that can only be
+used with style 1 for types. Hence there are styles 11, 21, 22, 23,
+31, 32, 33. To change a style, use {\tt printer : int -> unit}.
+
+Types as SML values can be printed using styles 1 and 2 which are the
+same as styles 2 and 3 for types that are printed as a part of a
+complex object. To change style, use {\tt printer\_type : int ->
+unit}. 
+
+Initially printers 33 and 2 are installed. 
+
+{\em Example:}
+{\small \begin{verbatim}
+- val a = mksetco(map (fn z => mkorsco(map mkintco z))[[1,2,3],[4,5,6]]);
+val a = {<1, 2, 3>, <4, 5, 6>} :: {<int>} : co
+- printer 21;
+Printer #21 installed
+val it = () : unit
+- normal a;
+val it =
+  <{1, 4}, {2, 4}, {1, 5}, {3, 4}, {1, 6}, {2, 5}, {3, 5}, {2, 6}, {3, 6}> : co
+- printer 23;
+Printer #23 installed
+val it = () : unit
+- normal a;
+val it =
+  <{1, 4},
+   {2, 4},
+   {1, 5},
+   {3, 4},
+   {1, 6},
+   {2, 5},
+   {3, 5},
+   {2, 6},
+   {3, 6}
+   > :: <{int}> : co
+- printer 33;
+Printer #33 installed
+val it = () : unit
+- normal a;
+val it =
+  <{1, 4}, {2, 4}, {1, 5}, {3, 4}, {1, 6}, {2, 5}, {3, 5}, {2, 6}, {3, 6}
+   > :: <{int}> : co
+\end{verbatim} }
+
+If for some reason you wish to output a complex object, perhaps as
+part of a message to an end-user, there are two additional functions
+that print complex objects. \putit{val printco : co -> unit} prints an
+object and \putit{val show : co -> unit} prints a complex object
+together with its type. 
+
+
+\section{Additional features}
+
+Additional features of OR-SML include two structures, one implementing
+the structural recursion for sets and or-sets, and the other for
+destruction of complex objects.
+
+\subsection{Structural recursion}
+
+Structural recursion on sets and or-sets is available to the user by
+means of two constructs
+
+\newcommand{\sr}{{\tt sr}}
+\newcommand{\orsr}{{\tt or\_sr}}
+
+$$ \frac{f:s \times t \to t\;\;\;\;\;\;e:t}{\sr(e,f):\{s\} \to
+t}\;\;\;\;\;\;\;\;\;\;\;\;\;\;\;\;
+\frac{f:s \times t \to t\;\;\;\;\;\;e:t}{\orsr(e,f):\langle s\rangle \to
+t}$$ 
+
+Semantics is as follows: $\sr(e,f) \{x_1,\ldots,x_n\} =
+f(x_1,f(x_2,f(x_3,\ldots f(x_n,e)\ldots)))$ and similarly for $\orsr$.
+For $\sr(e,f)$ to be well-defined, $f$ must satisfy certain
+preconditions that can not be automatically verified by a compiler.
+Hence, structural recursion is in some sense too powerful. 
+
+There are two functions that implement structural recursion:
+{\tt val sr : co * (co * co -> co) -> co -> co} and {\tt val orsr : co
+* (co * co -> co) -> co -> co}. The first argument corresponds to $e$,
+the second to $f$ and the result is a function from {\tt co} to {\tt
+co} implementing $\sr(e,f)$ and $\orsr(e,f)$ respectively. To get
+access to these functions, you must say {\tt open SR;} in OR-SML, or
+use {\tt SR.sr} and {\tt SR.or\_sr}. If
+your expression does not typecheck, exception {\tt Badtypesr} will be
+raised. 
+
+{\em Example:} To find $\prod_{i \in X} i$, use {\tt SR.sr} as
+follows: 
+
+{\small \begin{verbatim}
+- val fact = SR.sr(one,mult);
+val fact = fn : co -> co
+- val X = create "{1,2,3,4,5}";
+val X = {1, 2, 3, 4, 5} :: {int} : co
+- fact X;
+val it = 120 :: int : co
+\end{verbatim} }
+
+
+\section{Libraries}
+
+The language can express many functions. Some of them are provided to
+you. There is a structure called {\tt Set} that contains the most
+important derived functions. In addition, a file containing a number
+of functions that can be written using structural recursion is also
+supplied with the system.
+ Remember, these are derived functions; if you do not like ones
+from the libraries, write your own using OR-SML interface.
+
+Structure {\tt Set} contains the following functions:
+
+\begin{enumerate}
+\item Boolean {\it and} for complex objects: {\tt val andco = fn : co
+* co -> co}. 
+\item Boolean {\it or} for complex objects: {\tt val orco = fn : co *
+co -> co}. 
+\item Membership test for sets: {\tt val member = fn : co * co -> co}.
+\item Membership test for or-sets: {\tt val ormember = fn : co * co ->
+co}. 
+\item Difference of two sets: {\tt val diff = fn : co * co -> co}. 
+\item Difference of two or-sets: {\tt val ordiff = fn : co * co -> co}. 
+\item Subset test for sets: {\tt val subset = fn : co * co -> co}.
+\item Subset test for or-sets: {\tt val orsubset = fn : co * co -> co}.
+\item Cardinality: {\tt val card = fn : co -> co}.
+\item Powerset: {\tt val powerset = fn : co -> co}.
+\item $\rho_1$ (analog of $\rho_2$ for the first argument): {\tt val
+rhoone = fn : co * co -> co}.
+\item $\rho_1$ for or-sets: {\tt val orrhoone = fn : co * co -> co}.
+\item Cartesian product for sets: {\tt val cartprod = fn : co * co -> co}.
+\item Cartesian product for or-sets: {\tt val orcartprod = fn : co *
+co -> co}.
+\item Selection over a set: {\tt val select : (co -> co) -> co -> co}.
+For example, {\tt select p X} selects elements of a set $X$
+satisfying predicate $p$. 
+\item Selection over an or-set: {\tt val orselect : (co -> co) -> co ->
+co}. Semantics is similar to {\tt select}.
+\item Linear order: {\tt val leq = fn : co * co -> co}
+is the lifting of linear order from base types to arbitrary types.
+{\tt leq(x,y)} is defined whenever {\tt typeof(x) = typeof(y)} and it
+gives you a predicate for a linear order on objects of a given type,
+provided your {\tt leq\_t} is a linear order. 
+If types of arguments are different, an exception {\tt Cannotcompare} is
+raised.
+\item Rank assignment: {\tt val sort = fn : co -> co}
+is a function that, given a set $X = \{x_1,\ldots,x_n\}$ such that 
+$x_1 < x_2 < \ldots < x_n$ (where $x < y$ means {\tt leq(x,y)} is true), then 
+$sort\; X = \{(x_1,1),\ldots,(x_n,n)\}$. 
+\end{enumerate}
+
+
+{\em Example:}
+
+{\small \begin{verbatim}
+- val bigreal = apply_test (fn x => x > 5.0);
+val bigreal = fn : co -> co
+- val X = create "{ @(4.5), @(5.5) }";
+val X = {@(4.5), @(5.5)} :: {real} : co
+- val Y = Set.select bigreal X;
+val Y = {@(5.5)} :: {real} : co
+- Set.diff (X,Y);
+val it = {@(4.5)} :: {real} : co
+- Set.cartprod ((create "{1,2}"), (create "{3,4}"));
+val it = {(1, 3), (1, 4), (2, 3), (2, 4)} :: {int * int} : co
+- Set.sort X;
+val it = {(@(4.5), 1), (@(5.5), 2)} :: {real * int} : co
+\end{verbatim} } 
+
+
+Finally, there is a library ``sr.lib'' of applications of structural
+recursion. It includes functions {\tt set\_to\_or : co -> co} and {\tt
+or\_to\_set : co -> co} that convert sets to or-sets and vice versa;
+{\tt loop : (co -> co) -> co * co -> co} which is the bounded loop
+construct of Libkin and Wong, {\tt pick : co
+-> co} and {\tt rest : co -> co} which are (deterministic) choice of
+ene element and {\tt rest} applied to $X$ returns $X - x$ where $x$ is
+the output of {\tt pick} on $X$. 
+
+The library of domain theoretic orderings, ``dom.lib'', includes the
+following functions. {\tt leqdom : co * co -> co} is the domain
+theoretic ordering on objects. The type of this function (as a
+function in the language) is $t \times t \to bool$. Base types are
+assumed to be antichains. However, the user can change the ordering on
+the user-defined base type by changing the code of {\tt leqdom} and
+exploiting the {\tt apply} functions. For set types, {\tt leqdom} is
+the Hoare ordering and for or-sets it is the Smyth ordering. 
+Meets and joins with respect to the orderings are
+given by functions {\tt meet, join : co * co -> co}. Note that the
+real type of these functions is $t \times t \to \langle t \rangle$.
+These functions return a singleton containing join (or meet) of two
+input objects if it is defined; otherwise, empty or-set is returned.
+Functions {\tt orset\_min} and {\tt set\_max} of type {\tt co -> co}
+return minimal and maximal elements of the set (or-set). Before using
+the domain library, make sure that the structure {\tt Set} is open.
+
+
+\end{document}

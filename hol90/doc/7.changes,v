@@ -1,0 +1,1862 @@
+head	1.6;
+access;
+symbols
+	hol90_pre8_for_multiple_compilers:1.4.0.2
+	hol90_pre8_after_donalds_separate_compilation_changes:1.4
+	hol90_8_after_merging_Konrad_Elsa:1.2
+	hol90_7_cleaned_up_original_branchtag:1.1.0.2;
+locks; strict;
+comment	@# @;
+
+
+1.6
+date	96.01.04.21.51.06;	author drs1004;	state Exp;
+branches;
+next	1.5;
+
+1.5
+date	95.12.18.11.38.30;	author drs1004;	state Exp;
+branches;
+next	1.4;
+
+1.4
+date	95.10.31.14.58.48;	author drs1004;	state Exp;
+branches
+	1.4.2.1;
+next	1.3;
+
+1.3
+date	95.10.31.13.47.58;	author drs1004;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	95.10.18.16.08.11;	author drs1004;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	95.10.18.10.02.24;	author drs1004;	state dead;
+branches
+	1.1.2.1;
+next	;
+
+1.1.2.1
+date	95.10.18.10.02.25;	author drs1004;	state Exp;
+branches;
+next	;
+
+1.4.2.1
+date	96.08.23.16.31.58;	author rjb;	state dead;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.6
+log
+@changes file notes
+@
+text
+@<TITLE>CHANGE LOG</TITLE>
+<H1>CHANGE LOG</H1>
+
+<OL>
+
+<LI> <A HREF = "5/5.changes">Previous change list</A>
+
+Changes to how fixities are specified:
+
+Fixity information is no longer stored in the Term symbol table.  Fixity 
+information is now stored in a separate part of the
+implementation shared between the pretty printer and the
+parser.
+
+This removes several major headaches in term.sml.  In
+particular, "dollared" versions of constants are not stored in the
+symbol table.
+
+Fixity information is now specified by the functions:
+   <PRE>
+   val fixities : unit -> (string * fixity) list
+   val fixity : string -> fixity
+   val hol_infix : int -> string -> unit
+   val hol_prefix : string -> unit
+   val hol_binder : string -> unit
+   val hol_nonfix : string -> unit
+   val is_binder : string -> bool
+   val is_infix : string -> bool
+   val precedence : string -> int
+   </PRE>
+
+I have moved the binder restrictions table from Dsyntax to Fixity
+as well since it is again "parsing" information only.
+   <PRE>
+   val binder_restrictions :unit -> (string * string) list
+   val associate_restriction :(string*string) -> unit
+   val delete_restriction :string -> unit
+   </PRE>
+
+This change allows fixity information to be specified before
+use, as in
+   <PRE>
+      hol_infix 500 "+";
+      (--`(1 + 2):num`--)   (* nb. + is not yet defined as a constant here *)
+   </PRE>
+Note it also parallels the way in which fixities are managed in SML.
+
+
+Fixity information is still saved with theories, though not in the theory
+file itself.  Instead it is saved in the file "<theory>.fixities" (e.g.
+"bool.fixities" for the theory bool).
+
+(Nb. Binder restrictions and other parsing information may also be saved
+aloongside theories in due course.  This is not a complete solution to
+the problem of "context", though it should be able to cope
+with certain situations).
+
+
+<LI>
+
+Added "hol_datatype" to define_type.sml as per Konrad's 
+suggestion.  This wraps up the define type functionality.
+A simpset is also constructed out of the 1-1 and distinct theorems.
+
+
+
+<LI>
+
+Enhancements to "conv.sml":
+	- Made the "QCONV" toolset visible.  Added FIRST_QCONV (nb.
+the first conversion to return UNCHANGED of a theorem is returned).
+
+
+<LI>
+
+
+Enhancements to the "reduce" library:
+	- Added the simpset for the reduce library to that library.  This
+simpset also includes num_EQ_CONV to make it a complete simpset
+for basic numeral operations, hence the reduce library now
+depends on the num library.  This doesn't seem a problem, since 
+many other libraries also use this library.  But why isn't num_EQ_CONV
+built into the core??
+
+	- term_of_int and int_of_term have been replaced by mk_numeral
+	and dest_numeral from Num_conv in the core.
+
+	- Made the following visible from Num_conv.  I have redefined
+these more times than I care to remember, and since they are already
+in the core system, why not make them accessible?
+These are named as in gtt.
+
+	- Did syntactic translations for "reduce" help files.
+
+   <PRE>
+	val mk_numeral : int -> Thm.Term.term
+	val dest_numeral : Thm.Term.term -> int
+        val num_ty : Thm.Term.Type.typ
+   </PRE>
+
+	- Unfunctorized the code throughout "reduce".  There seemed
+no value in having it paramaterized the way it was.  Potentially it
+might be useful to paramaterize it in other ways.
+
+The new function here need documentation.
+
+DRS.
+
+
+<LI>
+
+Enhancements to Dsyntax:
+
+- Added the following generalized destruction routines which
+are found in gtt (and which I've redefined myself more
+times than I care to remember) to Dsyntax:
+
+	<PRE>
+	val mk_unop : string -> term * term -> term
+	val is_unop : string -> term -> bool
+	val dest_unop : string -> term -> term 
+
+	val mk_binop : string -> term * term -> term
+	val is_binop : string -> term -> bool
+	val dest_binop : string -> term -> term * term
+	val strip_binop : string -> term -> term list * term
+	val binops : string -> term -> term list
+	</PRE>
+
+	Documentation is needed for these.
+
+- Continuing the theme of adding useful primitive constants to the
+core system (to avoid their duplication throughout the rest of the system):
+	val alpha_ty : typ;
+	val beta_ty : typ;
+	val implies : term
+	val conjunction : term
+	val disjunction : term
+	val negation : term     
+to Dsyntax.
+Need documentation.
+
+DRS.
+DRS.
+
+<LI>
+
+
+Enhancements to the set libraries:
+	- Added simpsets for both "set" and "pred_set".
+set_ss.sml for sets and pred_sets.  This is a powerful simpset
+for sets containing all the obvious theorems.  The code is shared between the
+two libraries via a functor and presently resides in library/set/src.
+
+	- Functorized the set theory code so the same compilation units
+can be used for both predsets and sets.  This means
+parametrizing the code by the theorems that it requires.
+This seems like a good technique for avoiding dependencies
+of decision procedures on theory files.
+
+This means the code in pred_set is now redundant.
+
+One change was needed to SET_INDUCT_TAC in set/src/set_ind.sml.
+This made the assumption that "set" sets were being used.
+The lines
+<PRE>
+       val {Args=[ty],...} = dest_type (type_of s)
+       val inst = INST_TYPE [alpha_ty |-> ty FINITE_INDUCT
+</PRE>
+get replaced by
+
+<PRE>
+val gen_set_ty = 
+    #dom (dest_fun_ty (type_of (#Bvar (dest_forall (concl FINITE_INDUCT)))))
+val tyinst = match_type gen_set_ty (type_of s)
+val inst = INST_TYPE tyinst FINITE_INDUCT
+</PRE>
+Again, this is better programming technique in any case.
+
+Similar changes were alsomade to the conversions in "fset_conv".
+
+NOTE: The code for the set conversions *not* used in constructing the set
+theories has not yet been tested for pred_sets.  This is probably
+OK as nearly all these are redundant now a simpset has been added
+for sets.
+
+<LI>
+
+
+Made UNIQUENESS visible, moving it from rec_type_support to 
+conv.sml (where EXISTENCE is).  I have had cause to use this function,
+and it seems sensible to export it as it is complementary to 
+EXISTENCE.
+
+The variables used for quantification are still genvars, which
+seems OK for the moment.
+
+<LI>
+
+
+Enhancments to Lib:
+
+- Added reverse function composition and addition to Lib:
+  <PRE>
+  val thenf : ('a -> 'b) * ('b -> 'c) -> 'a -> 'c
+  val orelsef : ('a -> 'b) * ('a -> 'b) -> 'a -> 'b
+  </PRE>
+
+-  Added 
+  <PRE>
+  val add_assoc : ''a * 'b -> (''a * 'b) list -> (''a * 'b) list
+  val remove_assoc : ''a -> (''a * 'b) list -> (''a * 'b) list
+  val |--> : ('a * 'b) -> ('a * 'b)
+  </PRE>
+
+to lib.sml.  Both use UNCHANGED for optimization.  No documentation
+for these yet.
+
+- Added the following experimental functions to lib.sml.  These seem
+very useful for implementing deltas via the UNCHANGED exception.  They
+replace complicated code in type.sml and my lartest preterm work.
+
+In the naming scheme below, a "qfun" is one which will raise UNCHANGED
+if it is really meant to return it's input value.  Note these
+aren't the same kind of "Q" functions found in the implementation of
+rewriting, since in that case the type is not :'a -> 'a but :term -> thm.
+
+  <PRE>
+  (*---------------------------------------------------------------------
+   * delta's implemented by UNCHANGED exception
+   *--------------------------------------------------------------------*)
+
+  exception UNCHANGED
+  val fun_to_qfun : (''a -> ''a) -> (''a -> ''a)
+  val qfun_to_fun : ('a -> 'a) -> ('a -> 'a)
+  val app2_qfun : (('a -> 'a) * ('b -> 'b)) -> ('a * 'b) -> ('a * 'b)
+  val appl_qfun : ('a -> 'a) -> 'a list -> 'a list
+  </PRE>
+
+
+
+- "concat" removed from Lib as it now has the meaning of "flatten"
+in the new SML basis. "equal" (i.e. polymorphioc curried equality)
+also removed as it wasn't used anywhere in
+the system.  DRS.
+
+- The following type is now in the SML basis:
+<PRE>
+  datatype ordering = LESS | EQUAL | GREATER  (* same as Portable *)
+</PRE>
+
+I have thus added the following to Lib:
+
+  <PRE>
+  val ord_to_lt : ('a * 'a -> ordering) -> ('a * 'a -> bool)
+  val lt_to_ord : ('a * 'a -> bool) -> ('a * 'a -> ordering)
+  val list_ord : ('a * 'a -> ordering) -> ('a list * 'a list) -> ordering
+  val int_ord : int * int -> ordering
+  val string_ord : string * string -> ordering
+  </PRE>
+
+These are pretty standard - e.g. they are used in Isabelle. 
+
+- I have also added:
+
+  <PRE>
+  val type_ord : typ * typ -> ordering
+  val term_ord : term * term -> ordering
+  </PRE>
+
+to Term and Type, based on Konrad's code for term_lt and type_lt.  Not
+very exciting really.  It seems to be a good idea to stick to a standard
+convention though, and I use all of this stuff in the simplifier.
+
+Needs documentation.
+
+
+<LI>
+
+- Renamed "Term_sig" to "Private_term_sig" to clarify what is public
+and what isn't.  (I know the first time I looked at this I was confused).
+Same for Private_type_sig.  This also lets us see clearly just how much
+of the system need access to the internals of Term and Type.
+
+- Preterm had public and private versions.  The only function
+in the private version was preterm_to_term.  This was not used anywhere
+except preterm.sml (where it helps implement typecheck, which is in
+the public signature).  It thus gets hidden.  This means that the private
+preterm signature is not needed.  Hence I removed it.
+
+<LI>
+
+Removed the file hol_pp.extensible, an old version of hol_pp.extensible.sml
+which was just hanging around.
+
+DRS.
+
+<LI>
+
+Preterm needed Dsyntax as input to its functor but never used
+it anywhere.  So I took it out.   DRS.
+
+<LI>
+
+Changed Type.shrink_type and preterm.sml to return 
+a special exception rather than a HOL_ERR in type.sml 
+so preterm.sml can catch it without 
+referring to HOL_ERR's specifically.  This will later let us
+fiddle with the exact representation of HOL_ERR's more readily.
+By rights shrink_type should be in preterm.sml 
+anyway, and in this case would certainly use a special
+exception constructor.  This is the only place in the system where 
+shrink_type is used, and it isn't exported.  The same applies to Type.unify.
+
+<LI>
+
+Removed lookup_type from Private_type_sig - it wasn't exported
+and wasn't used anywhere.
+
+<LI>
+
+Changed type of Type.type_decl from
+  <PRE>
+  val type_decl : string -> {tyc:typ, arity :int, theory:string}
+  </PRE>
+to
+  <PRE>
+  val type_decl : string -> {name:string, arity :int, theory:string}
+  </PRE>
+
+The following email to Konrad explains why:
+
+  <PRE>
+>A problem related to this is that in the
+> type constant table, types with arity > 0
+>are stored using Tyc!  Thus "type_decl" can be used to return a type
+>with bad construction:
+>- type_decl "fun";
+>val it = {arity=2,theory="min",tyc=(==`:fun`==)}
+>  : {arity:int, theory:string, tyc:hol_type}
+>- #tyc it;
+>val it = (==`:fun`==) : hol_type
+>- dest_type it;
+>val it = {Args=[],Tyop="fun"} : {Args:hol_type list, Tyop:string}
+>               ^^^
+>         (No "fun" type can have 0 arguments!!)
+>
+>I don't think you can derive falsity from this bug, but it demonstrates
+>that a problem exists.  
+  </PRE>
+
+
+<LI>
+
+Removed type constructor Tyc in favour of Tyapp with no arguments.
+This was after consultation with Konrad and John.  Did a thorough job
+of this, going right through the theory mechanism finding all
+references to this.  Reran the system afterward and everything loaded.
+More comprehensive testing will follow.
+
+<LI>
+
+Removed Type.add_entry as it was duplicated by Type.add_type_const.
+add_type_const did a check to see if the item was in the symbol table.
+add_entry was not exported and only used in one place, where a check was
+done just beforehand anyway.
+
+<LI>
+
+Implemented pretypes in preterm.sml.  Moved type inference code
+from type.sml to preterm.sml.  Removed constructors Stv and Link
+from types as these are now only needed in pretypes.  
+
+<LI>
+
+
+I've been fiddling about trying to implement full type inference for hol90
+i.e. allocating type variables for system type variables 
+that are free after inference. (I've called this "type maximization" 
+though I don't know if that's the right name). I sort
+of need this for term patterns in TkHol, and it's pretty useful
+to have around anyway.
+
+Well, the story is that it didn't go so well, 
+because of the way types are used as pretypes in 
+hol90.  I got an implementation working, but it had to be stuck
+right down there in the core of the system, which is a pretty bad thing.
+
+So, I decided to bite the bullet and implement pretypes for hol90, ala
+gtt.  This wasn't too hard, and I think it is a great advance!  To show
+that it gives us some real extra power, I have done experimental
+implementations of a few of the interface transformations
+that we would want to be able to implement as a minimum.  I'm not
+saying these are definitely the things we want in hol90.8, but I am
+saying that preterm transformations are now a much more realistic prospect.
+In particular, the Z preterm transformations should slot straight into
+hol90.8, and should fit together nicely with the preterm
+transformations I describe below.
+
+As John points out in gtt, implementing pretypes reduces the
+size of the critical core, making the implementation of types much simpler.
+Types can now be implemented with just:
+
+  <PRE>
+  datatype typ = Utv of string  
+               | Tyapp of {Tyop : string, Args : typ list}
+  </PRE>
+
+That's not what I'm really interested in though, since it doesn't give
+any extra usability (and hol90.8 is all about extra usability,
+right folks??).  The gain is having pretypes and preterms independent
+of type and terms (apart from antiquotes):
+
+  <PRE>
+  datatype pretype = 
+      Stv of int     (* System generated type variables *)
+    | Utv of string  (* User-given type variables *)
+    | Link of pretype ref (* Modifiable pointers *)
+    | Tyapp of {Tyop : string, Args : pretype list}
+  </PRE>
+
+and preterms:
+
+  <PRE>
+  datatype preterm = 
+      Var of   {Name : string, Ty : pretype}
+    | Const of {Name : string, Ty : pretype}
+    | Comb of  {Rator: preterm, Rand : preterm}
+    | Abs of   {Bvar : preterm, Body : preterm}
+    | Constrained of (preterm * pretype)
+    | Antiq of Term.term
+  </PRE>
+
+New functions include:
+  <PRE>
+	val type_to_pretype : typ -> pretype
+	val pretype_to_type : pretype -> typ   (* no Stv's or Links allowed *)
+	val pp_pretype : ...  (* actually uses the type pretty printer *)
+	val pp_preterm : ...  (* actually uses the term pretty printer *)
+  </PRE>
+
+Syntactic transformers now have the types:
+  <PRE>
+	: pretype -> pretype (these effect the type parser)
+	: preterm -> preterm (these effect the term parser)
+  </PRE>
+
+I believe this general framework gives us enough power to do at least
+as much as Isabelle does (and obviously more than systems like PVS).
+
+Parsing is much the same as before, with one extra step:
+	1. Produce a preterm via lexical analysis and an initial parse.
+	   This includes fixity rectification.  This is unchanged from 
+	   hol90.7.
+	2. Run a sequence of syntactic transformers over the preterm
+       3. Do a final type check to make sure the term being constructed is OK,
+          then convert the preterm into term.  This is unchanged from what
+          hol90.7 does at the moment.
+
+As you can see, all this means is that one step has been added - running
+the sequence of preterm transformers.  This is
+implemented by the new function
+
+  <PRE>
+val mk_term_parser : 
+      (preterm -> preterm) list -> (term frag list -> term)
+  </PRE>
+
+Some examples:
+  <PRE>
+fun -- x _ = mk_term_parser [];  (* the standard *)
+fun -+ x _ = mk_term_parser [type_inference, maximize_types];
+fun -* x _ = mk_term_parser [type_inference, 
+                             type_table my_types, 
+                             maximize_types] x;
+fun -- x _ = mk_term_parser [string_map reals_map,
+                             type_inference, 
+                             type_table my_table, 
+                             maximize_types] x;
+  </PRE>
+
+
+Note "type_inference" can be used a preterm transformer before
+continuing to other transformers (Konrad: type_inference corresponds
+to the TC function in hol90.7).  This is because we want to do some
+other transformations after type_inference.  A final round of
+type inference/checking will still always be performed, which means
+some duplicated effort (but not in the case where no extra transformers are 
+being used).  This seems OK and unavoidable.
+
+To explain the examples above:
+
+1. Type Maximization
+
+  <PRE>
+maximize_types : preterm -> preterm
+  </PRE>
+
+Does full type inference on the preterm, renaming free system pretype variables
+to 'a1, 'a2 etc.  Returns the new preterm.
+
+2. Type Tables to help infer types
+
+  <PRE>
+type_table : type_table -> preterm -> preterm
+  </PRE>
+
+Fill in unknown types by looking at a table of types for various identifiers.
+This can be used to give theory-wide sticky types like PVS has, as in:
+
+  <PRE>
+val types = mk_typetable ["P"  |--> (==`:ind -> bool`==),
+                          "Q"  |--> (==`:bool -> bool`==),
+                          "b1" |--> (==`:bool`==)];
+fun -- x _ = mk_term_parser [type_inference, typetable types] x;
+
+(--`P`--);        (* same as (--`P:ind -> bool`--)     *)        
+(--`P x`--);      (* same as (--`(P:ind -> bool) x`--) *)
+(--`Q T`--);      (* same as (--`(Q:bool -> bool) T`--) *)
+  </PRE>
+
+Note that these are more powerful then hol88 sticky types - the
+second example would not parse since the type
+of Q is already partially constrained.  By the wonders of Konrad's
+(pre)type unification algorithm we can avoid that problem in hol90.
+
+
+3. Normal HOL Type inference
+
+  <PRE>
+type_inference : preterm -> preterm
+  </PRE>
+
+This is effectively the existing hol90 type inference code
+which performs pointer reduction on the preterm data structure
+to implement type inference.  It is necessary to perform this
+step before type maximization or type table application.
+
+
+4. String Maps.
+
+  <PRE>
+string_map : string_map -> preterm -> preterm
+  </PRE>
+
+Implements hol88 style term and type interface maps 
+for hol90.  For example:
+
+  <PRE>
+val my_map = 
+    mk_string_map {term_map=["TRUTH"    |--> "T"          ,
+			     "FALSITY"   |--> "F"           ],
+		   type_map=["FUN"       |--> "fun"          ]};
+
+fun -- x _ = mk_term_parser [string_map my_map] x;
+
+(--`f:('a,'b) FUN`--)           (* same as (--`f:'a -> 'b`--) )       *)
+(--`f:(('a,'b) FUN,'c) FUN`--)  (* same as (--`f:('a -> 'b) -> 'c`--) *)
+(--`TRUTH`--)                   (* same as (--`T`--)                  *)
+(--`TRUTH = FALSITY`--)         (* same as (--`T = F`--)              *)
+(--`\x. x = FALSITY`--)         (* same as (--`\x. x = F`--)          *)
+  </PRE>
+
+
+String maps are reversible by adding a simple extension to the
+pretty printer:
+
+install_string_map_pp my_map;
+
+This could all be combined together to give something as simple
+as:
+
+install_term_string_map ["++" |--> "APPEND"];
+
+5. Macro Expansion
+
+
+I've done a little work on getting full macro expansion, but haven't
+got that far.  We need operations like matching on preterms to get this
+properly, and I don't have time to do that just yet.  One thing
+that is easy to implement is simple abbreviations of types and terms
+which just contain constants.  This would work something like:
+
+    [`:state`   |--> `:(num -> val) fun`]
+
+    [`0`       |--> `& 0`          ,
+     `1`       |--> `& 1`          ]
+
+etc.
+
+I've implemented this much.  Macro expansion can also be implemented,
+which would allow
+    `'a set`  |--> `'a -> bool`
+and
+
+    `a ~= b`  |--> `~(a = b)`
+
+In general, things like new constant sets can be programmed up, giving
+    `n` |-->  `& n`
+
+Many (but not all) of the Z translations are just simple macro
+translations.
+
+
+P.S. It is easy to add modifiable fixity specifications
+to the preterm mechanism.  This could be done by storing the fixity information
+in preterm.sml instead of the term constant table.  There are a few strange
+interactions with the theory file mechanism here, so for the moment it
+may be useful to keep the parsing status in the constant table and
+add an extra set of information in preterm, e.g.
+
+val preterm_fixities : unit -> (string * Preterm.Term.fixity) list
+val preterm_infix : (string * int) -> unit
+val preterm_prefix : string -> unit
+val preterm_binder : string -> unit
+val preterm_nonfix : string -> unit
+
+Putting this togeter with string tables could give a syntax as
+short as:
+
+install_term_string_table [("++",Infix 400) |--> "APPEND"];
+
+
+
+Notes on pretypes:
+
+- The following line in the term parser was problematic,
+since it relied on make_atomic_type failing if
+the type is already defined (but it won't now since pretypes
+will mean make_atomic_type will always succeed).
+
+<PRE>
+  if (Lib.can Parse_support.make_atomic_type type_ident)
+      then ...
+      else ...
+</PRE>
+
+
+
+
+
+
+
+
+
+<LI>
+
+Extensive changes made by Donald Syme to get the system into a more
+portable state, followed by separate compilation using NJSML-CM 108.5.
+
+Below are excerpts from the email notes that were made while making these
+changes:
+
+Changes I've made to get the system loading with dependency
+analysis and separate compilation:
+
+<LI> 
+No longer using "sys01.sml" etc.  These get replaced by sources.cm
+files and a number of extra .sml files in src/0 which specify
+the files that make up the full system.
+
+<LI>
+All declarations like:
+structure Drule1 = struct end (* for garbage collection *)
+
+have been commented out as CM doesn't like multiply defined structures
+and sigatures.
+
+<LI>
+
+No longer using "save_hol" as there is no real need to export 
+executables at the end of 0,1,2 and 3.
+
+<LI>
+
+I have taken out the construction of the 
+"Base_logic" structure.  This was previously opened at the top level
+immediately after creation.  Its main purpose was to provide 
+security for the Term and Type constructors (as well as hiding other
+gross things).
+
+Rationale: 
+	- We can't open Base_logic at the top level, due to CM.
+	- We want to avoid having to open the Base_logic structure 
+      in every working environment
+	- So we just construct the component structures one by one
+      at the top level.  
+	- To maintain security of types and terms,
+      PrivateType and PrivateTerm are hidden in a local definition, then
+      restricted to their public signatures at the top level.  This
+      also lets one see very clearly exactly which parts of the
+      system need explicit access to the internals of the Type and Term
+      representation.                                   DRS
+
+<LI>
+
+Took out functor parametrization over Lib.  It doesn't seem to
+serve any constructive purpose (and isn't needed for separate compilation).
+It also meant things wouldn't compile with CM + NJSML 108.5 due to
+a compiler bug in restricting things to the Lib signature.
+DRS.
+
+<LI>
+
+Took out parameterization of some structures, in particular:
+	- Lib is no longer parameterized by Sml_system
+         (as it was in Elsa'a version)
+	- Exception and Globals aren't either.
+	- Boolean (Mk_bool), Min and Exists are no longer functors, but
+         just structures.  I hope this is OK.
+DRS.
+
+<LI>
+
+Boolean (Elsa renamed Bool to this) is now defined in mk_bool.sml,
+which conditionally defines the constants and axioms, based on the
+value of remake_theory_files.  This brings mk_bool.sml in line with
+mk_min.sml and mk_exists.sml.
+DRS.
+
+<LI>
+
+I added rotl and rotr to Lib, with documentation in hol90/help/90.
+DRS.
+
+<LI>
+
+There is a major problem with introducing the abbreviations "tactic",
+"goal" etc. at the top level - CM basically doesn't recognise them,
+in the sense that it never really allows the introduction of
+these symbols into the top level environment during compilation.  What 
+on earth can we do about this??  For the moment I have defined them
+in their own structure (Abbrev) - if we find another
+soultion it should be easy to weed Abbrev out.
+DRS.
+
+<LI>
+
+Occasionally I would do more "opening" at the top of
+a structure and remove structure lookups like Match.match_term.
+e.g. in conv.sml.  I did this in this one file but have generally
+restrained myself from such activities.  
+
+[ To explain why I felt the impulse to do this: The code
+in many of the core modules is basically unreadable (in my opinion).
+My first (impulse) reaction to unreadable code is to clear away
+excess junk, e.g. structure lookup paths, by using an "open".
+In nearly all cases I see code readability as more important than
+knowing exactly which structure an identifier comes from.
+Open is a wonderful tool, and worth using where ambiguity will not then
+arise.....  I reckon the code of conv.sml is much easier 
+to understand now, but again people may disagree. ]
+DRS.
+
+
+<LI>
+
+I had got the conflict resolutoin on GSUBST_TAC wrong - I had
+to go back to Konrad's verison to find out what it should be.
+DRS.
+
+<LI>
+
+I had to change lots of references to "tactic" and "goal" etc.
+to "Abbrev.tactic" and "Abbrev.goal".
+DRS.
+
+<LI>
+
+I had to take the installation of pretty printers out of code
+which CM looks after.  This will have to be done late in the
+system construction.  This fits well with an advanced view
+of interfaces - pretty printer installation is definitely in
+the domain of the intarface-side-of-things, and so needn't be
+in the core.  They only need be installed when the (command-line)
+interface gets "installed".
+DRS.
+
+
+<LI>
+
+Changes needed to be made to get level 2 loading without any
+signatures open.  Since only a few source code files were involved, I took
+the approach of opening the appropriate structures in the .sml
+files and altering the signatures to access types from structures.
+
+<LI>
+
+As always, fixity information causes headaches!!!  Previously
+infixes were declared inside structures, then at the top level
+at the end of a levels 0 and 1.  Top level declarations will now be
+ignored by modules which we want CM to manage.
+
+<LI>
+
+Added mk_BASIC_HOL.sml and mk_HOL.sml for orthogonality.
+
+
+
+<LI>
+
+I have made a Makefile for NJML 108.5 + Compilation Manager.
+I am confident similar makefiles will be possible for 0.93 and 108.5
+without the compilation manager.  Using only one makefile will
+not, I fear, be possible.  I intend all system specifics to be
+in:
+	- the Makefile (for differences in the ML compilation
+         environment, e.g. CM v. no compilation)
+    or - portable.sml (for differences in the ML basis)
+
+The makefile is able to express the fact that we don't want theory
+files remade just because the executable which makes them is
+remade (since theory files normally don't change).  To force
+the remake of theory files, go:
+	make clobber
+	make
+Normally theory files don't get remade.
+
+The makefile takes the role of the "make_hol" script.  Turn
+around time for bugs varies.  For example:
+
+	- to find a compile time error in one of the last files to be
+loaded when building HOL, e.g. "define_type.sml", presuming
+everything else has been recompiled, takes about 25 seconds
+on albatross from the time I press "make" to the time
+the errors scroll by.  (This compares with 10-15 minutes when using
+no separate compilation).  
+
+	- interactive performance is even better - e.g. to
+fix the error, DO NOT sit there editing define_type.sml and
+typing "make" again.  Instead do it interactively, e.g.:
+
+> sml-cm
+- fun m () = CM.make' (CM.cmfile "3/sources.cm");     
+- m();
+<errors>
+<fix errors>
+- m();
+
+The turn around time is then about 10-20 seconds.
+
+2. Theoretically the use of Makefiles means various things can be taken
+out of the code (e.g. Sys_params).  I haven't done this yet.
+
+3. Getting a clean make process was interesting, and lead to some 
+tidying up around the min/exists/bool area:
+	- A "hol0" executable now gets created at the point where 
+       there are *no* theories in the system (i.e. current_theory() 
+       returns "").
+
+	- The theories "min" and "bool" are created in between hol0 and
+	hol1.  This is done is the same way as all the other theories - 
+	by running a minimal hol executable (hol0) over mk_min.sml,
+	mk_exists.sml and mk_bool.sml.
+
+	- I have added theories/src/ld_bool.sml to create the Boolean
+	structure.  It can be loaded if the theory "bool" has been 
+       created (i.e. by running mk_bool previously), 
+       Loading ld_bool.sml creates the Boolean structure which the
+	rest of the system then uses.  theories/src/ld_min.sml and 
+	theories/src/ld_exists.sml do similar things.
+
+	This separates the two concerns of mk_bool.sml - creating the
+	theory and creating the structure, and makes theory construction
+	in the base system uniform.
+
+	There is no visible external change from this, but it makes the
+	make process more consistent and the code 
+       much neater.  In particular, the variable remake_theory_files 
+       is no longer needed.  Theory
+	file remaking can be handled at the Makefile level rather than
+	in the source code.
+
+	Using CM affected this decision:
+		- mk_xxx scripts cannot be handled by CM (unless HOL
+		gains the ability to remake definitions over and over
+		again).
+
+		- ld_xxx scripts can, as they simply load a theory and
+		read information off disk and create a structure.
+
+		- The dependency of a piece of code, say the structure
+		"Conv", on a theory, in this case "bool",
+		can be expressed by opening the appropriate structure
+		inside Conv, i.e. opening Boolean inside Conv (or just
+		using it).  CM will know that to create Boolean it
+		must load ld_bool.sml, which will force the theory
+		to be loaded at the right time.
+
+		- The only other ways around this is to explicitly load
+		theories in the Makefile.  The ld_xxx scripts look
+		like a much better long term solution, especially
+		if we head toward the notion of theories as structures.
+		Note the ld_xxx scripts could be created automatically.
+
+
+4. Some rules when writing code in the base systemm:
+
+    "All modules must be loadable without:
+	- any structures opened at the top level.
+	- any infixes declared at the top level (yes, I know this is
+         awful, but until they implement infixes in signatures, it can't be 
+         avoided)
+	- the apriori assumption that any theories are loaded.  You express the
+	  fact that you need them loaded by opening a structure like 
+	  Boolean, BASIC_HOL or HOL within the structure you are writing.
+	  By doing this you can be sure that your file will have been loaded
+ 	  after the relevant file which loads the theory has been loaded.
+	  If you don't do it, then it is possible CM will decide to load your
+	  file before it loads the theory - bad news."
+
+This lead to some code changes and module opening in the structures at
+levels 2 and 3.
+
+Whether this rule will apply to library development as well is yet to
+be decided - I think it probably should apply to libraries in the
+HOL distribution, as it will make their maintanence and development using
+CM much easier.
+
+5. A note about the make process:  The executables (i.e. heap images)
+hol0, hol1 and hol2 are not actually created unless they are actually
+needed to process the script files they are used for.  hol0 is
+not needed to make hol1, though all the compiled bin files in the 0/
+directory are used to make hol1. Likewise hol1 is not used to make hol2,
+and hol2 not used to make HOL.
+
+Thus in a final release only one executable will get made.
+
+6. Things to do:
+	- add signature/functor elimination to 0/hol0.sml, 1/hol1.sml,
+	2/hol2.sml and 3/hol3.sml
+
+7. Notes:
+
+A full compilation of the core on woodcock takes 10 minutes, or in CPU time:
+      562.9 real         0.5 user         3.5 sys  
+
+The heap produced is:
+11344 hol3.sparc
+
+Which means the system runs at around 12MB of memory on startup
+(and due to generational garbage collecting doesn't suddenly expand
+to 18MB as far as I can see.  Maybe there is hope for my 16MB PC yet!)
+
+P.S.
+
+Note I have basically given up on trying to express compile-time
+paramaters in the SML code (ala "Sys_params" in hol90.7).  ML
+just isn't a very good language for expressing these (in my opinion).
+In the end, of course, we just have to get something working (as Richard
+said to me yesterday), and it doesn't much matter which we use.
+
+<HR> <LI> "rotl" and "rotr" have been added to Lib, something
+which I just did impulsively.   Documentation files
+have also been added in help/90.
+
+<HR> <LI> CVS development begun at Cambridge by Richard Boulton
+and Donald Syme.  This involved:
+
+1. Starting with the base hol90 system as released
+by Konrad Slind (without the changes described below).
+
+2. Merging in the changes made by Elsa Gunter
+to make hol90 compile under both NJSML 0.93 and later
+versions of NJSML.  The changes are described below.
+
+
+3. Merging in the changes described below by Konrad Slind
+
+4. Resolving conflicts between these separate developments.  
+
+Elsa's changes as described by Elsa:
+
+(*---------------------------------------------------------------------
+The following are what I believe to be the externally visible changes I
+have made to hol90.7 to  get hol90.8.  -  Elsa L. Gunter,  ATT Bell Labs.
+
+0) Added a structure Sml_system, through which almost all of the system
+dependancies have been factored.  This is basic to the way in which I
+maintainned compatability with both sml-nj.93 and sml-nj.108.5 and greater.
+
+1) Changed LESS to LESS_DEF in mk_prim_rec.sml
+
+2) Changed GREATER to GREATER_DEF in mk_arithmetic.sml
+
+3) Added
+
+print_theory_to_outstream : {outstream:outstream, theory:string} -> outstream
+print_theory_to_file : {file:string, theory:string} -> unit
+
+to the structure Theory.  The first function returns an outstream because
+we don't close it.  You might want to continue sending more things to it.
+With the second we do close the stream, and so we return unit.
+
+4) Changed the name of the structure Bool in hol90 has been changed to
+Boolean, so that the structure Bool from sml will no longer be hidden.
+*---------------------------------------------------------------------*)
+
+
+<HR>
+
+<LI> Changed Globals.version_number to 8.
+
+<HR>
+
+<LI> Did some temporary fiddling with <A HREF = "../src/0/term.sml">aconv</A>, 
+     spurred on by John Harrison's BDD work, which showed that the hidden 
+     EQ tests in SML's "=" can really save time. This still needs some 
+     thought, especially since the fiddling uses non-standardisms.
+
+<HR>
+
+<LI> Bug fix from Paul Curzon. PWORDLEN_TAC in the "word" library has been 
+   changed to use EQT_ELIM on the result of applying PWORDLEN_CONV on the
+   goal.
+
+<HR>
+
+<LI> Bug noticed by Rob Shaw in FILTER_STRIP_TAC, but originates in 
+   FILTER_DISCH_THEN. For some reason, the old hol90 version only checked the 
+   freedom of variables, instead of the entire term being filtered against.
+
+   <DL> <DT>Old hol90 code:
+     <PRE>
+     fun FILTER_DISCH_THEN (ttac:thm_tactic) tm : tactic  = fn (asl,w) =>
+       if (Dsyntax.is_imp w
+           andalso 
+           not(mem tm (Term.free_vars (#ant(Dsyntax.dest_imp w)))))
+       then Thm_cont.DISCH_THEN ttac (asl,w)
+       else raise TACTIC_ERR{function = "FILTER_DISCH_THEN",message = ""};
+     </PRE>
+
+   <DT>New (now in line with hol88 code):
+   <PRE>
+    fun FILTER_DISCH_THEN (ttac:thm_tactic) tm : tactic  = fn (asl,w) =>
+      if (Dsyntax.is_imp w andalso 
+          not(Term.free_in tm(#ant(Dsyntax.dest_imp w))))
+      then Thm_cont.DISCH_THEN ttac (asl,w)
+      else raise TACTIC_ERR{function = "FILTER_DISCH_THEN",message = ""};
+    </PRE>
+    </DL>
+
+<HR>
+
+<LI> Don Syme raised the question of making preterms public, which they
+   certainly should be. I have made them public, by changing the
+   binding to "Public_preterm_sig" in 0/preterm.sig to the following:
+   <PRE>
+      signature Public_preterm_sig =
+      sig
+        structure Term : Public_term_sig
+        datatype preterm = Var of {Name : string, Ty : Term.Type.hol_type}
+                         | Const of {Name : string, Ty : Term.Type.hol_type}
+                         | Comb of {Rator : preterm, Rand : preterm}
+                         | Abs of {Bvar : preterm, Body : preterm}
+                         | Constrained of (preterm * Term.Type.hol_type)
+                         | Antiq of Term.term
+    
+        val typecheck :preterm -> Term.term
+      end;
+   </PRE>
+   The datatype of preterms is now accessible through Parse_support.Preterm. 
+   Changes to: the argument signature to 0/preterm.sig, 0/parse.sml, and
+   sys01.sml. In Preterm, the function "typecheck" now includes the
+   formerly accessible function "typecheck_cleanup".
+
+<HR>
+
+<LI> Cosmetic modifications to 0/net.sml.
+
+<HR>
+
+<LI> "make_thm" in 0/thm.sml has been rewritten in an attempt to take 
+    advantage of partial evaluation. Before, it had a case statement that was
+    evaluated each time "make_thm" was applied. Now that evaluation should take
+    place at compile time. [Subsequent testing revealed absolutely no
+    speed up in SML/NJ. Perhaps other MLs won't optimize so much.]
+
+<HR>
+
+<LI> Added Globals.infix_at_front and Globals.stack_infixes. These are for
+   printing HOL infixes at beginning or end of lines and controlling
+   whether each argument of an infix goes on a new line. These were
+   already part of the record Globals.pp_flags, but they were somewhat
+   clumsy to modify.
+
+<HR>
+
+<LI> John Harrison found another bug in rewriting underneath lambdas. His 
+   message: 
+   <PRE>
+       At the moment, when applying conv to "\x. P[x]", we apply conv to
+       "P[x]" then try to ABS "x". If that stage fails, we pick a genvar
+       g, apply conv to "P[g]", then do ABS "g". However then we try to
+       alpha-convert back to "x" to keep the result readable. I've only
+       just observed (by wondering why a rewrite failed) that in fact we
+       should pick a variant "x'" not free in "P[g]". The real-life
+       example is:
+
+           val SELECT_UNIQUE = prove
+           (--`!P x. (!y:'a. P y = (y = x)) ==> ($@@ P = x)`--,
+           REPEAT STRIP_TAC THEN
+           GEN_REWRITE_TAC (RATOR_CONV o funpow 2 RAND_CONV)
+               empty_rewrites [GSYM ETA_AX] THEN
+           ASM_REWRITE_TAC[SELECT_REFL]);;
+
+       The last ASM_REWRITE_TAC is in this situation:
+
+           "(@@x. P x) = x"
+           1  ["!y. P y = y = x"]
+   </PRE>
+   The fix is implemented by adjusting ALPHA_CONV so that it primes the
+   bound variable if the suggested new bound variable is already free 
+   in the term, i.e.,
+   <PRE>
+       ALPHA_CONV (--`x:bool`--) (--`\y. y \/ x`--);
+
+       val it = |- (\y. y \/ x) = (\x'. x' \/ x) : thm
+   </PRE>
+
+<HR>
+
+<LI> Fixed a bug in <A HREF = "../src/0/term.sml">term_lt</A>, found by Mike 
+     Norrish. Variables and constants were not being compared properly, with 
+     the result being that "term_lt" wasn't total. 
+    <PRE>
+    Example:
+
+        val tm1 = (--`1`--) and tm2 = (--`2`--);
+
+        - Term.term_lt tm1 tm2;
+        val it = false : bool
+
+        - Term.term_lt tm2 tm1;
+        val it = false : bool
+
+        - tm1 = tm2;
+        val it = false : bool
+    </PRE>
+
+<HR>
+
+<LI> Fixed a bug in <A HREF = "../src/0/term.sml">mk_comb</A>, noticed by 
+     Ralph Reetz. "mk_comb" was propagating an exception from "list_mk_comb"
+
+<HR>
+
+<LI> Added a better handler for when writing a theory to disk
+fails. This is to help Kelly Hall figure out why the benchmark dies when
+exporting its first theory. Changes to
+ <A HREF = "../src/0/theory/io.sml">put_theory_to_disk</A>.
+
+<HR>
+
+<LI> Changed <A HREF = "../src/0/term.sml">variant</A> because it had
+the following bug. It would choose a variant <EM>v</EM> away from the
+given list of variables (as it should). Then it would check that
+<EM>v</EM> was not the name of a constant (also as it should). However,
+suppose that <EM>v</EM> was the name of a constant. Then renaming would
+occur, giving <EM>v'</EM> (as it should). Then it would stop. As it
+shouldn't: it should start the process again, checking that <EM>v'</EM>
+is not in the given list of variables, <EM>etc.</EM>.
+
+
+<HR> <LI> 
+
+"Beautified" the 
+<A HREF = "../examples/inductive_def/">inductive definition examples</A>. 
+The presentation of the rules is now less cluttered. Perhaps one day it will
+be as nice as the hol88 original. The support code :
+<PRE>
+  infix 5 -------------------------------------------------------------------;
+  fun (x ------------------------------------------------------------------- y)
+       = (x,y);
+
+  val TERM = Parse.term_parser
+  val new_inductive_definition = fn {name, fixity, patt, rules} =>
+     new_inductive_definition
+       {name = name, fixity = fixity, 
+        patt = (TERM ## map TERM) patt,
+        rules=map(fn((H,S),C) => {hypotheses=H,side_conditions=S,conclusion=C})
+                 (map ((map TERM ## map TERM) ## TERM) rules)};
+
+</PRE>
+
+<HR>
+
+<LI> Fixed the 
+<A HREF = "../help/88/ENTRIES/PROVE_HYP.doc">documentation for PROVE_HYP</A>.
+Its description of how <A HREF ="../src/1/drule.sml">PROVE_HYP</A> 
+manipulates assumptions was seriously wrong.
+
+<HR>
+
+<LI> Changed <A HREF = "../src/1/rewrite.sig">the interface</A> to the
+abstract type of <EM>rewrites</EM> used by <A HREF =
+"../src/1/rewrite.sml"> the rewriter</A>.
+
+<PRE>
+    type rewrites
+    val mk_rewrites : thm -> thm list
+    val add_rewrites : rewrites -> thm list -> rewrites
+    val dest_rewrites : rewrites -> thm list
+    val empty_rewrites : rewrites
+
+    val implicit_rewrites : unit -> rewrites
+    val set_implicit_rewrites : rewrites -> unit
+    val add_implicit_rewrites : thm list -> unit
+
+    val pp_rewrites : PP.ppstream -> rewrites -> unit
+    val bool_rewrites : rewrites
+</PRE>
+
+To summarize the changes: there is a new immutable value,
+<EM>bool_rewrites</EM>; the name of the mutable value
+<EM>base_rewrites</EM> has been changed to be
+<EM>implicit_rewrites</EM>; in fact, <EM>base</EM> has been changed to
+<EM>implicit</EM> throughout because it makes more sense; the function
+<EM>mk_rewrites</EM> has been made publically available; and finally, 
+<EM>dest_rewrites</EM> has been added for taking rewrite sets apart.
+
+
+<HR>
+
+<LI> Changed <A HREF = "../src/0/theory/theory.sml">new_parent</A> so that it
+operates atomically: if <EM>new_parent"X"</EM> fails, hol90's theory
+graph will be the same as just before <EM>new_parent"X"</EM> was
+invoked.
+
+<HR> 
+
+<LI> Fixed the <A HREF = "../help/90/mk_abs.doc">documentation
+for mk_abs</A>.  It wrongly asserted that the <EM>Body</EM> field in the
+argument had type <EM>hol_type</EM>.
+
+<HR>
+
+<LI> Karsten Nyblad at tdr.dk sent me a bugfix for the
+"rewriting-underneath-a-lambda" problem from 10. I liked his solution
+better, and have adopted it. (It means that ALPHA_CONV now has its
+hol90.7 behaviour.) The fix:
+<PRE>
+------- Patches (diff {old,new}conv.sml) ------------------------------
+302c302,314
+<              in MK_ABS (GEN Bvar (conv Body))
+---
+>                  val Body' = conv Body
+>              in ABS Bvar Body' handle _ =>
+>                     let val v = genvar (type_of Bvar)
+>                         val th1 = ALPHA_CONV v tm
+>                         val {rhs,...} = dest_eq(Thm.concl th1)
+>                         val {Body=Body',...} = dest_abs rhs (* v = Bvar *)
+>                         val eq_thm' = ABS v (conv Body')
+>                         val at = (#rhs(dest_eq(concl eq_thm')))
+>                         val v' = variant (free_vars at) Bvar
+>                         val th2 = ALPHA_CONV v' at
+>                     in
+>                         TRANS (TRANS th1 eq_thm') th2
+>                     end
+441c453,455
+<                    val th2 = ALPHA_CONV Bvar(#rhs(dest_eq(concl eq_thm')))
+---
+>                    val at = (#rhs(dest_eq(concl eq_thm')))
+>                    val v' = variant (free_vars at) Bvar
+>                    val th2 = ALPHA_CONV v' at
+
+</PRE>
+<HR>
+
+</OL>
+@
+
+
+1.5
+log
+@Preterm and other changes, see 7.changes
+@
+text
+@d8 1
+d10 4
+d15 59
+d76 33
+a108 4
+Renamed "Term_sig" to "Private_term_sig" to clarify what is public
+and what isn't.  (I know the first time I looked at this I was confused).
+Same for Private_type_sig.  This also lets us see clearly just how much
+of the system need access to the internals of Term and Type.
+d112 33
+a144 2
+removed the file hol_pp.extensible, an old version of hol_pp.extensible.sml
+which was just hanging around.
+d148 38
+a185 5
+Preterm had public and private versions.  The only function
+in the private version was preterm_to_term.  This was not used anywhere
+except preterm.sml (where it helps implement typecheck, which is in
+the public signature).  It thus gets hidden.  This means that the private
+preterm signature is not needed.  Hence I removed it.
+d189 8
+a196 2
+Preterm needed Dsyntax as input to its functor but never used
+it anywhere.  So I took it out. 
+d200 43
+a242 1
+"concat" removed from Lib as it now has the meaning of "flatten"
+d245 1
+a245 3
+the system.
+
+<LI>
+d247 1
+a247 1
+The following type is now in the SML basis:
+d262 3
+a264 1
+These are pretty standard - e.g. they are used in Isabelle. I have also added:
+d275 27
+d624 2
+a625 1
+<LI>
+d627 4
+a630 6
+Added 
+  <PRE>
+  val add_assoc : ''a * 'b -> (''a * 'b) list -> (''a * 'b) list
+  val remove_assoc : ''a -> (''a * 'b) list -> (''a * 'b) list
+  val |--> : ('a * 'b) -> ('a * 'b)
+  </PRE>
+d632 5
+a636 2
+to lib.sml.  Both use UNCHANGED for optimization.  No documentation
+for these yet.
+a637 1
+<LI>
+a638 3
+Added the following experimental functions to lib.sml.  These seem
+very useful for implementing deltas via the UNCHANGED exception.  They
+replace complicated code in type.sml and my lartest preterm work.
+a639 4
+In the naming scheme below, a "qfun" is one which will raise UNCHANGED
+if it is really meant to return it's input value.  Note these
+aren't the same kind of "Q" functions found in the implementation of
+rewriting, since in that case the type is not :'a -> 'a but :term -> thm.
+a640 4
+  <PRE>
+(*---------------------------------------------------------------------
+ * delta's implemented by UNCHANGED exception
+ *--------------------------------------------------------------------*)
+a641 6
+  exception UNCHANGED
+  val fun_to_qfun : (''a -> ''a) -> (''a -> ''a)
+  val qfun_to_fun : ('a -> 'a) -> ('a -> 'a)
+  val app2_qfun : (('a -> 'a) * ('b -> 'b)) -> ('a * 'b) -> ('a * 'b)
+  val appl_qfun : ('a -> 'a) -> 'a list -> 'a list
+  </PRE>
+@
+
+
+1.4
+log
+@Added changes notes to log file after first round of changes
+for hol90.8 (separate compilation, CM and portability).  Donald.
+@
+text
+@d8 384
+d394 38
+d435 1
+a435 1
+Here are excerpts from the email notes that were made while making these
+d441 2
+a442 1
+- No longer using "sys01.sml" etc.  These get replaced by sources.cm
+d446 2
+a447 1
+- All declarations like:
+d453 3
+a455 1
+- No longer using "save_hol" as there is no real need to export 
+d458 20
+a477 18
+-  * I have taken out the construction of the 
+ * "Base_logic" structure.  This was previously opened at the top level
+ * immediately after creation.  Its main purpose was to provide 
+ * security for the Term and Type constructors (as well as hiding other
+ * gross things).
+ *
+ * Rationale: 
+ * 	- We can't open Base_logic at the top level, due to CM.
+ * 	- We want to avoid having to open the Base_logic structure 
+ *       in every working environment
+ * 	- So we just construct the component structures one by one
+ *       at the top level.  
+ *	- To maintain security of types and terms,
+ *       PrivateType and PrivateTerm are hidden in a local definition, then
+ *       restricted to their public signatures at the top level.  This
+ *       also lets one see very clearly exactly which parts of the
+ *       system need explicit access to the internals of the Type and Term
+ *       representation.                                   DRS
+d479 3
+a481 1
+- Took out Elsa's parametrization over Lib.  It doesn't seem to
+d485 3
+d489 1
+a489 1
+- Took out parameterization of some structures, in particular:
+d495 3
+d499 1
+a499 1
+- Boolean (Elsa renamed Bool to this) is now defined in mk_bool.sml,
+d503 3
+d507 2
+a508 1
+- I added rotl and rotr to Lib, with documentation in hol90/help/90.
+d510 3
+a512 1
+- There is a major problem with introducing the abbreviations "tactic",
+d519 3
+d523 1
+a523 1
+- Occasionally I would do more "opening" at the top of
+d537 2
+d540 1
+d542 1
+a542 1
+- I had got the conflict resolutoin on GSUBST_TAC wrong - I had
+d544 1
+d546 3
+a548 1
+- I had to change lots of references to "tactic" and "goal" etc.
+d550 3
+d554 1
+a554 1
+- I had to take the installation of pretty printers out of code
+d561 2
+d564 1
+d566 1
+a566 1
+- Changes needed to be made to get level 2 loading without any
+d571 3
+a573 1
+- As always, fixity information causes headaches!!!  Previously
+d578 3
+a580 1
+- Discovery of "pervasive environment" in Compiler/CM....
+a581 1
+- Added mk_BASIC_HOL.sml and mk_HOL.sml for orthogonality.
+d584 1
+d586 1
+a586 1
+1. I have made a Makefile for NJML 108.5 + Compilation Manager.
+d737 1
+a737 3
+<HR> 
+
+<LI> "rotl" and "rotr" have been added to Lib, something
+d741 1
+a741 3
+<HR>
+
+<LI> CVS development begun at Cambridge by Richard Boulton
+d949 1
+a949 1
+<HR> 
+d951 1
+a951 1
+<LI> "Beautified" the 
+@
+
+
+1.4.2.1
+log
+@Moved 7.changes into subdirectory 7.
+@
+text
+@@
+
+
+1.3
+log
+@First phase of hol90.8 development.  hol90 now compiles using NJSML-CM
+108.5, with separate compilation of libraries.  System dependencies
+have been isolated in the makefiles and "portable.sml".
+
+This involved a large number of enhancments to the source files,
+most of which are documented in the 7.changes file (or will be shortly).
+See also the correpsonding email corrspondence between RJB, KLS, TFM,
+JRH and DRS that happened during this development.
+@
+text
+@d8 268
+@
+
+
+1.2
+log
+@Konrad's changes since hol90.7, merged in off a side branch.
+@
+text
+@d8 6
+d15 45
+@
+
+
+1.1
+log
+@file 7.changes was initially added on branch hol90_7_cleaned_up_original_branchtag.
+@
+text
+@d1 278
+@
+
+
+1.1.2.1
+log
+@Konrad's bug fixes and further development to hol90.7 after it's release.
+Checked n on a side branch for later merging with the main trunk
+(Els'a revisions).  See doc/7.changes for details.
+@
+text
+@a0 278
+<TITLE>CHANGE LOG</TITLE>
+<H1>CHANGE LOG</H1>
+
+<OL>
+
+<LI> <A HREF = "5/5.changes">Previous change list</A>
+
+<HR>
+
+<LI> Changed Globals.version_number to 8.
+
+<HR>
+
+<LI> Did some temporary fiddling with <A HREF = "../src/0/term.sml">aconv</A>, 
+     spurred on by John Harrison's BDD work, which showed that the hidden 
+     EQ tests in SML's "=" can really save time. This still needs some 
+     thought, especially since the fiddling uses non-standardisms.
+
+<HR>
+
+<LI> Bug fix from Paul Curzon. PWORDLEN_TAC in the "word" library has been 
+   changed to use EQT_ELIM on the result of applying PWORDLEN_CONV on the
+   goal.
+
+<HR>
+
+<LI> Bug noticed by Rob Shaw in FILTER_STRIP_TAC, but originates in 
+   FILTER_DISCH_THEN. For some reason, the old hol90 version only checked the 
+   freedom of variables, instead of the entire term being filtered against.
+
+   <DL> <DT>Old hol90 code:
+     <PRE>
+     fun FILTER_DISCH_THEN (ttac:thm_tactic) tm : tactic  = fn (asl,w) =>
+       if (Dsyntax.is_imp w
+           andalso 
+           not(mem tm (Term.free_vars (#ant(Dsyntax.dest_imp w)))))
+       then Thm_cont.DISCH_THEN ttac (asl,w)
+       else raise TACTIC_ERR{function = "FILTER_DISCH_THEN",message = ""};
+     </PRE>
+
+   <DT>New (now in line with hol88 code):
+   <PRE>
+    fun FILTER_DISCH_THEN (ttac:thm_tactic) tm : tactic  = fn (asl,w) =>
+      if (Dsyntax.is_imp w andalso 
+          not(Term.free_in tm(#ant(Dsyntax.dest_imp w))))
+      then Thm_cont.DISCH_THEN ttac (asl,w)
+      else raise TACTIC_ERR{function = "FILTER_DISCH_THEN",message = ""};
+    </PRE>
+    </DL>
+
+<HR>
+
+<LI> Don Syme raised the question of making preterms public, which they
+   certainly should be. I have made them public, by changing the
+   binding to "Public_preterm_sig" in 0/preterm.sig to the following:
+   <PRE>
+      signature Public_preterm_sig =
+      sig
+        structure Term : Public_term_sig
+        datatype preterm = Var of {Name : string, Ty : Term.Type.hol_type}
+                         | Const of {Name : string, Ty : Term.Type.hol_type}
+                         | Comb of {Rator : preterm, Rand : preterm}
+                         | Abs of {Bvar : preterm, Body : preterm}
+                         | Constrained of (preterm * Term.Type.hol_type)
+                         | Antiq of Term.term
+    
+        val typecheck :preterm -> Term.term
+      end;
+   </PRE>
+   The datatype of preterms is now accessible through Parse_support.Preterm. 
+   Changes to: the argument signature to 0/preterm.sig, 0/parse.sml, and
+   sys01.sml. In Preterm, the function "typecheck" now includes the
+   formerly accessible function "typecheck_cleanup".
+
+<HR>
+
+<LI> Cosmetic modifications to 0/net.sml.
+
+<HR>
+
+<LI> "make_thm" in 0/thm.sml has been rewritten in an attempt to take 
+    advantage of partial evaluation. Before, it had a case statement that was
+    evaluated each time "make_thm" was applied. Now that evaluation should take
+    place at compile time. [Subsequent testing revealed absolutely no
+    speed up in SML/NJ. Perhaps other MLs won't optimize so much.]
+
+<HR>
+
+<LI> Added Globals.infix_at_front and Globals.stack_infixes. These are for
+   printing HOL infixes at beginning or end of lines and controlling
+   whether each argument of an infix goes on a new line. These were
+   already part of the record Globals.pp_flags, but they were somewhat
+   clumsy to modify.
+
+<HR>
+
+<LI> John Harrison found another bug in rewriting underneath lambdas. His 
+   message: 
+   <PRE>
+       At the moment, when applying conv to "\x. P[x]", we apply conv to
+       "P[x]" then try to ABS "x". If that stage fails, we pick a genvar
+       g, apply conv to "P[g]", then do ABS "g". However then we try to
+       alpha-convert back to "x" to keep the result readable. I've only
+       just observed (by wondering why a rewrite failed) that in fact we
+       should pick a variant "x'" not free in "P[g]". The real-life
+       example is:
+
+           val SELECT_UNIQUE = prove
+           (--`!P x. (!y:'a. P y = (y = x)) ==> ($@@ P = x)`--,
+           REPEAT STRIP_TAC THEN
+           GEN_REWRITE_TAC (RATOR_CONV o funpow 2 RAND_CONV)
+               empty_rewrites [GSYM ETA_AX] THEN
+           ASM_REWRITE_TAC[SELECT_REFL]);;
+
+       The last ASM_REWRITE_TAC is in this situation:
+
+           "(@@x. P x) = x"
+           1  ["!y. P y = y = x"]
+   </PRE>
+   The fix is implemented by adjusting ALPHA_CONV so that it primes the
+   bound variable if the suggested new bound variable is already free 
+   in the term, i.e.,
+   <PRE>
+       ALPHA_CONV (--`x:bool`--) (--`\y. y \/ x`--);
+
+       val it = |- (\y. y \/ x) = (\x'. x' \/ x) : thm
+   </PRE>
+
+<HR>
+
+<LI> Fixed a bug in <A HREF = "../src/0/term.sml">term_lt</A>, found by Mike 
+     Norrish. Variables and constants were not being compared properly, with 
+     the result being that "term_lt" wasn't total. 
+    <PRE>
+    Example:
+
+        val tm1 = (--`1`--) and tm2 = (--`2`--);
+
+        - Term.term_lt tm1 tm2;
+        val it = false : bool
+
+        - Term.term_lt tm2 tm1;
+        val it = false : bool
+
+        - tm1 = tm2;
+        val it = false : bool
+    </PRE>
+
+<HR>
+
+<LI> Fixed a bug in <A HREF = "../src/0/term.sml">mk_comb</A>, noticed by 
+     Ralph Reetz. "mk_comb" was propagating an exception from "list_mk_comb"
+
+<HR>
+
+<LI> Added a better handler for when writing a theory to disk
+fails. This is to help Kelly Hall figure out why the benchmark dies when
+exporting its first theory. Changes to
+ <A HREF = "../src/0/theory/io.sml">put_theory_to_disk</A>.
+
+<HR>
+
+<LI> Changed <A HREF = "../src/0/term.sml">variant</A> because it had
+the following bug. It would choose a variant <EM>v</EM> away from the
+given list of variables (as it should). Then it would check that
+<EM>v</EM> was not the name of a constant (also as it should). However,
+suppose that <EM>v</EM> was the name of a constant. Then renaming would
+occur, giving <EM>v'</EM> (as it should). Then it would stop. As it
+shouldn't: it should start the process again, checking that <EM>v'</EM>
+is not in the given list of variables, <EM>etc.</EM>.
+
+
+<HR> 
+
+<LI> "Beautified" the 
+<A HREF = "../examples/inductive_def/">inductive definition examples</A>. 
+The presentation of the rules is now less cluttered. Perhaps one day it will
+be as nice as the hol88 original. The support code :
+<PRE>
+  infix 5 -------------------------------------------------------------------;
+  fun (x ------------------------------------------------------------------- y)
+       = (x,y);
+
+  val TERM = Parse.term_parser
+  val new_inductive_definition = fn {name, fixity, patt, rules} =>
+     new_inductive_definition
+       {name = name, fixity = fixity, 
+        patt = (TERM ## map TERM) patt,
+        rules=map(fn((H,S),C) => {hypotheses=H,side_conditions=S,conclusion=C})
+                 (map ((map TERM ## map TERM) ## TERM) rules)};
+
+</PRE>
+
+<HR>
+
+<LI> Fixed the 
+<A HREF = "../help/88/ENTRIES/PROVE_HYP.doc">documentation for PROVE_HYP</A>.
+Its description of how <A HREF ="../src/1/drule.sml">PROVE_HYP</A> 
+manipulates assumptions was seriously wrong.
+
+<HR>
+
+<LI> Changed <A HREF = "../src/1/rewrite.sig">the interface</A> to the
+abstract type of <EM>rewrites</EM> used by <A HREF =
+"../src/1/rewrite.sml"> the rewriter</A>.
+
+<PRE>
+    type rewrites
+    val mk_rewrites : thm -> thm list
+    val add_rewrites : rewrites -> thm list -> rewrites
+    val dest_rewrites : rewrites -> thm list
+    val empty_rewrites : rewrites
+
+    val implicit_rewrites : unit -> rewrites
+    val set_implicit_rewrites : rewrites -> unit
+    val add_implicit_rewrites : thm list -> unit
+
+    val pp_rewrites : PP.ppstream -> rewrites -> unit
+    val bool_rewrites : rewrites
+</PRE>
+
+To summarize the changes: there is a new immutable value,
+<EM>bool_rewrites</EM>; the name of the mutable value
+<EM>base_rewrites</EM> has been changed to be
+<EM>implicit_rewrites</EM>; in fact, <EM>base</EM> has been changed to
+<EM>implicit</EM> throughout because it makes more sense; the function
+<EM>mk_rewrites</EM> has been made publically available; and finally, 
+<EM>dest_rewrites</EM> has been added for taking rewrite sets apart.
+
+
+<HR>
+
+<LI> Changed <A HREF = "../src/0/theory/theory.sml">new_parent</A> so that it
+operates atomically: if <EM>new_parent"X"</EM> fails, hol90's theory
+graph will be the same as just before <EM>new_parent"X"</EM> was
+invoked.
+
+<HR> 
+
+<LI> Fixed the <A HREF = "../help/90/mk_abs.doc">documentation
+for mk_abs</A>.  It wrongly asserted that the <EM>Body</EM> field in the
+argument had type <EM>hol_type</EM>.
+
+<HR>
+
+<LI> Karsten Nyblad at tdr.dk sent me a bugfix for the
+"rewriting-underneath-a-lambda" problem from 10. I liked his solution
+better, and have adopted it. (It means that ALPHA_CONV now has its
+hol90.7 behaviour.) The fix:
+<PRE>
+------- Patches (diff {old,new}conv.sml) ------------------------------
+302c302,314
+<              in MK_ABS (GEN Bvar (conv Body))
+---
+>                  val Body' = conv Body
+>              in ABS Bvar Body' handle _ =>
+>                     let val v = genvar (type_of Bvar)
+>                         val th1 = ALPHA_CONV v tm
+>                         val {rhs,...} = dest_eq(Thm.concl th1)
+>                         val {Body=Body',...} = dest_abs rhs (* v = Bvar *)
+>                         val eq_thm' = ABS v (conv Body')
+>                         val at = (#rhs(dest_eq(concl eq_thm')))
+>                         val v' = variant (free_vars at) Bvar
+>                         val th2 = ALPHA_CONV v' at
+>                     in
+>                         TRANS (TRANS th1 eq_thm') th2
+>                     end
+441c453,455
+<                    val th2 = ALPHA_CONV Bvar(#rhs(dest_eq(concl eq_thm')))
+---
+>                    val at = (#rhs(dest_eq(concl eq_thm')))
+>                    val v' = variant (free_vars at) Bvar
+>                    val th2 = ALPHA_CONV v' at
+
+</PRE>
+<HR>
+
+</OL>
+@

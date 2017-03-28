@@ -1,0 +1,234 @@
+head	1.3;
+access;
+symbols
+	HOL97:1.3.0.4
+	bpHOL97:1.3
+	hol90_9_alpha:1.3
+	hol90_pre8_for_multiple_compilers:1.3.0.2
+	hol90_pre8_after_donalds_separate_compilation_changes:1.3
+	hol90_8_after_merging_Konrad_Elsa:1.2
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.3
+date	95.10.31.15.29.01;	author drs1004;	state Exp;
+branches
+	1.3.4.1;
+next	1.2;
+
+1.2
+date	95.10.16.17.48.05;	author drs1004;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	95.10.16.13.31.05;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.31.05;	author rjb;	state Exp;
+branches;
+next	;
+
+1.3.4.1
+date	97.07.15.12.51.15;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.3
+log
+@Changes by DRS for separate compilation using NJSML 108.5/CM
+@
+text
+@(* =====================================================================*)
+(* FILE		 : string_conv.ml                                       *)
+(* DESCRIPTION   : define the axiom scheme for character strings.	*)
+(*									*)
+(*									*)
+(* AUTHOR	: T. Melham						*)
+(* DATE		: 87.08.23						*)
+(* REVISED	: 90.10.27						*)
+(* TRANSLATOR    : Konrad Slind, University of Calgary                  *)
+(* =====================================================================*)
+
+structure String_conv : sig
+                          val string_CONV : Abbrev.conv
+                        end =
+struct
+
+open Core; (* open up all of the HOL 0/1 Core - could be replaced by more *)
+           (* explicit opens to avoid endless recompilation of libraries  *)
+           (* during system development                                   *)
+
+fun STRING_CONV_ERR m = HOL_ERR{origin_structure="String_conv",
+                                origin_function = "string_CONV",
+                                message = m};
+open Rsyntax;
+
+(* ---------------------------------------------------------------------*)
+(* string_CONV  "defines" the infinite family of constants:		*)
+(*									*)
+(*	'a'  = STRING(ASCII F T T F F F F T)``				*)
+(*	'ab' = STRING(ASCII F T T F F F F T)`b`				*)
+(*									*)
+(*	 ... etc							*)
+(*									*)
+(* The auxiliary function bits n m computes the representation in n 	*)
+(* bits of m (MOD 2**n)							*)
+(* ---------------------------------------------------------------------*)
+local
+val T = --`T`--
+and F = --`F`--
+and A = --`ASCII`--
+fun bits 0 _ = []
+  | bits n m = 
+       let val hm = m div 2 
+       in (if (hm*2 = m) then F else T) :: (bits (n-1) hm)
+       end
+in
+fun string_CONV tm =
+   let val {Name = str, Ty = ty} = dest_const tm
+       val _ = assert (fn t => #Tyop(dest_type t) = "string") ty
+   in
+   if (str = "\"\"") 
+   then raise STRING_CONV_ERR "empty string"
+   else case (Portable.String.explode str)
+        of (quotes::h::t) =>
+	    if Portable.String.str quotes = "\""
+		then
+           let val code = rev (bits 8 (ord h))
+               val tm1 = mk_comb {Rator = (--`STRING`--),
+                                  Rand = (list_mk_comb(A,code))}
+               val def = mk_comb {Rator=tm1,
+                                  Rand=mk_const
+				  {Name=Portable.String.implode (quotes::t),
+				   Ty=ty}}
+               in Thm.mk_drule_thm([], mk_eq {lhs = tm, rhs = def})
+               end
+	    else raise STRING_CONV_ERR "badly formed string literal"
+           | _ => raise STRING_CONV_ERR "badly formed string literal"
+   end
+   handle e as HOL_ERR{origin_function = "string_CONV",...} => raise e
+        | _ => raise STRING_CONV_ERR ""
+end;
+
+end; (* String_conv *)
+@
+
+
+1.3.4.1
+log
+@The string library now loads under CM. The entrypoint is the structure
+"stringLib";
+@
+text
+@d9 1
+a9 1
+(* TRANSLATOR   : Konrad Slind, University of Calgary                   *)
+d12 3
+a14 1
+structure String_conv : sig val string_CONV : Abbrev.conv end =
+d17 3
+a19 2
+open Lib Exception CoreHol;
+open Type Term Dsyntax Parse;
+d24 1
+@
+
+
+1.2
+log
+@I'm about to do a checkin of Elsa Gunter's modifications to the hol90.7
+sources to create her hol90.pre8.  To recap what I've done:
+	- I checked out hol90 (in /usr/groups/hol/drs1004/hol90)
+		cvs co hol90
+
+	- By doing a recursive diff between Elsa's source and the
+	hol90.7 source I found all the changes Elsa had made to
+	source files.  I copied relevant files from Elsa's source
+	into my checked out version.  The only new files were
+		- the sml_system files in src/0
+		- some make scripts in src/.
+	Changed files were in:
+		src/{0,1,2,3}
+		library/arith/src/thm_convs.sml
+		library/list/src/list_conv1.sml
+		library/num/src/num_lib.sml
+		library/prog_logic/src/halts_logic.sml
+		library/prog_logic/src/translation.sml
+		library/prog_logic/theories/src/mk_halts.sml
+		library/real/theories/src/Make
+		library/real/theories/src/equiv.sml
+		library/real/theories/src/seq.sml
+		library/reduce/src/arithconv.sml
+		library/string/src/string_conv.sml
+		library/unity/theories/src/aux_definitions.sml
+		library/word/theories/src/*
+
+	- I will now commit these changes, with this email as the log message.
+		cvs commit
+
+	- Tomorrow I will get this version compiling
+	with NJSML 108 (I will probably add
+	the files to enable the NJSML compilation manager to make
+	this easier), then check those changes in.  I think it's
+	good to get things working.
+@
+text
+@d13 1
+a13 1
+                          val string_CONV : conv
+d17 4
+d53 1
+a53 1
+   else case (Sml_system.String.explode str)
+d55 1
+a55 1
+	    if Sml_system.String.str quotes = "\""
+d62 1
+a62 1
+				  {Name=Sml_system.String.implode (quotes::t),
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d49 4
+a52 2
+   else case (explode str)
+        of ("\""::h::t) =>
+d57 3
+a59 1
+                                  Rand=mk_const{Name=implode("\""::t),Ty=ty}}
+d62 1
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

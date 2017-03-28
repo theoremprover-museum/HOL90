@@ -1,0 +1,93 @@
+(*----------------------------------------------------------------------------
+ |
+ |         THE ALGORITHM FOR BUILDING THE CUSTOM INDUCTION THEOREM.
+ |
+ &---------------------------------------------------------------------------*)
+
+
+
+
+0. Assume given the basic wellfounded induction theorem stemming from the 
+   R used in the function definition:
+
+       |- (!x. (!y. R y x => P y) ==> P x) ==> !x. P x.
+
+1. The most important thing is to know what we are trying to prove. From the 
+   function definition
+
+       f (pat_1) = rhs_1[cntxt{rec_occs}_1] /\.../\
+       f (pat_n) = rhs_n[cntxt{rec_occs}_n]
+   
+   we build (and assume) the antecedent of our desired induction theorem:
+
+       . |- (cntxt_1 ==> P(rec_occs_1)) ==> P(pat_1) /\.../\
+            (cntxt_n ==> P(rec_occs_n)) ==> P(pat_n)
+
+   (The rec_occs are arguments to recursive calls, each occurring in a 
+    perhaps empty context.)
+
+2. Prove (1) |- !x. (!y. R y x ==> P y) ==> P x.
+
+   A. Consider cases on "x" (patterns of definition, so they must be complete!)
+
+   B. For any case i (clause in definition), assume antecedent of (2) : 
+
+         . |- !y. R y pat_i ==> P y
+
+   C. Specialize (B) to each recursive argument in the clause, getting
+
+         (B) |- (R y1 pat_i ==> P y1) /\.../\ (R y_m pat_i ==> P y_m)
+
+   D. Prove each antecedent of this conjunction by assuming the corresponding
+      termination condition (TC)
+
+          . |- cntxt_y1 ==> R y1 pat_i
+
+      and then using transitivity of ==> (or just MP, when context is empty),
+      to eliminate R y1 pat_i, ..., R ym pat_i to get
+
+         TC_1,...,TC_m, (B) |- P y_1 /\.../\ P y_m
+
+   E. Now y_1 ... y_m are just the rec_occs for clause i, so we use 
+      MP (1) (D) and then discharge (B) to get
+
+         TC_1,...,TC_m, (1) |- (!y. R y pat_i ==> P y) ==> P(pat_i)
+
+   F. Replace pat_i by x
+
+         TC_1,...,TC_m, (1), (x = pat_i) |- (!y. R y x ==> P y) ==> P x
+
+   G. We've done steps B-F for each case, so we have proved n theorems
+
+         TCs_1, (1), (x = pat_1) |-  (!y. R y x ==> P y) ==> P x
+                                ...
+              TCs_n, (x = pat_n) |-  (!y. R y x ==> P y) ==> P x
+
+
+   H. We now need a disjunction theorem 
+
+          |- !x. (?y_1. x = pat_1) \/ ... \/ (?y_n. x = pat_n)
+
+      where the free variables of pat_i in disjunct i comprise the 
+      vector y_i. We will consider the production of this theorem 
+      separately.
+
+   I. By applying a disjoint cases rule scheme to (H) and (G) we obtain
+
+          TCs_1,...,TCs_n,(1) |- (!y. R y x ==> P y) ==> P x
+
+   J. Generalize (I) to get
+
+          TCs_1,...,TCs_n,(1) |- !x. (!y. R y x ==> P y) ==> P x
+
+3. MP (0) (J) gives (1) |- !x. P x, which is what we want. Discharge the 
+   assumption and then generalize to get
+
+      TCs_1,...,TCs_n
+      |- !P. (cntxt_1 ==> P(rec_occs_1)) ==> P(pat_1) /\ ... /\
+             (cntxt_n ==> P(rec_occs_n)) ==> P(pat_n)
+              ==> !x. P x.
+
+Now it is up to the postprocessors to attempt to eliminate the termination
+conditions.
+

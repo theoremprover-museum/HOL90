@@ -1,0 +1,120 @@
+head	1.1;
+branch	1.1.1;
+access;
+symbols
+	HOL97:1.1.1.1.0.6
+	bpHOL97:1.1.1.1
+	hol90_9_alpha:1.1.1.1
+	hol90_pre8_for_multiple_compilers:1.1.1.1.0.4
+	hol90_pre8_after_donalds_separate_compilation_changes:1.1.1.1
+	hol90_8_after_merging_Konrad_Elsa:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	95.10.16.13.34.20;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.34.20;	author rjb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@\DOC STRIP_TAC
+
+\TYPE {STRIP_TAC : tactic}
+
+\SYNOPSIS
+Splits a goal by eliminating one outermost connective.
+
+\KEYWORDS
+tactic.
+
+\DESCRIBE
+Given a goal {(A,t)}, {STRIP_TAC} removes one outermost occurrence of one of the
+connectives {!}, {==>}, {~} or {/\} from the conclusion of the goal {t}.  If
+{t} is a universally quantified term, then {STRIP_TAC} strips off the
+quantifier:
+{
+      A ?- !x.u
+   ==============  STRIP_TAC
+     A ?- u[x'/x]
+}
+\noindent where {x'} is a primed variant that does not appear free in the
+assumptions {A}.  If {t} is a conjunction, then {STRIP_TAC} simply splits the
+conjunction into two subgoals:
+{
+      A ?- v /\ w
+   =================  STRIP_TAC
+    A ?- v   A ?- w
+}
+\noindent If {t} is an implication, {STRIP_TAC} moves the antecedent into the
+assumptions, stripping conjunctions, disjunctions and existential
+quantifiers according to the following rules:
+{
+    A ?- v1 /\ ... /\ vn ==> v            A ?- v1 \/ ... \/ vn ==> v
+   ============================        =================================
+       A u {{v1,...,vn}} ?- v             A u {{v1}} ?- v ... A u {{vn}} ?- v
+
+     A ?- ?x.w ==> v
+   ====================
+    A u {{w[x'/x]}} ?- v
+}
+\noindent where {x'} is a primed variant of {x} that does not appear free in
+{A}. Finally, a negation {~t} is treated as the implication {t ==> F}.
+
+\FAILURE
+{STRIP_TAC (A,t)} fails if {t} is not a universally quantified term,
+an implication, a negation or a conjunction.
+
+\EXAMPLE
+Applying {STRIP_TAC} twice to the goal:
+{
+    ?- !n. m <= n /\ n <= m ==> (m = n)
+}
+\noindent results in the subgoal:
+{
+   {{n <= m, m <= n}} ?- m = n
+}
+\USES
+When trying to solve a goal, often the best thing to do first
+is {REPEAT STRIP_TAC} to split the goal up into manageable pieces.
+
+\SEEALSO
+CONJ_TAC, DISCH_TAC, DISCH_THEN, GEN_TAC, STRIP_ASSUME_TAC, STRIP_GOAL_THEN.
+
+\ENDDOC
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

@@ -1,0 +1,454 @@
+head	1.7;
+access;
+symbols
+	HOL97:1.2.0.4
+	bpHOL97:1.2
+	hol90_9_alpha:1.2
+	hol90_pre8_for_multiple_compilers:1.2.0.2
+	hol90_pre8_after_donalds_separate_compilation_changes:1.2
+	hol90_8_after_merging_Konrad_Elsa:1.2
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.7
+date	96.02.08.00.32.33;	author drs1004;	state Exp;
+branches;
+next	1.6;
+
+1.6
+date	96.01.04.22.07.00;	author drs1004;	state Exp;
+branches;
+next	1.5;
+
+1.5
+date	96.01.04.21.49.45;	author drs1004;	state Exp;
+branches;
+next	1.4;
+
+1.4
+date	96.01.04.13.45.56;	author drs1004;	state Exp;
+branches;
+next	1.3;
+
+1.3
+date	95.12.18.11.35.40;	author drs1004;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	95.10.17.17.07.42;	author drs1004;	state Exp;
+branches
+	1.2.4.1;
+next	1.1;
+
+1.1
+date	95.10.16.13.30.00;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.30.00;	author rjb;	state Exp;
+branches;
+next	;
+
+1.2.4.1
+date	97.06.11.17.24.56;	author kxs;	state Exp;
+branches;
+next	1.2.4.2;
+
+1.2.4.2
+date	97.07.10.19.27.52;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.7
+log
+@New theory mechanism, by Donald Syme, and many other enhancements.
+@
+text
+@(*=========================================================================
+ *
+ *========================================================================*)
+
+signature Public_type_sig =
+sig
+  eqtype typ
+  type hol_type sharing type hol_type = typ
+
+
+  (*------------------------------------------------------------------------
+   * The (global) type constant symbol table
+   *----------------------------------------------------------------------*)
+  val is_type : string -> bool
+  val all_types : unit -> string list	
+  val type_decl : string -> {name:string, arity:int}
+  val arity : string -> int
+
+  (*------------------------------------------------------------------------
+   * ops
+   *----------------------------------------------------------------------*)
+
+  val type_subst : typ Lib.subst -> typ -> typ
+  val type_vars : typ -> typ list
+  val type_varsl : typ list -> typ list
+  val mk_type : {Tyop: string, Args:typ list} -> typ
+  val dest_type : typ -> {Tyop : string, Args : typ list}
+  val mk_vartype : string -> typ
+  val dest_vartype : typ -> string
+  val is_vartype : typ -> bool
+  val type_ord : typ * typ -> order
+  val type_lt :typ -> typ -> bool
+
+
+  val hash_type : typ -> int
+  val optimize_type : typ -> typ
+
+end;
+
+
+(*=========================================================================
+ *
+ *========================================================================*)
+
+
+signature Private_type_sig =
+sig
+
+  datatype typ = Utv of string  
+               | Tyapp of {Tyop : string, Args : typ list}
+
+  type hol_type sharing type hol_type = typ
+
+(*  datatype 'a delta = NO_CHANGE | CHANGED of 'a *)
+
+
+(*  val ty_sub:  typ Lib.subst -> typ -> typ delta *)
+  val type_subst:  typ Lib.subst -> typ -> typ
+  val type_qsubst:  typ Lib.subst -> typ -> typ (* might raise UNCHANGED *)
+  val type_vars:  typ -> typ list
+  val type_varsl:  typ list -> typ list
+  val mk_type:  {Tyop: string, Args:typ list} -> typ
+  val dest_type:  typ -> {Tyop:  string, Args : typ list}
+  val mk_vartype : string -> typ
+  val dest_vartype : typ -> string
+  val is_vartype : typ -> bool
+  val polymorphic : typ -> bool
+
+  val type_ord : typ * typ -> order
+  val type_lt : typ -> typ -> bool
+  val hash_type : typ -> int
+  val optimize_type : typ -> typ
+
+  (*------------------------------------------------------------------------
+   * The type constant symbol table
+   *----------------------------------------------------------------------*)
+  val all_types : unit -> string list	
+  val type_decl : string -> {name:string, arity :int}
+  val add_type : {Name:string, Arity :int} -> unit
+  type symtab
+  val symtab_copy : unit -> symtab
+  val replace_symtab : symtab -> unit
+  exception TYPE_SYMTAB_CLASH of string;
+  
+  val is_type : string -> bool
+  val arity : string -> int
+
+  (*------------------------------------------------------------------------
+   *  support for type unifiction for type inference.  Not public.
+   * Now in preterm.sml as that's what it relates to. DRS.
+   *
+   *  val new_type_var: unit -> typ
+   *  val reset_type_num: unit -> unit
+   *  val unify: typ -> typ -> unit
+   *  exception UNIFY of string
+   *  val ty_eq: typ * typ -> bool
+   *  exception SHRINK_TYPE
+   *  val shrink_type: typ -> typ delta
+   *  val rename_tv: typ -> typ delta
+   *----------------------------------------------------------------------*)
+
+end;
+
+
+@
+
+
+1.6
+log
+@NJML 108.19 changes
+@
+text
+@d11 3
+d15 8
+a33 1
+  val type_decl : string -> {name:string, arity:int, theory:string}
+d77 3
+a79 2
+  val type_decl : string -> {name:string, arity :int, theory:string}
+  val add_type_const : {name:string, arity :int, theory:string} -> unit
+d83 2
+a84 2
+  exception TYPE_SYMTAB_CLASH of {common_name:string, 
+                                  theory1:string, theory2:string}
+d86 1
+a86 1
+  val arity_of_type : string -> int
+d90 1
+a90 1
+   * Should probably be in preterm.sml as that's what it relates to. DRS.
+@
+
+
+1.5
+log
+@*** empty log message ***
+@
+text
+@d59 1
+a59 1
+  val type_ord : typ * typ -> ordering
+@
+
+
+1.4
+log
+@Fixed types, pretypes, fixities, parsing.
+@
+text
+@d20 1
+a20 1
+  val type_ord : typ * typ -> ordering
+@
+
+
+1.3
+log
+@Preterm and other changes, see 7.changes
+@
+text
+@a9 4
+  (*------------------------------------------------------------------------
+   * val new_type_var :unit -> typ
+   * val reset_type_num :unit -> unit
+   *----------------------------------------------------------------------*)
+d11 1
+a37 7
+  (*------------------------------------------------------------------------
+   * datatype typ = Stv of int     (* System generated type variables *)
+   *              | Utv of string  (* User-given type variables *)
+   *              | Link of typ ref (* Modifiable pointers *)
+   *              | Tyapp of {Tyop : string, Args : typ list}
+   *----------------------------------------------------------------------*)
+  
+d63 1
+d74 1
+a74 1
+  val is_st_type_const : string -> bool
+@
+
+
+1.2
+log
+@Keeping you up to date:
+
+I'm about to do a checkin of elsa's modifications to the hol90.7
+sources to create her hol90.pre8.  To recap what I've done:
+	- I checked out hol90 (in /usr/groups/hol/drs1004/hol90)
+		cvs co hol90
+	  (Well, to be honest, I only checked out those
+	  parts of hol90 I knew I'd be changing, e.g. not the
+	  Manual, and only parts of the library.  Checking out the
+	  entire source takes a while, mainly due to the enormous number
+	  of help files.  The limiting factor is files/second, which
+         runs at around 5 when CVS is working on nfs over a network, not
+         KB/second, which you might at first think it would be).
+
+	- By doing a recursive diff between Elsa's source and the
+	hol90.7 source I found all the changes Elsa had made to
+	source files.  I copied relevant files from Elsa's source
+	into my checked out version.  The only new files were
+		- the sml_system files in src/0
+		- some make scripts in src/.
+	Changed files were in:
+		src/{0,1,2,3}
+		library/arith/src/thm_convs.sml
+		library/list/src/list_conv1.sml
+		library/num/src/num_lib.sml
+		library/prog_logic/src/halts_logic.sml
+		library/prog_logic/src/translation.sml
+		library/prog_logic/theories/src/mk_halts.sml
+		library/real/theories/src/Make
+		library/real/theories/src/equiv.sml
+		library/real/theories/src/seq.sml
+		library/reduce/src/arithconv.sml
+		library/string/src/string_conv.sml
+		library/unity/theories/src/aux_definitions.sml
+		library/word/theories/src/*
+
+	- I will now commit these changes, with this email as the log message.
+		cvs commit
+
+	- Tomorrow I will get this version compiling
+	with NJSML 108 (I will probably add
+	the files to enable the NJSML compilation manager to make
+	this easier), then check those changes in.  I think it's
+	good to get things in a working state.
+@
+text
+@d1 3
+d5 35
+a39 1
+signature Type_sig =
+d41 37
+a77 30
+  datatype hol_type = Stv of int     (* System generated type variables *)
+                    | Utv of string  (* User-given type variables *)
+                    | Tyc of string  (* Type constants  *)
+                    | Link of hol_type ref (* Modifiable pointers *)
+                    | Tyapp of {Tyop : string, Args : hol_type list}
+
+  datatype 'a delta = NO_CHANGE | CHANGED of 'a
+  val new_type_var: unit -> hol_type
+  val reset_type_num: unit -> unit
+  val unify: hol_type -> hol_type -> unit
+  val ty_eq: hol_type * hol_type -> bool
+  val shrink_type: hol_type -> hol_type delta
+  val rename_tv: hol_type -> hol_type delta
+  val ty_sub:  hol_type Lib.subst -> hol_type -> hol_type delta
+  val type_subst:  hol_type Lib.subst -> hol_type -> hol_type
+  val type_vars:  hol_type -> hol_type list
+  val type_varsl:  hol_type list -> hol_type list
+  val mk_type:  {Tyop: string, Args:hol_type list} -> hol_type
+  val dest_type:  hol_type -> {Tyop:  string, Args : hol_type list}
+  val mk_vartype : string -> hol_type
+  val dest_vartype : hol_type -> string
+  val is_vartype : hol_type -> bool
+  val polymorphic : hol_type -> bool
+  val type_lt :hol_type -> hol_type -> bool
+
+   
+  val lookup_type : string -> {tyc:hol_type, arity :int, theory:string}
+  val type_decl : string -> {tyc:hol_type, arity :int, theory:string}
+  val add_type_const : {tyc:hol_type, arity :int, theory:string} -> unit
+  val add_entry : {tyc:hol_type, arity :int, theory:string} -> unit
+d85 15
+a102 16
+signature Public_type_sig =
+sig
+  eqtype hol_type
+  val new_type_var :unit -> hol_type
+  val reset_type_num :unit -> unit
+  val type_subst : hol_type Lib.subst -> hol_type -> hol_type
+  val type_vars : hol_type -> hol_type list
+  val type_varsl : hol_type list -> hol_type list
+  val mk_type : {Tyop: string, Args:hol_type list} -> hol_type
+  val dest_type : hol_type -> {Tyop : string, Args : hol_type list}
+  val mk_vartype : string -> hol_type
+  val dest_vartype : hol_type -> string
+  val is_vartype : hol_type -> bool
+  val type_lt :hol_type -> hol_type -> bool
+  val type_decl : string -> {tyc:hol_type, arity :int, theory:string}
+end;
+@
+
+
+1.2.4.1
+log
+@Removed files are parse files and portability files that have
+effectively been moved elsewhere.
+
+Modified files are up to date for ML 109.26.
+@
+text
+@d1 1
+d11 12
+a22 12
+  val fresh_tyvar_stream : unit -> (int,hol_type) istream
+  val unify :hol_type -> hol_type -> unit
+  val ty_eq :hol_type * hol_type -> bool
+  val shrink_type :hol_type -> hol_type delta
+  val rename_tv :(int,hol_type)istream -> hol_type -> hol_type delta
+  val ty_sub : hol_type subst -> hol_type -> hol_type delta
+  val type_subst : hol_type subst -> hol_type -> hol_type
+(*  val tyvars : hol_type -> hol_type list -> hol_type list *)
+  val type_vars : hol_type -> hol_type list
+  val type_varsl : hol_type list -> hol_type list
+  val mk_type : {Tyop: string, Args:hol_type list} -> hol_type
+  val dest_type : hol_type -> {Tyop:string, Args:hol_type list}
+d47 3
+a49 2
+  val fresh_tyvar_stream : unit -> (int,hol_type)istream
+  val type_subst : hol_type subst -> hol_type -> hol_type
+@
+
+
+1.2.4.2
+log
+@Deletion of some unused entrypoints and closing signature up so as to be
+CM-friendly.
+@
+text
+@d9 2
+a10 2
+  datatype 'a delta = SAME | DIFF of 'a
+  val fresh_tyvar_stream : unit -> (int,hol_type)Lib.istream
+d13 5
+a17 2
+  val rename_tv :(int,hol_type)Lib.istream -> hol_type -> hol_type delta
+  val type_subst : hol_type Lib.subst -> hol_type -> hol_type
+d46 2
+a47 2
+  val fresh_tyvar_stream : unit -> (int,hol_type)Lib.istream
+  val type_subst : hol_type Lib.subst -> hol_type -> hol_type
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d11 12
+a22 12
+  val new_type_var :unit -> hol_type
+  val reset_type_num :unit -> unit
+  val unify :hol_type -> hol_type -> unit
+  val ty_eq :hol_type * hol_type -> bool
+  val shrink_type :hol_type -> hol_type delta
+  val rename_tv :hol_type -> hol_type delta
+  val ty_sub : hol_type subst -> hol_type -> hol_type delta
+  val type_subst : hol_type subst -> hol_type -> hol_type
+  val type_vars : hol_type -> hol_type list
+  val type_varsl : hol_type list -> hol_type list
+  val mk_type : {Tyop: string, Args:hol_type list} -> hol_type
+  val dest_type : hol_type -> {Tyop : string, Args : hol_type list}
+d49 1
+a49 1
+  val type_subst : hol_type subst -> hol_type -> hol_type
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

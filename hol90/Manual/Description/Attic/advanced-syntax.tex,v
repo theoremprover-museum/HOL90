@@ -1,0 +1,167 @@
+head	1.2;
+access;
+symbols
+	HOL97:1.2.2.2.0.2
+	bpHOL97:1.2.2.2
+	hol90_9_alpha:1.2.2.2
+	hol90_pre8_for_multiple_compilers:1.2.0.2
+	hol90_manual_after_dons_changes:1.1;
+locks; strict;
+comment	@% @;
+
+
+1.2
+date	96.09.04.19.01.25;	author drs1004;	state dead;
+branches
+	1.2.2.1;
+next	1.1;
+
+1.1
+date	96.02.27.15.11.07;	author drs1004;	state Exp;
+branches;
+next	;
+
+1.2.2.1
+date	96.09.04.19.03.09;	author drs1004;	state Exp;
+branches;
+next	1.2.2.2;
+
+1.2.2.2
+date	96.09.06.09.53.21;	author rjb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.2
+log
+@Moving Manual changes to main devlopment branch (hol0_pre8 etc.)
+@
+text
+@\chapter{Embedding languages}
+
+\section{Quotations for other object languages}
+
+As can be seen from the previous section, the
+\HOL\ system comes with parsers for the
+type and term languages.  Quotation, and its sibling antiquotation,
+are interface features from the original LCF system that appear
+in \HOL. In the general case, a quotation is simply delimited 
+by backquote marks, for example
+
+\begin{hol} \begin{verbatim}
+    `A /\ B`
+\end{verbatim} \end{hol}
+
+In \HOL, quotations correspond to arbitrary object language
+expressions and hence they are a more general notion than in LCF and
+\HOLEIGHTY, where a quotation could only be either a type or term. There can be
+quotations from many different object languages in the same \HOL\
+session. For example, quotation could be used for an embedded
+programming language, as well as the \HOL\ term and type languages.
+A consequence of this is that quotations must be parsed
+explicitly, instead of implicitly, as in \HOLEIGHTY. For example, the above 
+quotation could be parsed as:
+\begin{hol} \begin{verbatim}
+    term_parser `A /\ B`
+\end{verbatim} \end{hol}
+
+\noindent or, since the function \ml{"--"} is a bit of syntactic sugaring 
+for \ml{term\_parser}
+(suggested by Richard Boulton of Cambridge University), as the standard:
+\begin{hol} \begin{verbatim}
+    (--`A /\ B`--)
+\end{verbatim} \end{hol}
+
+\noindent Similarly, types could be parsed as 
+\begin{hol} \begin{verbatim}
+    type_parser `:(bool -> 'a) -> ('a # 'b) list`
+\end{verbatim} \end{hol}
+or as
+\begin{hol} \begin{verbatim}
+    (==`:(bool -> 'a) -> ('a # 'b) list`==)
+\end{verbatim} \end{hol}
+
+\noindent One nicety of the system is that the \HOL\ prettyprinter will 
+automatically surround a term or type with syntax that will re-parse it:
+\begin{session} \begin{verbatim}
+- term_parser `X \/ Y`;
+val it = (--`X \/ Y`--) : term
+\end{verbatim} \end{session}
+
+When using an embedded language, it is usually a fairly straight forward
+matter to write an ML-Lex/ML-Yacc (\ref{ML-Lex, ML-Yacc}) parser
+for that language, which produces either expressions in
+a custom \ML\ datatype, or \HOL\ terms.  Ideally, the
+language definition should support place-holders for quotations.
+Once constructed, it should be possible to integrate
+such a parser with the quotation mechanism.  Ideally,
+when combined with a custom pretty printer, this may work as
+shown in the example below.  The example is taken from a Hoare-style
+language which uses \HOL\ expressions as its expression language.  Note
+that instances of \HOL\ terms within the object language must
+be enclosed by \ml{\{$\ldots$\}} markers - the object language
+parser will use these markers to determine which parts of the input
+are to be parsed by the \HOL\ term parser.
+
+\begin{session} \begin{verbatim}
+- fun --- quote --- = my_language_parser quote;
+val quote : term frag list -> `a -> term
+
+- val loopbody = (---`begin x := {x - 1} end`---);
+val loopbody = (---`begin x := {x - 1}`---) : term
+
+- val guard = (--`x <> 0`--);
+val guard : (--`x <> 0`--) : term;
+
+- (---`while ^guard do ^loopbody`---);
+val it = (---`while {x <> 0} do begin x := {x - 1} end`---) : term
+\end{verbatim} \end{session}
+
+
+@
+
+
+1.2.2.1
+log
+@Moving changes toManual Description to main development branch
+@
+text
+@@
+
+
+1.2.2.2
+log
+@Changed quotations.
+@
+text
+@d45 1
+a45 6
+\noindent
+In the latest version of \HOLNINETY\ a filter is used on the input to the
+\HOL\ process. This allows \ml{``}$\ \cdots\ $\ml{``} to be used for both
+term and type quotations.
+
+One nicety of the system is that the \HOL\ prettyprinter will 
+d49 1
+a49 1
+val it = ``X \/ Y`` : term
+d69 1
+a69 1
+val --- = fn : term frag list -> `a -> term
+d74 2
+a75 2
+- val guard = ``x <> 0``;
+val guard = ``x <> 0`` : term
+@
+
+
+1.1
+log
+@much improved (??), by DRS
+@
+text
+@@

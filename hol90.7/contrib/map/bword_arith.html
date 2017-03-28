@@ -1,0 +1,171 @@
+<TITLE>Theory: bword_arith</TITLE>
+<H1>Theory: bword_arith</H1>
+<H1>Parents</H1>
+    <UL>
+    <LI><A HREF = "bword_num.html"><STRONG>bword_num</STRONG></A>
+    </UL>
+
+
+<HR>
+<H1>Type constants</H1>
+    <UL>
+    
+    </UL>
+
+
+<HR>
+<H1>Term constants</H1>
+    <UL>
+    <LI><STRONG>ACARRY</STRONG><EM>:num -> bool word -> bool word -> bool ->
+                                    bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>ICARRY</STRONG><EM>:num -> bool word -> bool word -> bool ->
+                                    bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    </UL>
+
+
+<HR>
+<H1>Axioms</H1>
+<DL>
+
+</DL>
+
+
+<HR>
+<H1>Definitions</H1>
+<DL>
+<DT><STRONG>ACARRY_DEF</STRONG>
+<DD>
+<PRE>
+|- (!w1 w2 cin. ACARRY 0 w1 w2 cin = cin) /\
+   (!n w1 w2 cin.
+     ACARRY (SUC n) w1 w2 cin =
+     VB ((BV (BIT n w1) + BV (BIT n w2) + BV (ACARRY n w1 w2 cin)) DIV 2))
+</PRE>
+
+<DT><STRONG>ICARRY_DEF</STRONG>
+<DD>
+<PRE>
+|- (!w1 w2 cin. ICARRY 0 w1 w2 cin = cin) /\
+   (!n w1 w2 cin.
+     ICARRY (SUC n) w1 w2 cin =
+     BIT n w1 /\ BIT n w2 \/ (BIT n w1 \/ BIT n w2) /\ ICARRY n w1 w2 cin)
+</PRE>
+
+</DL>
+
+
+<HR>
+<H1>Theorems</H1>
+<DL>
+<DT><STRONG>ACARRY_EQ_ICARRY</STRONG>
+<DD>
+<PRE>
+|- !n.
+     !w1 w2 ::(PWORDLEN n).
+       !cin k. k <= n ==> (ACARRY k w1 w2 cin = ICARRY k w1 w2 cin)
+</PRE>
+
+<DT><STRONG>ACARRY_EQ_ADD_DIV</STRONG>
+<DD>
+<PRE>
+|- !n.
+     !w1 w2 ::(PWORDLEN n).
+       !k.
+         k < n ==>
+         (BV (ACARRY k w1 w2 cin) =
+          (BNVAL (WSEG k 0 w1) + BNVAL (WSEG k 0 w2) + BV cin) DIV 2 EXP k)
+</PRE>
+
+<DT><STRONG>ADD_WORD_SPLIT</STRONG>
+<DD>
+<PRE>
+|- !n1 n2.
+     !w1 w2 ::(PWORDLEN (n1 + n2)).
+       !cin.
+         NBWORD (n1 + n2) (BNVAL w1 + BNVAL w2 + BV cin) =
+         WCAT
+           (NBWORD n1
+              (BNVAL (WSEG n1 n2 w1) +
+               BNVAL (WSEG n1 n2 w2) +
+               BV (ACARRY n2 w1 w2 cin)),
+            NBWORD n2 (BNVAL (WSEG n2 0 w1) + BNVAL (WSEG n2 0 w2) + BV cin))
+</PRE>
+
+<DT><STRONG>WSEG_NBWORD_ADD</STRONG>
+<DD>
+<PRE>
+|- !n.
+     !w1 w2 ::(PWORDLEN n).
+       !m k cin.
+         m + k <= n ==>
+         (WSEG m k (NBWORD n (BNVAL w1 + BNVAL w2 + BV cin)) =
+          NBWORD m
+            (BNVAL (WSEG m k w1) +
+             BNVAL (WSEG m k w2) +
+             BV (ACARRY k w1 w2 cin)))
+</PRE>
+
+<DT><STRONG>ADD_NBWORD_EQ0_SPLIT</STRONG>
+<DD>
+<PRE>
+|- !n1 n2.
+     !w1 w2 ::(PWORDLEN (n1 + n2)).
+       !cin.
+         (NBWORD (n1 + n2) (BNVAL w1 + BNVAL w2 + BV cin) =
+          NBWORD (n1 + n2) 0) =
+         (NBWORD n1
+            (BNVAL (WSEG n1 n2 w1) +
+             BNVAL (WSEG n1 n2 w2) +
+             BV (ACARRY n2 w1 w2 cin)) =
+          NBWORD n1 0) /\
+         (NBWORD n2 (BNVAL (WSEG n2 0 w1) + BNVAL (WSEG n2 0 w2) + BV cin) =
+          NBWORD n2 0)
+</PRE>
+
+<DT><STRONG>ACARRY_MSB</STRONG>
+<DD>
+<PRE>
+|- !n.
+     !w1 w2 ::(PWORDLEN n).
+       !cin.
+         ACARRY n w1 w2 cin =
+         BIT n (NBWORD (SUC n) (BNVAL w1 + BNVAL w2 + BV cin))
+</PRE>
+
+<DT><STRONG>ACARRY_WSEG</STRONG>
+<DD>
+<PRE>
+|- !n.
+     !w1 w2 ::(PWORDLEN n).
+       !cin k m.
+         k < m /\ m <= n ==>
+         (ACARRY k (WSEG m 0 w1) (WSEG m 0 w2) cin = ACARRY k w1 w2 cin)
+</PRE>
+
+<DT><STRONG>ICARRY_WSEG</STRONG>
+<DD>
+<PRE>
+|- !n.
+     !w1 w2 ::(PWORDLEN n).
+       !cin k m.
+         k < m /\ m <= n ==>
+         (ICARRY k (WSEG m 0 w1) (WSEG m 0 w2) cin = ICARRY k w1 w2 cin)
+</PRE>
+
+<DT><STRONG>ACARRY_ACARRY_WSEG</STRONG>
+<DD>
+<PRE>
+|- !n.
+     !w1 w2 ::(PWORDLEN n).
+       !cin m k1 k2.
+         k1 < m /\ k2 < n /\ m + k2 <= n ==>
+         (ACARRY k1 (WSEG m k2 w1) (WSEG m k2 w2) (ACARRY k2 w1 w2 cin) =
+          ACARRY (k1 + k2) w1 w2 cin)
+</PRE>
+
+</DL>
+
+
+<HR>

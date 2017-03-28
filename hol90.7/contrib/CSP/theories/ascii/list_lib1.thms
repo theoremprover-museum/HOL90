@@ -1,0 +1,96 @@
+thid = (list_lib1, 784894783, 493900)
+axioms = []
+definitions = []
+theorems =
+[((CONS_EQ_APPEND),
+  [],
+  `((! :('a -> bool) -> bool) (\(a :'a).
+   ((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :'a list -> 'a list -> bool)
+   (((CONS :'a -> 'a list -> 'a list) $1) $0))
+   (((APPEND :'a list -> 'a list -> 'a list)
+   (((CONS :'a -> 'a list -> 'a list) $1) (NIL :'a list))) $0))))))`),
+ ((CONS_MEMBER_LIST),
+  [],
+  `((! :('a list -> bool) -> bool) (\(s :'a list).
+   ((! :('a list -> bool) -> bool) (\(s' :'a list).
+   ((! :('a list -> bool) -> bool) (\(t :'a list).
+   ((! :('a -> bool) -> bool) (\(a :'a). ((==>
+   (((= :'a list -> 'a list -> bool)
+   (((APPEND :'a list -> 'a list -> 'a list) $3) $1))
+   (((CONS :'a -> 'a list -> 'a list) $0) $2))) ((\/
+   (((= :'a list -> 'a list -> bool) $3) (NIL :'a list)))
+   ((? :('a list -> bool) -> bool) (\(r :'a list). ((/\
+   (((= :'a list -> 'a list -> bool) $4)
+   (((CONS :'a -> 'a list -> 'a list) $1) $0)))
+   (((= :'a list -> 'a list -> bool) $3)
+   (((APPEND :'a list -> 'a list -> 'a list) $0) $2)))))))))))))))`),
+ ((ONE_MEMBER_LIST),
+  [],
+  `((! :('a list -> bool) -> bool) (\(s :'a list).
+   ((! :('a list -> bool) -> bool) (\(t :'a list).
+   ((! :('a -> bool) -> bool) (\(a :'a). ((==>
+   (((= :'a list -> 'a list -> bool)
+   (((APPEND :'a list -> 'a list -> 'a list) $2) $1))
+   (((CONS :'a -> 'a list -> 'a list) $0) (NIL :'a list)))) ((\/
+   (((= :'a list -> 'a list -> bool) $2) (NIL :'a list)))
+   (((= :'a list -> 'a list -> bool) $2)
+   (((CONS :'a -> 'a list -> 'a list) $0) (NIL :'a list)))))))))))`),
+ ((TL_APPEND),
+  [],
+  `((! :('a list -> bool) -> bool) (\(l :'a list). ((==> (~
+   (((= :'a list -> 'a list -> bool) $0) (NIL :'a list))))
+   ((! :('a list -> bool) -> bool) (\(l' :'a list).
+   (((= :'a list -> 'a list -> bool) ((TL :'a list -> 'a list)
+   (((APPEND :'a list -> 'a list -> 'a list) $1) $0)))
+   (((APPEND :'a list -> 'a list -> 'a list) ((TL :'a list -> 'a list)
+   $1)) $0)))))))`),
+ ((HD_APPEND),
+  [],
+  `((! :('a list -> bool) -> bool) (\(l :'a list). ((==> (~
+   (((= :'a list -> 'a list -> bool) $0) (NIL :'a list))))
+   ((! :('a list -> bool) -> bool) (\(l' :'a list).
+   (((= :'a -> 'a -> bool) ((HD :'a list -> 'a)
+   (((APPEND :'a list -> 'a list -> 'a list) $1) $0)))
+   ((HD :'a list -> 'a) $1)))))))`),
+ ((NULL_EQ_NIL),
+  [],
+  `((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :bool -> bool -> bool) (((= :'a list -> 'a list -> bool) $0)
+   (NIL :'a list))) ((NULL :'a list -> bool) $0))))`),
+ ((APPEND_EQ_NIL),
+  [],
+  `((! :('a list -> bool) -> bool) (\(l1 :'a list).
+   ((! :('a list -> bool) -> bool) (\(l2 :'a list).
+   (((= :bool -> bool -> bool) (((= :'a list -> 'a list -> bool)
+   (((APPEND :'a list -> 'a list -> 'a list) $1) $0)) (NIL :'a list)))
+   ((/\ (((= :'a list -> 'a list -> bool) $1) (NIL :'a list)))
+   (((= :'a list -> 'a list -> bool) $0) (NIL :'a list))))))))`),
+ ((NOT_LENGTH_EQ),
+  [],
+  `((! :('a list -> bool) -> bool) (\(l2 :'a list).
+   ((! :('a list -> bool) -> bool) (\(l1 :'a list). ((==> (~
+   (((= :num -> num -> bool) ((LENGTH :'a list -> num) $0))
+   ((LENGTH :'a list -> num) $1)))) (~
+   (((= :'a list -> 'a list -> bool) $0) $1)))))))`),
+ ((LENGTH_LESS_EQ),
+  [],
+  `((! :('a list -> bool) -> bool) (\(l1 :'a list).
+   ((! :('a list -> bool) -> bool) (\(l2 :'a list). ((==> ((<=
+   ((LENGTH :'a list -> num) $1)) ((LENGTH :'a list -> num) $0)))
+   ((! :('a -> bool) -> bool) (\(a :'a). ((< ((LENGTH :'a list -> num)
+   $2)) ((LENGTH :'a list -> num) (((CONS :'a -> 'a list -> 'a list)
+   $0) $1))))))))))`),
+ ((APPEND_NIL),
+  [],
+  `((! :('a list -> bool) -> bool) (\(l :'a list).
+   (((= :'a list -> 'a list -> bool)
+   (((APPEND :'a list -> 'a list -> 'a list) $0) (NIL :'a list)))
+   $0)))`),
+ ((APPEND_ID),
+  [],
+  `((! :('a list -> bool) -> bool) (\(l :'a list).
+   ((! :('a list -> bool) -> bool) (\(l' :'a list).
+   (((= :bool -> bool -> bool) (((= :'a list -> 'a list -> bool) $1)
+   (((APPEND :'a list -> 'a list -> 'a list) $1) $0)))
+   (((= :'a list -> 'a list -> bool) $0) (NIL :'a list)))))))`)]

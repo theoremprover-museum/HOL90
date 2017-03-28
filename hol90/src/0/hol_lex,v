@@ -1,0 +1,614 @@
+head	1.4;
+access;
+symbols
+	HOL97:1.3.2.1.0.2
+	bpHOL97:1.3.2.1
+	hol90_9_alpha:1.3.2.1
+	hol90_pre8_for_multiple_compilers:1.3.0.2
+	hol90_pre8_after_donalds_separate_compilation_changes:1.2
+	hol90_8_after_merging_Konrad_Elsa:1.2
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.4
+date	96.02.08.00.31.02;	author drs1004;	state Exp;
+branches;
+next	1.3;
+
+1.3
+date	95.11.15.13.24.22;	author rjb;	state Exp;
+branches
+	1.3.2.1;
+next	1.2;
+
+1.2
+date	95.10.17.17.06.54;	author drs1004;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	95.10.16.13.29.52;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.29.52;	author rjb;	state Exp;
+branches;
+next	;
+
+1.3.2.1
+date	96.08.23.14.22.20;	author rjb;	state Exp;
+branches
+	1.3.2.1.2.1;
+next	;
+
+1.3.2.1.2.1
+date	97.06.11.17.23.58;	author kxs;	state dead;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.4
+log
+@New theory mechanism, by Donald Syme, and many other enhancements.
+@
+text
+@structure Parse_support = Parse_support;
+structure Tokens = Tokens;
+
+type pos = int;
+type svalue = Tokens.svalue;
+type ('a,'b) token = ('a,'b) Tokens.token;
+type lexresult = (svalue,pos) Tokens.token;
+
+
+fun error(s,_,_) = output(std_out,"HOL lexer error: "^s^"\n");
+
+fun eof (_:Tokens.Parse_support.Preterm.Term.term list ref) = Tokens.EOF(0,0);
+val type_paren_count = ref 0;
+val comment_paren_count = ref 0;
+val string_list = ref ([]:string list);
+exception AQ_ERR of string;
+exception LEX_ERR of string;
+
+fun has_tilde s =
+   let val tilde = Portable.String.ordof("~",0)
+       fun f i = ((Portable.String.ordof(s,i) = tilde) orelse f(i+1))
+   in f 0 handle _ => false
+   end;
+
+fun drop_dollar s =
+   let val dollar = Portable.String.ordof("$",0)
+   in if (Portable.String.ordof(s,0) = dollar)
+      then substring(s,1,String.size s - 1)
+      else s
+   end;
+
+(*
+ * fun break s = snd
+ *    (itlist (fn ch => fn (current_frag,seen) =>
+ *              if (ch = "~")
+ *              then if (null current_frag)
+ *                   then ([],(ch::seen))
+ *                   else ([],(ch::(implode current_frag)::seen))
+ *              else ((ch::current_frag),seen))
+ *            (""::explode s) ([],[]));
+ ****)
+
+
+(* Confusion warning: symbolic_ident means roughly 
+
+       Maybe a $ followed by any sequence of symbols
+*)
+(* The next "end" closes the UserDeclarations structure in the compiled file
+   so that the declarations below are available in the rest of the compiled
+   code. The Empty structure then matches with the "end" that should have
+   closed the UserDeclarations structure.
+*)
+end
+
+val substring = Portable.String.substring;
+val ordof = Portable.String.ordof;
+val concat = Portable.String.concat;
+structure Vector = Portable.Vector;
+
+structure Empty =
+struct
+%%
+%header (functor HOL_LEX(structure Tokens : hol_TOKENS
+                         structure Parse_support : Parse_support_sig
+                         sharing
+                           Tokens.Parse_support = Parse_support));
+
+%arg (lala : Parse_support.Preterm.Term.term list ref);
+%s TYPE TYCOMMENT COMMENT STRING;
+%reject
+ident = [\$]?([A-Za-z0-9] [A-Za-z0-9_']*);
+symbolic_ident_or_tilde = [\$]?([#\?\+\*\/\\\=\<\>&%@@!:\,\;_\|\~-]+);
+symbolic_ident = [\$]?([#\?\+\*\/\\\=\<\>&%@@!:\,\;_\|-]+);
+type_var_ident = ['] [A-Za-z][A-Za-z0-9_]*;
+ws = [\ \t \010 \012];
+%%
+<INITIAL>\n => (continue());
+<INITIAL>{ws}+ => (continue());
+<INITIAL>"(*" => ( YYBEGIN COMMENT; comment_paren_count := 1; continue());
+<INITIAL>"\"" => ( YYBEGIN STRING; string_list := [yytext]; continue());
+<INITIAL>"." => (Tokens.dot(!yybufpos-(size yytext),!yybufpos));
+<INITIAL>"(" => (Tokens.lparen(!yybufpos-(size yytext),!yybufpos));
+<INITIAL>")" => (Tokens.rparen(!yybufpos-(size yytext),!yybufpos));
+<INITIAL>"{" => (Tokens.lbrace(!yybufpos-(size yytext),!yybufpos));
+<INITIAL>"}" => (Tokens.rbrace(!yybufpos-(size yytext),!yybufpos));
+<INITIAL>"[" => (Tokens.lbracket(!yybufpos-(size yytext),!yybufpos));
+<INITIAL>"]" => (Tokens.rbracket(!yybufpos-(size yytext),!yybufpos));
+<INITIAL>"^" => (let val (L as ref (x::t)) = lala
+                     val _ = L := t
+                 in Tokens.aq(x,!yybufpos-(size yytext),!yybufpos)
+                 end
+                 handle _ => raise AQ_ERR "lexer.INITIAL");
+<INITIAL>{ident} => (case yytext
+         of "let" => Tokens.let_(!yybufpos-(size yytext),!yybufpos)
+          | "in" => Tokens.in_(!yybufpos-(size yytext),!yybufpos)
+          | "and" => Tokens.and_(!yybufpos-(size yytext),!yybufpos)
+          | "of" => (case (!Globals.in_type_spec)
+                       of NONE => raise LEX_ERR(Lib.quote "of"^" is a keyword.")
+                        |(SOME"")=>raise LEX_ERR(Lib.quote "of"^" is a keyword.")
+                        |(SOME _) => (YYBEGIN TYPE; type_paren_count := 0;
+                                      Tokens.of_(!yybufpos-(size yytext),!yybufpos)))
+          |    _ => if (Parse_support.is_binder yytext)
+                    then Tokens.binder(yytext,!yybufpos-(size yytext),!yybufpos)
+                    else Tokens.ident(yytext,!yybufpos-(size yytext),!yybufpos));
+<INITIAL>{symbolic_ident_or_tilde} => 
+   ( if (has_tilde yytext
+         andalso (Lib.mem (drop_dollar yytext) (!Globals.tilde_symbols)))
+     then if (Parse_support.is_binder yytext)
+          then Tokens.binder(yytext,!yybufpos-(size yytext),!yybufpos)
+          else Tokens.symbolic_ident(yytext,!yybufpos-(size yytext),!yybufpos)
+     else REJECT());
+
+<INITIAL>{symbolic_ident} => ( case yytext 
+         of ";" => Tokens.semi_colon(!yybufpos-(size yytext),!yybufpos)
+          | "=>" => Tokens.eq_gt(!yybufpos-(size yytext),!yybufpos)
+          | "="  => Tokens.eq(!yybufpos-(size yytext),!yybufpos)
+          | "|"  => Tokens.bar(!yybufpos-(size yytext),!yybufpos)
+          | "::" => Tokens.dcolon(!yybufpos-(size yytext),!yybufpos)
+          | ":" => ((case(!Globals.in_type_spec)
+                       of NONE => (YYBEGIN TYPE;  type_paren_count := 0)
+                        | _ => ());
+                    Tokens.colon(!yybufpos-(size yytext),!yybufpos))
+          |   _  => if (Parse_support.is_binder yytext)
+                    then Tokens.binder(yytext,!yybufpos-(size yytext),!yybufpos)
+                    else Tokens.symbolic_ident(yytext,!yybufpos-(size yytext),!yybufpos));
+
+<INITIAL>"$~" => (Tokens.ident("~",!yybufpos-(size yytext),!yybufpos));
+<INITIAL>"~"  => (Tokens.ident("~",!yybufpos-(size yytext),!yybufpos));
+
+<INITIAL>. => (raise LEX_ERR "INITIAL.catchall");
+
+<TYPE>\n => (continue());
+<TYPE>{ws}+ => (continue());
+<TYPE>"(*" => ( YYBEGIN TYCOMMENT; comment_paren_count := 1; continue());
+<TYPE>{type_var_ident} => (Tokens.type_var_ident(yytext,!yybufpos-(size yytext),!yybufpos));
+<TYPE>{ident} => (case yytext
+                    of "let" => (YYBEGIN INITIAL; Tokens.let_(!yybufpos-(size yytext),!yybufpos))
+                     | "in" => (YYBEGIN INITIAL; Tokens.in_(!yybufpos-(size yytext),!yybufpos))
+                     | "and" => (YYBEGIN INITIAL; Tokens.and_(!yybufpos-(size yytext),!yybufpos))
+                     |    _ => Tokens.type_ident(yytext,!yybufpos-(size yytext),!yybufpos));
+<TYPE>"^" => (let val (L as ref (x::t)) = lala
+                  val () = L := t
+              in Tokens.aq(x,!yybufpos-(size yytext),!yybufpos)
+              end
+              handle _ => raise AQ_ERR "lexer.TYPE");
+
+<TYPE>"->" => (Tokens.type_right_arrow(!yybufpos-(size yytext),!yybufpos));
+<TYPE>"+" => (Tokens.type_plus(!yybufpos-(size yytext),!yybufpos));
+<TYPE>"#" => (Tokens.type_hash(!yybufpos-(size yytext),!yybufpos));
+<TYPE>"," => (if (!type_paren_count = 0)
+              then (YYBEGIN INITIAL; Tokens.symbolic_ident(",",!yybufpos-(size yytext),!yybufpos))
+              else Tokens.type_comma(!yybufpos-(size yytext),!yybufpos));
+
+<TYPE>"."  =>  (YYBEGIN INITIAL; Tokens.dot(!yybufpos-(size yytext),!yybufpos));
+<TYPE>"("  => (Lib.inc type_paren_count; Tokens.type_lparen(!yybufpos-(size yytext),!yybufpos));
+<TYPE>")"  => (if (!type_paren_count = 0)
+               then (YYBEGIN INITIAL; Tokens.rparen(!yybufpos-(size yytext),!yybufpos))
+               else (Lib.dec type_paren_count; Tokens.type_rparen(!yybufpos-(size yytext),!yybufpos)));
+<TYPE>"[" => (YYBEGIN INITIAL; Tokens.lbracket(!yybufpos-(size yytext),!yybufpos));
+<TYPE>"]" => (YYBEGIN INITIAL; Tokens.rbracket(!yybufpos-(size yytext),!yybufpos));
+<TYPE>"{" => (YYBEGIN INITIAL; Tokens.lbrace(!yybufpos-(size yytext),!yybufpos));
+<TYPE>"}" => (YYBEGIN INITIAL; Tokens.rbrace(!yybufpos-(size yytext),!yybufpos));
+
+<TYPE>"=>" => ((case (!Globals.in_type_spec)
+                  of (SOME _) => ()
+                   | NONE => YYBEGIN INITIAL);
+               Tokens.eq_gt(!yybufpos-(size yytext),!yybufpos));
+
+<TYPE>{symbolic_ident_or_tilde} => 
+   ( if (has_tilde yytext 
+         andalso (Lib.mem (drop_dollar yytext) (!Globals.tilde_symbols)))
+     then( YYBEGIN INITIAL;
+           if (Parse_support.is_binder yytext)
+           then Tokens.binder(yytext,!yybufpos-(size yytext),!yybufpos)
+           else Tokens.symbolic_ident(yytext,!yybufpos-(size yytext),!yybufpos))
+     else REJECT());
+
+<TYPE>{symbolic_ident} => 
+        ( YYBEGIN INITIAL;
+          case yytext 
+            of ";"  => Tokens.semi_colon(!yybufpos-(size yytext),!yybufpos)
+             | "=>" => Tokens.eq_gt(!yybufpos-(size yytext),!yybufpos)
+             | "="  => Tokens.eq(!yybufpos-(size yytext),!yybufpos)
+             | "|"  => Tokens.bar(!yybufpos-(size yytext),!yybufpos)
+             | "::" => Tokens.dcolon(!yybufpos-(size yytext),!yybufpos)
+             |   _  => if (Parse_support.is_binder yytext)
+                       then Tokens.binder(yytext,!yybufpos-(size yytext),!yybufpos)
+                       else Tokens.symbolic_ident(yytext,!yybufpos-(size yytext),!yybufpos));
+<TYPE>"$~" => (YYBEGIN INITIAL;Tokens.ident("~",!yybufpos-(size yytext),!yybufpos));
+<TYPE>"~"  => (YYBEGIN INITIAL;Tokens.ident("~",!yybufpos-(size yytext),!yybufpos));
+
+<TYPE>. => (raise LEX_ERR "TYPE.catchall");
+
+<TYCOMMENT>"\n" => (continue());
+<TYCOMMENT>"(*" => (Lib.inc comment_paren_count; continue());
+<TYCOMMENT>"*)" => (Lib.dec comment_paren_count;
+                    if (!comment_paren_count = 0)
+                    then YYBEGIN TYPE
+                    else ();
+                    continue());
+<TYCOMMENT>. => (continue());
+
+<COMMENT>"\n" => (continue());
+<COMMENT>"(*" => (Lib.inc comment_paren_count; continue());
+<COMMENT>"*)" => (Lib.dec comment_paren_count;
+                  if (!comment_paren_count = 0)
+                  then YYBEGIN INITIAL
+                  else ();
+                  continue());
+<COMMENT>. => (continue());
+
+<STRING>"\n" => (string_list :=  yytext::(!string_list); continue());
+<STRING>"\\\"" =>(string_list := yytext::(!string_list); continue());
+<STRING>"\"" => (YYBEGIN INITIAL; 
+              Tokens.string_(Portable.String.concat(rev(yytext::(!string_list))),!yybufpos-(size yytext),!yybufpos));
+<STRING>. => (string_list :=  yytext::(!string_list); continue());
+@
+
+
+1.3
+log
+@The HOL90 sources have been changed to allow for the use of different
+Standard ML compilers (possibly simultaneously).
+
+ * Many files in "src/0" changed to make them more portable across different
+   ML compilers. Various additions have been made to the Portable structure
+   and files changed to access identifiers in the Portable structure rather
+   than from the global environment. Worthy of special note are:
+
+   - The pointer equality used in "src/0/term.sml" has been made into a
+     function in the Portable structure.
+
+   - The ML-Lex and ML-Yacc files for the various parsers have been changed
+     to access the Portable structure. Both the source files and the SML
+     produced from them have been changed but I have not verified that the
+     source files would reproduce the new SML versions if ML-Lex and ML-Yacc
+     were to be rerun on them. The changes involve some hacks that exploit the
+     way ML-Lex and ML-Yacc work. See the sources for details.
+
+R.J.Boulton, 15th November 1995.
+@
+text
+@a4 1
+val line:pos = 0;
+d12 1
+a12 1
+fun eof (_:Tokens.Parse_support.Preterm.Term.term list ref) = Tokens.EOF(line,line);
+d20 2
+a21 2
+   let val tilde = Sml_system.String.ordof("~"*`,0)
+       fun f i = ((Sml_system.String.ordof(s,i) = tilde) orelse f(i+1))
+d26 2
+a27 2
+   let val dollar = Sml_system.String.("$",0)
+   in if (Sml_system.String.ordof(s,0) = dollar)
+d63 1
+a63 2
+%header (functor HOL_LEX(structure Lib : Lib_sig
+                         structure Tokens : hol_TOKENS
+d81 7
+a87 7
+<INITIAL>"." => (Tokens.dot(line,line));
+<INITIAL>"(" => (Tokens.lparen(line,line));
+<INITIAL>")" => (Tokens.rparen(line,line));
+<INITIAL>"{" => (Tokens.lbrace(line,line));
+<INITIAL>"}" => (Tokens.rbrace(line,line));
+<INITIAL>"[" => (Tokens.lbracket(line,line));
+<INITIAL>"]" => (Tokens.rbracket(line,line));
+d90 1
+a90 1
+                 in Tokens.aq(x,line,line)
+d94 3
+a96 3
+         of "let" => Tokens.let_(line,line)
+          | "in" => Tokens.in_(line,line)
+          | "and" => Tokens.and_(line,line)
+d101 1
+a101 1
+                                      Tokens.of_(line,line)))
+d103 2
+a104 2
+                    then Tokens.binder(yytext,line,line)
+                    else Tokens.ident(yytext,line,line));
+d109 2
+a110 2
+          then Tokens.binder(yytext,line,line)
+          else Tokens.symbolic_ident(yytext,line,line)
+d114 5
+a118 5
+         of ";" => Tokens.semi_colon(line,line)
+          | "=>" => Tokens.eq_gt(line,line)
+          | "="  => Tokens.eq(line,line)
+          | "|"  => Tokens.bar(line,line)
+          | "::" => Tokens.dcolon(line,line)
+d122 1
+a122 1
+                    Tokens.colon(line,line))
+d124 2
+a125 2
+                    then Tokens.binder(yytext,line,line)
+                    else Tokens.symbolic_ident(yytext,line,line));
+d127 2
+a128 2
+<INITIAL>"$~" => (Tokens.ident("~",line,line));
+<INITIAL>"~"  => (Tokens.ident("~",line,line));
+d135 1
+a135 1
+<TYPE>{type_var_ident} => (Tokens.type_var_ident(yytext,line,line));
+d137 4
+a140 4
+                    of "let" => (YYBEGIN INITIAL; Tokens.let_(line,line))
+                     | "in" => (YYBEGIN INITIAL; Tokens.in_(line,line))
+                     | "and" => (YYBEGIN INITIAL; Tokens.and_(line,line))
+                     |    _ => Tokens.type_ident(yytext,line,line));
+d143 1
+a143 1
+              in Tokens.aq(x,line,line)
+d147 3
+a149 3
+<TYPE>"->" => (Tokens.type_right_arrow(line,line));
+<TYPE>"+" => (Tokens.type_plus(line,line));
+<TYPE>"#" => (Tokens.type_hash(line,line));
+d151 2
+a152 2
+              then (YYBEGIN INITIAL; Tokens.symbolic_ident(",",line,line))
+              else Tokens.type_comma(line,line));
+d154 2
+a155 2
+<TYPE>"."  =>  (YYBEGIN INITIAL; Tokens.dot(line,line));
+<TYPE>"("  => (Lib.inc type_paren_count; Tokens.type_lparen(line,line));
+d157 6
+a162 6
+               then (YYBEGIN INITIAL; Tokens.rparen(line,line))
+               else (Lib.dec type_paren_count; Tokens.type_rparen(line,line)));
+<TYPE>"[" => (YYBEGIN INITIAL; Tokens.lbracket(line,line));
+<TYPE>"]" => (YYBEGIN INITIAL; Tokens.rbracket(line,line));
+<TYPE>"{" => (YYBEGIN INITIAL; Tokens.lbrace(line,line));
+<TYPE>"}" => (YYBEGIN INITIAL; Tokens.rbrace(line,line));
+d167 1
+a167 1
+               Tokens.eq_gt(line,line));
+d174 2
+a175 2
+           then Tokens.binder(yytext,line,line)
+           else Tokens.symbolic_ident(yytext,line,line))
+d181 5
+a185 5
+            of ";"  => Tokens.semi_colon(line,line)
+             | "=>" => Tokens.eq_gt(line,line)
+             | "="  => Tokens.eq(line,line)
+             | "|"  => Tokens.bar(line,line)
+             | "::" => Tokens.dcolon(line,line)
+d187 4
+a190 4
+                       then Tokens.binder(yytext,line,line)
+                       else Tokens.symbolic_ident(yytext,line,line));
+<TYPE>"$~" => (YYBEGIN INITIAL;Tokens.ident("~",line,line));
+<TYPE>"~"  => (YYBEGIN INITIAL;Tokens.ident("~",line,line));
+d215 1
+a215 1
+              Tokens.string_(Sml_system.String.concat(rev(yytext::(!string_list))),line,line));
+@
+
+
+1.3.2.1
+log
+@Changed Sml_system to Portable and added Portable in other places.
+Bugfix for lexing of ($<,$<) and the like.
+@
+text
+@d21 2
+a22 7
+   let val tilde = Portable.String.ordof ("~",0)
+       val comma = Portable.String.ordof (",",0)
+       val semicolon = Portable.String.ordof (";",0)
+       fun f i = let val oof = Portable.String.ordof (s,i)
+                 in (oof = tilde) orelse (oof = comma) orelse 
+                    (oof = semicolon) orelse f(i+1)
+                 end
+d27 3
+a29 3
+   let val dollar = Portable.String.ordof ("$",0)
+   in if (Portable.String.ordof (s,0) = dollar)
+      then Portable.String.substring (s,1,Portable.String.size s - 1)
+d33 1
+a33 1
+(*---------------------------------------------------------------------------
+d42 2
+a43 1
+ *---------------------------------------------------------------------------*)
+d45 1
+d47 2
+a48 5
+(*---------------------------------------------------------------------------
+ * Confusion warning: symbolic_ident means roughly 
+ *
+ *       Maybe a $ followed by any sequence of symbols
+ *---------------------------------------------------------------------------*)
+d59 1
+a59 5
+structure Vector =
+struct
+   open Portable.Vector
+   val vector = fromList
+end;
+d64 1
+a64 1
+%header (functor HOL_LEX((* structure Lib : Lib_sig *)
+d75 1
+a75 1
+symbolic_ident =          [\$]?([#\?\+\*\/\\\=\<\>&%@@!:\;_\|-]+);
+a130 2
+<INITIAL>"$," => (Tokens.symbolic_ident("$,",line,line));
+<INITIAL>","  => (Tokens.symbolic_ident(",",line,line));
+d140 1
+a140 1
+                     | "in"  => (YYBEGIN INITIAL; Tokens.in_(line,line))
+a192 2
+<TYPE>"$," => (YYBEGIN INITIAL;Tokens.symbolic_ident("$,",line,line));
+<TYPE>","  => (YYBEGIN INITIAL;Tokens.symbolic_ident(",",line,line));
+d216 2
+a217 2
+<STRING>"\"" => (YYBEGIN INITIAL;
+              Tokens.string_(concat(rev(yytext::(!string_list))),line,line));
+@
+
+
+1.3.2.1.2.1
+log
+@Removed files are parse files and portability files that have
+effectively been moved elsewhere.
+
+Modified files are up to date for ML 109.26.
+@
+text
+@@
+
+
+1.2
+log
+@Keeping you up to date:
+
+I'm about to do a checkin of elsa's modifications to the hol90.7
+sources to create her hol90.pre8.  To recap what I've done:
+	- I checked out hol90 (in /usr/groups/hol/drs1004/hol90)
+		cvs co hol90
+	  (Well, to be honest, I only checked out those
+	  parts of hol90 I knew I'd be changing, e.g. not the
+	  Manual, and only parts of the library.  Checking out the
+	  entire source takes a while, mainly due to the enormous number
+	  of help files.  The limiting factor is files/second, which
+         runs at around 5 when CVS is working on nfs over a network, not
+         KB/second, which you might at first think it would be).
+
+	- By doing a recursive diff between Elsa's source and the
+	hol90.7 source I found all the changes Elsa had made to
+	source files.  I copied relevant files from Elsa's source
+	into my checked out version.  The only new files were
+		- the sml_system files in src/0
+		- some make scripts in src/.
+	Changed files were in:
+		src/{0,1,2,3}
+		library/arith/src/thm_convs.sml
+		library/list/src/list_conv1.sml
+		library/num/src/num_lib.sml
+		library/prog_logic/src/halts_logic.sml
+		library/prog_logic/src/translation.sml
+		library/prog_logic/theories/src/mk_halts.sml
+		library/real/theories/src/Make
+		library/real/theories/src/equiv.sml
+		library/real/theories/src/seq.sml
+		library/reduce/src/arithconv.sml
+		library/string/src/string_conv.sml
+		library/unity/theories/src/aux_definitions.sml
+		library/word/theories/src/*
+
+	- I will now commit these changes, with this email as the log message.
+		cvs commit
+
+	- Tomorrow I will get this version compiling
+	with NJSML 108 (I will probably add
+	the files to enable the NJSML compilation manager to make
+	this easier), then check those changes in.  I think it's
+	good to get things in a working state.
+@
+text
+@d49 14
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d21 2
+a22 2
+   let val tilde = ord "~"
+       fun f i = ((ordof(s,i) = tilde) orelse f(i+1))
+d27 2
+a28 2
+   let val dollar = ord "$"
+   in if (ordof(s,0) = dollar)
+d50 2
+a51 1
+%header (functor HOL_LEX(structure Tokens : hol_TOKENS
+d86 2
+a87 2
+                       of NONE => raise LEX_ERR(quote "of"^" is a keyword.")
+                        |(SOME"")=>raise LEX_ERR(quote "of"^" is a keyword.")
+d95 1
+a95 1
+         andalso (mem (drop_dollar yytext) (!Globals.tilde_symbols)))
+d143 1
+a143 1
+<TYPE>"("  => (inc type_paren_count; Tokens.type_lparen(line,line));
+d146 1
+a146 1
+               else (dec type_paren_count; Tokens.type_rparen(line,line)));
+d159 1
+a159 1
+         andalso (mem (drop_dollar yytext) (!Globals.tilde_symbols)))
+d183 2
+a184 2
+<TYCOMMENT>"(*" => (inc comment_paren_count; continue());
+<TYCOMMENT>"*)" => (dec comment_paren_count;
+d192 2
+a193 2
+<COMMENT>"(*" => (inc comment_paren_count; continue());
+<COMMENT>"*)" => (dec comment_paren_count;
+d203 1
+a203 1
+              Tokens.string_(implode(rev(yytext::(!string_list))),line,line));
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

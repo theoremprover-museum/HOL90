@@ -1,0 +1,4151 @@
+Standard ML of New Jersey, Version 110.0.3, January 30, 1998 [CM; autoload enabled]
+- [opening /usr/groups/hol/hol90.10/src/0/sources.sml]
+[opening SysParams.sml]
+structure SysParams :
+  sig
+    datatype MLversion = Ninety | NinetySeven
+    datatype thy_opt = make_binary | make_new_ascii | use_old_ascii
+    val HOL_base_directory : string
+    val MLdialect : MLversion
+    val arch : string
+    val remake_theory_files : bool
+    val theory_file_option : thy_opt
+    val theory_file_type : string
+    val version_number : string
+  end
+val it = () : unit
+GC #0.0.0.0.1.20:   (10 ms)
+GC #0.0.0.0.2.43:   (30 ms)
+GC #0.0.0.1.3.67:   (40 ms)
+GC #0.0.0.1.4.92:   (20 ms)
+GC #0.0.0.1.5.113:   (20 ms)
+GC #0.0.0.1.6.130:   (20 ms)
+GC #0.0.0.1.7.154:   (10 ms)
+GC #0.0.0.1.8.165:   (0 ms)
+GC #0.0.0.1.9.214:   (10 ms)
+[opening portableML/njsml.109.32.sml]
+structure Portable :
+  sig
+    structure Array : <sig>
+    structure ByteArray : <sig>
+    structure Char : <sig>
+    structure General : <sig>
+    structure Int : <sig>
+    structure List : <sig>
+    structure PrettyPrint : <sig>
+    structure Ref : <sig>
+    structure String : <sig>
+    structure Time : <sig>
+    structure Timer : <sig>
+    structure Vector : <sig>
+    datatype 'a frag = ANTIQUOTE of 'a | QUOTE of string
+    type instream = instream
+    type outstream = outstream
+    exception Io of string
+    val argv : unit -> string list
+    val cd : string -> unit
+    val close_in : instream -> unit
+    val close_out : outstream -> unit
+    val end_of_stream : instream -> bool
+    val execute : string * string list -> instream * outstream
+    val exit : unit -> 'a
+    val explode : string -> string list
+    val exportML : string -> unit
+    val file_exists_for_reading : string -> bool
+    val flush_out : outstream -> unit
+    val getArgs : unit -> string list
+    val getEnv : string -> string option
+    val implode : string list -> string
+    val input_line : instream -> string
+    val interp : bool ref
+    val linewidth : int ref
+    val listDir : string -> string list
+    val load : string list -> unit
+    val ls : unit -> OS.Process.status
+    val open_in : string -> instream
+    val open_out : string -> outstream
+    val open_string : string -> instream
+    val output : outstream * TextIO.vector -> unit
+    val outputc : outstream -> TextIO.vector -> unit
+    val pointer_eq : 'a * 'b -> bool
+    val pwd : unit -> string
+    val real_to_string : real -> string
+    val reap : Unix.proc -> unit
+    val say : string -> unit
+    val sml_banner : string
+    val std_out : outstream
+    val stdin : instream
+    val string_to_int : string -> int option
+    val system : string -> OS.Process.status
+    val unfiltered_use_file : string -> unit
+    val unfiltered_use_stream : instream -> unit
+    val use : string -> unit
+    val use_and_exit : (exn -> 'a) -> string -> 'b
+    val use_stream : instream -> unit
+    val version : {date:string, system:string, version_id:int list}
+  end
+val it = () : unit
+GC #0.0.0.1.10.267:   (0 ms)
+[opening 0/globals.sig]
+signature Globals_sig =
+  sig
+    val version_number : string
+    val neg_defined : unit -> bool
+    val nums_defined : unit -> bool
+    val strings_defined : unit -> bool
+    val assert_neg_defined : unit -> unit
+    val assert_nums_defined : unit -> unit
+    val assert_strings_defined : unit -> unit
+    val in_type_spec : string option ref
+    val print_exceptions : bool ref
+    val show_assums : bool ref
+    val allow_theorems_with_assumptions : bool ref
+    val use_init_file : bool ref
+    val max_print_depth : int ref
+    val type_pp_prefix : string ref
+    val type_pp_suffix : string ref
+    val term_pp_prefix : string ref
+    val term_pp_suffix : string ref
+    val linewidth : int ref
+    val interp : bool ref
+    val paths : {HOLdir:string ref, help_path:string list ref,
+                 library_path:string list ref, theory_path:string list ref}
+    val HOLdir : string ref
+    val theory_path : string list ref
+    val library_path : string list ref
+    val help_path : string list ref
+    val output_HOL_ERR : ({message:string, origin_function:string,
+                           origin_structure:string}
+                          -> unit) ref
+    val output_help : string ref
+    val tilde_symbols : string list ref
+    val pp_flags : {in_at_end:bool ref, infix_at_front:bool ref,
+                    show_dB:bool ref, show_restrict:bool ref,
+                    show_types:bool ref, stack_infixes:bool ref}
+    val show_dB : bool ref
+    val show_restrict : bool ref
+    val show_types : bool ref
+    val infix_at_front : bool ref
+    val stack_infixes : bool ref
+    val in_at_end : bool ref
+    val reserved_identifiers : {alphanumeric:string list, symbolic:string list}
+    val goal_line : string ref
+    val notify_on_tyvar_guess : bool ref
+  end
+val it = () : unit
+GC #0.0.0.1.11.324:   (10 ms)
+[opening 0/globals.sml]
+structure Globals : Globals_sig
+val it = () : unit
+[opening 0/exception.sig]
+signature Exception_sig =
+  sig
+    exception HOL_ERR of {message:string, origin_function:string,
+                          origin_structure:string}
+    val print_HOL_ERR : exn -> unit
+    val Raise : exn -> 'a
+  end
+val it = () : unit
+GC #0.0.0.1.12.357:   (10 ms)
+[opening 0/exception.sml]
+structure Exception : Exception_sig
+val it = () : unit
+GC #0.0.0.1.13.415:   (30 ms)
+GC #0.0.0.1.14.449:   (20 ms)
+[opening quote-filter/filter.sml]
+quote-filter/filter.sml:111.41-111.55 Warning: match nonexhaustive
+          (s,(pd,cd,ps) :: e) => ...
+  
+quote-filter/filter.sml:44.1-245.4 Warning: match nonexhaustive
+          (pd,cd,ps) :: e => ...
+  
+quote-filter/filter.sml:44.1-245.4 Warning: match nonexhaustive
+          (pd,cd,ps) :: e => ...
+  
+quote-filter/filter.sml:44.1-245.4 Warning: match nonexhaustive
+          (pd,cd,ps) :: e => ...
+  
+quote-filter/filter.sml:44.1-245.4 Warning: match nonexhaustive
+          (pd,cd,ps) :: e => ...
+  
+quote-filter/filter.sml:44.1-245.4 Warning: match nonexhaustive
+          (_,_,ps) :: _ => ...
+  
+quote-filter/filter.sml:44.1-245.4 Warning: match nonexhaustive
+          (_,cd,_) :: _ => ...
+  
+quote-filter/filter.sml:44.1-245.4 Warning: match nonexhaustive
+          (pd,_,_) :: _ => ...
+  
+GC #0.0.0.1.15.468:   (20 ms)
+GC #0.0.0.1.16.495:   (20 ms)
+GC #0.0.1.2.17.511:   (70 ms)
+GC #0.0.1.2.18.546:   (0 ms)
+GC #0.0.1.2.19.609:   (10 ms)
+GC #0.0.1.2.20.688:   (10 ms)
+structure QuoteFilter : sig val quote_filter : string -> string end
+val it = () : unit
+[opening 0/lib.sig]
+signature Lib_sig =
+  sig
+    val curry : ('a * 'b -> 'c) -> 'a -> 'b -> 'c
+    val uncurry : ('a -> 'b -> 'c) -> 'a * 'b -> 'c
+    val append : 'a list -> 'a list -> 'a list
+    val concat : string -> string -> string
+    val equal : ''a -> ''a -> bool
+    val ## : ('a -> 'c) * ('b -> 'd) -> 'a * 'b -> 'c * 'd
+    val A : ('a -> 'b) -> 'a -> 'b
+    val B : ('a -> 'c) -> ('b -> 'a) -> 'b -> 'c
+    val C : ('b -> 'a -> 'c) -> 'a -> 'b -> 'c
+    val I : 'a -> 'a
+    val K : 'b -> 'a -> 'b
+    val S : ('b -> 'a -> 'c) -> ('b -> 'a) -> 'b -> 'c
+    val W : ('a -> 'a -> 'b) -> 'a -> 'b
+    val fst : 'b * 'a -> 'b
+    val snd : 'a * 'b -> 'b
+    val can : ('b -> 'a) -> 'b -> bool
+    val try : ('a -> 'b) -> 'a -> 'b
+    val assert : ('a -> bool) -> 'a -> 'a
+    val tryfind : ('a -> 'b) -> 'a list -> 'b
+    val el : int -> 'a list -> 'a
+    val map2 : ('a -> 'b -> 'c) -> 'a list -> 'b list -> 'c list
+    val all : ('a -> bool) -> 'a list -> bool
+    val all2 : ('a -> 'b -> bool) -> 'a list -> 'b list -> bool
+    val exists : ('a -> bool) -> 'a list -> bool
+    val first : ('a -> bool) -> 'a list -> 'a
+    val split_after : int -> 'a list -> 'a list * 'a list
+    val partition : ('a -> bool) -> 'a list -> 'a list * 'a list
+    val gather : ('a -> bool) -> 'a list -> 'a list
+    val filter : ('a -> bool) -> 'a list -> 'a list
+    val itlist : ('a -> 'b -> 'b) -> 'a list -> 'b -> 'b
+    val itlist2 : ('a -> 'b -> 'c -> 'c) -> 'a list -> 'b list -> 'c -> 'c
+    val rev_itlist : ('a -> 'b -> 'b) -> 'a list -> 'b -> 'b
+    val rev_itlist2 : ('a -> 'b -> 'c -> 'c) -> 'a list -> 'b list -> 'c -> 'c
+    val end_itlist : ('a -> 'a -> 'a) -> 'a list -> 'a
+    val zip : 'a list -> 'b list -> ('a * 'b) list
+    val combine : 'a list * 'b list -> ('a * 'b) list
+    val unzip : ('a * 'b) list -> 'a list * 'b list
+    val split : ('a * 'b) list -> 'a list * 'b list
+    val mapfilter : ('a -> 'b) -> 'a list -> 'b list
+    val flatten : 'a list list -> 'a list
+    exception NOT_FOUND
+    exception NO_CHANGE
+    val assoc : ''a -> (''a * 'b) list -> 'b
+    val assoc1 : ''a -> (''a * 'b) list -> (''a * 'b) option
+    val assoc2 : ''b -> ('a * ''b) list -> ('a * ''b) option
+    type 'a subst
+    val subst_assoc : ('a -> bool) -> 'a subst -> 'a option
+    val |-> : 'a * 'a -> {redex:'a, residue:'a}
+    val mem : ''a -> ''a list -> bool
+    val insert : ''a -> ''a list -> ''a list
+    val mk_set : ''a list -> ''a list
+    val union : ''a list -> ''a list -> ''a list
+    val U : ''a list list -> ''a list
+    val set_diff : ''a list -> ''a list -> ''a list
+    val subtract : ''a list -> ''a list -> ''a list
+    val intersect : ''a list -> ''a list -> ''a list
+    val null_intersection : ''a list -> ''a list -> bool
+    val set_eq : ''a list -> ''a list -> bool
+    val op_mem : ('a -> 'b -> bool) -> 'a -> 'b list -> bool
+    val op_union : ('a -> 'a -> bool) -> 'a list -> 'a list -> 'a list
+    val op_U : ('a -> 'a -> bool) -> 'a list list -> 'a list
+    val op_intersect : ('a -> 'a -> bool) -> 'a list -> 'a list -> 'a list
+    val for : int -> int -> (int -> 'a) -> 'a list
+    val for_se : int -> int -> (int -> 'a) -> unit
+    val list_of_array : 'a array -> 'a list
+    val int_to_string : int -> string
+    val string_to_int : string -> int
+    val sort : ('a -> 'a -> bool) -> 'a list -> 'a list
+    val int_sort : int list -> int list
+    val clean_directory : string -> unit
+    val file_exists_for_reading : string -> bool
+    val find_path : string list -> string -> string
+    val cons_path : string -> string list ref -> unit
+    val append_path : string -> string list ref -> unit
+    type time
+    val timestamp : unit -> time
+    val time_eq : time -> time -> bool
+    val time_lt : time -> time -> bool
+    val time : ('a -> 'b) -> 'a -> 'b
+    val compile : string -> unit
+    val interpret : string -> unit
+    type ('a,'b) istream
+    val mk_istream : ('a -> 'a) -> 'a -> ('a -> 'b) -> ('a,'b) istream
+    val next : ('a,'b) istream -> ('a,'b) istream
+    val state : ('a,'b) istream -> 'b
+    val reset : ('a,'b) istream -> ('a,'b) istream
+    val use_string : string -> unit
+    val say : string -> unit
+    val quote : string -> string
+    val words2 : string -> string -> string list
+    val front_last : 'a list -> 'a list * 'a
+    val last : 'a list -> 'a
+    val funpow : int -> ('a -> 'a) -> 'a -> 'a
+    val ordof : string * int -> int
+    val mesg : bool -> string -> unit
+    val with_flag : 'a ref -> 'a -> ('c -> 'b) -> 'c -> unit
+  end
+val it = () : unit
+GC #0.0.1.2.21.766:   (30 ms)
+GC #0.0.1.2.22.792:   (30 ms)
+[opening 0/lib.sml]
+0/lib.sml:141.17-141.47 Warning: binding not exhaustive
+          base :: ralist = ...
+GC #0.0.1.2.23.844:   (40 ms)
+0/lib.sml:84.27-87.74 Warning: match nonexhaustive
+          (nil,nil) => ...
+          (a1 :: rst1,a2 :: rst2) => ...
+          (_,nil) => ...
+  
+GC #0.0.1.2.24.863:   (20 ms)
+GC #0.1.2.3.25.893:   (90 ms)
+GC #0.1.2.3.26.919:   (20 ms)
+GC #0.1.3.4.27.946:   (60 ms)
+GC #0.1.3.4.28.970:   (30 ms)
+GC #1.2.4.5.29.992:   (260 ms)
+GC #1.2.4.5.30.1029:   (0 ms)
+GC #1.2.4.5.31.1054:   (10 ms)
+GC #1.2.4.5.32.1086:   (20 ms)
+GC #1.2.4.5.33.1089:   (10 ms)
+GC #1.2.4.5.34.1112:   (20 ms)
+GC #1.2.4.5.35.1149:   (30 ms)
+GC #1.2.4.5.36.1186:   (30 ms)
+GC #1.2.4.6.37.1190:   (20 ms)
+GC #1.2.4.6.38.1191:   (10 ms)
+GC #1.2.4.6.39.1229:   (10 ms)
+GC #1.2.4.6.40.1296:   (30 ms)
+GC #1.2.4.6.41.1310:   (20 ms)
+GC #1.3.5.7.42.1312:   (60 ms)
+structure Lib : Lib_sig
+val it = () : unit
+GC #1.3.5.7.43.1313:   (0 ms)
+GC #1.3.5.7.44.1335:   (10 ms)
+opening Lib
+  val curry : ('a * 'b -> 'c) -> 'a -> 'b -> 'c
+  val uncurry : ('a -> 'b -> 'c) -> 'a * 'b -> 'c
+  val append : 'a list -> 'a list -> 'a list
+  val concat : string -> string -> string
+  val equal : ''a -> ''a -> bool
+  val ## : ('a -> 'c) * ('b -> 'd) -> 'a * 'b -> 'c * 'd
+  val A : ('a -> 'b) -> 'a -> 'b
+  val B : ('a -> 'c) -> ('b -> 'a) -> 'b -> 'c
+  val C : ('b -> 'a -> 'c) -> 'a -> 'b -> 'c
+  val I : 'a -> 'a
+  val K : 'b -> 'a -> 'b
+  val S : ('b -> 'a -> 'c) -> ('b -> 'a) -> 'b -> 'c
+  val W : ('a -> 'a -> 'b) -> 'a -> 'b
+  val fst : 'b * 'a -> 'b
+  val snd : 'a * 'b -> 'b
+  val can : ('b -> 'a) -> 'b -> bool
+  val try : ('a -> 'b) -> 'a -> 'b
+  val assert : ('a -> bool) -> 'a -> 'a
+  val tryfind : ('a -> 'b) -> 'a list -> 'b
+  val el : int -> 'a list -> 'a
+  val map2 : ('a -> 'b -> 'c) -> 'a list -> 'b list -> 'c list
+  val all : ('a -> bool) -> 'a list -> bool
+  val all2 : ('a -> 'b -> bool) -> 'a list -> 'b list -> bool
+  val exists : ('a -> bool) -> 'a list -> bool
+  val first : ('a -> bool) -> 'a list -> 'a
+  val split_after : int -> 'a list -> 'a list * 'a list
+  val partition : ('a -> bool) -> 'a list -> 'a list * 'a list
+  val gather : ('a -> bool) -> 'a list -> 'a list
+  val filter : ('a -> bool) -> 'a list -> 'a list
+  val itlist : ('a -> 'b -> 'b) -> 'a list -> 'b -> 'b
+  val itlist2 : ('a -> 'b -> 'c -> 'c) -> 'a list -> 'b list -> 'c -> 'c
+  val rev_itlist : ('a -> 'b -> 'b) -> 'a list -> 'b -> 'b
+  val rev_itlist2 : ('a -> 'b -> 'c -> 'c) -> 'a list -> 'b list -> 'c -> 'c
+  val end_itlist : ('a -> 'a -> 'a) -> 'a list -> 'a
+  val zip : 'a list -> 'b list -> ('a * 'b) list
+  val combine : 'a list * 'b list -> ('a * 'b) list
+  val unzip : ('a * 'b) list -> 'a list * 'b list
+  val split : ('a * 'b) list -> 'a list * 'b list
+  val mapfilter : ('a -> 'b) -> 'a list -> 'b list
+  val flatten : 'a list list -> 'a list
+  exception NOT_FOUND
+  exception NO_CHANGE
+  val assoc : ''a -> (''a * 'b) list -> 'b
+  val assoc1 : ''a -> (''a * 'b) list -> (''a * 'b) option
+  val assoc2 : ''b -> ('a * ''b) list -> ('a * ''b) option
+  type 'a subst = {redex:'a, residue:'a} list
+  val subst_assoc : ('a -> bool) -> 'a subst -> 'a option
+  val |-> : 'a * 'a -> {redex:'a, residue:'a}
+  val mem : ''a -> ''a list -> bool
+  val insert : ''a -> ''a list -> ''a list
+  val mk_set : ''a list -> ''a list
+  val union : ''a list -> ''a list -> ''a list
+  val U : ''a list list -> ''a list
+  val set_diff : ''a list -> ''a list -> ''a list
+  val subtract : ''a list -> ''a list -> ''a list
+  val intersect : ''a list -> ''a list -> ''a list
+  val null_intersection : ''a list -> ''a list -> bool
+  val set_eq : ''a list -> ''a list -> bool
+  val op_mem : ('a -> 'b -> bool) -> 'a -> 'b list -> bool
+  val op_union : ('a -> 'a -> bool) -> 'a list -> 'a list -> 'a list
+  val op_U : ('a -> 'a -> bool) -> 'a list list -> 'a list
+  val op_intersect : ('a -> 'a -> bool) -> 'a list -> 'a list -> 'a list
+  val for : int -> int -> (int -> 'a) -> 'a list
+  val for_se : int -> int -> (int -> 'a) -> unit
+  val list_of_array : 'a array -> 'a list
+  val int_to_string : int -> string
+  val string_to_int : string -> int
+  val sort : ('a -> 'a -> bool) -> 'a list -> 'a list
+  val int_sort : int list -> int list
+  val clean_directory : string -> unit
+  val file_exists_for_reading : string -> bool
+  val find_path : string list -> string -> string
+  val cons_path : string -> string list ref -> unit
+  val append_path : string -> string list ref -> unit
+  type time = Time.time
+  val timestamp : unit -> time
+  val time_eq : time -> time -> bool
+  val time_lt : time -> time -> bool
+  val time : ('a -> 'b) -> 'a -> 'b
+  val compile : string -> unit
+  val interpret : string -> unit
+  type ('a,'b) istream
+  val mk_istream : ('a -> 'a) -> 'a -> ('a -> 'b) -> ('a,'b) istream
+  val next : ('a,'b) istream -> ('a,'b) istream
+  val state : ('a,'b) istream -> 'b
+  val reset : ('a,'b) istream -> ('a,'b) istream
+  val use_string : string -> unit
+  val say : string -> unit
+  val quote : string -> string
+  val words2 : string -> string -> string list
+  val front_last : 'a list -> 'a list * 'a
+  val last : 'a list -> 'a
+  val funpow : int -> ('a -> 'a) -> 'a -> 'a
+  val ordof : string * int -> int
+  val mesg : bool -> string -> unit
+  val with_flag : 'a ref -> 'a -> ('c -> 'b) -> 'c -> unit
+[opening 0/file.sig]
+signature File_sig =
+  sig
+    val get_file_by_name : {reader:Portable.instream -> 'a, suffix:string}
+                           -> string list -> string -> {data:'a, path:string}
+    val get_file_by_key : {eq:'a * 'a -> bool, key_of:'b -> 'a,
+                           name_of:'a -> string,
+                           reader:Portable.instream -> 'b, suffix:string}
+                          -> string list -> 'a -> {data:'b, path:string}
+  end
+val it = () : unit
+GC #1.3.5.7.45.1374:   (10 ms)
+GC #1.3.5.7.46.1399:   (10 ms)
+[opening 0/file.sml]
+structure File : File_sig
+val it = () : unit
+[opening 0/help.sig]
+signature Help_sig =
+  sig
+    val helper : string list -> string -> unit
+    val help : string -> unit
+    val help1 : string -> unit
+  end
+val it = () : unit
+[opening 0/help.sml]
+structure Help : Help_sig
+val it = () : unit
+[opening 0/save_hol.sig]
+signature Save_hol_sig =
+  sig
+    val print_banner : string -> unit
+    val save_hol : string -> unit
+  end
+GC #1.3.5.7.47.1455:   (0 ms)
+val it = () : unit
+[opening 0/save_hol.sml]
+structure Save_hol : Save_hol_sig
+val it = () : unit
+[opening 0/lexis.sig]
+signature Lexis_sig =
+  sig
+    val allowed_user_type_var : string -> bool
+    val allowed_type_constant : string -> bool
+    val allowed_term_constant : string -> bool
+    val ok_identifier : string -> bool
+    val ok_symbolic : string -> bool
+    val ok_sml_identifier : string -> bool
+    val ok_thy_index : string -> bool
+    val is_num_literal : string -> bool
+    val is_string_literal : string -> bool
+  end
+val it = () : unit
+GC #1.3.5.7.48.1536:   (10 ms)
+GC #1.3.5.7.49.1573:   (20 ms)
+GC #1.3.5.7.50.1591:   (20 ms)
+GC #1.3.5.7.51.1658:   (10 ms)
+[opening 0/lexis.sml]
+structure Lexis : Lexis_sig
+val it = () : unit
+[opening 0/type.sig]
+signature Type_sig =
+  sig
+    datatype hol_type
+      = Link of hol_type ref
+      | Stv of int
+      | Tyapp of {Args:hol_type list, Tyop:string}
+      | Tyc of string
+      | Utv of string
+    datatype 'a delta = DIFF of 'a | SAME
+    val fresh_tyvar_stream : unit -> (int,hol_type) istream
+    val unify : hol_type -> hol_type -> unit
+    val ty_eq : hol_type * hol_type -> bool
+    val rename_tv : (int,hol_type) istream -> hol_type -> hol_type delta
+    val type_subst : hol_type subst -> hol_type -> hol_type
+    val type_vars : hol_type -> hol_type list
+    val type_varsl : hol_type list -> hol_type list
+    val mk_type : {Args:hol_type list, Tyop:string} -> hol_type
+    val dest_type : hol_type -> {Args:hol_type list, Tyop:string}
+    val mk_vartype : string -> hol_type
+    val dest_vartype : hol_type -> string
+    val is_vartype : hol_type -> bool
+    val polymorphic : hol_type -> bool
+    val type_lt : hol_type -> hol_type -> bool
+    val lookup_type : string -> {arity:int, theory:string, tyc:hol_type}
+    val type_decl : string -> {arity:int, theory:string, tyc:hol_type}
+    val add_type_const : {arity:int, theory:string, tyc:hol_type} -> unit
+    val add_entry : {arity:int, theory:string, tyc:hol_type} -> unit
+    type symtab
+    val symtab_copy : unit -> symtab
+    val replace_symtab : symtab -> unit
+    exception TYPE_SYMTAB_CLASH of {common_name:string, theory1:string,
+                                    theory2:string}
+    val is_st_type_const : string -> bool
+    val arity_of_type : string -> int
+  end
+signature Public_type_sig =
+  sig
+    eqtype hol_type
+    val fresh_tyvar_stream : unit -> (int,hol_type) istream
+    val type_subst : hol_type subst -> hol_type -> hol_type
+    val type_vars : hol_type -> hol_type list
+    val type_varsl : hol_type list -> hol_type list
+    val mk_type : {Args:hol_type list, Tyop:string} -> hol_type
+    val dest_type : hol_type -> {Args:hol_type list, Tyop:string}
+    val mk_vartype : string -> hol_type
+    val dest_vartype : hol_type -> string
+    val is_vartype : hol_type -> bool
+    val type_lt : hol_type -> hol_type -> bool
+    val type_decl : string -> {arity:int, theory:string, tyc:hol_type}
+  end
+val it = () : unit
+GC #1.3.5.7.52.1682:   (0 ms)
+GC #1.3.5.7.53.1731:   (20 ms)
+[opening 0/type.sml]
+0/type.sml:237.41-238.29 Warning: match nonexhaustive
+          (a1 :: rst1,a2 :: rst2) => ...
+          (nil,nil) => ...
+  
+GC #1.3.5.7.54.1780:   (20 ms)
+0/type.sml:12.1-360.4 Warning: match nonexhaustive
+          entry as {arity=_,theory=thry1,tyc=Tyc name} => ...
+  
+0/type.sml:12.1-360.4 Warning: match nonexhaustive
+          entry as {arity=_,theory=_,tyc=Tyc name} => ...
+  
+GC #1.3.5.7.55.1795:   (10 ms)
+GC #1.3.5.7.56.1831:   (20 ms)
+GC #1.3.5.7.57.1846:   (40 ms)
+GC #1.3.5.7.58.1874:   (10 ms)
+GC #1.3.5.7.59.1896:   (10 ms)
+GC #1.3.5.7.60.1977:   (10 ms)
+GC #1.3.5.7.61.1992:   (0 ms)
+structure Type : Type_sig
+val it = () : unit
+[opening 0/term.sig]
+signature Term_sig =
+  sig
+    structure Type :
+      sig
+        datatype hol_type
+          = Link of hol_type ref
+          | Stv of int
+          | Tyapp of {Args:hol_type list, Tyop:string}
+          | Tyc of string
+          | Utv of string
+        datatype 'a delta = DIFF of 'a | SAME
+        val fresh_tyvar_stream : unit -> (int,hol_type) istream
+        val unify : hol_type -> hol_type -> unit
+        val ty_eq : hol_type * hol_type -> bool
+        val rename_tv : (int,hol_type) istream -> hol_type -> hol_type delta
+        val type_subst : hol_type subst -> hol_type -> hol_type
+        val type_vars : hol_type -> hol_type list
+        val type_varsl : hol_type list -> hol_type list
+        val mk_type : {Args:hol_type list, Tyop:string} -> hol_type
+        val dest_type : hol_type -> {Args:hol_type list, Tyop:string}
+        val mk_vartype : string -> hol_type
+        val dest_vartype : hol_type -> string
+        val is_vartype : hol_type -> bool
+        val polymorphic : hol_type -> bool
+        val type_lt : hol_type -> hol_type -> bool
+        val lookup_type : string -> {arity:int, theory:string, tyc:hol_type}
+        val type_decl : string -> {arity:int, theory:string, tyc:hol_type}
+        val add_type_const : {arity:int, theory:string, tyc:hol_type} -> unit
+        val add_entry : {arity:int, theory:string, tyc:hol_type} -> unit
+        type symtab
+        val symtab_copy : unit -> symtab
+        val replace_symtab : symtab -> unit
+        exception TYPE_SYMTAB_CLASH of {common_name:string, theory1:string,
+                                        theory2:string}
+        val is_st_type_const : string -> bool
+        val arity_of_type : string -> int
+      end
+    datatype fixity = Binder | Infix of int | Prefix
+    datatype term
+      = Abs of {Body:term, Bvar:term}
+      | Bv of int
+      | Comb of {Rand:term, Rator:term}
+      | Const of {Name:string, Ty:Type.hol_type}
+      | Fv of {Name:string, Ty:Type.hol_type}
+      | ty_antiq of Type.hol_type
+    datatype lambda
+      = COMB of {Rand:term, Rator:term}
+      | CONST of {Name:string, Ty:Type.hol_type}
+      | LAMB of {Body:term, Bvar:term}
+      | VAR of {Name:string, Ty:Type.hol_type}
+    type symtab
+    val symtab_copy : unit -> symtab
+    val replace_symtab : symtab -> unit
+    exception TERM_SYMTAB_CLASH of {common_name:string, theory1:string,
+                                    theory2:string}
+    val lookup_const : string -> term
+    val const_decl : string -> {const:term, place:fixity, theory:string}
+    datatype add_style = Defining | Loading
+    val add_term_const : add_style
+                         -> {const:term, place:fixity, theory:string} -> unit
+    val is_st_term_const : string -> bool
+    val fixity_of_term : string -> fixity
+    val fixity_to_string : fixity -> string
+    val prec_of_term : string -> int
+    val is_binder : string -> bool
+    val is_infix : string -> bool
+    val is_polymorphic : string -> bool
+    val free_vars : term -> term list
+    val free_in : term -> term -> bool
+    val all_vars : term -> term list
+    val free_varsl : term list -> term list
+    val all_varsl : term list -> term list
+    val term_lt : term -> term -> bool
+    val genvar : Type.hol_type -> term
+    val genvars : Type.hol_type -> int -> term list
+    val variant : term list -> term -> term
+    val type_of : term -> Type.hol_type
+    val type_vars_in_term : term -> Type.hol_type list
+    val mk_var : {Name:string, Ty:Type.hol_type} -> term
+    val mk_primed_var : {Name:string, Ty:Type.hol_type} -> term
+    val list_mk_comb : term * term list -> term
+    val mk_comb : {Rand:term, Rator:term} -> term
+    val mk_abs : {Body:term, Bvar:term} -> term
+    val dest_var : term -> {Name:string, Ty:Type.hol_type}
+    val dest_const : term -> {Name:string, Ty:Type.hol_type}
+    val dest_comb : term -> {Rand:term, Rator:term}
+    val dest_abs : term -> {Body:term, Bvar:term}
+    val is_var : term -> bool
+    val is_const : term -> bool
+    val is_comb : term -> bool
+    val is_abs : term -> bool
+    val dest_term : term -> lambda
+    val rator : term -> term
+    val rand : term -> term
+    val bvar : term -> term
+    val body : term -> term
+    val break_abs : term -> {Body:term, Bvar:term}
+    val is_bvar : term -> bool
+    val aconv : term -> term -> bool
+    val subst : term subst -> term -> term
+    val inst : Type.hol_type subst -> term -> term
+    val beta_conv : term -> term
+  end
+signature Public_term_sig =
+  sig
+    structure Type :
+      sig
+        eqtype hol_type
+        val fresh_tyvar_stream : unit -> (int,hol_type) istream
+        val type_subst : hol_type subst -> hol_type -> hol_type
+        val type_vars : hol_type -> hol_type list
+        val type_varsl : hol_type list -> hol_type list
+        val mk_type : {Args:hol_type list, Tyop:string} -> hol_type
+        val dest_type : hol_type -> {Args:hol_type list, Tyop:string}
+        val mk_vartype : string -> hol_type
+        val dest_vartype : hol_type -> string
+        val is_vartype : hol_type -> bool
+        val type_lt : hol_type -> hol_type -> bool
+        val type_decl : string -> {arity:int, theory:string, tyc:hol_type}
+      end
+    datatype fixity = Binder | Infix of int | Prefix
+    eqtype term
+    val const_decl : string -> {const:term, place:fixity, theory:string}
+    val fixity_of_term : string -> fixity
+    val fixity_to_string : fixity -> string
+    val prec_of_term : string -> int
+    val is_binder : string -> bool
+    val is_infix : string -> bool
+    val is_polymorphic : string -> bool
+    datatype lambda
+      = COMB of {Rand:term, Rator:term}
+      | CONST of {Name:string, Ty:Type.hol_type}
+      | LAMB of {Body:term, Bvar:term}
+      | VAR of {Name:string, Ty:Type.hol_type}
+    val ty_antiq : Type.hol_type -> term
+    val free_vars : term -> term list
+    val free_in : term -> term -> bool
+    val all_vars : term -> term list
+    val free_varsl : term list -> term list
+    val all_varsl : term list -> term list
+    val term_lt : term -> term -> bool
+    val genvar : Type.hol_type -> term
+    val genvars : Type.hol_type -> int -> term list
+    val variant : term list -> term -> term
+    val type_of : term -> Type.hol_type
+    val type_vars_in_term : term -> Type.hol_type list
+    val mk_var : {Name:string, Ty:Type.hol_type} -> term
+    val mk_primed_var : {Name:string, Ty:Type.hol_type} -> term
+    val list_mk_comb : term * term list -> term
+    val mk_comb : {Rand:term, Rator:term} -> term
+    val mk_abs : {Body:term, Bvar:term} -> term
+    val dest_var : term -> {Name:string, Ty:Type.hol_type}
+    val dest_const : term -> {Name:string, Ty:Type.hol_type}
+    val dest_comb : term -> {Rand:term, Rator:term}
+    val dest_abs : term -> {Body:term, Bvar:term}
+    val is_var : term -> bool
+    val is_const : term -> bool
+    val is_comb : term -> bool
+    val is_abs : term -> bool
+    val dest_term : term -> lambda
+    val rator : term -> term
+    val rand : term -> term
+    val bvar : term -> term
+    val body : term -> term
+    val aconv : term -> term -> bool
+    val subst : term subst -> term -> term
+    val inst : Type.hol_type subst -> term -> term
+    val beta_conv : term -> term
+  end
+val it = () : unit
+GC #1.3.5.7.62.2044:   (0 ms)
+GC #1.3.5.7.63.2100:   (30 ms)
+GC #1.3.5.7.64.2177:   (30 ms)
+GC #1.3.6.8.65.2190:   (40 ms)
+GC #1.3.6.8.66.2231:   (30 ms)
+GC #1.3.6.8.67.2277:   (30 ms)
+[opening 0/term.sml]
+0/term.sml:160.2-170.74 Warning: match nonexhaustive
+          (DorL,
+           entry as {const=Const {Name=Name,Ty=Ty},place=place,
+                     theory=thry1}) => ...
+  
+0/term.sml:132.8-136.36 Warning: match nonexhaustive
+          (tr  as {const=Const {Name=Name,Ty=_},place=_,theory=_}) ::
+            nil => ...
+          (tr  as {const=Const {Name=Name,Ty=_},place=_,theory=_}) ::
+            rst => ...
+          nil => ...
+  
+0/term.sml:12.1-1009.4 Warning: match nonexhaustive
+          entry as {const=Const {Name=Name,Ty=_},place=_,theory=_} => ...
+  
+GC #1.3.6.8.68.2298:   (30 ms)
+GC #1.3.6.8.69.2312:   (20 ms)
+GC #1.3.6.8.70.2348:   (20 ms)
+GC #1.3.6.8.71.2376:   (30 ms)
+GC #1.3.6.8.72.2395:   (50 ms)
+GC #1.3.6.8.73.2401:   (40 ms)
+GC #1.3.6.8.74.2413:   (40 ms)
+GC #1.3.7.9.75.2456:   (100 ms)
+GC #1.3.7.9.76.2497:   (20 ms)
+GC #1.3.7.9.77.2547:   (10 ms)
+GC #1.3.7.9.78.2582:   (10 ms)
+GC #1.3.7.9.79.2666:   (30 ms)
+GC #1.3.7.9.80.2736:   (30 ms)
+GC #1.3.7.9.81.2802:   (30 ms)
+GC #1.4.8.10.82.2833:   (40 ms)
+GC #1.4.8.10.83.2836:   (10 ms)
+functor TERM : <sig>
+val it = () : unit
+GC #1.4.8.10.84.2837:   (0 ms)
+[opening 0/match.sig]
+signature Match_sig =
+  sig
+    structure Term :
+      sig
+        structure Type : <sig>
+        datatype fixity = Binder | Infix of int | Prefix
+        eqtype term
+        val const_decl : string -> {const:term, place:fixity, theory:string}
+        val fixity_of_term : string -> fixity
+        val fixity_to_string : fixity -> string
+        val prec_of_term : string -> int
+        val is_binder : string -> bool
+        val is_infix : string -> bool
+        val is_polymorphic : string -> bool
+        datatype lambda
+          = COMB of {Rand:term, Rator:term}
+          | CONST of {Name:string, Ty:Type.hol_type}
+          | LAMB of {Body:term, Bvar:term}
+          | VAR of {Name:string, Ty:Type.hol_type}
+        val ty_antiq : Type.hol_type -> term
+        val free_vars : term -> term list
+        val free_in : term -> term -> bool
+        val all_vars : term -> term list
+        val free_varsl : term list -> term list
+        val all_varsl : term list -> term list
+        val term_lt : term -> term -> bool
+        val genvar : Type.hol_type -> term
+        val genvars : Type.hol_type -> int -> term list
+        val variant : term list -> term -> term
+        val type_of : term -> Type.hol_type
+        val type_vars_in_term : term -> Type.hol_type list
+        val mk_var : {Name:string, Ty:Type.hol_type} -> term
+        val mk_primed_var : {Name:string, Ty:Type.hol_type} -> term
+        val list_mk_comb : term * term list -> term
+        val mk_comb : {Rand:term, Rator:term} -> term
+        val mk_abs : {Body:term, Bvar:term} -> term
+        val dest_var : term -> {Name:string, Ty:Type.hol_type}
+        val dest_const : term -> {Name:string, Ty:Type.hol_type}
+        val dest_comb : term -> {Rand:term, Rator:term}
+        val dest_abs : term -> {Body:term, Bvar:term}
+        val is_var : term -> bool
+        val is_const : term -> bool
+        val is_comb : term -> bool
+        val is_abs : term -> bool
+        val dest_term : term -> lambda
+        val rator : term -> term
+        val rand : term -> term
+        val bvar : term -> term
+        val body : term -> term
+        val aconv : term -> term -> bool
+        val subst : term subst -> term -> term
+        val inst : Type.hol_type subst -> term -> term
+        val beta_conv : term -> term
+      end
+    val match_type : Term.Type.hol_type
+                     -> Term.Type.hol_type -> Term.Type.hol_type subst
+    val match_term : Term.term
+                     -> Term.term -> Term.term subst * Term.Type.hol_type subst
+  end
+val it = () : unit
+GC #1.4.8.10.85.2858:   (0 ms)
+GC #1.4.8.10.86.2872:   (0 ms)
+GC #1.4.8.10.87.2900:   (20 ms)
+GC #1.4.8.10.88.2918:   (10 ms)
+GC #1.4.8.10.89.2925:   (20 ms)
+GC #1.4.8.10.90.2962:   (0 ms)
+[opening 0/match.sml]
+functor MATCH : <sig>
+val it = () : unit
+[opening 0/dsyntax.sig]
+signature Dsyntax_sig =
+  sig
+    structure Term :
+      sig
+        structure Type : <sig>
+        datatype fixity = Binder | Infix of int | Prefix
+        eqtype term
+        val const_decl : string -> {const:term, place:fixity, theory:string}
+        val fixity_of_term : string -> fixity
+        val fixity_to_string : fixity -> string
+        val prec_of_term : string -> int
+        val is_binder : string -> bool
+        val is_infix : string -> bool
+        val is_polymorphic : string -> bool
+        datatype lambda
+          = COMB of {Rand:term, Rator:term}
+          | CONST of {Name:string, Ty:Type.hol_type}
+          | LAMB of {Body:term, Bvar:term}
+          | VAR of {Name:string, Ty:Type.hol_type}
+        val ty_antiq : Type.hol_type -> term
+        val free_vars : term -> term list
+        val free_in : term -> term -> bool
+        val all_vars : term -> term list
+        val free_varsl : term list -> term list
+        val all_varsl : term list -> term list
+        val term_lt : term -> term -> bool
+        val genvar : Type.hol_type -> term
+        val genvars : Type.hol_type -> int -> term list
+        val variant : term list -> term -> term
+        val type_of : term -> Type.hol_type
+        val type_vars_in_term : term -> Type.hol_type list
+        val mk_var : {Name:string, Ty:Type.hol_type} -> term
+        val mk_primed_var : {Name:string, Ty:Type.hol_type} -> term
+        val list_mk_comb : term * term list -> term
+        val mk_comb : {Rand:term, Rator:term} -> term
+        val mk_abs : {Body:term, Bvar:term} -> term
+        val dest_var : term -> {Name:string, Ty:Type.hol_type}
+        val dest_const : term -> {Name:string, Ty:Type.hol_type}
+        val dest_comb : term -> {Rand:term, Rator:term}
+        val dest_abs : term -> {Body:term, Bvar:term}
+        val is_var : term -> bool
+        val is_const : term -> bool
+        val is_comb : term -> bool
+        val is_abs : term -> bool
+        val dest_term : term -> lambda
+        val rator : term -> term
+        val rand : term -> term
+        val bvar : term -> term
+        val body : term -> term
+        val aconv : term -> term -> bool
+        val subst : term subst -> term -> term
+        val inst : Type.hol_type subst -> term -> term
+        val beta_conv : term -> term
+      end
+    val mk_const : {Name:string, Ty:Term.Type.hol_type} -> Term.term
+    val mk_eq : {lhs:Term.term, rhs:Term.term} -> Term.term
+    val mk_imp : {ant:Term.term, conseq:Term.term} -> Term.term
+    val mk_select : {Body:Term.term, Bvar:Term.term} -> Term.term
+    val mk_forall : {Body:Term.term, Bvar:Term.term} -> Term.term
+    val mk_exists : {Body:Term.term, Bvar:Term.term} -> Term.term
+    val mk_neg : Term.term -> Term.term
+    val mk_conj : {conj1:Term.term, conj2:Term.term} -> Term.term
+    val mk_disj : {disj1:Term.term, disj2:Term.term} -> Term.term
+    val mk_cond : {cond:Term.term, larm:Term.term, rarm:Term.term} -> Term.term
+    val mk_pair : {fst:Term.term, snd:Term.term} -> Term.term
+    val mk_let : {arg:Term.term, func:Term.term} -> Term.term
+    val mk_cons : {hd:Term.term, tl:Term.term} -> Term.term
+    val mk_list : {els:Term.term list, ty:Term.Type.hol_type} -> Term.term
+    val mk_pabs : {body:Term.term, varstruct:Term.term} -> Term.term
+    val dest_eq : Term.term -> {lhs:Term.term, rhs:Term.term}
+    val lhs : Term.term -> Term.term
+    val rhs : Term.term -> Term.term
+    val dest_imp : Term.term -> {ant:Term.term, conseq:Term.term}
+    val dest_select : Term.term -> {Body:Term.term, Bvar:Term.term}
+    val dest_forall : Term.term -> {Body:Term.term, Bvar:Term.term}
+    val dest_exists : Term.term -> {Body:Term.term, Bvar:Term.term}
+    val dest_neg : Term.term -> Term.term
+    val dest_conj : Term.term -> {conj1:Term.term, conj2:Term.term}
+    val dest_disj : Term.term -> {disj1:Term.term, disj2:Term.term}
+    val dest_cond : Term.term
+                    -> {cond:Term.term, larm:Term.term, rarm:Term.term}
+    val dest_pair : Term.term -> {fst:Term.term, snd:Term.term}
+    val dest_let : Term.term -> {arg:Term.term, func:Term.term}
+    val dest_cons : Term.term -> {hd:Term.term, tl:Term.term}
+    val dest_list : Term.term -> {els:Term.term list, ty:Term.Type.hol_type}
+    val dest_pabs : Term.term -> {body:Term.term, varstruct:Term.term}
+    val is_eq : Term.term -> bool
+    val is_imp : Term.term -> bool
+    val is_select : Term.term -> bool
+    val is_forall : Term.term -> bool
+    val is_exists : Term.term -> bool
+    val is_neg : Term.term -> bool
+    val is_conj : Term.term -> bool
+    val is_disj : Term.term -> bool
+    val is_cond : Term.term -> bool
+    val is_pair : Term.term -> bool
+    val is_let : Term.term -> bool
+    val is_cons : Term.term -> bool
+    val is_list : Term.term -> bool
+    val is_pabs : Term.term -> bool
+    val list_mk_abs : Term.term list * Term.term -> Term.term
+    val list_mk_imp : Term.term list * Term.term -> Term.term
+    val list_mk_forall : Term.term list * Term.term -> Term.term
+    val gen_all : Term.term -> Term.term
+    val list_mk_exists : Term.term list * Term.term -> Term.term
+    val list_mk_conj : Term.term list -> Term.term
+    val list_mk_disj : Term.term list -> Term.term
+    val list_mk_pair : Term.term list -> Term.term
+    val strip_comb : Term.term -> Term.term * Term.term list
+    val strip_abs : Term.term -> Term.term list * Term.term
+    val strip_imp : Term.term -> Term.term list * Term.term
+    val strip_forall : Term.term -> Term.term list * Term.term
+    val strip_exists : Term.term -> Term.term list * Term.term
+    val strip_conj : Term.term -> Term.term list
+    val strip_disj : Term.term -> Term.term list
+    val strip_pair : Term.term -> Term.term list
+    val infix_ty : Term.Type.hol_type
+                   -> Term.Type.hol_type -> Term.Type.hol_type
+    val bool : Term.Type.hol_type
+    val de_abs : Term.term -> Term.term list * Term.term
+    val find_term : (Term.term -> bool) -> Term.term -> Term.term
+    val find_terms : (Term.term -> bool) -> Term.term -> Term.term list
+    val subst_occs : int list list -> Term.term subst -> Term.term -> Term.term
+    val binder_restrictions : unit -> (string * string) list
+    val associate_restriction : string * string -> unit
+    val delete_restriction : string -> unit
+  end
+val it = () : unit
+GC #1.4.8.10.91.3030:   (10 ms)
+GC #1.4.8.10.92.3101:   (10 ms)
+GC #1.4.8.10.93.3162:   (40 ms)
+[opening 0/dsyntax.sml]
+0/dsyntax.sml:260.13-261.30 Warning: binding not exhaustive
+          {Name="NIL",Ty=Tyapp {Args=ty :: nil,Tyop="list"}} = ...
+0/dsyntax.sml:25.8-25.60 Warning: binding not exhaustive
+          c as Const {Name=_,Ty=ty} = ...
+GC #1.5.9.11.94.3193:   (50 ms)
+GC #1.5.9.11.95.3223:   (10 ms)
+GC #1.5.9.11.96.3249:   (20 ms)
+GC #1.5.9.11.97.3267:   (30 ms)
+GC #1.5.10.12.98.3300:   (70 ms)
+GC #1.5.10.12.99.3327:   (20 ms)
+GC #1.5.10.12.100.3365:   (20 ms)
+GC #1.5.10.12.101.3368:   (10 ms)
+GC #1.5.10.12.102.3405:   (20 ms)
+GC #1.5.10.12.103.3454:   (30 ms)
+GC #1.5.11.13.104.3481:   (60 ms)
+GC #1.5.11.13.105.3484:   (20 ms)
+GC #1.5.11.13.106.3485:   (10 ms)
+GC #1.5.11.13.107.3535:   (20 ms)
+GC #1.5.11.13.108.3591:   (20 ms)
+GC #1.5.11.13.109.3595:   (0 ms)
+functor DSYNTAX : <sig>
+val it = () : unit
+GC #1.6.12.14.110.3596:   (10 ms)
+[opening 0/pp.sig]
+signature PP_sig =
+  sig
+    type ppstream
+    type ppconsumer
+    datatype break_style = CONSISTENT | INCONSISTENT
+    val mk_consumer : {consumer:string -> unit, flush:unit -> unit,
+                       linewidth:int}
+                      -> ppconsumer
+    val defaultConsumer : unit
+                          -> {consumer:string -> unit, flush:unit -> unit,
+                              linewidth:int}
+    val mk_ppstream : ppconsumer -> ppstream
+    val dest_ppstream : ppstream -> ppconsumer
+    val add_break : ppstream -> int * int -> unit
+    val add_newline : ppstream -> unit
+    val add_string : ppstream -> string -> unit
+    val begin_block : ppstream -> break_style -> int -> unit
+    val end_block : ppstream -> unit
+    val clear_ppstream : ppstream -> unit
+    val flush_ppstream : ppstream -> unit
+    val with_pp : ppconsumer -> (ppstream -> unit) -> unit
+    val install_pp : string list -> string -> (ppstream -> 'a -> unit) -> unit
+    val pp_to_string : int -> (ppstream -> 'a -> unit) -> 'a -> string
+    val with_ppstream : ppstream
+                        -> {add_break:int * int -> unit,
+                            add_newline:unit -> unit,
+                            add_string:string -> unit,
+                            begin_block:break_style -> int -> unit,
+                            clear_ppstream:unit -> unit,
+                            end_block:unit -> unit,
+                            flush_ppstream:unit -> unit}
+    val pr_list : ('c -> unit)
+                  -> (unit -> 'a) -> (unit -> 'b) -> 'c list -> unit
+  end
+val it = () : unit
+GC #1.6.12.14.111.3612:   (0 ms)
+[opening 0/pp.sml]
+structure PP : PP_sig
+val it = () : unit
+GC #1.6.12.14.112.3636:   (10 ms)
+[opening 0/hol_pp.extensible.sig]
+signature Hol_pp_sig =
+  sig
+    structure Term :
+      sig
+        structure Type : <sig>
+        datatype fixity = Binder | Infix of int | Prefix
+        eqtype term
+        val const_decl : string -> {const:term, place:fixity, theory:string}
+        val fixity_of_term : string -> fixity
+        val fixity_to_string : fixity -> string
+        val prec_of_term : string -> int
+        val is_binder : string -> bool
+        val is_infix : string -> bool
+        val is_polymorphic : string -> bool
+        datatype lambda
+          = COMB of {Rand:term, Rator:term}
+          | CONST of {Name:string, Ty:Type.hol_type}
+          | LAMB of {Body:term, Bvar:term}
+          | VAR of {Name:string, Ty:Type.hol_type}
+        val ty_antiq : Type.hol_type -> term
+        val free_vars : term -> term list
+        val free_in : term -> term -> bool
+        val all_vars : term -> term list
+        val free_varsl : term list -> term list
+        val all_varsl : term list -> term list
+        val term_lt : term -> term -> bool
+        val genvar : Type.hol_type -> term
+        val genvars : Type.hol_type -> int -> term list
+        val variant : term list -> term -> term
+        val type_of : term -> Type.hol_type
+        val type_vars_in_term : term -> Type.hol_type list
+        val mk_var : {Name:string, Ty:Type.hol_type} -> term
+        val mk_primed_var : {Name:string, Ty:Type.hol_type} -> term
+        val list_mk_comb : term * term list -> term
+        val mk_comb : {Rand:term, Rator:term} -> term
+        val mk_abs : {Body:term, Bvar:term} -> term
+        val dest_var : term -> {Name:string, Ty:Type.hol_type}
+        val dest_const : term -> {Name:string, Ty:Type.hol_type}
+        val dest_comb : term -> {Rand:term, Rator:term}
+        val dest_abs : term -> {Body:term, Bvar:term}
+        val is_var : term -> bool
+        val is_const : term -> bool
+        val is_comb : term -> bool
+        val is_abs : term -> bool
+        val dest_term : term -> lambda
+        val rator : term -> term
+        val rand : term -> term
+        val bvar : term -> term
+        val body : term -> term
+        val aconv : term -> term -> bool
+        val subst : term subst -> term -> term
+        val inst : Type.hol_type subst -> term -> term
+        val beta_conv : term -> term
+      end
+    val pp_type : ?.PrettyPrint.ppstream -> Term.Type.hol_type -> int -> unit
+    val pp_term : ?.PrettyPrint.ppstream -> Term.term -> unit
+    val pp_self_parsing_type : ?.PrettyPrint.ppstream
+                               -> Term.Type.hol_type -> unit
+    val pp_self_parsing_term : ?.PrettyPrint.ppstream -> Term.term -> unit
+    val type_to_string : Term.Type.hol_type -> string
+    val term_to_string : Term.term -> string
+    val print_type : Term.Type.hol_type -> unit
+    val print_term : Term.term -> unit
+    structure Extend_hol_pp :
+      sig
+        datatype gravity = APPL | BOTTOM | INFIX of int | TOP | WEAK
+        val gravity_geq : gravity -> gravity -> bool
+        val extend_pp_type : (({depth:int, gravity:gravity}
+                               -> Term.Type.hol_type
+                                  -> ?.PrettyPrint.ppstream -> unit)
+                              -> {depth:int, gravity:gravity}
+                                 -> Term.Type.hol_type
+                                    -> ?.PrettyPrint.ppstream -> unit)
+                             -> unit
+        val extend_pp_term : (({boundvars:Term.term list, depth:int,
+                                gravity:gravity}
+                               -> Term.term -> ?.PrettyPrint.ppstream -> unit)
+                              -> {boundvars:Term.term list, depth:int,
+                                  gravity:gravity}
+                                 -> Term.term
+                                    -> ?.PrettyPrint.ppstream -> unit)
+                             -> unit
+        val reset_pp_type : unit -> unit
+        val reset_pp_term : unit -> unit
+      end
+  end
+val it = () : unit
+GC #1.6.12.14.113.3698:   (30 ms)
+GC #1.6.12.14.114.3741:   (40 ms)
+GC #1.6.12.15.115.3764:   (60 ms)
+GC #1.6.12.15.116.3810:   (40 ms)
+GC #1.6.12.15.117.3851:   (40 ms)
+GC #1.6.13.16.118.3893:   (60 ms)
+GC #1.6.13.16.119.3931:   (20 ms)
+GC #1.6.13.16.120.3934:   (20 ms)
+GC #1.6.13.16.121.3937:   (30 ms)
+GC #1.6.13.16.122.3966:   (20 ms)
+GC #1.6.13.16.123.4003:   (20 ms)
+GC #1.6.13.16.124.4031:   (30 ms)
+GC #1.6.14.17.125.4052:   (100 ms)
+GC #1.6.14.17.126.4067:   (50 ms)
+GC #1.6.14.17.127.4077:   (50 ms)
+GC #1.6.14.17.128.4081:   (40 ms)
+GC #1.6.15.18.129.4094:   (140 ms)
+GC #1.6.15.18.130.4099:   (40 ms)
+GC #1.6.15.18.131.4123:   (30 ms)
+GC #1.6.15.18.132.4134:   (10 ms)
+GC #1.6.15.18.133.4144:   (20 ms)
+GC #1.6.16.19.134.4158:   (70 ms)
+GC #1.6.16.19.135.4188:   (50 ms)
+GC #1.6.16.20.136.4220:   (10 ms)
+GC #1.6.16.20.137.4265:   (10 ms)
+GC #1.6.16.20.138.4318:   (20 ms)
+GC #1.6.16.20.139.4367:   (30 ms)
+GC #1.6.16.20.140.4397:   (10 ms)
+GC #1.6.16.20.141.4498:   (70 ms)
+GC #1.6.16.21.142.4543:   (80 ms)
+GC #1.7.17.22.143.4550:   (80 ms)
+GC #1.7.17.23.144.4555:   (40 ms)
+GC #1.7.17.24.145.4557:   (40 ms)
+GC #1.7.17.25.146.4594:   (30 ms)
+GC #1.7.17.26.147.4653:   (30 ms)
+GC #1.7.17.27.148.4699:   (30 ms)
+GC #1.7.17.27.149.4757:   (20 ms)
+GC #1.7.17.28.150.4774:   (30 ms)
+GC #1.7.17.28.151.4775:   (20 ms)
+GC #1.7.17.28.152.4776:   (10 ms)
+GC #1.7.17.28.153.4801:   (10 ms)
+GC #1.7.17.28.154.4804:   (20 ms)
+GC #1.7.17.28.155.4808:   (0 ms)
+[opening 0/hol_pp.extensible.sml]
+functor HOL_PP : <sig>
+val it = () : unit
+GC #1.7.18.29.156.4809:   (0 ms)
+[opening 0/thm.sig]
+signature Thm_sig =
+  sig
+    structure Term :
+      sig
+        structure Type : <sig>
+        datatype fixity = Binder | Infix of int | Prefix
+        eqtype term
+        val const_decl : string -> {const:term, place:fixity, theory:string}
+        val fixity_of_term : string -> fixity
+        val fixity_to_string : fixity -> string
+        val prec_of_term : string -> int
+        val is_binder : string -> bool
+        val is_infix : string -> bool
+        val is_polymorphic : string -> bool
+        datatype lambda
+          = COMB of {Rand:term, Rator:term}
+          | CONST of {Name:string, Ty:Type.hol_type}
+          | LAMB of {Body:term, Bvar:term}
+          | VAR of {Name:string, Ty:Type.hol_type}
+        val ty_antiq : Type.hol_type -> term
+        val free_vars : term -> term list
+        val free_in : term -> term -> bool
+        val all_vars : term -> term list
+        val free_varsl : term list -> term list
+        val all_varsl : term list -> term list
+        val term_lt : term -> term -> bool
+        val genvar : Type.hol_type -> term
+        val genvars : Type.hol_type -> int -> term list
+        val variant : term list -> term -> term
+        val type_of : term -> Type.hol_type
+        val type_vars_in_term : term -> Type.hol_type list
+        val mk_var : {Name:string, Ty:Type.hol_type} -> term
+        val mk_primed_var : {Name:string, Ty:Type.hol_type} -> term
+        val list_mk_comb : term * term list -> term
+        val mk_comb : {Rand:term, Rator:term} -> term
+        val mk_abs : {Body:term, Bvar:term} -> term
+        val dest_var : term -> {Name:string, Ty:Type.hol_type}
+        val dest_const : term -> {Name:string, Ty:Type.hol_type}
+        val dest_comb : term -> {Rand:term, Rator:term}
+        val dest_abs : term -> {Body:term, Bvar:term}
+        val is_var : term -> bool
+        val is_const : term -> bool
+        val is_comb : term -> bool
+        val is_abs : term -> bool
+        val dest_term : term -> lambda
+        val rator : term -> term
+        val rand : term -> term
+        val bvar : term -> term
+        val body : term -> term
+        val aconv : term -> term -> bool
+        val subst : term subst -> term -> term
+        val inst : Type.hol_type subst -> term -> term
+        val beta_conv : term -> term
+      end
+    type thm
+    val reset_thm_count : unit -> unit
+    val counting_thms : bool -> unit
+    val thm_count : unit
+                    -> {ABS:int, ASSUME:int, BETA_CONV:int, DISCH:int,
+                        INST_TYPE:int, MP:int, REFL:int, SUBST:int, axiom:int,
+                        definition:int, drule:int, from_disk:int, other:int,
+                        valid_tac:int}
+    val hyp : thm -> Term.term list
+    val concl : thm -> Term.term
+    val dest_thm : thm -> Term.term list * Term.term
+    val thm_free_vars : thm -> Term.term list
+    val hyp_union : thm list -> Term.term list
+    val pp_thm : ?.PrettyPrint.ppstream -> thm -> unit
+    val thm_to_string : thm -> string
+    val print_thm : thm -> unit
+    val ASSUME : Term.term -> thm
+    val REFL : Term.term -> thm
+    val BETA_CONV : Term.term -> thm
+    val SUBST : {thm:thm, var:Term.term} list -> Term.term -> thm -> thm
+    val ABS : Term.term -> thm -> thm
+    val INST_TYPE : Term.Type.hol_type subst -> thm -> thm
+    val DISCH : Term.term -> thm -> thm
+    val MP : thm -> thm -> thm
+    val mk_axiom_thm : Term.term list * Term.term -> thm
+    val mk_definition_thm : Term.term list * Term.term -> thm
+    val mk_drule_thm : Term.term list * Term.term -> thm
+    val mk_disk_thm : Term.term list * Term.term -> thm
+    val mk_tac_thm : Term.term list * Term.term -> thm
+    val mk_thm : Term.term list * Term.term -> thm
+    datatype just_arg
+      = JA_INT of int
+      | JA_INTLIST of int list
+      | JA_PAIR of just_arg * just_arg
+      | JA_STRING of string
+      | JA_TERM of Term.term
+      | JA_THM of thm
+      | JA_TYPE of Term.Type.hol_type
+    datatype step = STEP of {Just:just_arg list, Name:string, Thm:thm}
+    val record_step : (step -> thm) ref
+    val record_proof : bool -> unit
+    val suspend_recording : unit -> unit
+    val resume_recording : unit -> unit
+    val is_recording_proof : unit -> bool
+    val note : step * thm -> thm
+  end
+val it = () : unit
+GC #1.7.18.29.157.4830:   (0 ms)
+GC #1.7.18.29.158.4864:   (20 ms)
+GC #1.7.18.29.159.4875:   (10 ms)
+GC #1.7.18.29.160.4911:   (30 ms)
+[opening 0/thm.sml]
+0/thm.sml:223.18-229.26 Warning: match nonexhaustive
+          {thm=THM (h,c),var=var as Fv _} => ...
+  
+GC #1.7.18.29.161.4948:   (30 ms)
+GC #1.7.18.29.162.4968:   (10 ms)
+GC #1.7.18.29.163.4985:   (20 ms)
+GC #1.7.18.29.164.4999:   (10 ms)
+GC #1.7.18.29.165.5041:   (10 ms)
+functor THM : <sig>
+val it = () : unit
+GC #1.7.18.30.166.5128:   (10 ms)
+[opening 0/preterm.sig]
+signature Preterm_sig =
+  sig
+    structure Term :
+      sig
+        structure Type : <sig>
+        datatype fixity = Binder | Infix of int | Prefix
+        datatype term
+          = Abs of {Body:term, Bvar:term}
+          | Bv of int
+          | Comb of {Rand:term, Rator:term}
+          | Const of {Name:string, Ty:Type.hol_type}
+          | Fv of {Name:string, Ty:Type.hol_type}
+          | ty_antiq of Type.hol_type
+        datatype lambda
+          = COMB of {Rand:term, Rator:term}
+          | CONST of {Name:string, Ty:Type.hol_type}
+          | LAMB of {Body:term, Bvar:term}
+          | VAR of {Name:string, Ty:Type.hol_type}
+        type symtab
+        val symtab_copy : unit -> symtab
+        val replace_symtab : symtab -> unit
+        exception TERM_SYMTAB_CLASH of {common_name:string, theory1:string,
+                                        theory2:string}
+        val lookup_const : string -> term
+        val const_decl : string -> {const:term, place:fixity, theory:string}
+        datatype add_style = Defining | Loading
+        val add_term_const : add_style
+                             -> {const:term, place:fixity, theory:string}
+                                -> unit
+        val is_st_term_const : string -> bool
+        val fixity_of_term : string -> fixity
+        val fixity_to_string : fixity -> string
+        val prec_of_term : string -> int
+        val is_binder : string -> bool
+        val is_infix : string -> bool
+        val is_polymorphic : string -> bool
+        val free_vars : term -> term list
+        val free_in : term -> term -> bool
+        val all_vars : term -> term list
+        val free_varsl : term list -> term list
+        val all_varsl : term list -> term list
+        val term_lt : term -> term -> bool
+        val genvar : Type.hol_type -> term
+        val genvars : Type.hol_type -> int -> term list
+        val variant : term list -> term -> term
+        val type_of : term -> Type.hol_type
+        val type_vars_in_term : term -> Type.hol_type list
+        val mk_var : {Name:string, Ty:Type.hol_type} -> term
+        val mk_primed_var : {Name:string, Ty:Type.hol_type} -> term
+        val list_mk_comb : term * term list -> term
+        val mk_comb : {Rand:term, Rator:term} -> term
+        val mk_abs : {Body:term, Bvar:term} -> term
+        val dest_var : term -> {Name:string, Ty:Type.hol_type}
+        val dest_const : term -> {Name:string, Ty:Type.hol_type}
+        val dest_comb : term -> {Rand:term, Rator:term}
+        val dest_abs : term -> {Body:term, Bvar:term}
+        val is_var : term -> bool
+        val is_const : term -> bool
+        val is_comb : term -> bool
+        val is_abs : term -> bool
+        val dest_term : term -> lambda
+        val rator : term -> term
+        val rand : term -> term
+        val bvar : term -> term
+        val body : term -> term
+        val break_abs : term -> {Body:term, Bvar:term}
+        val is_bvar : term -> bool
+        val aconv : term -> term -> bool
+        val subst : term subst -> term -> term
+        val inst : Type.hol_type subst -> term -> term
+        val beta_conv : term -> term
+      end
+    datatype preterm
+      = Abs of {Body:preterm, Bvar:preterm}
+      | Antiq of Term.term
+      | Comb of {Rand:preterm, Rator:preterm}
+      | Const of {Name:string, Ty:Term.Type.hol_type}
+      | Constrained of preterm * Term.Type.hol_type
+      | Var of {Name:string, Ty:Term.Type.hol_type}
+    val TC : (int,Term.Type.hol_type) istream -> preterm -> unit
+    val shrink_type : (Term.Type.hol_type * Term.Type.hol_type) list
+                      -> Term.Type.hol_type -> Term.Type.hol_type
+    val tyVars : preterm -> Term.Type.hol_type list
+    val cleanup : preterm -> Term.term
+    val typecheck : (int,Term.Type.hol_type) istream -> preterm -> Term.term
+    val preterm_to_term : preterm -> Term.term
+  end
+signature Public_preterm_sig =
+  sig
+    structure Term :
+      sig
+        structure Type : <sig>
+        datatype fixity = Binder | Infix of int | Prefix
+        eqtype term
+        val const_decl : string -> {const:term, place:fixity, theory:string}
+        val fixity_of_term : string -> fixity
+        val fixity_to_string : fixity -> string
+        val prec_of_term : string -> int
+        val is_binder : string -> bool
+        val is_infix : string -> bool
+        val is_polymorphic : string -> bool
+        datatype lambda
+          = COMB of {Rand:term, Rator:term}
+          | CONST of {Name:string, Ty:Type.hol_type}
+          | LAMB of {Body:term, Bvar:term}
+          | VAR of {Name:string, Ty:Type.hol_type}
+        val ty_antiq : Type.hol_type -> term
+        val free_vars : term -> term list
+        val free_in : term -> term -> bool
+        val all_vars : term -> term list
+        val free_varsl : term list -> term list
+        val all_varsl : term list -> term list
+        val term_lt : term -> term -> bool
+        val genvar : Type.hol_type -> term
+        val genvars : Type.hol_type -> int -> term list
+        val variant : term list -> term -> term
+        val type_of : term -> Type.hol_type
+        val type_vars_in_term : term -> Type.hol_type list
+        val mk_var : {Name:string, Ty:Type.hol_type} -> term
+        val mk_primed_var : {Name:string, Ty:Type.hol_type} -> term
+        val list_mk_comb : term * term list -> term
+        val mk_comb : {Rand:term, Rator:term} -> term
+        val mk_abs : {Body:term, Bvar:term} -> term
+        val dest_var : term -> {Name:string, Ty:Type.hol_type}
+        val dest_const : term -> {Name:string, Ty:Type.hol_type}
+        val dest_comb : term -> {Rand:term, Rator:term}
+        val dest_abs : term -> {Body:term, Bvar:term}
+        val is_var : term -> bool
+        val is_const : term -> bool
+        val is_comb : term -> bool
+        val is_abs : term -> bool
+        val dest_term : term -> lambda
+        val rator : term -> term
+        val rand : term -> term
+        val bvar : term -> term
+        val body : term -> term
+        val aconv : term -> term -> bool
+        val subst : term subst -> term -> term
+        val inst : Type.hol_type subst -> term -> term
+        val beta_conv : term -> term
+      end
+    datatype preterm
+      = Abs of {Body:preterm, Bvar:preterm}
+      | Antiq of Term.term
+      | Comb of {Rand:preterm, Rator:preterm}
+      | Const of {Name:string, Ty:Term.Type.hol_type}
+      | Constrained of preterm * Term.Type.hol_type
+      | Var of {Name:string, Ty:Term.Type.hol_type}
+    val typecheck : (int,Term.Type.hol_type) istream -> preterm -> Term.term
+  end
+val it = () : unit
+GC #1.7.18.30.167.5216:   (20 ms)
+GC #1.7.18.30.168.5247:   (30 ms)
+GC #1.7.18.30.169.5264:   (10 ms)
+GC #1.7.18.30.170.5313:   (20 ms)
+[opening 0/preterm.sml]
+functor PRETERM : <sig>
+GC #1.7.18.30.171.5376:   (0 ms)
+val it = () : unit
+[opening Grammars/ParseBase/base.sig]
+signature STREAM =
+  sig
+    type 'a stream
+    val streamify : (unit -> 'a) -> 'a stream
+    val cons : 'a * 'a stream -> 'a stream
+    val get : 'a stream -> 'a * 'a stream
+  end
+signature LR_TABLE =
+  sig
+    datatype ('a,'b) pairlist = EMPTY | PAIR of 'a * 'b * ('a,'b) pairlist
+    datatype state = STATE of int
+    datatype term = T of int
+    datatype nonterm = NT of int
+    datatype action = ACCEPT | ERROR | REDUCE of int | SHIFT of state
+    type table
+    val numStates : table -> int
+    val numRules : table -> int
+    val describeActions : table -> state -> (term,action) pairlist * action
+    val describeGoto : table -> state -> (nonterm,state) pairlist
+    val action : table -> state * term -> action
+    val goto : table -> state * nonterm -> state
+    val initialState : table -> state
+    exception Goto of state * nonterm
+    val mkLrTable : {actions:((term,action) pairlist * action) array,
+                     gotos:(nonterm,state) pairlist array, initialState:state,
+                     numRules:int, numStates:int}
+                    -> table
+  end
+signature TOKEN =
+  sig
+    structure LrTable :
+      sig
+        datatype ('a,'b) pairlist = EMPTY | PAIR of 'a * 'b * ('a,'b) pairlist
+        datatype state = STATE of int
+        datatype term = T of int
+        datatype nonterm = NT of int
+        datatype action = ACCEPT | ERROR | REDUCE of int | SHIFT of state
+        type table
+        val numStates : table -> int
+        val numRules : table -> int
+        val describeActions : table -> state -> (term,action) pairlist * action
+        val describeGoto : table -> state -> (nonterm,state) pairlist
+        val action : table -> state * term -> action
+        val goto : table -> state * nonterm -> state
+        val initialState : table -> state
+        exception Goto of state * nonterm
+        val mkLrTable : {actions:((term,action) pairlist * action) array,
+                         gotos:(nonterm,state) pairlist array,
+                         initialState:state, numRules:int, numStates:int}
+                        -> table
+      end
+    datatype ('a,'b) token = TOKEN of LrTable.term * ('a * 'b * 'b)
+    val sameToken : ('a,'b) token * ('a,'b) token -> bool
+  end
+signature LR_PARSER =
+  sig
+    structure Stream :
+      sig
+        type 'a stream
+        val streamify : (unit -> 'a) -> 'a stream
+        val cons : 'a * 'a stream -> 'a stream
+        val get : 'a stream -> 'a * 'a stream
+      end
+    structure LrTable :
+      sig
+        datatype ('a,'b) pairlist = EMPTY | PAIR of 'a * 'b * ('a,'b) pairlist
+        datatype state = STATE of int
+        datatype term = T of int
+        datatype nonterm = NT of int
+        datatype action = ACCEPT | ERROR | REDUCE of int | SHIFT of state
+        type table
+        val numStates : table -> int
+        val numRules : table -> int
+        val describeActions : table -> state -> (term,action) pairlist * action
+        val describeGoto : table -> state -> (nonterm,state) pairlist
+        val action : table -> state * term -> action
+        val goto : table -> state * nonterm -> state
+        val initialState : table -> state
+        exception Goto of state * nonterm
+        val mkLrTable : {actions:((term,action) pairlist * action) array,
+                         gotos:(nonterm,state) pairlist array,
+                         initialState:state, numRules:int, numStates:int}
+                        -> table
+      end
+    structure Token :
+      sig
+        structure LrTable : <sig>
+        datatype ('a,'b) token = TOKEN of LrTable.term * ('a * 'b * 'b)
+        val sameToken : ('a,'b) token * ('a,'b) token -> bool
+      end
+    exception ParseError
+    val parse : {arg:'a,
+                 ec:{error:string * 'c * 'c -> unit,
+                     errtermvalue:LrTable.term -> 'b,
+                     is_keyword:LrTable.term -> bool,
+                     noShift:LrTable.term -> bool,
+                     preferred_change:(LrTable.term list * LrTable.term list) 
+                                        list,
+                     showTerminal:LrTable.term -> string,
+                     terms:LrTable.term list},
+                 lexer:('b,'c) Token.token Stream.stream, lookahead:int,
+                 saction:int * 'c * (LrTable.state * ('b * 'c * 'c)) list * 'a
+                         -> LrTable.nonterm * ('b * 'c * 'c)
+                            * (LrTable.state * ('b * 'c * 'c)) list,
+                 table:LrTable.table, void:'b}
+                -> 'b * ('b,'c) Token.token Stream.stream
+    sharing Token.LrTable = LrTable
+  end
+signature LEXER =
+  sig
+    structure UserDeclarations :
+      sig
+        type ('a,'b) token
+        type pos
+        type svalue
+      end
+    val makeLexer : (int -> string)
+                    -> unit
+                       -> (UserDeclarations.svalue,UserDeclarations.pos) 
+                            UserDeclarations.token
+  end
+signature ARG_LEXER =
+  sig
+    structure UserDeclarations :
+      sig
+        type ('a,'b) token
+        type pos
+        type svalue
+        type arg
+      end
+    val makeLexer : (int -> string)
+                    -> UserDeclarations.arg
+                       -> unit
+                          -> (UserDeclarations.svalue,UserDeclarations.pos) 
+                               UserDeclarations.token
+  end
+signature PARSER_DATA =
+  sig
+    type pos
+    type svalue
+    type arg
+    type result
+    structure LrTable :
+      sig
+        datatype ('a,'b) pairlist = EMPTY | PAIR of 'a * 'b * ('a,'b) pairlist
+        datatype state = STATE of int
+        datatype term = T of int
+        datatype nonterm = NT of int
+        datatype action = ACCEPT | ERROR | REDUCE of int | SHIFT of state
+        type table
+        val numStates : table -> int
+        val numRules : table -> int
+        val describeActions : table -> state -> (term,action) pairlist * action
+        val describeGoto : table -> state -> (nonterm,state) pairlist
+        val action : table -> state * term -> action
+        val goto : table -> state * nonterm -> state
+        val initialState : table -> state
+        exception Goto of state * nonterm
+        val mkLrTable : {actions:((term,action) pairlist * action) array,
+                         gotos:(nonterm,state) pairlist array,
+                         initialState:state, numRules:int, numStates:int}
+                        -> table
+      end
+    structure Token :
+      sig
+        structure LrTable : <sig>
+        datatype ('a,'b) token = TOKEN of LrTable.term * ('a * 'b * 'b)
+        val sameToken : ('a,'b) token * ('a,'b) token -> bool
+      end
+    structure Actions :
+      sig
+        val actions : int * pos * (LrTable.state * (svalue * pos * pos)) list
+                      * arg
+                      -> LrTable.nonterm * (svalue * pos * pos)
+                         * (LrTable.state * (svalue * pos * pos)) list
+        val void : svalue
+        val extract : svalue -> result
+      end
+    structure EC :
+      sig
+        val is_keyword : LrTable.term -> bool
+        val noShift : LrTable.term -> bool
+        val preferred_change : (LrTable.term list * LrTable.term list) list
+        val errtermvalue : LrTable.term -> svalue
+        val showTerminal : LrTable.term -> string
+        val terms : LrTable.term list
+      end
+    val table : LrTable.table
+    sharing LrTable = Token.LrTable
+  end
+signature PARSER =
+  sig
+    structure Token :
+      sig
+        structure LrTable : <sig>
+        datatype ('a,'b) token = TOKEN of LrTable.term * ('a * 'b * 'b)
+        val sameToken : ('a,'b) token * ('a,'b) token -> bool
+      end
+    structure Stream :
+      sig
+        type 'a stream
+        val streamify : (unit -> 'a) -> 'a stream
+        val cons : 'a * 'a stream -> 'a stream
+        val get : 'a stream -> 'a * 'a stream
+      end
+    exception ParseError
+    type pos
+    type result
+    type arg
+    type svalue
+    val makeLexer : (int -> string) -> (svalue,pos) Token.token Stream.stream
+    val parse : int * (svalue,pos) Token.token Stream.stream
+                * (string * pos * pos -> unit) * arg
+                -> result * (svalue,pos) Token.token Stream.stream
+    val sameToken : (svalue,pos) Token.token * (svalue,pos) Token.token -> bool
+  end
+signature ARG_PARSER =
+  sig
+    structure Token :
+      sig
+        structure LrTable : <sig>
+        datatype ('a,'b) token = TOKEN of LrTable.term * ('a * 'b * 'b)
+        val sameToken : ('a,'b) token * ('a,'b) token -> bool
+      end
+    structure Stream :
+      sig
+        type 'a stream
+        val streamify : (unit -> 'a) -> 'a stream
+        val cons : 'a * 'a stream -> 'a stream
+        val get : 'a stream -> 'a * 'a stream
+      end
+    exception ParseError
+    type arg
+    type lexarg
+    type pos
+    type result
+    type svalue
+    val makeLexer : (int -> string)
+                    -> lexarg -> (svalue,pos) Token.token Stream.stream
+    val parse : int * (svalue,pos) Token.token Stream.stream
+                * (string * pos * pos -> unit) * arg
+                -> result * (svalue,pos) Token.token Stream.stream
+    val sameToken : (svalue,pos) Token.token * (svalue,pos) Token.token -> bool
+  end
+val it = () : unit
+[opening Grammars/ParseBase/join.sml]
+functor Join : <sig>
+functor JoinWithArg : <sig>
+val it = () : unit
+GC #1.7.18.30.172.5480:   (0 ms)
+[opening Grammars/ParseBase/lrtable.sml]
+structure LrTable : LR_TABLE
+val it = () : unit
+[opening Grammars/ParseBase/stream.sml]
+structure Stream : STREAM
+val it = () : unit
+[opening Grammars/ParseBase/parser1.sml]
+Grammars/ParseBase/parser1.sml:98.11-99.35 Warning: binding not exhaustive
+          (nonterm,value,stack as (state,_) :: _) = ...
+Grammars/ParseBase/parser1.sml:106.27-106.62 Warning: binding not exhaustive
+          (_,(topvalue,_,_)) :: _ = ...
+Grammars/ParseBase/parser1.sml:91.7-109.10 Warning: match nonexhaustive
+          (next as (TOKEN (terminal,value as (_,leftPos,_)),lexer),
+           stack as (state,_) :: _) => ...
+  
+GC #1.7.18.30.173.5561:   (10 ms)
+structure LrParser : LR_PARSER
+val it = () : unit
+[opening 0/uid.sig]
+signature Uid_sig =
+  sig
+    type uid
+    val mk_uid : string -> uid
+    val re_mk_uid : {name:string, timestamp:time} -> uid
+    val dest_uid : uid -> {name:string, timestamp:time}
+    val name : uid -> string
+    val timestamp : uid -> time
+    val eq : uid * uid -> bool
+  end
+val it = () : unit
+[opening 0/uid.sml]
+functor UID : <sig>
+val it = () : unit
+GC #1.7.18.30.174.5631:   (10 ms)
+[opening 0/theory/data.sig]
+signature Theory_data_sig =
+  sig
+    structure Thm :
+      sig
+        structure Term : <sig>
+        type thm
+        val reset_thm_count : unit -> unit
+        val counting_thms : bool -> unit
+        val thm_count : unit
+                        -> {ABS:int, ASSUME:int, BETA_CONV:int, DISCH:int,
+                            INST_TYPE:int, MP:int, REFL:int, SUBST:int,
+                            axiom:int, definition:int, drule:int,
+                            from_disk:int, other:int, valid_tac:int}
+        val hyp : thm -> Term.term list
+        val concl : thm -> Term.term
+        val dest_thm : thm -> Term.term list * Term.term
+        val thm_free_vars : thm -> Term.term list
+        val hyp_union : thm list -> Term.term list
+        val pp_thm : ?.PrettyPrint.ppstream -> thm -> unit
+        val thm_to_string : thm -> string
+        val print_thm : thm -> unit
+        val ASSUME : Term.term -> thm
+        val REFL : Term.term -> thm
+        val BETA_CONV : Term.term -> thm
+        val SUBST : {thm:thm, var:Term.term} list -> Term.term -> thm -> thm
+        val ABS : Term.term -> thm -> thm
+        val INST_TYPE : Term.Type.hol_type subst -> thm -> thm
+        val DISCH : Term.term -> thm -> thm
+        val MP : thm -> thm -> thm
+        val mk_axiom_thm : Term.term list * Term.term -> thm
+        val mk_definition_thm : Term.term list * Term.term -> thm
+        val mk_drule_thm : Term.term list * Term.term -> thm
+        val mk_disk_thm : Term.term list * Term.term -> thm
+        val mk_tac_thm : Term.term list * Term.term -> thm
+        val mk_thm : Term.term list * Term.term -> thm
+        datatype just_arg
+          = JA_INT of int
+          | JA_INTLIST of int list
+          | JA_PAIR of just_arg * just_arg
+          | JA_STRING of string
+          | JA_TERM of Term.term
+          | JA_THM of thm
+          | JA_TYPE of Term.Type.hol_type
+        datatype step = STEP of {Just:just_arg list, Name:string, Thm:thm}
+        val record_step : (step -> thm) ref
+        val record_proof : bool -> unit
+        val suspend_recording : unit -> unit
+        val resume_recording : unit -> unit
+        val is_recording_proof : unit -> bool
+        val note : step * thm -> thm
+      end
+    type theory
+    type theory_id
+    val mk_theory_id : {name:string, timestamp:time} -> theory_id
+    val theory_id : theory -> theory_id
+    val theory_id_name : theory_id -> string
+    val theory_id_timestamp : theory_id -> time
+    val theory_id_eq : theory_id * theory_id -> bool
+    val theory_draft_mode : theory -> bool
+    val theory_consistent_with_disk : theory -> bool
+    val theory_parents : theory -> theory_id list
+    val theory_type_constants : theory
+                                -> {arity:int, theory:string,
+                                    tyc:Thm.Term.Type.hol_type} list
+    val theory_term_constants : theory
+                                -> {const:Thm.Term.term, place:Thm.Term.fixity,
+                                    theory:string} list
+    val theory_axioms : theory -> (string * Thm.thm) list
+    val theory_definitions : theory -> (string * Thm.thm) list
+    val theory_theorems : theory -> (string * Thm.thm) list
+    val mk_theory : theory_id -> theory
+    val fresh_theory : string -> theory
+    val the_current_theory : unit -> theory
+    val make_current : theory -> unit
+    val set_draft_mode : bool -> theory -> theory
+    val set_consistency_with_disk : bool -> theory -> theory
+    val add_parent : theory_id -> theory -> theory
+    val add_type : {arity:int, theory:string, tyc:Thm.Term.Type.hol_type}
+                   -> theory -> theory
+    val add_term : {const:Thm.Term.term, place:Thm.Term.fixity, theory:string}
+                   -> theory -> theory
+    val add_axiom : string * Thm.thm -> theory -> theory
+    val add_definition : string * Thm.thm -> theory -> theory
+    val add_theorem : string * Thm.thm -> theory -> theory
+    val pp_theory : ?.PrettyPrint.ppstream -> theory -> unit
+  end
+val it = () : unit
+GC #1.7.18.30.175.5727:   (20 ms)
+GC #1.7.18.30.176.5746:   (30 ms)
+GC #1.7.18.30.177.5761:   (10 ms)
+GC #1.7.18.30.178.5769:   (0 ms)
+GC #1.7.18.30.179.5821:   (10 ms)
+[opening 0/theory/data.sml]
+functor THEORY_DATA : <sig>
+val it = () : unit
+[opening 0/theory/thy_pp.sig]
+signature Thy_pp_sig =
+  sig
+    structure Term :
+      sig
+        structure Type : <sig>
+        datatype fixity = Binder | Infix of int | Prefix
+        eqtype term
+        val const_decl : string -> {const:term, place:fixity, theory:string}
+        val fixity_of_term : string -> fixity
+        val fixity_to_string : fixity -> string
+        val prec_of_term : string -> int
+        val is_binder : string -> bool
+        val is_infix : string -> bool
+        val is_polymorphic : string -> bool
+        datatype lambda
+          = COMB of {Rand:term, Rator:term}
+          | CONST of {Name:string, Ty:Type.hol_type}
+          | LAMB of {Body:term, Bvar:term}
+          | VAR of {Name:string, Ty:Type.hol_type}
+        val ty_antiq : Type.hol_type -> term
+        val free_vars : term -> term list
+        val free_in : term -> term -> bool
+        val all_vars : term -> term list
+        val free_varsl : term list -> term list
+        val all_varsl : term list -> term list
+        val term_lt : term -> term -> bool
+        val genvar : Type.hol_type -> term
+        val genvars : Type.hol_type -> int -> term list
+        val variant : term list -> term -> term
+        val type_of : term -> Type.hol_type
+        val type_vars_in_term : term -> Type.hol_type list
+        val mk_var : {Name:string, Ty:Type.hol_type} -> term
+        val mk_primed_var : {Name:string, Ty:Type.hol_type} -> term
+        val list_mk_comb : term * term list -> term
+        val mk_comb : {Rand:term, Rator:term} -> term
+        val mk_abs : {Body:term, Bvar:term} -> term
+        val dest_var : term -> {Name:string, Ty:Type.hol_type}
+        val dest_const : term -> {Name:string, Ty:Type.hol_type}
+        val dest_comb : term -> {Rand:term, Rator:term}
+        val dest_abs : term -> {Body:term, Bvar:term}
+        val is_var : term -> bool
+        val is_const : term -> bool
+        val is_comb : term -> bool
+        val is_abs : term -> bool
+        val dest_term : term -> lambda
+        val rator : term -> term
+        val rand : term -> term
+        val bvar : term -> term
+        val body : term -> term
+        val aconv : term -> term -> bool
+        val subst : term subst -> term -> term
+        val inst : Type.hol_type subst -> term -> term
+        val beta_conv : term -> term
+      end
+    val pp_type_rep : ?.PrettyPrint.ppstream -> Term.Type.hol_type -> unit
+    val pp_term : ?.PrettyPrint.ppstream -> Term.term -> unit
+  end
+val it = () : unit
+GC #1.7.18.30.180.5850:   (0 ms)
+GC #1.7.18.30.181.5877:   (10 ms)
+GC #1.7.18.30.182.5886:   (10 ms)
+[opening 0/theory/thy_pp.sml]
+functor THY_PP : <sig>
+val it = () : unit
+[opening Grammars/thy.yak.sig]
+signature thy_TOKENS =
+  sig
+    type ('a,'b) token
+    type svalue
+    val EOF : 'a * 'a -> (svalue,'a) token
+    val EOLEX : 'a * 'a -> (svalue,'a) token
+    val string_ : string * 'a * 'a -> (svalue,'a) token
+    val type_plus : 'a * 'a -> (svalue,'a) token
+    val type_hash : 'a * 'a -> (svalue,'a) token
+    val type_right_arrow : 'a * 'a -> (svalue,'a) token
+    val dot : 'a * 'a -> (svalue,'a) token
+    val colon : 'a * 'a -> (svalue,'a) token
+    val type_comma : 'a * 'a -> (svalue,'a) token
+    val type_rparen : 'a * 'a -> (svalue,'a) token
+    val type_lparen : 'a * 'a -> (svalue,'a) token
+    val rparen : 'a * 'a -> (svalue,'a) token
+    val lparen : 'a * 'a -> (svalue,'a) token
+    val num : string * 'a * 'a -> (svalue,'a) token
+    val db_index : int * 'a * 'a -> (svalue,'a) token
+    val lambda : 'a * 'a -> (svalue,'a) token
+    val type_var_ident : string * 'a * 'a -> (svalue,'a) token
+    val type_ident : string * 'a * 'a -> (svalue,'a) token
+    val ident : string * 'a * 'a -> (svalue,'a) token
+  end
+signature thy_LRVALS =
+  sig
+    structure Tokens :
+      sig
+        type ('a,'b) token
+        type svalue
+        val EOF : 'a * 'a -> (svalue,'a) token
+        val EOLEX : 'a * 'a -> (svalue,'a) token
+        val string_ : string * 'a * 'a -> (svalue,'a) token
+        val type_plus : 'a * 'a -> (svalue,'a) token
+        val type_hash : 'a * 'a -> (svalue,'a) token
+        val type_right_arrow : 'a * 'a -> (svalue,'a) token
+        val dot : 'a * 'a -> (svalue,'a) token
+        val colon : 'a * 'a -> (svalue,'a) token
+        val type_comma : 'a * 'a -> (svalue,'a) token
+        val type_rparen : 'a * 'a -> (svalue,'a) token
+        val type_lparen : 'a * 'a -> (svalue,'a) token
+        val rparen : 'a * 'a -> (svalue,'a) token
+        val lparen : 'a * 'a -> (svalue,'a) token
+        val num : string * 'a * 'a -> (svalue,'a) token
+        val db_index : int * 'a * 'a -> (svalue,'a) token
+        val lambda : 'a * 'a -> (svalue,'a) token
+        val type_var_ident : string * 'a * 'a -> (svalue,'a) token
+        val type_ident : string * 'a * 'a -> (svalue,'a) token
+        val ident : string * 'a * 'a -> (svalue,'a) token
+      end
+    structure ParserData :
+      sig
+        type pos
+        type svalue
+        type arg
+        type result
+        structure LrTable : <sig>
+        structure Token : <sig>
+        structure Actions : <sig>
+        structure EC : <sig>
+        val table : LrTable.table
+        sharing LrTable = Token.LrTable
+      end
+    sharing type Tokens.svalue = ParserData.svalue
+    sharing type Tokens.token = ParserData.Token.token
+  end
+val it = () : unit
+GC #1.7.18.30.183.5946:   (10 ms)
+GC #1.7.18.30.184.5977:   (20 ms)
+GC #1.7.18.30.185.6032:   (30 ms)
+GC #1.7.18.31.186.6046:   (30 ms)
+GC #1.7.18.31.187.6082:   (10 ms)
+GC #1.7.18.31.188.6108:   (30 ms)
+GC #1.7.18.31.189.6140:   (20 ms)
+GC #1.7.18.31.190.6179:   (10 ms)
+GC #1.7.18.31.191.6259:   (10 ms)
+[opening Grammars/thy.yak.sml]
+functor thyLrValsFun : <sig>
+val it = () : unit
+GC #1.7.18.31.192.6272:   (0 ms)
+[opening 0/theory/thy_parse.sig]
+signature Thy_parse_sig =
+  sig
+    structure Term :
+      sig
+        structure Type : <sig>
+        datatype fixity = Binder | Infix of int | Prefix
+        datatype term
+          = Abs of {Body:term, Bvar:term}
+          | Bv of int
+          | Comb of {Rand:term, Rator:term}
+          | Const of {Name:string, Ty:Type.hol_type}
+          | Fv of {Name:string, Ty:Type.hol_type}
+          | ty_antiq of Type.hol_type
+        datatype lambda
+          = COMB of {Rand:term, Rator:term}
+          | CONST of {Name:string, Ty:Type.hol_type}
+          | LAMB of {Body:term, Bvar:term}
+          | VAR of {Name:string, Ty:Type.hol_type}
+        type symtab
+        val symtab_copy : unit -> symtab
+        val replace_symtab : symtab -> unit
+        exception TERM_SYMTAB_CLASH of {common_name:string, theory1:string,
+                                        theory2:string}
+        val lookup_const : string -> term
+        val const_decl : string -> {const:term, place:fixity, theory:string}
+        datatype add_style = Defining | Loading
+        val add_term_const : add_style
+                             -> {const:term, place:fixity, theory:string}
+                                -> unit
+        val is_st_term_const : string -> bool
+        val fixity_of_term : string -> fixity
+        val fixity_to_string : fixity -> string
+        val prec_of_term : string -> int
+        val is_binder : string -> bool
+        val is_infix : string -> bool
+        val is_polymorphic : string -> bool
+        val free_vars : term -> term list
+        val free_in : term -> term -> bool
+        val all_vars : term -> term list
+        val free_varsl : term list -> term list
+        val all_varsl : term list -> term list
+        val term_lt : term -> term -> bool
+        val genvar : Type.hol_type -> term
+        val genvars : Type.hol_type -> int -> term list
+        val variant : term list -> term -> term
+        val type_of : term -> Type.hol_type
+        val type_vars_in_term : term -> Type.hol_type list
+        val mk_var : {Name:string, Ty:Type.hol_type} -> term
+        val mk_primed_var : {Name:string, Ty:Type.hol_type} -> term
+        val list_mk_comb : term * term list -> term
+        val mk_comb : {Rand:term, Rator:term} -> term
+        val mk_abs : {Body:term, Bvar:term} -> term
+        val dest_var : term -> {Name:string, Ty:Type.hol_type}
+        val dest_const : term -> {Name:string, Ty:Type.hol_type}
+        val dest_comb : term -> {Rand:term, Rator:term}
+        val dest_abs : term -> {Body:term, Bvar:term}
+        val is_var : term -> bool
+        val is_const : term -> bool
+        val is_comb : term -> bool
+        val is_abs : term -> bool
+        val dest_term : term -> lambda
+        val rator : term -> term
+        val rand : term -> term
+        val bvar : term -> term
+        val body : term -> term
+        val break_abs : term -> {Body:term, Bvar:term}
+        val is_bvar : term -> bool
+        val aconv : term -> term -> bool
+        val subst : term subst -> term -> term
+        val inst : Type.hol_type subst -> term -> term
+        val beta_conv : term -> term
+      end
+    val theory_term_parser : string -> Term.term
+  end
+val it = () : unit
+[opening 0/theory/thy_parse.sml]
+functor THY_PARSE : <sig>
+val it = () : unit
+GC #1.7.18.31.193.6318:   (0 ms)
+GC #1.7.18.31.194.6348:   (20 ms)
+GC #1.7.18.31.195.6375:   (30 ms)
+GC #1.7.18.31.196.6389:   (20 ms)
+GC #1.7.18.31.197.6421:   (10 ms)
+GC #1.7.18.31.198.6443:   (10 ms)
+GC #1.7.18.31.199.6497:   (10 ms)
+[opening Grammars/thy.lex.sml]
+functor THY_LEX : <sig>
+val it = () : unit
+GC #1.7.18.31.200.6579:   (0 ms)
+[opening Grammars/thms.yak.sig]
+signature thms_TOKENS =
+  sig
+    type ('a,'b) token
+    type svalue
+    val EOF : 'a * 'a -> (svalue,'a) token
+    val EOLEX : 'a * 'a -> (svalue,'a) token
+    val num : string * 'a * 'a -> (svalue,'a) token
+    val id : string * 'a * 'a -> (svalue,'a) token
+    val quote : string * 'a * 'a -> (svalue,'a) token
+    val theorems : 'a * 'a -> (svalue,'a) token
+    val definitions : 'a * 'a -> (svalue,'a) token
+    val axioms : 'a * 'a -> (svalue,'a) token
+    val thid : 'a * 'a -> (svalue,'a) token
+    val eq : 'a * 'a -> (svalue,'a) token
+    val comma : 'a * 'a -> (svalue,'a) token
+    val rbracket : 'a * 'a -> (svalue,'a) token
+    val lbracket : 'a * 'a -> (svalue,'a) token
+    val rparen : 'a * 'a -> (svalue,'a) token
+    val lparen : 'a * 'a -> (svalue,'a) token
+  end
+signature thms_LRVALS =
+  sig
+    structure Tokens :
+      sig
+        type ('a,'b) token
+        type svalue
+        val EOF : 'a * 'a -> (svalue,'a) token
+        val EOLEX : 'a * 'a -> (svalue,'a) token
+        val num : string * 'a * 'a -> (svalue,'a) token
+        val id : string * 'a * 'a -> (svalue,'a) token
+        val quote : string * 'a * 'a -> (svalue,'a) token
+        val theorems : 'a * 'a -> (svalue,'a) token
+        val definitions : 'a * 'a -> (svalue,'a) token
+        val axioms : 'a * 'a -> (svalue,'a) token
+        val thid : 'a * 'a -> (svalue,'a) token
+        val eq : 'a * 'a -> (svalue,'a) token
+        val comma : 'a * 'a -> (svalue,'a) token
+        val rbracket : 'a * 'a -> (svalue,'a) token
+        val lbracket : 'a * 'a -> (svalue,'a) token
+        val rparen : 'a * 'a -> (svalue,'a) token
+        val lparen : 'a * 'a -> (svalue,'a) token
+      end
+    structure ParserData :
+      sig
+        type pos
+        type svalue
+        type arg
+        type result
+        structure LrTable : <sig>
+        structure Token : <sig>
+        structure Actions : <sig>
+        structure EC : <sig>
+        val table : LrTable.table
+        sharing LrTable = Token.LrTable
+      end
+    sharing type Tokens.svalue = ParserData.svalue
+    sharing type Tokens.token = ParserData.Token.token
+  end
+val it = () : unit
+GC #1.7.18.31.201.6632:   (20 ms)
+GC #1.7.18.31.202.6690:   (20 ms)
+GC #1.7.18.31.203.6716:   (20 ms)
+GC #1.7.18.31.204.6736:   (20 ms)
+GC #1.7.18.32.205.6753:   (70 ms)
+GC #1.7.18.32.206.6782:   (20 ms)
+GC #1.7.18.32.207.6820:   (0 ms)
+[opening Grammars/thms.yak.sml]
+functor thmsLrValsFun : <sig>
+val it = () : unit
+GC #1.7.18.32.208.6904:   (0 ms)
+[opening Grammars/holsig.yak.sig]
+signature holsig_TOKENS =
+  sig
+    type ('a,'b) token
+    type svalue
+    val EOF : 'a * 'a -> (svalue,'a) token
+    val EOLEX : 'a * 'a -> (svalue,'a) token
+    val num : string * 'a * 'a -> (svalue,'a) token
+    val id : string * 'a * 'a -> (svalue,'a) token
+    val string_constant : string * 'a * 'a -> (svalue,'a) token
+    val symbolic : string * 'a * 'a -> (svalue,'a) token
+    val type_var : string * 'a * 'a -> (svalue,'a) token
+    val constants : 'a * 'a -> (svalue,'a) token
+    val types : 'a * 'a -> (svalue,'a) token
+    val parents : 'a * 'a -> (svalue,'a) token
+    val Infix : 'a * 'a -> (svalue,'a) token
+    val Prefix : 'a * 'a -> (svalue,'a) token
+    val Binder : 'a * 'a -> (svalue,'a) token
+    val fixity : 'a * 'a -> (svalue,'a) token
+    val ty : 'a * 'a -> (svalue,'a) token
+    val name : 'a * 'a -> (svalue,'a) token
+    val thid : 'a * 'a -> (svalue,'a) token
+    val eq : 'a * 'a -> (svalue,'a) token
+    val comma : 'a * 'a -> (svalue,'a) token
+    val rparen : 'a * 'a -> (svalue,'a) token
+    val lparen : 'a * 'a -> (svalue,'a) token
+    val rbracket : 'a * 'a -> (svalue,'a) token
+    val lbracket : 'a * 'a -> (svalue,'a) token
+    val rbrace : 'a * 'a -> (svalue,'a) token
+    val lbrace : 'a * 'a -> (svalue,'a) token
+  end
+signature holsig_LRVALS =
+  sig
+    structure Tokens :
+      sig
+        type ('a,'b) token
+        type svalue
+        val EOF : 'a * 'a -> (svalue,'a) token
+        val EOLEX : 'a * 'a -> (svalue,'a) token
+        val num : string * 'a * 'a -> (svalue,'a) token
+        val id : string * 'a * 'a -> (svalue,'a) token
+        val string_constant : string * 'a * 'a -> (svalue,'a) token
+        val symbolic : string * 'a * 'a -> (svalue,'a) token
+        val type_var : string * 'a * 'a -> (svalue,'a) token
+        val constants : 'a * 'a -> (svalue,'a) token
+        val types : 'a * 'a -> (svalue,'a) token
+        val parents : 'a * 'a -> (svalue,'a) token
+        val Infix : 'a * 'a -> (svalue,'a) token
+        val Prefix : 'a * 'a -> (svalue,'a) token
+        val Binder : 'a * 'a -> (svalue,'a) token
+        val fixity : 'a * 'a -> (svalue,'a) token
+        val ty : 'a * 'a -> (svalue,'a) token
+        val name : 'a * 'a -> (svalue,'a) token
+        val thid : 'a * 'a -> (svalue,'a) token
+        val eq : 'a * 'a -> (svalue,'a) token
+        val comma : 'a * 'a -> (svalue,'a) token
+        val rparen : 'a * 'a -> (svalue,'a) token
+        val lparen : 'a * 'a -> (svalue,'a) token
+        val rbracket : 'a * 'a -> (svalue,'a) token
+        val lbracket : 'a * 'a -> (svalue,'a) token
+        val rbrace : 'a * 'a -> (svalue,'a) token
+        val lbrace : 'a * 'a -> (svalue,'a) token
+      end
+    structure ParserData :
+      sig
+        type pos
+        type svalue
+        type arg
+        type result
+        structure LrTable : <sig>
+        structure Token : <sig>
+        structure Actions : <sig>
+        structure EC : <sig>
+        val table : LrTable.table
+        sharing LrTable = Token.LrTable
+      end
+    sharing type Tokens.svalue = ParserData.svalue
+    sharing type Tokens.token = ParserData.Token.token
+  end
+val it = () : unit
+GC #1.7.18.32.209.6988:   (20 ms)
+GC #1.7.18.32.210.7076:   (30 ms)
+GC #1.7.18.32.211.7101:   (30 ms)
+GC #1.7.18.32.212.7132:   (20 ms)
+GC #1.7.18.32.213.7142:   (20 ms)
+GC #1.7.18.32.214.7161:   (40 ms)
+GC #1.7.18.33.215.7168:   (80 ms)
+GC #1.7.18.33.216.7177:   (30 ms)
+GC #1.7.18.33.217.7181:   (30 ms)
+GC #1.7.18.33.218.7226:   (10 ms)
+GC #1.7.18.33.219.7272:   (10 ms)
+GC #1.7.18.33.220.7334:   (10 ms)
+GC #1.7.18.33.221.7399:   (10 ms)
+[opening Grammars/holsig.yak.sml]
+functor holsigLrValsFun : <sig>
+val it = () : unit
+[opening 0/theory/regime.sig]
+signature Regime_sig =
+  sig
+    structure Theory_data :
+      sig
+        structure Thm : <sig>
+        type theory
+        type theory_id
+        val mk_theory_id : {name:string, timestamp:time} -> theory_id
+        val theory_id : theory -> theory_id
+        val theory_id_name : theory_id -> string
+        val theory_id_timestamp : theory_id -> time
+        val theory_id_eq : theory_id * theory_id -> bool
+        val theory_draft_mode : theory -> bool
+        val theory_consistent_with_disk : theory -> bool
+        val theory_parents : theory -> theory_id list
+        val theory_type_constants : theory
+                                    -> {arity:int, theory:string,
+                                        tyc:Thm.Term.Type.hol_type} list
+        val theory_term_constants : theory
+                                    -> {const:Thm.Term.term,
+                                        place:Thm.Term.fixity, theory:string} 
+                                         list
+        val theory_axioms : theory -> (string * Thm.thm) list
+        val theory_definitions : theory -> (string * Thm.thm) list
+        val theory_theorems : theory -> (string * Thm.thm) list
+        val mk_theory : theory_id -> theory
+        val fresh_theory : string -> theory
+        val the_current_theory : unit -> theory
+        val make_current : theory -> unit
+        val set_draft_mode : bool -> theory -> theory
+        val set_consistency_with_disk : bool -> theory -> theory
+        val add_parent : theory_id -> theory -> theory
+        val add_type : {arity:int, theory:string, tyc:Thm.Term.Type.hol_type}
+                       -> theory -> theory
+        val add_term : {const:Thm.Term.term, place:Thm.Term.fixity,
+                        theory:string}
+                       -> theory -> theory
+        val add_axiom : string * Thm.thm -> theory -> theory
+        val add_definition : string * Thm.thm -> theory -> theory
+        val add_theorem : string * Thm.thm -> theory -> theory
+        val pp_theory : ?.PrettyPrint.ppstream -> theory -> unit
+      end
+    type hol_sig
+    type hol_thms
+    val dest_hol_sig : hol_sig
+                       -> {parents:Theory_data.theory_id list,
+                           term_constants:{const:Theory_data.Thm.Term.term,
+                                           place:Theory_data.Thm.Term.fixity,
+                                           theory:string} list,
+                           thid:Theory_data.theory_id,
+                           type_constants:{arity:int, theory:string,
+                                           tyc:
+                                                 Theory_data.Thm.Term.Type.hol_type}
+                                            list}
+    val mk_hol_sig : {parents:Theory_data.theory_id list,
+                      term_constants:{const:Theory_data.Thm.Term.term,
+                                      place:Theory_data.Thm.Term.fixity,
+                                      theory:string} list,
+                      thid:Theory_data.theory_id,
+                      type_constants:{arity:int, theory:string,
+                                      tyc:Theory_data.Thm.Term.Type.hol_type} 
+                                       list}
+                     -> hol_sig
+    val dest_hol_thms : hol_thms
+                        -> {axioms:(string * Theory_data.Thm.thm) list,
+                            definitions:(string * Theory_data.Thm.thm) list,
+                            theorems:(string * Theory_data.Thm.thm) list,
+                            thid:Theory_data.theory_id}
+    val mk_hol_thms : {axioms:(string * Theory_data.Thm.thm) list,
+                       definitions:(string * Theory_data.Thm.thm) list,
+                       theorems:(string * Theory_data.Thm.thm) list,
+                       thid:Theory_data.theory_id}
+                      -> hol_thms
+    val split_theory : Theory_data.theory -> hol_sig * hol_thms
+    val mk_theory_from_parts : hol_sig -> hol_thms -> Theory_data.theory
+    val theory_to_hol_sig : Theory_data.theory -> hol_sig
+  end
+val it = () : unit
+[opening 0/theory/disk_io.sig]
+signature Disk_io_sig =
+  sig
+    structure Regime :
+      sig
+        structure Theory_data : <sig>
+        type hol_sig
+        type hol_thms
+        val dest_hol_sig : hol_sig
+                           -> {parents:Theory_data.theory_id list,
+                               term_constants:{const:Theory_data.Thm.Term.term,
+                                               place:
+                          Theory_data.Thm.Term.fixity, theory:string} list,
+                               thid:Theory_data.theory_id,
+                               type_constants:{arity:int, theory:string,
+                                               tyc:
+                          Theory_data.Thm.Term.Type.hol_type} list}
+        val mk_hol_sig : {parents:Theory_data.theory_id list,
+                          term_constants:{const:Theory_data.Thm.Term.term,
+                                          place:Theory_data.Thm.Term.fixity,
+                                          theory:string} list,
+                          thid:Theory_data.theory_id,
+                          type_constants:{arity:int, theory:string,
+                                          tyc:
+                                                Theory_data.Thm.Term.Type.hol_type}
+                                           list}
+                         -> hol_sig
+        val dest_hol_thms : hol_thms
+                            -> {axioms:(string * Theory_data.Thm.thm) list,
+                                definitions:(string * Theory_data.Thm.thm) 
+                                              list,
+                                theorems:(string * Theory_data.Thm.thm) list,
+                                thid:Theory_data.theory_id}
+        val mk_hol_thms : {axioms:(string * Theory_data.Thm.thm) list,
+                           definitions:(string * Theory_data.Thm.thm) list,
+                           theorems:(string * Theory_data.Thm.thm) list,
+                           thid:Theory_data.theory_id}
+                          -> hol_thms
+        val split_theory : Theory_data.theory -> hol_sig * hol_thms
+        val mk_theory_from_parts : hol_sig -> hol_thms -> Theory_data.theory
+        val theory_to_hol_sig : Theory_data.theory -> hol_sig
+      end
+    val read_hol_sig : Portable.instream -> Regime.hol_sig
+    val write_hol_sig : Portable.outstream * Regime.hol_sig -> unit
+    val read_hol_thms : Portable.instream -> Regime.hol_thms
+    val write_hol_thms : Portable.outstream * Regime.hol_thms -> unit
+  end
+val it = () : unit
+GC #1.7.18.33.222.7447:   (10 ms)
+[opening 0/theory/disk_io.ascii.sml]
+0/theory/disk_io.ascii.sml:98.15-98.63 Warning: binding not exhaustive
+          {Args=nil,Tyop=Tyop} = ...
+GC #1.7.18.33.223.7487:   (10 ms)
+GC #1.7.18.33.224.7496:   (20 ms)
+GC #1.7.18.33.225.7518:   (0 ms)
+functor DISK_IO_ASCII : <sig>
+val it = () : unit
+GC #1.7.18.33.226.7602:   (0 ms)
+[opening 0/theory/regime.sml]
+functor REGIME : <sig>
+val it = () : unit
+GC #1.7.18.33.227.7709:   (30 ms)
+GC #1.7.18.33.228.7755:   (20 ms)
+GC #1.7.18.34.229.7780:   (30 ms)
+GC #1.7.18.34.230.7802:   (20 ms)
+GC #1.7.18.34.231.7861:   (20 ms)
+[opening Grammars/thms.lex.sml]
+functor THMS_LEX : <sig>
+val it = () : unit
+GC #1.7.18.34.232.7949:   (10 ms)
+GC #1.7.18.34.233.8023:   (30 ms)
+GC #1.7.18.34.234.8033:   (30 ms)
+GC #1.7.18.34.235.8074:   (30 ms)
+GC #1.7.18.34.236.8105:   (20 ms)
+GC #1.7.18.34.237.8123:   (10 ms)
+GC #1.7.18.34.238.8147:   (20 ms)
+GC #1.7.18.34.239.8202:   (20 ms)
+GC #1.7.18.34.240.8431:   (10 ms)
+[opening Grammars/holsig.lex.sml]
+functor HOLSIG_LEX : <sig>
+val it = () : unit
+[opening 0/cache.sml]
+signature Key_sig =
+  sig
+    type object
+    eqtype key
+    val key_of : object -> key
+  end
+functor CACHE : <sig>
+val it = () : unit
+[opening 0/theory/cache.sig]
+signature Theory_cache_sig =
+  sig
+    type object
+    eqtype key
+    val add_object_to_cache : object -> unit
+    val get_object_from_cache : key -> object
+    val delete_object_from_cache : key -> unit
+    val delete_cache : unit -> unit
+    val objects_in_cache : unit -> key list
+    val is_object_in_cache : key -> bool
+  end
+val it = () : unit
+GC #1.7.18.35.241.8476:   (10 ms)
+[opening 0/theory/graph.sml]
+signature Node_sig =
+  sig
+    type node_id
+    val node_name : node_id -> string
+    val node_eq : node_id -> node_id -> bool
+  end
+GC #1.7.18.35.242.8513:   (10 ms)
+GC #1.7.18.35.243.8526:   (20 ms)
+GC #1.7.18.35.244.8574:   (10 ms)
+functor DAG : <sig>
+val it = () : unit
+[opening 0/theory/graph.sig]
+signature Theory_graph_sig =
+  sig
+    type node_id
+    type graph
+    val add_node : node_id -> node_id list -> unit
+    val node_in_graph : node_id -> bool
+    val is_ancestor : string -> bool
+    val add_parent : node_id -> node_id -> unit
+    val graph_copy : unit -> graph
+    val replace_graph : graph -> unit
+    val parents : string -> node_id list
+    val ancestry : string -> node_id list
+  end
+val it = () : unit
+[opening 0/theory/io.sig]
+signature Theory_io_sig =
+  sig
+    structure Theory_data :
+      sig
+        structure Thm : <sig>
+        type theory
+        type theory_id
+        val mk_theory_id : {name:string, timestamp:time} -> theory_id
+        val theory_id : theory -> theory_id
+        val theory_id_name : theory_id -> string
+        val theory_id_timestamp : theory_id -> time
+        val theory_id_eq : theory_id * theory_id -> bool
+        val theory_draft_mode : theory -> bool
+        val theory_consistent_with_disk : theory -> bool
+        val theory_parents : theory -> theory_id list
+        val theory_type_constants : theory
+                                    -> {arity:int, theory:string,
+                                        tyc:Thm.Term.Type.hol_type} list
+        val theory_term_constants : theory
+                                    -> {const:Thm.Term.term,
+                                        place:Thm.Term.fixity, theory:string} 
+                                         list
+        val theory_axioms : theory -> (string * Thm.thm) list
+        val theory_definitions : theory -> (string * Thm.thm) list
+        val theory_theorems : theory -> (string * Thm.thm) list
+        val mk_theory : theory_id -> theory
+        val fresh_theory : string -> theory
+        val the_current_theory : unit -> theory
+        val make_current : theory -> unit
+        val set_draft_mode : bool -> theory -> theory
+        val set_consistency_with_disk : bool -> theory -> theory
+        val add_parent : theory_id -> theory -> theory
+        val add_type : {arity:int, theory:string, tyc:Thm.Term.Type.hol_type}
+                       -> theory -> theory
+        val add_term : {const:Thm.Term.term, place:Thm.Term.fixity,
+                        theory:string}
+                       -> theory -> theory
+        val add_axiom : string * Thm.thm -> theory -> theory
+        val add_definition : string * Thm.thm -> theory -> theory
+        val add_theorem : string * Thm.thm -> theory -> theory
+        val pp_theory : ?.PrettyPrint.ppstream -> theory -> unit
+      end
+    type hol_sig
+    type hol_thms
+    val dest_hol_sig : hol_sig
+                       -> {parents:Theory_data.theory_id list,
+                           term_constants:{const:Theory_data.Thm.Term.term,
+                                           place:Theory_data.Thm.Term.fixity,
+                                           theory:string} list,
+                           thid:Theory_data.theory_id,
+                           type_constants:{arity:int, theory:string,
+                                           tyc:
+                                                 Theory_data.Thm.Term.Type.hol_type}
+                                            list}
+    val theory_to_hol_sig : Theory_data.theory -> hol_sig
+    val get_hol_sig_by_name : string list
+                              -> string -> {data:hol_sig, path:string}
+    val get_hol_sig_by_uid : string list
+                             -> Theory_data.theory_id
+                                -> {data:hol_sig, path:string}
+    val get_thms : string list
+                   -> Theory_data.theory_id -> {data:hol_thms, path:string}
+    val mk_theory : hol_sig -> hol_thms -> Theory_data.theory
+    val put_theory_to_disk : Theory_data.theory -> unit
+  end
+val it = () : unit
+GC #1.7.18.35.245.8601:   (0 ms)
+GC #1.7.18.35.246.8622:   (10 ms)
+GC #1.7.18.35.247.8643:   (20 ms)
+[opening 0/theory/io.sml]
+functor THEORY_IO : <sig>
+val it = () : unit
+[opening 0/theory/ops.sig]
+signature Theory_ops_sig =
+  sig
+    structure Theory_data :
+      sig
+        structure Thm : <sig>
+        type theory
+        type theory_id
+        val mk_theory_id : {name:string, timestamp:time} -> theory_id
+        val theory_id : theory -> theory_id
+        val theory_id_name : theory_id -> string
+        val theory_id_timestamp : theory_id -> time
+        val theory_id_eq : theory_id * theory_id -> bool
+        val theory_draft_mode : theory -> bool
+        val theory_consistent_with_disk : theory -> bool
+        val theory_parents : theory -> theory_id list
+        val theory_type_constants : theory
+                                    -> {arity:int, theory:string,
+                                        tyc:Thm.Term.Type.hol_type} list
+        val theory_term_constants : theory
+                                    -> {const:Thm.Term.term,
+                                        place:Thm.Term.fixity, theory:string} 
+                                         list
+        val theory_axioms : theory -> (string * Thm.thm) list
+        val theory_definitions : theory -> (string * Thm.thm) list
+        val theory_theorems : theory -> (string * Thm.thm) list
+        val mk_theory : theory_id -> theory
+        val fresh_theory : string -> theory
+        val the_current_theory : unit -> theory
+        val make_current : theory -> unit
+        val set_draft_mode : bool -> theory -> theory
+        val set_consistency_with_disk : bool -> theory -> theory
+        val add_parent : theory_id -> theory -> theory
+        val add_type : {arity:int, theory:string, tyc:Thm.Term.Type.hol_type}
+                       -> theory -> theory
+        val add_term : {const:Thm.Term.term, place:Thm.Term.fixity,
+                        theory:string}
+                       -> theory -> theory
+        val add_axiom : string * Thm.thm -> theory -> theory
+        val add_definition : string * Thm.thm -> theory -> theory
+        val add_theorem : string * Thm.thm -> theory -> theory
+        val pp_theory : ?.PrettyPrint.ppstream -> theory -> unit
+      end
+    structure Theory_io :
+      sig
+        structure Theory_data : <sig>
+        type hol_sig
+        type hol_thms
+        val dest_hol_sig : hol_sig
+                           -> {parents:Theory_data.theory_id list,
+                               term_constants:{const:Theory_data.Thm.Term.term,
+                                               place:
+                          Theory_data.Thm.Term.fixity, theory:string} list,
+                               thid:Theory_data.theory_id,
+                               type_constants:{arity:int, theory:string,
+                                               tyc:
+                          Theory_data.Thm.Term.Type.hol_type} list}
+        val theory_to_hol_sig : Theory_data.theory -> hol_sig
+        val get_hol_sig_by_name : string list
+                                  -> string -> {data:hol_sig, path:string}
+        val get_hol_sig_by_uid : string list
+                                 -> Theory_data.theory_id
+                                    -> {data:hol_sig, path:string}
+        val get_thms : string list
+                       -> Theory_data.theory_id -> {data:hol_thms, path:string}
+        val mk_theory : hol_sig -> hol_thms -> Theory_data.theory
+        val put_theory_to_disk : Theory_data.theory -> unit
+      end
+    structure Theory_cache :
+      sig
+        type object
+        eqtype key
+        val add_object_to_cache : object -> unit
+        val get_object_from_cache : key -> object
+        val delete_object_from_cache : key -> unit
+        val delete_cache : unit -> unit
+        val objects_in_cache : unit -> key list
+        val is_object_in_cache : key -> bool
+      end
+    structure Theory_graph :
+      sig
+        type node_id
+        type graph
+        val add_node : node_id -> node_id list -> unit
+        val node_in_graph : node_id -> bool
+        val is_ancestor : string -> bool
+        val add_parent : node_id -> node_id -> unit
+        val graph_copy : unit -> graph
+        val replace_graph : graph -> unit
+        val parents : string -> node_id list
+        val ancestry : string -> node_id list
+      end
+    val grab_ances_theory : string -> Theory_data.theory
+    val perform_atomic_theory_op : (unit -> 'a) -> 'a
+    val install_new_parent : string * Theory_io.hol_sig -> unit
+    val goto_theory : string -> Theory_data.theory_id -> Theory_data.theory
+    val export_theory : unit -> unit
+    val close : unit -> unit
+    sharing Theory_data = Theory_io.Theory_data
+  end
+val it = () : unit
+GC #1.7.18.35.248.8691:   (10 ms)
+GC #1.7.18.35.249.8748:   (20 ms)
+GC #1.7.18.35.250.8768:   (20 ms)
+GC #1.7.18.35.251.8786:   (10 ms)
+[opening 0/theory/ops.sml]
+functor THEORY_OPS : <sig>
+val it = () : unit
+GC #1.7.18.35.252.8861:   (0 ms)
+[opening 0/theory/theory.sig]
+signature Theory_sig =
+  sig
+    structure Thm :
+      sig
+        structure Term : <sig>
+        type thm
+        val reset_thm_count : unit -> unit
+        val counting_thms : bool -> unit
+        val thm_count : unit
+                        -> {ABS:int, ASSUME:int, BETA_CONV:int, DISCH:int,
+                            INST_TYPE:int, MP:int, REFL:int, SUBST:int,
+                            axiom:int, definition:int, drule:int,
+                            from_disk:int, other:int, valid_tac:int}
+        val hyp : thm -> Term.term list
+        val concl : thm -> Term.term
+        val dest_thm : thm -> Term.term list * Term.term
+        val thm_free_vars : thm -> Term.term list
+        val hyp_union : thm list -> Term.term list
+        val pp_thm : ?.PrettyPrint.ppstream -> thm -> unit
+        val thm_to_string : thm -> string
+        val print_thm : thm -> unit
+        val ASSUME : Term.term -> thm
+        val REFL : Term.term -> thm
+        val BETA_CONV : Term.term -> thm
+        val SUBST : {thm:thm, var:Term.term} list -> Term.term -> thm -> thm
+        val ABS : Term.term -> thm -> thm
+        val INST_TYPE : Term.Type.hol_type subst -> thm -> thm
+        val DISCH : Term.term -> thm -> thm
+        val MP : thm -> thm -> thm
+        val mk_axiom_thm : Term.term list * Term.term -> thm
+        val mk_definition_thm : Term.term list * Term.term -> thm
+        val mk_drule_thm : Term.term list * Term.term -> thm
+        val mk_disk_thm : Term.term list * Term.term -> thm
+        val mk_tac_thm : Term.term list * Term.term -> thm
+        val mk_thm : Term.term list * Term.term -> thm
+        datatype just_arg
+          = JA_INT of int
+          | JA_INTLIST of int list
+          | JA_PAIR of just_arg * just_arg
+          | JA_STRING of string
+          | JA_TERM of Term.term
+          | JA_THM of thm
+          | JA_TYPE of Term.Type.hol_type
+        datatype step = STEP of {Just:just_arg list, Name:string, Thm:thm}
+        val record_step : (step -> thm) ref
+        val record_proof : bool -> unit
+        val suspend_recording : unit -> unit
+        val resume_recording : unit -> unit
+        val is_recording_proof : unit -> bool
+        val note : step * thm -> thm
+      end
+    val new_parent : string -> unit
+    val new_type : {Arity:int, Name:string} -> unit
+    val new_constant : {Name:string, Ty:Thm.Term.Type.hol_type} -> unit
+    val new_infix : {Name:string, Prec:int, Ty:Thm.Term.Type.hol_type} -> unit
+    val new_binder : {Name:string, Ty:Thm.Term.Type.hol_type} -> unit
+    val new_open_axiom : string * Thm.Term.term -> Thm.thm
+    val store_definition : string * Thm.Term.term -> Thm.thm
+    val save_thm : string * Thm.thm -> Thm.thm
+    val arity : string -> int
+    val fixity : string -> Thm.Term.fixity
+    val precedence : string -> int
+    val const_decl : string
+                     -> {const:Thm.Term.term, place:Thm.Term.fixity,
+                         theory:string}
+    val is_constant : string -> bool
+    val is_type : string -> bool
+    val is_binder : string -> bool
+    val is_infix : string -> bool
+    val draft_mode : unit -> bool
+    val current_theory : unit -> string
+    val parents : string -> string list
+    val ancestry : string -> string list
+    val types : string -> {Arity:int, Name:string} list
+    val constants : string -> Thm.Term.term list
+    val infixes : string -> Thm.Term.term list
+    val binders : string -> Thm.Term.term list
+    val axioms : string -> (string * Thm.thm) list
+    val axiom : string -> string -> Thm.thm
+    val definitions : string -> (string * Thm.thm) list
+    val definition : string -> string -> Thm.thm
+    val theorems : string -> (string * Thm.thm) list
+    val theorem : string -> string -> Thm.thm
+    val print_theory_to_outstream : {outstream:Portable.outstream,
+                                     theory:string}
+                                    -> Portable.outstream
+    val print_theory_to_file : {file:string, theory:string} -> unit
+    val print_theory : string -> unit
+    val html_theory : string -> unit
+    val new_theory : string -> unit
+    val close_theory : unit -> unit
+    val load_theory : string -> unit
+    val extend_theory : string -> unit
+    val export_theory : unit -> unit
+    val close : unit -> unit
+    val delete_cache : unit -> unit
+    val delete_theory_from_cache : string -> unit
+    val theories_in_cache : unit -> string list
+    val perform_atomic_theory_op : (unit -> 'a) -> 'a
+    val loadLibThry : string -> string -> unit
+  end
+val it = () : unit
+GC #1.7.18.35.253.8949:   (20 ms)
+[opening 0/theory/theory.sml]
+0/theory/theory.sml:598.7-600.62 Warning: binding contains no variables
+          () = ...
+0/theory/theory.sml:24.1-612.4 Warning: match nonexhaustive
+          {arity=arity,theory=theory,tyc=Tyc name} => ...
+  
+GC #1.7.18.35.254.9036:   (40 ms)
+0/theory/theory.sml:118.8-118.61 Warning: binding not exhaustive
+          {Args=_ :: _ :: nil,Tyop="fun"} = ...
+0/theory/theory.sml:117.8-117.62 Warning: binding not exhaustive
+          {Args=ty1 :: _ :: nil,Tyop="fun"} = ...
+0/theory/theory.sml:112.8-112.60 Warning: binding not exhaustive
+          {Args=_ :: _ :: nil,Tyop="fun"} = ...
+0/theory/theory.sml:111.8-111.61 Warning: binding not exhaustive
+          {Args=_ :: ty2 :: nil,Tyop="fun"} = ...
+GC #1.7.18.36.255.9061:   (50 ms)
+GC #1.7.18.36.256.9093:   (10 ms)
+GC #1.7.18.36.257.9120:   (30 ms)
+GC #1.7.18.36.258.9148:   (20 ms)
+GC #1.7.18.36.259.9189:   (20 ms)
+GC #1.7.18.37.260.9245:   (70 ms)
+GC #1.7.18.37.261.9337:   (30 ms)
+GC #1.7.18.37.262.9338:   (20 ms)
+GC #1.7.18.37.263.9340:   (10 ms)
+GC #1.7.18.37.264.9370:   (10 ms)
+GC #1.7.18.38.265.9450:   (40 ms)
+GC #1.7.18.38.266.9465:   (20 ms)
+GC #1.7.18.39.267.9470:   (10 ms)
+functor THEORY : <sig>
+val it = () : unit
+GC #1.7.18.39.268.9471:   (0 ms)
+[opening 0/net.sig]
+signature Net_sig =
+  sig
+    structure Term :
+      sig
+        structure Type : <sig>
+        datatype fixity = Binder | Infix of int | Prefix
+        eqtype term
+        val const_decl : string -> {const:term, place:fixity, theory:string}
+        val fixity_of_term : string -> fixity
+        val fixity_to_string : fixity -> string
+        val prec_of_term : string -> int
+        val is_binder : string -> bool
+        val is_infix : string -> bool
+        val is_polymorphic : string -> bool
+        datatype lambda
+          = COMB of {Rand:term, Rator:term}
+          | CONST of {Name:string, Ty:Type.hol_type}
+          | LAMB of {Body:term, Bvar:term}
+          | VAR of {Name:string, Ty:Type.hol_type}
+        val ty_antiq : Type.hol_type -> term
+        val free_vars : term -> term list
+        val free_in : term -> term -> bool
+        val all_vars : term -> term list
+        val free_varsl : term list -> term list
+        val all_varsl : term list -> term list
+        val term_lt : term -> term -> bool
+        val genvar : Type.hol_type -> term
+        val genvars : Type.hol_type -> int -> term list
+        val variant : term list -> term -> term
+        val type_of : term -> Type.hol_type
+        val type_vars_in_term : term -> Type.hol_type list
+        val mk_var : {Name:string, Ty:Type.hol_type} -> term
+        val mk_primed_var : {Name:string, Ty:Type.hol_type} -> term
+        val list_mk_comb : term * term list -> term
+        val mk_comb : {Rand:term, Rator:term} -> term
+        val mk_abs : {Body:term, Bvar:term} -> term
+        val dest_var : term -> {Name:string, Ty:Type.hol_type}
+        val dest_const : term -> {Name:string, Ty:Type.hol_type}
+        val dest_comb : term -> {Rand:term, Rator:term}
+        val dest_abs : term -> {Body:term, Bvar:term}
+        val is_var : term -> bool
+        val is_const : term -> bool
+        val is_comb : term -> bool
+        val is_abs : term -> bool
+        val dest_term : term -> lambda
+        val rator : term -> term
+        val rand : term -> term
+        val bvar : term -> term
+        val body : term -> term
+        val aconv : term -> term -> bool
+        val subst : term subst -> term -> term
+        val inst : Type.hol_type subst -> term -> term
+        val beta_conv : term -> term
+      end
+    type 'a net
+    val empty_net : 'a net
+    val enter : Term.term * 'a -> 'a net -> 'a net
+    val lookup : Term.term -> 'a net -> 'a list
+  end
+val it = () : unit
+GC #1.7.18.39.269.9494:   (10 ms)
+GC #1.7.18.39.270.9505:   (0 ms)
+GC #1.7.18.39.271.9528:   (10 ms)
+GC #1.7.18.39.272.9544:   (10 ms)
+[opening 0/net.sml]
+functor NET : <sig>
+val it = () : unit
+[opening 0/library/lib_data.sig]
+signature Lib_data_sig =
+  sig
+    type lib_id
+    val new_lib_id : string -> lib_id
+    val mk_lib_id : {name:string, timestamp:time} -> lib_id
+    val lib_id_name : lib_id -> string
+    val lib_id_timestamp : lib_id -> time
+    val lib_id_eq : lib_id * lib_id -> bool
+    type lib_data
+    val dest_lib_data : lib_data
+                        -> {code:string list, doc:string, help:string list,
+                            lib_id:lib_id, loaded:string, parents:lib_id list,
+                            path:string, theories:string list}
+    val mk_lib_data : {code:string list, doc:string, help:string list,
+                       lib_id:lib_id, loaded:string, parents:lib_id list,
+                       path:string, theories:string list}
+                      -> lib_data
+  end
+val it = () : unit
+[opening 0/library/lib_data.sml]
+structure Lib_data : Lib_data_sig
+val it = () : unit
+GC #1.7.18.39.273.9603:   (10 ms)
+[opening Grammars/lib.yak.sig]
+signature lib_TOKENS =
+  sig
+    type ('a,'b) token
+    type svalue
+    val EOF : 'a * 'a -> (svalue,'a) token
+    val EOLEX : 'a * 'a -> (svalue,'a) token
+    val string_constant : string * 'a * 'a -> (svalue,'a) token
+    val num : string * 'a * 'a -> (svalue,'a) token
+    val id : string * 'a * 'a -> (svalue,'a) token
+    val loaded : 'a * 'a -> (svalue,'a) token
+    val help : 'a * 'a -> (svalue,'a) token
+    val code : 'a * 'a -> (svalue,'a) token
+    val theories : 'a * 'a -> (svalue,'a) token
+    val parents : 'a * 'a -> (svalue,'a) token
+    val path : 'a * 'a -> (svalue,'a) token
+    val doc : 'a * 'a -> (svalue,'a) token
+    val lib_id : 'a * 'a -> (svalue,'a) token
+    val comma : 'a * 'a -> (svalue,'a) token
+    val eq : 'a * 'a -> (svalue,'a) token
+    val rparen : 'a * 'a -> (svalue,'a) token
+    val lparen : 'a * 'a -> (svalue,'a) token
+    val rbracket : 'a * 'a -> (svalue,'a) token
+    val lbracket : 'a * 'a -> (svalue,'a) token
+    val rbrace : 'a * 'a -> (svalue,'a) token
+    val lbrace : 'a * 'a -> (svalue,'a) token
+  end
+signature lib_LRVALS =
+  sig
+    structure Tokens :
+      sig
+        type ('a,'b) token
+        type svalue
+        val EOF : 'a * 'a -> (svalue,'a) token
+        val EOLEX : 'a * 'a -> (svalue,'a) token
+        val string_constant : string * 'a * 'a -> (svalue,'a) token
+        val num : string * 'a * 'a -> (svalue,'a) token
+        val id : string * 'a * 'a -> (svalue,'a) token
+        val loaded : 'a * 'a -> (svalue,'a) token
+        val help : 'a * 'a -> (svalue,'a) token
+        val code : 'a * 'a -> (svalue,'a) token
+        val theories : 'a * 'a -> (svalue,'a) token
+        val parents : 'a * 'a -> (svalue,'a) token
+        val path : 'a * 'a -> (svalue,'a) token
+        val doc : 'a * 'a -> (svalue,'a) token
+        val lib_id : 'a * 'a -> (svalue,'a) token
+        val comma : 'a * 'a -> (svalue,'a) token
+        val eq : 'a * 'a -> (svalue,'a) token
+        val rparen : 'a * 'a -> (svalue,'a) token
+        val lparen : 'a * 'a -> (svalue,'a) token
+        val rbracket : 'a * 'a -> (svalue,'a) token
+        val lbracket : 'a * 'a -> (svalue,'a) token
+        val rbrace : 'a * 'a -> (svalue,'a) token
+        val lbrace : 'a * 'a -> (svalue,'a) token
+      end
+    structure ParserData :
+      sig
+        type pos
+        type svalue
+        type arg
+        type result
+        structure LrTable : <sig>
+        structure Token : <sig>
+        structure Actions : <sig>
+        structure EC : <sig>
+        val table : LrTable.table
+        sharing LrTable = Token.LrTable
+      end
+    sharing type Tokens.svalue = ParserData.svalue
+    sharing type Tokens.token = ParserData.Token.token
+  end
+val it = () : unit
+GC #1.7.18.39.274.9664:   (20 ms)
+GC #1.7.18.40.275.9764:   (30 ms)
+GC #1.7.18.40.276.9794:   (20 ms)
+GC #1.7.18.40.277.9809:   (20 ms)
+GC #1.7.19.41.278.9819:   (80 ms)
+GC #1.7.19.41.279.9830:   (40 ms)
+GC #1.7.19.41.280.9865:   (10 ms)
+GC #1.7.19.41.281.9911:   (10 ms)
+[opening Grammars/lib.yak.sml]
+functor libLrValsFun : <sig>
+val it = () : unit
+GC #1.7.19.41.282.9992:   (0 ms)
+GC #1.7.19.41.283.10082:   (20 ms)
+GC #1.7.19.41.284.10115:   (20 ms)
+GC #1.7.19.41.285.10143:   (10 ms)
+GC #1.7.19.41.286.10165:   (10 ms)
+GC #1.7.19.41.287.10214:   (10 ms)
+GC #1.7.19.41.288.10356:   (0 ms)
+[opening Grammars/lib.lex.sml]
+functor LIB_LEX : <sig>
+val it = () : unit
+[opening 0/library/lib_io.sig]
+signature Lib_io_sig =
+  sig
+    structure Lib_data :
+      sig
+        type lib_id
+        val new_lib_id : string -> lib_id
+        val mk_lib_id : {name:string, timestamp:time} -> lib_id
+        val lib_id_name : lib_id -> string
+        val lib_id_timestamp : lib_id -> time
+        val lib_id_eq : lib_id * lib_id -> bool
+        type lib_data
+        val dest_lib_data : lib_data
+                            -> {code:string list, doc:string, help:string list,
+                                lib_id:lib_id, loaded:string,
+                                parents:lib_id list, path:string,
+                                theories:string list}
+        val mk_lib_data : {code:string list, doc:string, help:string list,
+                           lib_id:lib_id, loaded:string, parents:lib_id list,
+                           path:string, theories:string list}
+                          -> lib_data
+      end
+    val get_lib_by_name : string list -> string -> Lib_data.lib_data
+    val get_lib_by_uid : string list -> Lib_data.lib_id -> Lib_data.lib_data
+    val write_lib_to_disk : string * Lib_data.lib_data -> unit
+  end
+val it = () : unit
+GC #1.7.19.41.289.10408:   (20 ms)
+GC #1.7.19.41.290.10415:   (10 ms)
+[opening 0/library/lib_io.sml]
+functor LIB_IO : <sig>
+val it = () : unit
+[opening 0/library/lib.sig]
+signature Library_sig =
+  sig
+    type lib
+    val loaded_cell : (unit -> unit) ref
+    val lib_eq : lib -> lib -> bool
+    val new_library : {code:string list, doc:string, help:string list,
+                       loaded:string, name:string, parents:lib list,
+                       path:string, theories:string list}
+                      -> lib
+    val dest_library : lib
+                       -> {code:string list, doc:string, help:string list,
+                           name:string, parents:lib list, path:string,
+                           theories:string list}
+    val prim_load_library' : (string list -> unit)
+                             -> {lib:lib, theory:string} -> unit
+    val prim_load_library : (string -> unit)
+                            -> {lib:lib, theory:string} -> unit
+    val load_library : {lib:lib, theory:string} -> unit
+    val load_library_in_place : lib -> unit
+    val find_library : string -> lib
+    val get_library_from_disk : string -> lib
+    val move_library : lib * string -> unit
+    val delete_library : lib -> unit
+    val known_libraries : unit -> lib list
+    val loaded_libraries : unit -> lib list
+    val pp_library : ?.PrettyPrint.ppstream -> lib -> unit
+    val lib_help : {lib:lib, topic:string} -> unit
+  end
+val it = () : unit
+GC #1.7.19.41.291.10497:   (10 ms)
+GC #1.7.19.41.292.10566:   (20 ms)
+GC #1.7.19.41.293.10603:   (20 ms)
+GC #1.7.19.42.294.10624:   (40 ms)
+GC #1.7.19.42.295.10648:   (10 ms)
+GC #1.7.19.42.296.10673:   (0 ms)
+GC #1.7.19.42.297.10754:   (10 ms)
+[opening 0/library/lib.sml]
+functor LIBRARY : <sig>
+val it = () : unit
+GC #1.7.19.42.298.10767:   (0 ms)
+[opening 0/exists_def.sig]
+signature Exists_def_sig =
+  sig
+    structure Theory :
+      sig
+        structure Thm : <sig>
+        val new_parent : string -> unit
+        val new_type : {Arity:int, Name:string} -> unit
+        val new_constant : {Name:string, Ty:Thm.Term.Type.hol_type} -> unit
+        val new_infix : {Name:string, Prec:int, Ty:Thm.Term.Type.hol_type}
+                        -> unit
+        val new_binder : {Name:string, Ty:Thm.Term.Type.hol_type} -> unit
+        val new_open_axiom : string * Thm.Term.term -> Thm.thm
+        val store_definition : string * Thm.Term.term -> Thm.thm
+        val save_thm : string * Thm.thm -> Thm.thm
+        val arity : string -> int
+        val fixity : string -> Thm.Term.fixity
+        val precedence : string -> int
+        val const_decl : string
+                         -> {const:Thm.Term.term, place:Thm.Term.fixity,
+                             theory:string}
+        val is_constant : string -> bool
+        val is_type : string -> bool
+        val is_binder : string -> bool
+        val is_infix : string -> bool
+        val draft_mode : unit -> bool
+        val current_theory : unit -> string
+        val parents : string -> string list
+        val ancestry : string -> string list
+        val types : string -> {Arity:int, Name:string} list
+        val constants : string -> Thm.Term.term list
+        val infixes : string -> Thm.Term.term list
+        val binders : string -> Thm.Term.term list
+        val axioms : string -> (string * Thm.thm) list
+        val axiom : string -> string -> Thm.thm
+        val definitions : string -> (string * Thm.thm) list
+        val definition : string -> string -> Thm.thm
+        val theorems : string -> (string * Thm.thm) list
+        val theorem : string -> string -> Thm.thm
+        val print_theory_to_outstream : {outstream:Portable.outstream,
+                                         theory:string}
+                                        -> Portable.outstream
+        val print_theory_to_file : {file:string, theory:string} -> unit
+        val print_theory : string -> unit
+        val html_theory : string -> unit
+        val new_theory : string -> unit
+        val close_theory : unit -> unit
+        val load_theory : string -> unit
+        val extend_theory : string -> unit
+        val export_theory : unit -> unit
+        val close : unit -> unit
+        val delete_cache : unit -> unit
+        val delete_theory_from_cache : string -> unit
+        val theories_in_cache : unit -> string list
+        val perform_atomic_theory_op : (unit -> 'a) -> 'a
+        val loadLibThry : string -> string -> unit
+      end
+    val new_binder_definition : string * Theory.Thm.Term.term -> Theory.Thm.thm
+  end
+val it = () : unit
+GC #1.7.19.42.299.10804:   (10 ms)
+GC #1.7.19.42.300.10822:   (20 ms)
+GC #1.7.19.42.301.10841:   (10 ms)
+[opening 0/exists_def.sml]
+functor EXISTS_DEF : <sig>
+val it = () : unit
+[opening 0/const_spec.sig]
+signature Const_spec_sig =
+  sig
+    structure Theory :
+      sig
+        structure Thm : <sig>
+        val new_parent : string -> unit
+        val new_type : {Arity:int, Name:string} -> unit
+        val new_constant : {Name:string, Ty:Thm.Term.Type.hol_type} -> unit
+        val new_infix : {Name:string, Prec:int, Ty:Thm.Term.Type.hol_type}
+                        -> unit
+        val new_binder : {Name:string, Ty:Thm.Term.Type.hol_type} -> unit
+        val new_open_axiom : string * Thm.Term.term -> Thm.thm
+        val store_definition : string * Thm.Term.term -> Thm.thm
+        val save_thm : string * Thm.thm -> Thm.thm
+        val arity : string -> int
+        val fixity : string -> Thm.Term.fixity
+        val precedence : string -> int
+        val const_decl : string
+                         -> {const:Thm.Term.term, place:Thm.Term.fixity,
+                             theory:string}
+        val is_constant : string -> bool
+        val is_type : string -> bool
+        val is_binder : string -> bool
+        val is_infix : string -> bool
+        val draft_mode : unit -> bool
+        val current_theory : unit -> string
+        val parents : string -> string list
+        val ancestry : string -> string list
+        val types : string -> {Arity:int, Name:string} list
+        val constants : string -> Thm.Term.term list
+        val infixes : string -> Thm.Term.term list
+        val binders : string -> Thm.Term.term list
+        val axioms : string -> (string * Thm.thm) list
+        val axiom : string -> string -> Thm.thm
+        val definitions : string -> (string * Thm.thm) list
+        val definition : string -> string -> Thm.thm
+        val theorems : string -> (string * Thm.thm) list
+        val theorem : string -> string -> Thm.thm
+        val print_theory_to_outstream : {outstream:Portable.outstream,
+                                         theory:string}
+                                        -> Portable.outstream
+        val print_theory_to_file : {file:string, theory:string} -> unit
+        val print_theory : string -> unit
+        val html_theory : string -> unit
+        val new_theory : string -> unit
+        val close_theory : unit -> unit
+        val load_theory : string -> unit
+        val extend_theory : string -> unit
+        val export_theory : unit -> unit
+        val close : unit -> unit
+        val delete_cache : unit -> unit
+        val delete_theory_from_cache : string -> unit
+        val theories_in_cache : unit -> string list
+        val perform_atomic_theory_op : (unit -> 'a) -> 'a
+        val loadLibThry : string -> string -> unit
+      end
+    val new_specification : {consts:{const_name:string,
+                                     fixity:Theory.Thm.Term.fixity} list,
+                             name:string, sat_thm:Theory.Thm.thm}
+                            -> Theory.Thm.thm
+  end
+val it = () : unit
+GC #1.7.19.42.302.10899:   (0 ms)
+[opening 0/const_spec.sml]
+0/const_spec.sml:81.8-81.61 Warning: binding not exhaustive
+          {Args=_ :: _ :: nil,Tyop="fun"} = ...
+0/const_spec.sml:80.8-80.62 Warning: binding not exhaustive
+          {Args=ty1 :: _ :: nil,Tyop="fun"} = ...
+0/const_spec.sml:73.8-73.61 Warning: binding not exhaustive
+          {Args=_ :: _ :: nil,Tyop="fun"} = ...
+0/const_spec.sml:72.8-72.61 Warning: binding not exhaustive
+          {Args=_ :: ty2 :: nil,Tyop="fun"} = ...
+GC #1.7.19.42.303.10935:   (10 ms)
+GC #1.7.19.42.304.10945:   (10 ms)
+GC #1.7.19.42.305.10968:   (10 ms)
+GC #1.7.19.42.306.10972:   (0 ms)
+functor CONST_SPEC : <sig>
+val it = () : unit
+[opening 0/type_def.sig]
+signature Type_def_sig =
+  sig
+    structure Theory :
+      sig
+        structure Thm : <sig>
+        val new_parent : string -> unit
+        val new_type : {Arity:int, Name:string} -> unit
+        val new_constant : {Name:string, Ty:Thm.Term.Type.hol_type} -> unit
+        val new_infix : {Name:string, Prec:int, Ty:Thm.Term.Type.hol_type}
+                        -> unit
+        val new_binder : {Name:string, Ty:Thm.Term.Type.hol_type} -> unit
+        val new_open_axiom : string * Thm.Term.term -> Thm.thm
+        val store_definition : string * Thm.Term.term -> Thm.thm
+        val save_thm : string * Thm.thm -> Thm.thm
+        val arity : string -> int
+        val fixity : string -> Thm.Term.fixity
+        val precedence : string -> int
+        val const_decl : string
+                         -> {const:Thm.Term.term, place:Thm.Term.fixity,
+                             theory:string}
+        val is_constant : string -> bool
+        val is_type : string -> bool
+        val is_binder : string -> bool
+        val is_infix : string -> bool
+        val draft_mode : unit -> bool
+        val current_theory : unit -> string
+        val parents : string -> string list
+        val ancestry : string -> string list
+        val types : string -> {Arity:int, Name:string} list
+        val constants : string -> Thm.Term.term list
+        val infixes : string -> Thm.Term.term list
+        val binders : string -> Thm.Term.term list
+        val axioms : string -> (string * Thm.thm) list
+        val axiom : string -> string -> Thm.thm
+        val definitions : string -> (string * Thm.thm) list
+        val definition : string -> string -> Thm.thm
+        val theorems : string -> (string * Thm.thm) list
+        val theorem : string -> string -> Thm.thm
+        val print_theory_to_outstream : {outstream:Portable.outstream,
+                                         theory:string}
+                                        -> Portable.outstream
+        val print_theory_to_file : {file:string, theory:string} -> unit
+        val print_theory : string -> unit
+        val html_theory : string -> unit
+        val new_theory : string -> unit
+        val close_theory : unit -> unit
+        val load_theory : string -> unit
+        val extend_theory : string -> unit
+        val export_theory : unit -> unit
+        val close : unit -> unit
+        val delete_cache : unit -> unit
+        val delete_theory_from_cache : string -> unit
+        val theories_in_cache : unit -> string list
+        val perform_atomic_theory_op : (unit -> 'a) -> 'a
+        val loadLibThry : string -> string -> unit
+      end
+    val new_type_definition : {inhab_thm:Theory.Thm.thm, name:string,
+                               pred:Theory.Thm.Term.term}
+                              -> Theory.Thm.thm
+  end
+val it = () : unit
+GC #1.7.19.42.307.11049:   (0 ms)
+[opening 0/type_def.sml]
+0/type_def.sml:123.22-124.68 Warning: binding not exhaustive
+          {Args=ty :: _ :: nil,Tyop=_} = ...
+GC #1.7.19.42.308.11098:   (20 ms)
+GC #1.7.19.42.309.11108:   (10 ms)
+functor TYPE_DEF : <sig>
+val it = () : unit
+[opening 0/const_def.sig]
+signature Const_def_sig =
+  sig
+    structure Theory :
+      sig
+        structure Thm : <sig>
+        val new_parent : string -> unit
+        val new_type : {Arity:int, Name:string} -> unit
+        val new_constant : {Name:string, Ty:Thm.Term.Type.hol_type} -> unit
+        val new_infix : {Name:string, Prec:int, Ty:Thm.Term.Type.hol_type}
+                        -> unit
+        val new_binder : {Name:string, Ty:Thm.Term.Type.hol_type} -> unit
+        val new_open_axiom : string * Thm.Term.term -> Thm.thm
+        val store_definition : string * Thm.Term.term -> Thm.thm
+        val save_thm : string * Thm.thm -> Thm.thm
+        val arity : string -> int
+        val fixity : string -> Thm.Term.fixity
+        val precedence : string -> int
+        val const_decl : string
+                         -> {const:Thm.Term.term, place:Thm.Term.fixity,
+                             theory:string}
+        val is_constant : string -> bool
+        val is_type : string -> bool
+        val is_binder : string -> bool
+        val is_infix : string -> bool
+        val draft_mode : unit -> bool
+        val current_theory : unit -> string
+        val parents : string -> string list
+        val ancestry : string -> string list
+        val types : string -> {Arity:int, Name:string} list
+        val constants : string -> Thm.Term.term list
+        val infixes : string -> Thm.Term.term list
+        val binders : string -> Thm.Term.term list
+        val axioms : string -> (string * Thm.thm) list
+        val axiom : string -> string -> Thm.thm
+        val definitions : string -> (string * Thm.thm) list
+        val definition : string -> string -> Thm.thm
+        val theorems : string -> (string * Thm.thm) list
+        val theorem : string -> string -> Thm.thm
+        val print_theory_to_outstream : {outstream:Portable.outstream,
+                                         theory:string}
+                                        -> Portable.outstream
+        val print_theory_to_file : {file:string, theory:string} -> unit
+        val print_theory : string -> unit
+        val html_theory : string -> unit
+        val new_theory : string -> unit
+        val close_theory : unit -> unit
+        val load_theory : string -> unit
+        val extend_theory : string -> unit
+        val export_theory : unit -> unit
+        val close : unit -> unit
+        val delete_cache : unit -> unit
+        val delete_theory_from_cache : string -> unit
+        val theories_in_cache : unit -> string list
+        val perform_atomic_theory_op : (unit -> 'a) -> 'a
+        val loadLibThry : string -> string -> unit
+      end
+    val new_definition : string * Theory.Thm.Term.term -> Theory.Thm.thm
+    val new_infix_definition : string * Theory.Thm.Term.term * int
+                               -> Theory.Thm.thm
+    val new_binder_definition : string * Theory.Thm.Term.term -> Theory.Thm.thm
+  end
+val it = () : unit
+GC #1.7.19.42.310.11174:   (10 ms)
+GC #1.7.19.42.311.11219:   (30 ms)
+GC #1.7.19.43.312.11235:   (20 ms)
+[opening 0/const_def.sml]
+functor CONST_DEF : <sig>
+val it = () : unit
+GC #1.7.19.43.313.11292:   (0 ms)
+[opening 0/CoreHol.sig]
+signature CoreHolSig =
+  sig
+    structure Type :
+      sig
+        eqtype hol_type
+        val fresh_tyvar_stream : unit -> (int,hol_type) istream
+        val type_subst : hol_type subst -> hol_type -> hol_type
+        val type_vars : hol_type -> hol_type list
+        val type_varsl : hol_type list -> hol_type list
+        val mk_type : {Args:hol_type list, Tyop:string} -> hol_type
+        val dest_type : hol_type -> {Args:hol_type list, Tyop:string}
+        val mk_vartype : string -> hol_type
+        val dest_vartype : hol_type -> string
+        val is_vartype : hol_type -> bool
+        val type_lt : hol_type -> hol_type -> bool
+        val type_decl : string -> {arity:int, theory:string, tyc:hol_type}
+      end
+    structure Term :
+      sig
+        structure Type : <sig>
+        datatype fixity = Binder | Infix of int | Prefix
+        eqtype term
+        val const_decl : string -> {const:term, place:fixity, theory:string}
+        val fixity_of_term : string -> fixity
+        val fixity_to_string : fixity -> string
+        val prec_of_term : string -> int
+        val is_binder : string -> bool
+        val is_infix : string -> bool
+        val is_polymorphic : string -> bool
+        datatype lambda
+          = COMB of {Rand:term, Rator:term}
+          | CONST of {Name:string, Ty:Type.hol_type}
+          | LAMB of {Body:term, Bvar:term}
+          | VAR of {Name:string, Ty:Type.hol_type}
+        val ty_antiq : Type.hol_type -> term
+        val free_vars : term -> term list
+        val free_in : term -> term -> bool
+        val all_vars : term -> term list
+        val free_varsl : term list -> term list
+        val all_varsl : term list -> term list
+        val term_lt : term -> term -> bool
+        val genvar : Type.hol_type -> term
+        val genvars : Type.hol_type -> int -> term list
+        val variant : term list -> term -> term
+        val type_of : term -> Type.hol_type
+        val type_vars_in_term : term -> Type.hol_type list
+        val mk_var : {Name:string, Ty:Type.hol_type} -> term
+        val mk_primed_var : {Name:string, Ty:Type.hol_type} -> term
+        val list_mk_comb : term * term list -> term
+        val mk_comb : {Rand:term, Rator:term} -> term
+        val mk_abs : {Body:term, Bvar:term} -> term
+        val dest_var : term -> {Name:string, Ty:Type.hol_type}
+        val dest_const : term -> {Name:string, Ty:Type.hol_type}
+        val dest_comb : term -> {Rand:term, Rator:term}
+        val dest_abs : term -> {Body:term, Bvar:term}
+        val is_var : term -> bool
+        val is_const : term -> bool
+        val is_comb : term -> bool
+        val is_abs : term -> bool
+        val dest_term : term -> lambda
+        val rator : term -> term
+        val rand : term -> term
+        val bvar : term -> term
+        val body : term -> term
+        val aconv : term -> term -> bool
+        val subst : term subst -> term -> term
+        val inst : Type.hol_type subst -> term -> term
+        val beta_conv : term -> term
+      end
+    structure Match :
+      sig
+        structure Term : <sig>
+        val match_type : Term.Type.hol_type
+                         -> Term.Type.hol_type -> Term.Type.hol_type subst
+        val match_term : Term.term
+                         -> Term.term
+                            -> Term.term subst * Term.Type.hol_type subst
+      end
+    structure Net :
+      sig
+        structure Term : <sig>
+        type 'a net
+        val empty_net : 'a net
+        val enter : Term.term * 'a -> 'a net -> 'a net
+        val lookup : Term.term -> 'a net -> 'a list
+      end
+    structure Preterm :
+      sig
+        structure Term : <sig>
+        datatype preterm
+          = Abs of {Body:preterm, Bvar:preterm}
+          | Antiq of Term.term
+          | Comb of {Rand:preterm, Rator:preterm}
+          | Const of {Name:string, Ty:Term.Type.hol_type}
+          | Constrained of preterm * Term.Type.hol_type
+          | Var of {Name:string, Ty:Term.Type.hol_type}
+        val TC : (int,Term.Type.hol_type) istream -> preterm -> unit
+        val shrink_type : (Term.Type.hol_type * Term.Type.hol_type) list
+                          -> Term.Type.hol_type -> Term.Type.hol_type
+        val tyVars : preterm -> Term.Type.hol_type list
+        val cleanup : preterm -> Term.term
+        val typecheck : (int,Term.Type.hol_type) istream
+                        -> preterm -> Term.term
+        val preterm_to_term : preterm -> Term.term
+      end
+    structure Dsyntax :
+      sig
+        structure Term : <sig>
+        val mk_const : {Name:string, Ty:Term.Type.hol_type} -> Term.term
+        val mk_eq : {lhs:Term.term, rhs:Term.term} -> Term.term
+        val mk_imp : {ant:Term.term, conseq:Term.term} -> Term.term
+        val mk_select : {Body:Term.term, Bvar:Term.term} -> Term.term
+        val mk_forall : {Body:Term.term, Bvar:Term.term} -> Term.term
+        val mk_exists : {Body:Term.term, Bvar:Term.term} -> Term.term
+        val mk_neg : Term.term -> Term.term
+        val mk_conj : {conj1:Term.term, conj2:Term.term} -> Term.term
+        val mk_disj : {disj1:Term.term, disj2:Term.term} -> Term.term
+        val mk_cond : {cond:Term.term, larm:Term.term, rarm:Term.term}
+                      -> Term.term
+        val mk_pair : {fst:Term.term, snd:Term.term} -> Term.term
+        val mk_let : {arg:Term.term, func:Term.term} -> Term.term
+        val mk_cons : {hd:Term.term, tl:Term.term} -> Term.term
+        val mk_list : {els:Term.term list, ty:Term.Type.hol_type} -> Term.term
+        val mk_pabs : {body:Term.term, varstruct:Term.term} -> Term.term
+        val dest_eq : Term.term -> {lhs:Term.term, rhs:Term.term}
+        val lhs : Term.term -> Term.term
+        val rhs : Term.term -> Term.term
+        val dest_imp : Term.term -> {ant:Term.term, conseq:Term.term}
+        val dest_select : Term.term -> {Body:Term.term, Bvar:Term.term}
+        val dest_forall : Term.term -> {Body:Term.term, Bvar:Term.term}
+        val dest_exists : Term.term -> {Body:Term.term, Bvar:Term.term}
+        val dest_neg : Term.term -> Term.term
+        val dest_conj : Term.term -> {conj1:Term.term, conj2:Term.term}
+        val dest_disj : Term.term -> {disj1:Term.term, disj2:Term.term}
+        val dest_cond : Term.term
+                        -> {cond:Term.term, larm:Term.term, rarm:Term.term}
+        val dest_pair : Term.term -> {fst:Term.term, snd:Term.term}
+        val dest_let : Term.term -> {arg:Term.term, func:Term.term}
+        val dest_cons : Term.term -> {hd:Term.term, tl:Term.term}
+        val dest_list : Term.term
+                        -> {els:Term.term list, ty:Term.Type.hol_type}
+        val dest_pabs : Term.term -> {body:Term.term, varstruct:Term.term}
+        val is_eq : Term.term -> bool
+        val is_imp : Term.term -> bool
+        val is_select : Term.term -> bool
+        val is_forall : Term.term -> bool
+        val is_exists : Term.term -> bool
+        val is_neg : Term.term -> bool
+        val is_conj : Term.term -> bool
+        val is_disj : Term.term -> bool
+        val is_cond : Term.term -> bool
+        val is_pair : Term.term -> bool
+        val is_let : Term.term -> bool
+        val is_cons : Term.term -> bool
+        val is_list : Term.term -> bool
+        val is_pabs : Term.term -> bool
+        val list_mk_abs : Term.term list * Term.term -> Term.term
+        val list_mk_imp : Term.term list * Term.term -> Term.term
+        val list_mk_forall : Term.term list * Term.term -> Term.term
+        val gen_all : Term.term -> Term.term
+        val list_mk_exists : Term.term list * Term.term -> Term.term
+        val list_mk_conj : Term.term list -> Term.term
+        val list_mk_disj : Term.term list -> Term.term
+        val list_mk_pair : Term.term list -> Term.term
+        val strip_comb : Term.term -> Term.term * Term.term list
+        val strip_abs : Term.term -> Term.term list * Term.term
+        val strip_imp : Term.term -> Term.term list * Term.term
+        val strip_forall : Term.term -> Term.term list * Term.term
+        val strip_exists : Term.term -> Term.term list * Term.term
+        val strip_conj : Term.term -> Term.term list
+        val strip_disj : Term.term -> Term.term list
+        val strip_pair : Term.term -> Term.term list
+        val infix_ty : Term.Type.hol_type
+                       -> Term.Type.hol_type -> Term.Type.hol_type
+        val bool : Term.Type.hol_type
+        val de_abs : Term.term -> Term.term list * Term.term
+        val find_term : (Term.term -> bool) -> Term.term -> Term.term
+        val find_terms : (Term.term -> bool) -> Term.term -> Term.term list
+        val subst_occs : int list list
+                         -> Term.term subst -> Term.term -> Term.term
+        val binder_restrictions : unit -> (string * string) list
+        val associate_restriction : string * string -> unit
+        val delete_restriction : string -> unit
+      end
+    structure Hol_pp :
+      sig
+        structure Term : <sig>
+        val pp_type : ?.PrettyPrint.ppstream
+                      -> Term.Type.hol_type -> int -> unit
+        val pp_term : ?.PrettyPrint.ppstream -> Term.term -> unit
+        val pp_self_parsing_type : ?.PrettyPrint.ppstream
+                                   -> Term.Type.hol_type -> unit
+        val pp_self_parsing_term : ?.PrettyPrint.ppstream -> Term.term -> unit
+        val type_to_string : Term.Type.hol_type -> string
+        val term_to_string : Term.term -> string
+        val print_type : Term.Type.hol_type -> unit
+        val print_term : Term.term -> unit
+        structure Extend_hol_pp : <sig>
+      end
+    structure Thm :
+      sig
+        structure Term : <sig>
+        type thm
+        val reset_thm_count : unit -> unit
+        val counting_thms : bool -> unit
+        val thm_count : unit
+                        -> {ABS:int, ASSUME:int, BETA_CONV:int, DISCH:int,
+                            INST_TYPE:int, MP:int, REFL:int, SUBST:int,
+                            axiom:int, definition:int, drule:int,
+                            from_disk:int, other:int, valid_tac:int}
+        val hyp : thm -> Term.term list
+        val concl : thm -> Term.term
+        val dest_thm : thm -> Term.term list * Term.term
+        val thm_free_vars : thm -> Term.term list
+        val hyp_union : thm list -> Term.term list
+        val pp_thm : ?.PrettyPrint.ppstream -> thm -> unit
+        val thm_to_string : thm -> string
+        val print_thm : thm -> unit
+        val ASSUME : Term.term -> thm
+        val REFL : Term.term -> thm
+        val BETA_CONV : Term.term -> thm
+        val SUBST : {thm:thm, var:Term.term} list -> Term.term -> thm -> thm
+        val ABS : Term.term -> thm -> thm
+        val INST_TYPE : Term.Type.hol_type subst -> thm -> thm
+        val DISCH : Term.term -> thm -> thm
+        val MP : thm -> thm -> thm
+        val mk_axiom_thm : Term.term list * Term.term -> thm
+        val mk_definition_thm : Term.term list * Term.term -> thm
+        val mk_drule_thm : Term.term list * Term.term -> thm
+        val mk_disk_thm : Term.term list * Term.term -> thm
+        val mk_tac_thm : Term.term list * Term.term -> thm
+        val mk_thm : Term.term list * Term.term -> thm
+        datatype just_arg
+          = JA_INT of int
+          | JA_INTLIST of int list
+          | JA_PAIR of just_arg * just_arg
+          | JA_STRING of string
+          | JA_TERM of Term.term
+          | JA_THM of thm
+          | JA_TYPE of Term.Type.hol_type
+        datatype step = STEP of {Just:just_arg list, Name:string, Thm:thm}
+        val record_step : (step -> thm) ref
+        val record_proof : bool -> unit
+        val suspend_recording : unit -> unit
+        val resume_recording : unit -> unit
+        val is_recording_proof : unit -> bool
+        val note : step * thm -> thm
+      end
+    structure Theory :
+      sig
+        structure Thm : <sig>
+        val new_parent : string -> unit
+        val new_type : {Arity:int, Name:string} -> unit
+        val new_constant : {Name:string, Ty:Thm.Term.Type.hol_type} -> unit
+        val new_infix : {Name:string, Prec:int, Ty:Thm.Term.Type.hol_type}
+                        -> unit
+        val new_binder : {Name:string, Ty:Thm.Term.Type.hol_type} -> unit
+        val new_open_axiom : string * Thm.Term.term -> Thm.thm
+        val store_definition : string * Thm.Term.term -> Thm.thm
+        val save_thm : string * Thm.thm -> Thm.thm
+        val arity : string -> int
+        val fixity : string -> Thm.Term.fixity
+        val precedence : string -> int
+        val const_decl : string
+                         -> {const:Thm.Term.term, place:Thm.Term.fixity,
+                             theory:string}
+        val is_constant : string -> bool
+        val is_type : string -> bool
+        val is_binder : string -> bool
+        val is_infix : string -> bool
+        val draft_mode : unit -> bool
+        val current_theory : unit -> string
+        val parents : string -> string list
+        val ancestry : string -> string list
+        val types : string -> {Arity:int, Name:string} list
+        val constants : string -> Thm.Term.term list
+        val infixes : string -> Thm.Term.term list
+        val binders : string -> Thm.Term.term list
+        val axioms : string -> (string * Thm.thm) list
+        val axiom : string -> string -> Thm.thm
+        val definitions : string -> (string * Thm.thm) list
+        val definition : string -> string -> Thm.thm
+        val theorems : string -> (string * Thm.thm) list
+        val theorem : string -> string -> Thm.thm
+        val print_theory_to_outstream : {outstream:Portable.outstream,
+                                         theory:string}
+                                        -> Portable.outstream
+        val print_theory_to_file : {file:string, theory:string} -> unit
+        val print_theory : string -> unit
+        val html_theory : string -> unit
+        val new_theory : string -> unit
+        val close_theory : unit -> unit
+        val load_theory : string -> unit
+        val extend_theory : string -> unit
+        val export_theory : unit -> unit
+        val close : unit -> unit
+        val delete_cache : unit -> unit
+        val delete_theory_from_cache : string -> unit
+        val theories_in_cache : unit -> string list
+        val perform_atomic_theory_op : (unit -> 'a) -> 'a
+        val loadLibThry : string -> string -> unit
+      end
+    structure Const_spec :
+      sig
+        structure Theory : <sig>
+        val new_specification : {consts:{const_name:string,
+                                         fixity:Theory.Thm.Term.fixity} list,
+                                 name:string, sat_thm:Theory.Thm.thm}
+                                -> Theory.Thm.thm
+      end
+    structure Type_def :
+      sig
+        structure Theory : <sig>
+        val new_type_definition : {inhab_thm:Theory.Thm.thm, name:string,
+                                   pred:Theory.Thm.Term.term}
+                                  -> Theory.Thm.thm
+      end
+    structure Const_def :
+      sig
+        structure Theory : <sig>
+        val new_definition : string * Theory.Thm.Term.term -> Theory.Thm.thm
+        val new_infix_definition : string * Theory.Thm.Term.term * int
+                                   -> Theory.Thm.thm
+        val new_binder_definition : string * Theory.Thm.Term.term
+                                    -> Theory.Thm.thm
+      end
+  end
+val it = () : unit
+GC #1.7.19.43.314.11439:   (20 ms)
+GC #1.7.19.43.315.11511:   (30 ms)
+GC #1.7.19.43.316.11525:   (20 ms)
+GC #1.7.19.43.317.11550:   (30 ms)
+GC #1.7.19.43.318.11669:   (40 ms)
+GC #1.7.19.43.319.11688:   (20 ms)
+GC #1.7.19.44.320.11711:   (70 ms)
+GC #1.7.19.44.321.11745:   (10 ms)
+GC #1.7.19.44.322.11760:   (0 ms)
+GC #1.7.19.44.323.11824:   (20 ms)
+GC #1.7.19.44.324.11886:   (10 ms)
+[opening 0/CoreHol.sml]
+structure CoreHol : CoreHolSig
+val it = () : unit
+[opening 0/parse_support.sig]
+signature Parse_support_sig =
+  sig
+    type preterm_in_env
+    type binder_in_env
+    structure Preterm :
+      sig
+        structure Term : <sig>
+        datatype preterm
+          = Abs of {Body:preterm, Bvar:preterm}
+          | Antiq of Term.term
+          | Comb of {Rand:preterm, Rator:preterm}
+          | Const of {Name:string, Ty:Term.Type.hol_type}
+          | Constrained of preterm * Term.Type.hol_type
+          | Var of {Name:string, Ty:Term.Type.hol_type}
+        val typecheck : (int,Term.Type.hol_type) istream
+                        -> preterm -> Term.term
+      end
+    datatype arg = Hty of Preterm.Term.Type.hol_type | Rec_occ
+    datatype parse
+      = PTM of Preterm.preterm
+      | TY of Preterm.Term.Type.hol_type
+      | TY_SPEC of {clauses:{args:arg list, constructor:string} list,
+                    ty_name:string}
+    val make_preterm : preterm_in_env -> Preterm.preterm
+    val make_aq : Preterm.Term.term -> preterm_in_env
+    val make_binding_occ : (int,Preterm.Term.Type.hol_type) istream
+                           -> string -> binder_in_env
+    val make_aq_binding_occ : (int,Preterm.Term.Type.hol_type) istream
+                              -> Preterm.Term.term -> binder_in_env
+    val make_atom : (int,Preterm.Term.Type.hol_type) istream
+                    -> string -> preterm_in_env
+    val make_string : string -> preterm_in_env
+    val list_make_comb : preterm_in_env list -> preterm_in_env
+    val bind_term : string
+                    -> binder_in_env list -> preterm_in_env -> preterm_in_env
+    val bind_restr_term : (int,Preterm.Term.Type.hol_type) istream
+                          -> string
+                             -> binder_in_env list
+                                -> preterm_in_env
+                                   -> preterm_in_env -> preterm_in_env
+    val make_vstruct : (int,Preterm.Term.Type.hol_type) istream
+                       -> binder_in_env list -> binder_in_env
+    val make_constrained_vstruct : binder_in_env
+                                   -> Preterm.Term.Type.hol_type
+                                      -> binder_in_env
+    val make_constrained : preterm_in_env
+                           -> Preterm.Term.Type.hol_type -> preterm_in_env
+    val make_let : (int,Preterm.Term.Type.hol_type) istream
+                   -> (binder_in_env list * preterm_in_env) list
+                      -> preterm_in_env -> preterm_in_env
+    val make_list : (int,Preterm.Term.Type.hol_type) istream
+                    -> preterm_in_env list -> preterm_in_env
+    val make_set : (int,Preterm.Term.Type.hol_type) istream
+                   -> preterm_in_env list -> preterm_in_env
+    val make_set_abs : (int,Preterm.Term.Type.hol_type) istream
+                       -> preterm_in_env * preterm_in_env -> preterm_in_env
+    val make_atomic_type : string * string option -> Preterm.Term.Type.hol_type
+    val make_type_app : string * Preterm.Term.Type.hol_type list
+                        -> Preterm.Term.Type.hol_type
+    val make_type_clause : {args:Preterm.Term.Type.hol_type list,
+                            constructor:string}
+                           -> {args:arg list, constructor:string}
+    val rec_occ : Preterm.Term.Type.hol_type
+    val prec_parse : preterm_in_env list -> preterm_in_env
+    val is_binder : string -> bool
+    val extract_type_antiq : Preterm.Term.term -> Preterm.Term.Type.hol_type
+  end
+val it = () : unit
+GC #1.7.19.44.325.11966:   (30 ms)
+GC #1.7.19.44.326.11986:   (20 ms)
+GC #1.7.19.44.327.12031:   (20 ms)
+[opening 0/parse_support.sml]
+0/parse_support.sml:456.8-456.60 Warning: binding not exhaustive
+          (_,tm) :: nil = ...
+0/parse_support.sml:2.1-472.4 Warning: match nonexhaustive
+          tm as Const {Name=Name,Ty=_} => ...
+          Constrained (tm,_) => ...
+  
+0/parse_support.sml:275.25-275.43 Warning: binding not exhaustive
+          b :: rst = ...
+0/parse_support.sml:2.1-472.4 Warning: match nonexhaustive
+          Tyapp {Args=_ :: ty :: nil,Tyop="fun"} => ...
+  
+0/parse_support.sml:2.1-472.4 Warning: match nonexhaustive
+          Tyapp {Args=ty :: _ :: nil,Tyop="fun"} => ...
+  
+0/parse_support.sml:175.4-177.74 Warning: match nonexhaustive
+          (tm1 :: (rst  as _ :: _),E) => ...
+  
+0/parse_support.sml:76.8-76.68 Warning: binding not exhaustive
+          Const (c  as {Name=Name,Ty=Ty}) = ...
+GC #1.7.19.44.328.12091:   (40 ms)
+GC #1.7.19.44.329.12103:   (10 ms)
+GC #1.7.19.44.330.12142:   (10 ms)
+GC #1.7.19.44.331.12158:   (30 ms)
+GC #1.7.19.44.332.12169:   (30 ms)
+GC #1.7.19.44.333.12179:   (40 ms)
+GC #1.7.20.45.334.12215:   (130 ms)
+GC #1.7.20.45.335.12256:   (20 ms)
+GC #1.7.20.45.336.12302:   (10 ms)
+GC #1.7.20.45.337.12319:   (10 ms)
+GC #1.7.20.45.338.12388:   (20 ms)
+GC #1.7.20.45.339.12442:   (20 ms)
+GC #1.7.20.45.340.12495:   (10 ms)
+structure Parse_support : Parse_support_sig
+val it = () : unit
+[opening Grammars/hol.yak.sig]
+signature Hol_TOKENS =
+  sig
+    type ('a,'b) token
+    type svalue
+    val EOF : 'a * 'a -> (svalue,'a) token
+    val EOLEX : 'a * 'a -> (svalue,'a) token
+    val string_ : string * 'a * 'a -> (svalue,'a) token
+    val of_ : 'a * 'a -> (svalue,'a) token
+    val in_ : 'a * 'a -> (svalue,'a) token
+    val and_ : 'a * 'a -> (svalue,'a) token
+    val let_ : 'a * 'a -> (svalue,'a) token
+    val bar : 'a * 'a -> (svalue,'a) token
+    val type_plus : 'a * 'a -> (svalue,'a) token
+    val type_hash : 'a * 'a -> (svalue,'a) token
+    val arrow : 'a * 'a -> (svalue,'a) token
+    val eq : 'a * 'a -> (svalue,'a) token
+    val eq_gt : 'a * 'a -> (svalue,'a) token
+    val semi_colon : 'a * 'a -> (svalue,'a) token
+    val dot : 'a * 'a -> (svalue,'a) token
+    val dcolon : 'a * 'a -> (svalue,'a) token
+    val colon : 'a * 'a -> (svalue,'a) token
+    val type_comma : 'a * 'a -> (svalue,'a) token
+    val rbrace : 'a * 'a -> (svalue,'a) token
+    val lbrace : 'a * 'a -> (svalue,'a) token
+    val rbracket : 'a * 'a -> (svalue,'a) token
+    val lbracket : 'a * 'a -> (svalue,'a) token
+    val type_rparen : 'a * 'a -> (svalue,'a) token
+    val type_lparen : 'a * 'a -> (svalue,'a) token
+    val rparen : 'a * 'a -> (svalue,'a) token
+    val lparen : 'a * 'a -> (svalue,'a) token
+    val aq : ?.CoreHol.PrivateTerm.term * 'a * 'a -> (svalue,'a) token
+    val qualified_binder : (string * string) * 'a * 'a -> (svalue,'a) token
+    val binder : string * 'a * 'a -> (svalue,'a) token
+    val type_var_ident : string * 'a * 'a -> (svalue,'a) token
+    val qualified_type_ident : (string * string) * 'a * 'a -> (svalue,'a) token
+    val type_ident : string * 'a * 'a -> (svalue,'a) token
+    val qualified_ident : (string * string) * 'a * 'a -> (svalue,'a) token
+    val symbolic_ident : string * 'a * 'a -> (svalue,'a) token
+    val ident : string * 'a * 'a -> (svalue,'a) token
+  end
+signature Hol_LRVALS =
+  sig
+    structure Tokens :
+      sig
+        type ('a,'b) token
+        type svalue
+        val EOF : 'a * 'a -> (svalue,'a) token
+        val EOLEX : 'a * 'a -> (svalue,'a) token
+        val string_ : string * 'a * 'a -> (svalue,'a) token
+        val of_ : 'a * 'a -> (svalue,'a) token
+        val in_ : 'a * 'a -> (svalue,'a) token
+        val and_ : 'a * 'a -> (svalue,'a) token
+        val let_ : 'a * 'a -> (svalue,'a) token
+        val bar : 'a * 'a -> (svalue,'a) token
+        val type_plus : 'a * 'a -> (svalue,'a) token
+        val type_hash : 'a * 'a -> (svalue,'a) token
+        val arrow : 'a * 'a -> (svalue,'a) token
+        val eq : 'a * 'a -> (svalue,'a) token
+        val eq_gt : 'a * 'a -> (svalue,'a) token
+        val semi_colon : 'a * 'a -> (svalue,'a) token
+        val dot : 'a * 'a -> (svalue,'a) token
+        val dcolon : 'a * 'a -> (svalue,'a) token
+        val colon : 'a * 'a -> (svalue,'a) token
+        val type_comma : 'a * 'a -> (svalue,'a) token
+        val rbrace : 'a * 'a -> (svalue,'a) token
+        val lbrace : 'a * 'a -> (svalue,'a) token
+        val rbracket : 'a * 'a -> (svalue,'a) token
+        val lbracket : 'a * 'a -> (svalue,'a) token
+        val type_rparen : 'a * 'a -> (svalue,'a) token
+        val type_lparen : 'a * 'a -> (svalue,'a) token
+        val rparen : 'a * 'a -> (svalue,'a) token
+        val lparen : 'a * 'a -> (svalue,'a) token
+        val aq : ?.CoreHol.PrivateTerm.term * 'a * 'a -> (svalue,'a) token
+        val qualified_binder : (string * string) * 'a * 'a -> (svalue,'a) token
+        val binder : string * 'a * 'a -> (svalue,'a) token
+        val type_var_ident : string * 'a * 'a -> (svalue,'a) token
+        val qualified_type_ident : (string * string) * 'a * 'a
+                                   -> (svalue,'a) token
+        val type_ident : string * 'a * 'a -> (svalue,'a) token
+        val qualified_ident : (string * string) * 'a * 'a -> (svalue,'a) token
+        val symbolic_ident : string * 'a * 'a -> (svalue,'a) token
+        val ident : string * 'a * 'a -> (svalue,'a) token
+      end
+    structure ParserData :
+      sig
+        type pos
+        type svalue
+        type arg
+        type result
+        structure LrTable : <sig>
+        structure Token : <sig>
+        structure Actions : <sig>
+        structure EC : <sig>
+        val table : LrTable.table
+        sharing LrTable = Token.LrTable
+      end
+    sharing type Tokens.svalue = ParserData.svalue
+    sharing type Tokens.token = ParserData.Token.token
+  end
+val it = () : unit
+GC #1.7.21.46.341.12516:   (30 ms)
+GC #1.7.21.46.342.12560:   (20 ms)
+GC #1.7.21.47.343.12580:   (40 ms)
+GC #1.7.21.48.344.12610:   (70 ms)
+GC #1.7.21.49.345.12623:   (60 ms)
+GC #1.7.22.50.346.12672:   (40 ms)
+GC #1.7.22.51.347.12731:   (60 ms)
+GC #1.7.22.52.348.12768:   (50 ms)
+GC #1.7.22.52.349.12782:   (10 ms)
+GC #1.7.22.52.350.12831:   (20 ms)
+GC #1.7.22.52.351.12856:   (20 ms)
+GC #1.7.22.53.352.12884:   (50 ms)
+GC #1.7.22.54.353.12912:   (70 ms)
+GC #1.8.23.55.354.12921:   (150 ms)
+GC #1.9.24.56.355.12930:   (140 ms)
+GC #1.10.25.57.356.12942:   (80 ms)
+GC #1.11.26.58.357.12959:   (110 ms)
+GC #1.12.27.59.358.12966:   (90 ms)
+GC #1.13.28.60.359.13005:   (90 ms)
+GC #1.13.28.61.360.13016:   (20 ms)
+GC #1.13.28.61.361.13025:   (20 ms)
+GC #1.13.28.62.362.13045:   (30 ms)
+GC #1.13.28.62.363.13053:   (30 ms)
+GC #1.13.28.63.364.13078:   (20 ms)
+GC #1.13.28.63.365.13111:   (10 ms)
+GC #1.13.28.63.366.13145:   (10 ms)
+GC #1.13.28.63.367.13206:   (20 ms)
+GC #1.13.28.63.368.13253:   (30 ms)
+GC #1.13.28.63.369.13298:   (30 ms)
+GC #1.13.28.63.370.13359:   (20 ms)
+[opening Grammars/hol.yak.sml]
+functor HolLrValsFun : <sig>
+val it = () : unit
+GC #1.13.28.64.371.13376:   (0 ms)
+GC #1.13.28.64.372.13416:   (20 ms)
+GC #1.13.28.64.373.13433:   (30 ms)
+GC #1.13.28.64.374.13449:   (30 ms)
+GC #1.13.28.64.375.13492:   (30 ms)
+[opening Grammars/hol.lex.sml]
+Grammars/hol.lex.sml:554.25-554.40 Warning: binding contains no variables
+          () = ...
+Grammars/hol.lex.sml:553.15-553.45 Warning: binding not exhaustive
+          L as ref (_ :: t) = ...
+Grammars/hol.lex.sml:564.23-564.38 Warning: binding contains no variables
+          () = ...
+Grammars/hol.lex.sml:563.15-563.45 Warning: binding not exhaustive
+          L as ref (_ :: t) = ...
+Grammars/hol.lex.sml:573.24-573.67 Warning: binding contains no variables
+          () = ...
+Grammars/hol.lex.sml:572.24-572.39 Warning: binding contains no variables
+          () = ...
+Grammars/hol.lex.sml:571.15-571.45 Warning: binding not exhaustive
+          L as ref (_ :: t) = ...
+Grammars/hol.lex.sml:577.24-577.75 Warning: binding contains no variables
+          () = ...
+Grammars/hol.lex.sml:576.24-576.39 Warning: binding contains no variables
+          () = ...
+Grammars/hol.lex.sml:575.15-575.45 Warning: binding not exhaustive
+          L as ref (x :: t) = ...
+Grammars/hol.lex.sml:585.14-585.44 Warning: binding not exhaustive
+          L as ref (x :: t) = ...
+Grammars/hol.lex.sml:637.19-637.34 Warning: binding contains no variables
+          () = ...
+Grammars/hol.lex.sml:636.14-636.44 Warning: binding not exhaustive
+          L as ref (x :: t) = ...
+GC #1.13.28.64.376.13529:   (40 ms)
+GC #1.13.28.64.377.13554:   (10 ms)
+GC #1.13.28.64.378.13582:   (20 ms)
+GC #1.13.28.64.379.13593:   (10 ms)
+GC #1.13.28.64.380.13612:   (20 ms)
+GC #1.13.28.65.381.13638:   (50 ms)
+GC #1.13.28.65.382.13679:   (20 ms)
+GC #1.13.28.65.383.13687:   (10 ms)
+GC #1.13.28.65.384.13750:   (20 ms)
+GC #1.13.28.65.385.13928:   (10 ms)
+GC #1.13.28.65.386.13994:   (10 ms)
+GC #1.13.28.65.387.14008:   (10 ms)
+functor HolLex : <sig>
+val it = () : unit
+[opening 0/parse.sig]
+signature Parse_sig =
+  sig
+    structure Parse_support :
+      sig
+        type preterm_in_env
+        type binder_in_env
+        structure Preterm : <sig>
+        datatype arg = Hty of Preterm.Term.Type.hol_type | Rec_occ
+        datatype parse
+          = PTM of Preterm.preterm
+          | TY of Preterm.Term.Type.hol_type
+          | TY_SPEC of {clauses:{args:arg list, constructor:string} list,
+                        ty_name:string}
+        val make_preterm : preterm_in_env -> Preterm.preterm
+        val make_aq : Preterm.Term.term -> preterm_in_env
+        val make_binding_occ : (int,Preterm.Term.Type.hol_type) istream
+                               -> string -> binder_in_env
+        val make_aq_binding_occ : (int,Preterm.Term.Type.hol_type) istream
+                                  -> Preterm.Term.term -> binder_in_env
+        val make_atom : (int,Preterm.Term.Type.hol_type) istream
+                        -> string -> preterm_in_env
+        val make_string : string -> preterm_in_env
+        val list_make_comb : preterm_in_env list -> preterm_in_env
+        val bind_term : string
+                        -> binder_in_env list
+                           -> preterm_in_env -> preterm_in_env
+        val bind_restr_term : (int,Preterm.Term.Type.hol_type) istream
+                              -> string
+                                 -> binder_in_env list
+                                    -> preterm_in_env
+                                       -> preterm_in_env -> preterm_in_env
+        val make_vstruct : (int,Preterm.Term.Type.hol_type) istream
+                           -> binder_in_env list -> binder_in_env
+        val make_constrained_vstruct : binder_in_env
+                                       -> Preterm.Term.Type.hol_type
+                                          -> binder_in_env
+        val make_constrained : preterm_in_env
+                               -> Preterm.Term.Type.hol_type -> preterm_in_env
+        val make_let : (int,Preterm.Term.Type.hol_type) istream
+                       -> (binder_in_env list * preterm_in_env) list
+                          -> preterm_in_env -> preterm_in_env
+        val make_list : (int,Preterm.Term.Type.hol_type) istream
+                        -> preterm_in_env list -> preterm_in_env
+        val make_set : (int,Preterm.Term.Type.hol_type) istream
+                       -> preterm_in_env list -> preterm_in_env
+        val make_set_abs : (int,Preterm.Term.Type.hol_type) istream
+                           -> preterm_in_env * preterm_in_env -> preterm_in_env
+        val make_atomic_type : string * string option
+                               -> Preterm.Term.Type.hol_type
+        val make_type_app : string * Preterm.Term.Type.hol_type list
+                            -> Preterm.Term.Type.hol_type
+        val make_type_clause : {args:Preterm.Term.Type.hol_type list,
+                                constructor:string}
+                               -> {args:arg list, constructor:string}
+        val rec_occ : Preterm.Term.Type.hol_type
+        val prec_parse : preterm_in_env list -> preterm_in_env
+        val is_binder : string -> bool
+        val extract_type_antiq : Preterm.Term.term
+                                 -> Preterm.Term.Type.hol_type
+      end
+    val parse0 : (int,Parse_support.Preterm.Term.Type.hol_type) istream
+                 -> string
+                    -> Parse_support.Preterm.Term.term list
+                       -> Parse_support.parse
+    val type_parser : Parse_support.Preterm.Term.term SMLofNJ.frag list
+                      -> Parse_support.Preterm.Term.Type.hol_type
+    val term_parser : Parse_support.Preterm.Term.term SMLofNJ.frag list
+                      -> Parse_support.Preterm.Term.term
+    val preterm_parser : (int,Parse_support.Preterm.Term.Type.hol_type) istream
+                         -> Parse_support.Preterm.Term.term SMLofNJ.frag list
+                            -> Parse_support.Preterm.preterm
+    val -- : Parse_support.Preterm.Term.term SMLofNJ.frag list
+             -> 'a -> Parse_support.Preterm.Term.term
+    val == : Parse_support.Preterm.Term.term SMLofNJ.frag list
+             -> 'a -> Parse_support.Preterm.Term.Type.hol_type
+    val string_to_type : string -> Parse_support.Preterm.Term.Type.hol_type
+    val string_to_preterm : (int,Parse_support.Preterm.Term.Type.hol_type) 
+                              istream
+                            -> string -> Parse_support.Preterm.preterm
+    val string_to_term : string -> Parse_support.Preterm.Term.term
+    val type_spec_parser : Parse_support.Preterm.Term.term SMLofNJ.frag list
+                           -> {clauses:{args:Parse_support.arg list,
+                                        constructor:string} list,
+                               ty_name:string}
+    val string_to_type_spec : string
+                              -> {clauses:{args:Parse_support.arg list,
+                                           constructor:string} list,
+                                  ty_name:string}
+  end
+val it = () : unit
+GC #1.14.29.66.388.14062:   (20 ms)
+GC #1.14.29.66.389.14093:   (30 ms)
+GC #1.14.29.66.390.14153:   (20 ms)
+GC #1.14.29.67.391.14167:   (30 ms)
+GC #1.14.29.67.392.14183:   (10 ms)
+GC #1.14.29.67.393.14193:   (20 ms)
+GC #1.14.29.68.394.14215:   (30 ms)
+GC #1.14.29.68.395.14222:   (10 ms)
+GC #1.14.29.68.396.14273:   (20 ms)
+[opening 0/parse.sml]
+structure Parse : Parse_sig
+val it = () : unit
+GC #1.14.29.68.397.14317:   (0 ms)
+GC #1.14.29.68.398.14337:   (20 ms)
+GC #1.14.29.68.399.14361:   (20 ms)
+GC #1.14.29.68.400.14387:   (0 ms)
+structure Library : Library_sig
+[opening 0/theory/add_to_sml.sig]
+signature Add_to_sml_sig =
+  sig
+    val L : (string * CoreHol.Thm.thm) list ref
+    val parser : CoreHol.Thm.thm SMLofNJ.frag list -> CoreHol.Thm.thm
+    val add_to_sml : (string * CoreHol.Thm.thm) list -> unit
+    val add_axioms_to_sml : string -> unit
+    val add_definitions_to_sml : string -> unit
+    val add_theorems_to_sml : string -> unit
+    val add_theory_to_sml : string -> unit
+    val add_theory_structure_to_sml : {structure_name:string,
+                                       theory_name:string}
+                                      -> unit
+    type autoload_info
+    val set_autoloads : autoload_info -> unit
+    val get_autoloads : string -> autoload_info option
+  end
+val it = () : unit
+GC #1.14.29.68.401.14450:   (10 ms)
+GC #1.14.29.68.402.14498:   (20 ms)
+GC #1.14.29.69.403.14512:   (30 ms)
+GC #1.14.29.69.404.14533:   (10 ms)
+GC #1.14.29.69.405.14540:   (10 ms)
+[opening 0/theory/add_to_sml.sml]
+structure Add_to_sml : Add_to_sml_sig
+val it = () : unit
+GC #1.14.29.69.406.14606:   (0 ms)
+[opening 0/install.sig]
+signature Install_sig =
+  sig
+    val install_system_theory : string -> unit
+    val install : string -> unit
+  end
+val it = () : unit
+[opening 0/install.sml]
+structure Install : Install_sig
+val it = () : unit
+structure Abbrev :
+  sig
+    type conv = ?.CoreHol.PrivateTerm.term -> CoreHol.Thm.thm
+    type goal = ?.CoreHol.PrivateTerm.term list * ?.CoreHol.PrivateTerm.term
+    type tactic = goal -> tactic_result
+    type tactic_result = goal list * validation
+    type thm_tactic = CoreHol.Thm.thm -> tactic
+    type thm_tactical = thm_tactic -> thm_tactic
+    type validation = CoreHol.Thm.thm list -> CoreHol.Thm.thm
+  end
+val it = () : unit
+[opening /usr/groups/hol/hol90.10/src/0/hol0.sml]
+val it = fn : ?.PrettyPrint.ppstream -> CoreHol.Thm.thm -> unit
+GC #1.14.29.69.407.14709:   (10 ms)
+opening Abbrev
+  type conv = ?.CoreHol.PrivateTerm.term -> CoreHol.Thm.thm
+  type goal = ?.CoreHol.PrivateTerm.term list * ?.CoreHol.PrivateTerm.term
+  type tactic = goal -> tactic_result
+  type tactic_result = goal list * validation
+  type thm_tactic = CoreHol.Thm.thm -> tactic
+  type thm_tactical = thm_tactic -> thm_tactic
+  type validation = CoreHol.Thm.thm list -> CoreHol.Thm.thm
+opening Exception
+  exception HOL_ERR of {message:string, origin_function:string,
+                        origin_structure:string}
+  val print_HOL_ERR : exn -> unit
+  val Raise : exn -> 'a
+structure EMPTY : sig end
+functor CACHE : <sig>
+functor CONST_DEF : <sig>
+functor CONST_SPEC : <sig>
+functor DSYNTAX : <sig>
+functor EXISTS_DEF : <sig>
+functor HOL_LEX : <sig>
+functor HOL_PP : <sig>
+functor HolLrValsFun : <sig>
+functor INSTALL : <sig>
+functor MATCH : <sig>
+functor NET : <sig>
+functor PARSE_SUPPORT : <sig>
+functor PRETERM : <sig>
+functor TERM : <sig>
+functor THM : <sig>
+functor THY_LEX : <sig>
+functor THY_PARSE : <sig>
+functor THY_PP : <sig>
+functor thyLrValsFun : <sig>
+functor TYPE_DEF : <sig>
+functor UID : <sig>
+val it = () : unit
+GC #2.15.30.70.408.14770:   (280 ms)
+write 1,0: 15348 bytes [0x418f0000..0x418f3bf4) @ 0x2000
+write 1,1: 10136 bytes [0x41970008..0x419727a0) @ 0x6000
+write 1,2: 3048 bytes [0x419e0000..0x419e0be8) @ 0x9000
+write 1,3: 2092 bytes [0x41a40000..0x41a4082c) @ 0xa000
+write 2,0: 2076 bytes [0x40cb0000..0x40cb081c) @ 0xb000
+write 2,1: 13856 bytes [0x40cd0008..0x40cd3628) @ 0xc000
+write 2,2: 436 bytes [0x40ce0000..0x40ce01b4) @ 0x10000
+write 2,3: 4840 bytes [0x40cf0000..0x40cf12e8) @ 0x11000
+write 2,0: 25 big objects (55 pages) @ 0x13000
+write 3,0: 25544 bytes [0x40400000..0x404063c8) @ 0x20d90
+write 3,1: 72064 bytes [0x40440008..0x40451988) @ 0x27d90
+write 3,2: 2064 bytes [0x404b0000..0x404b0810) @ 0x39d90
+write 3,3: 30016 bytes [0x404c0000..0x404c7540) @ 0x3ad90
+write 3,0: 2 big objects (76 pages) @ 0x42d90
+write 4,0: 2248 bytes [0x40350000..0x403508c8) @ 0x55db0
+write 4,1: 10096 bytes [0x40360008..0x40362778) @ 0x56db0
+write 4,2: 628 bytes [0x40370000..0x40370274) @ 0x59db0
+write 4,3: 1088 bytes [0x40380000..0x40380440) @ 0x5adb0
+write 4,0: 1 big objects (62 pages) @ 0x5bdb0
+write 5,0: 794164 bytes [0x42540000..0x42601e34) @ 0x6b5c0
+write 5,1: 1498504 bytes [0x426e0008..0x4284dd90) @ 0x12d5c0
+write 5,2: 341616 bytes [0x42a00000..0x42a53670) @ 0x29b5c0
+write 5,3: 148684 bytes [0x42a80000..0x42aa44cc) @ 0x2ef5c0
+write 5,0: 369 big objects (7497 pages) @ 0x3145c0
+val it = () : unit
+- 

@@ -1,0 +1,98 @@
+head	1.1;
+access;
+symbols
+	HOL97:1.1.2.2.0.2
+	bpHOL97:1.1.2.2
+	hol90_9_alpha:1.1.2.2
+	TFL_1:1.1.2.1
+	hol90_pre8_for_multiple_compilers:1.1.0.2;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	96.06.29.15.08.00;	author rjb;	state dead;
+branches
+	1.1.2.1;
+next	;
+
+1.1.2.1
+date	96.06.29.15.08.01;	author rjb;	state Exp;
+branches;
+next	1.1.2.2;
+
+1.1.2.2
+date	96.08.05.15.40.24;	author rjb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@file ack.sml was initially added on branch hol90_pre8_for_multiple_compilers.
+@
+text
+@@
+
+
+1.1.2.1
+log
+@TFL version 1 for HOL: A well-founded recursive function definition package.
+@
+text
+@a0 29
+(*---------------------------------------------------------------------------
+ * Ackermann's function.
+ *---------------------------------------------------------------------------*)
+
+new_theory"ackermann";
+
+val ack_def = Rfunction `^pred X ^pred` 
+  `(ack (0,n) =  n+1) /\
+   (ack (SUC m,0) = ack (m, 1)) /\
+   (ack (SUC m, SUC n) = ack (m, ack (SUC m, n)))`;
+
+val ack_eqns = save_thm("ack_eqns", #rules ack_def);
+val ack_induction = save_thm("ack_induction", #induction ack_def);
+
+
+val ack_positive = Q.store_thm("ack_pos",  `!x y. 0 < ack(x,y)`,
+REC_INDUCT_TAC ack_induction 
+  THEN RW_TAC[ack_eqns] 
+  THEN CONV_TAC ARITH_CONV);
+
+
+val ack_grows_faster_than_plus = Q.store_thm("ack_grows_faster_than_plus",  
+`!x y. x+y < ack(x,y)`,
+REC_INDUCT_TAC ack_induction 
+ THEN RW_TAC[ack_eqns]
+ THEN CONV_TAC ARITH_CONV);
+
+
+html_theory"-";
+@
+
+
+1.1.2.2
+log
+@Updated to TFL release 4.
+@
+text
+@d1 1
+a1 1
+(***************************************************************************
+d3 1
+a3 1
+ ***************************************************************************)
+d17 3
+a19 2
+REC_INDUCT_TAC ack_induction THEN ONCE_RW_TAC[ack_eqns] 
+ THEN RW_TAC[] THEN CONV_TAC ARITH_CONV);
+d25 1
+a25 1
+ THEN ONCE_RW_TAC[ack_eqns] THEN RW_TAC[] 
+@

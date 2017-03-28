@@ -1,0 +1,184 @@
+head	1.2;
+access;
+symbols;
+locks; strict;
+comment	@# @;
+
+
+1.2
+date	96.01.04.14.14.54;	author drs1004;	state dead;
+branches;
+next	1.1;
+
+1.1
+date	95.12.18.11.39.23;	author drs1004;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.2
+log
+@Added simplifier components, added drule files, added MK_ABS_CONV, better error messages
+@
+text
+@
+(* =====================================================================
+ * Simpsets for Vanilla HOL
+ *
+ * use "3/simplifier/src/hol_ss.sml";
+ * =====================================================================*)
+
+signature Hol_ss_sig =
+sig
+	structure Simplifier : Simplifier_sig
+	val hol_ss : Simplifier.simpset
+end;
+
+
+structure Hol_ss : Hol_ss_sig =
+struct 
+  structure Simplifier = Simplifier;
+  open Simplifier;
+  open Core;
+    infix |>
+  open Pure_ss;
+  open Bool_ss;
+  open Pair_ss;
+  open Combin_ss;
+  open Arithmetic_ss;
+  open List_ss;
+  open Sum_ss;
+
+  open Psyntax;
+  open SatisfyExistentials;
+  open Single_point;
+  open Quant_ss;
+
+
+(* ---------------------------------------------------------------------
+ * hol_ss
+ *
+ * Putting it all together
+ * --------------------------------------------------------------------*)
+
+val hol_ss =
+    pure_ss
+    |> merge_ss BOOL_ss
+    |> merge_ss COMBIN_ss
+    |> merge_ss ARITHMETIC_ss
+    |> merge_ss LIST_ss
+    |> merge_ss PAIR_ss
+    |> merge_ss SUM_ss
+    |> merge_ss SATISFY_ss
+    |> merge_ss NOT_SIMP_ss
+    |> merge_ss SINGLE_POINT_ss;
+
+
+end; 
+
+
+
+
+
+(* ---------------------------------------------------------------------
+ * Tests for Regular/Simple Conditional rewrites.
+
+trace_level 3;
+open Hol_ss;
+open Simplifier;
+SIMP_CONV hol_ss (--`(x = 0) ==> (x + y = z + x)`--);
+SIMP_CONV hol_ss (--`((x = 0) /\ P x) ==> (x + y = z + x)`--);
+SIMP_CONV hol_ss (--`(0 = x) ==> (x + y = z + x)`--); (* no effect *)
+SIMP_CONV hol_ss (--`!x. (0 = x) ==> (x + y = z + x)`--); (* SINGLE_POINT_FORALL_CONV applies here *)
+SIMP_CONV hol_ss (--`(x = 0) ==> (x + x = x)`--);
+SIMP_CONV hol_ss (--`(x = x + 1) ==> (x + x = x)`--);
+
+SIMP_CONV hol_ss (--`!(x:'a). P x => (P x \/ Q x) | (R x /\ ~P x)`--);
+SIMP_CONV hol_ss (--`!(x:'a). P x => P x | ~P x`--);
+SIMP_CONV hol_ss (--`P ==> ~P`--);
+ * --------------------------------------------------------------------*)
+
+(* ---------------------------------------------------------------------
+ * Tests for Conditional Rewrites
+
+val ss = (hol_ss |> addrewrs [theorem "arithmetic" "SUB_ADD"]);
+
+trace_level 1;
+SIMP_CONV ss (--`!j. (j <= k) ==> ((k-j) + j = k)`--);
+
+ * --------------------------------------------------------------------*)
+
+(* ---------------------------------------------------------------------
+ * Tests for Single point rules.
+ * 
+
+trace_level 1;
+SIMP_CONV hol_ss (--`!j:'a. ?(k:'b list) (r:'a). (k = []) /\ P k /\ Q k r`--);
+SIMP_CONV hol_ss (--`!P. (P  = (Q:'a->'b->'c) r) ==> (!j. P j = M r)`--);
+
+ * --------------------------------------------------------------------*)
+
+(* ---------------------------------------------------------------------
+ * Tests for variable capture
+ * Both of these should have no effect
+
+trace_level 1;
+profile (SIMP_CONV bool_ss) (--`!j. (j:'a = m) ==> (!j. j:'a = n)`--);
+profile (SIMP_CONV hol_ss) (--`!j. ((P:'a->'b) j = (Q:'a->'b) r) ==> (!j. P j = M r)`--);
+
+ * --------------------------------------------------------------------*)
+
+(* ---------------------------------------------------------------------
+ * Profiling
+ * 
+
+trace_level 1;
+profile (TOP_DEPTH_CONV NO_CONV) (--`!j. (j:'a = m) ==> (!j. j:'a = n)`--);
+profile (SIMP_CONV hol_ss) (--`!j. (j:'a = m) ==> (!j. j:'a = n)`--);
+profile (SIMP_CONV pure_ss) (--`!j. (j:'a = m) ==> (!j. j:'a = n)`--);
+
+ * --------------------------------------------------------------------*)
+
+
+(* ---------------------------------------------------------------------
+ * Existential Satisfaction
+ * 
+
+open SatisfyExistentials;
+trace_level 1;
+val _ = new_constant{Name="KKK",Ty=(==`:num->num->bool`==)} handle _ => ();
+
+val thm = mk_thm([],(--`!x y. KKK x y ==> (x > 4)`--));
+
+SIMP_CONV (SATISFY_ss |> merge_ss bool_ss |> addrewrs [thm]) (--`KKK 5 4 ==> ((5 > 4) /\ P)`--);
+
+profile (TOP_DEPTH_CONV NO_CONV) (--`!j. (j:'a = m) ==> (!j. j:'a = n)`--);
+profile (SIMP_CONV hol_ss) (--`!j. (j:'a = m) ==> (!j. j:'a = n)`--);
+profile (SIMP_CONV pure_ss) (--`!j. (j:'a = m) ==> (!j. j:'a = n)`--);
+
+ * --------------------------------------------------------------------*)
+
+
+
+
+
+
+
+
+
+
+
+
+@
+
+
+1.1
+log
+@Preterm and other changes, see 7.changes
+@
+text
+@@

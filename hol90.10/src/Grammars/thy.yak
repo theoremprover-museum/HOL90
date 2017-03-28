@@ -1,0 +1,102 @@
+structure Term = Term;
+
+fun THY_YAK_ERR{function,message} = 
+ Exception.HOL_ERR{origin_structure = "theory grammar file (thy_yak)",
+             origin_function = function,
+             message = message};
+
+%%
+%term ident of string
+    | type_ident of string
+    | type_var_ident of string
+    | lambda
+    | db_index of int
+    | num of string
+    | lparen
+    | rparen
+    | type_lparen 
+    | type_rparen
+    | type_comma
+    | colon
+    | dot
+    | type_right_arrow
+    | type_hash
+    | type_plus
+    | string_ of string
+    | EOLEX
+    | EOF 
+
+%nonterm START of Term.term
+       | TERM of Term.term
+       | TYPE of Term.Type.hol_type
+       | HASH_TYPE of Term.Type.hol_type
+       | PLUS_TYPE of Term.Type.hol_type
+       | APP_TYPE of Term.Type.hol_type
+       | TYPE_ARG of Term.Type.hol_type list
+       | BASIC_TYPE_ARG of Term.Type.hol_type list
+       | TYPE_LIST of Term.Type.hol_type list
+       | BASIC of Term.Type.hol_type
+
+
+
+%start START
+%eop EOF EOLEX
+%pos int
+%header (functor thyLrValsFun (structure Token : TOKEN
+                               structure Term : Term_sig))
+
+%name thy
+%noshift EOF
+%pure
+%verbose
+%%
+
+START : TERM (TERM)
+
+TERM : db_index (Term.Bv db_index)
+     | string_ (Term.Const {Name=string_, Ty=Term.Type.Tyc "string"})
+     | num (Term.Const{Name=num, Ty=Term.Type.Tyc"num"})
+     | ident (Term.lookup_const ident)
+     | lparen ident colon TYPE rparen
+            ((case (Term.lookup_const ident)
+                of (Term.Const{Name,...})
+                     => Term.Const{Name=Name,Ty=TYPE}
+                 | _ => raise THY_YAK_ERR{function = "thy_yak",
+                                          message = "impl. error"})
+             handle NOT_FOUND
+             => Term.Fv{Name=ident,Ty=TYPE})
+     | lparen lambda lparen ident colon TYPE rparen dot TERM rparen
+            (Term.Abs{Bvar=Term.Fv{Name=ident,Ty=TYPE},
+                      Body=TERM})
+     | lparen TERM TERM rparen (Term.Comb{Rator=TERM1, Rand=TERM2})
+
+TYPE : PLUS_TYPE type_right_arrow TYPE 
+         (Term.Type.Tyapp {Tyop="fun",Args=[PLUS_TYPE, TYPE]})
+     | PLUS_TYPE (PLUS_TYPE)
+
+PLUS_TYPE : HASH_TYPE type_plus PLUS_TYPE (Term.Type.Tyapp
+                                       {Tyop="sum",Args=[HASH_TYPE,PLUS_TYPE]})
+          | HASH_TYPE (HASH_TYPE)
+
+HASH_TYPE : APP_TYPE type_hash HASH_TYPE (Term.Type.Tyapp
+                                       {Tyop="prod",Args=[APP_TYPE,HASH_TYPE]})
+          | APP_TYPE (APP_TYPE)
+
+APP_TYPE : TYPE_ARG type_ident (Term.Type.Tyapp
+                                {Tyop=type_ident, Args=TYPE_ARG})
+         | BASIC (BASIC)
+
+TYPE_ARG : TYPE_ARG type_ident ([Term.Type.Tyapp
+                                {Tyop=type_ident, Args=TYPE_ARG}])
+         | BASIC_TYPE_ARG (BASIC_TYPE_ARG)
+
+BASIC_TYPE_ARG : type_lparen TYPE type_comma TYPE_LIST type_rparen 
+                     (TYPE::TYPE_LIST)
+               | BASIC ([BASIC])
+
+TYPE_LIST : TYPE type_comma TYPE_LIST (TYPE::TYPE_LIST)
+          | TYPE ([TYPE])
+
+BASIC: type_var_ident (Term.Type.Utv type_var_ident)
+     | type_ident (Term.Type.Tyc type_ident)
+     | type_lparen TYPE type_rparen (TYPE)

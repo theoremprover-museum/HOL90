@@ -1,0 +1,355 @@
+head	1.1;
+access;
+symbols
+	HOL97:1.1.0.2;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	97.06.11.17.42.07;	author kxs;	state dead;
+branches
+	1.1.2.1;
+next	;
+
+1.1.2.1
+date	97.06.11.17.42.09;	author kxs;	state Exp;
+branches;
+next	1.1.2.2;
+
+1.1.2.2
+date	97.06.24.14.55.13;	author kxs;	state Exp;
+branches;
+next	1.1.2.3;
+
+1.1.2.3
+date	97.06.24.17.29.11;	author mn200;	state Exp;
+branches;
+next	1.1.2.4;
+
+1.1.2.4
+date	97.07.11.15.54.19;	author kxs;	state Exp;
+branches;
+next	1.1.2.5;
+
+1.1.2.5
+date	97.07.17.13.56.48;	author mn200;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@file Makefile was initially added on branch HOL97.
+@
+text
+@@
+
+
+1.1.2.1
+log
+@The various makefiles for the system have been gathered together in this
+directory. "Makefile" is the master makefile, and it calls make
+recursively on whichever sub-makefile is appropriate. "Makefile" is itself
+called from src/BUILD.
+@
+text
+@a0 191
+#-------------------------------------------------------------------------
+# Makefile for HOL90
+#-------------------------------------------------------------------------
+
+HOL90_VERSION=10
+
+#-------------------------------------------------------------------------
+# parameters
+#-------------------------------------------------------------------------
+
+SML_IMPL=njsml.1xx
+ARCH=unknown
+#HOL_DIR:sh=(cd ../..; /bin/pwd) # works on Suns
+HOL_DIR=../..
+THEORY_TYPE=ascii
+
+LIBRARIES=lite ho_match refute fol tab meson decision reduce arith simp\
+	  automate ind_def_new tfl\
+	  string option num set pred_set unwind hol88 ind_def taut utils\
+	  retrieve group integer abs_theory unity prog_logic pair real\
+	  wellorder window list res_quan word
+
+CONTRIBS=`/bin/ls ../contrib`
+
+# Libraries to load before dumping HOL executable/heap/database
+#PRE_LOAD=automate ind_def_new
+PRE_LOAD=
+
+# File to `use' before dumping HOL executable/heap/database
+USE_FILE=
+
+LEX=flex
+LEX_LIB=fl
+CC=gcc
+
+#-------------------------------------------------------------------------
+# computed macros
+#-------------------------------------------------------------------------
+SRC_DIR=$(HOL_DIR)/src
+BIN_DIR=$(HOL_DIR)/bin
+THEORY_SRC=$(HOL_DIR)/theories/src
+THMS_DIR=$(HOL_DIR)/theories/$(THEORY_TYPE)
+HOLSIG_DIR=$(HOL_DIR)/theories/$(THEORY_TYPE)
+LIBRARY_DIR=$(HOL_DIR)/library
+CONTRIB_DIR=$(HOL_DIR)/contrib
+
+PIPE=$(BIN_DIR)/pipe
+
+#-------------------------------------------------------------------------
+# all
+#-------------------------------------------------------------------------
+
+all: pipe filter hol hol-script library
+
+#-------------------------------------------------------------------------
+# pipe
+#
+# A shell script to allow a file to be piped through the filter without an
+# explicit pipe having to appear in the command executed by the SML
+# process.
+#-------------------------------------------------------------------------
+
+pipe: $(PIPE)
+
+$(PIPE):
+	@@-mkdir $(BIN_DIR) 2> /dev/null
+	echo '#!/bin/sh' > $@@
+	echo '/bin/cat $$1 | $$2' >> $@@
+	chmod a+rx $@@
+
+#-------------------------------------------------------------------------
+# filter
+#-------------------------------------------------------------------------
+
+filter: $(BIN_DIR)/quote-filter.$(ARCH)
+
+$(BIN_DIR)/quote-filter.$(ARCH): $(SRC_DIR)/quote-filter/filter.lex
+	@@-mkdir $(BIN_DIR) 2> /dev/null
+	$(LEX) -t $(SRC_DIR)/quote-filter/filter.lex >/tmp/lex.yy.c
+	$(CC) -o $@@ /tmp/lex.yy.c -l$(LEX_LIB)
+	rm /tmp/lex.yy.c
+	chmod a+rx $@@
+
+#-------------------------------------------------------------------------
+# hol
+#-------------------------------------------------------------------------
+
+hol: pipe filter
+	@@-mkdir $(BIN_DIR) 2> /dev/null
+	@@-mkdir $(LIBRARY_DIR)/desc 2> /dev/null
+	$(MAKE) -f $(SRC_DIR)/Makefiles/$(SML_IMPL) \
+	        HOL90_VERSION=$(HOL90_VERSION) \
+		ARCH=$(ARCH) \
+	        HOL_DIR=$(HOL_DIR) \
+	        THEORY_TYPE=$(THEORY_TYPE) \
+	        PRE_LOAD="$(PRE_LOAD)" \
+	        USE_FILE=$(USE_FILE)
+
+#-------------------------------------------------------------------------
+# hol-script
+#-------------------------------------------------------------------------
+
+hol-script:
+	@@-mkdir $(BIN_DIR) 2> /dev/null
+	echo '#!/bin/sh' > $(BIN_DIR)/hol90
+	echo holdir=$(HOL_DIR) >> $(BIN_DIR)/hol90
+	echo version=$(HOL90_VERSION) >> $(BIN_DIR)/hol90
+	echo sml=$(SML_IMPL) >> $(BIN_DIR)/hol90
+	cat script >> $(BIN_DIR)/hol90
+	chmod a+rx $(BIN_DIR)/hol90
+
+$(BIN_DIR)/hol90: $(SRC_DIR)/script
+	$(MAKE) hol-script \
+	        HOL90_VERSION=$(HOL90_VERSION) \
+	        SML_IMPL=$(SML_IMPL) \
+	        HOL_DIR=$(HOL_DIR)
+
+#-------------------------------------------------------------------------
+# library
+#-------------------------------------------------------------------------
+
+library: hol $(BIN_DIR)/hol90 
+	@@echo "=====> Making system libraries"
+	@@THEORY_TYPE=$(THEORY_TYPE); export THEORY_TYPE;\
+	for lib in $(LIBRARIES);\
+	do if test -d $(LIBRARY_DIR)/$$lib;\
+	   then if test -f $(LIBRARY_DIR)/$$lib/make_$$lib;\
+	        then (echo Making the $$lib library;\
+	              cd $(LIBRARY_DIR)/$$lib;\
+	              make_$$lib $(BIN_DIR)/hol90 -ml $(SML_IMPL);\
+	              echo "=====> The $$lib library is made.");\
+	        else echo No make file found for library $$lib;\
+	        fi;\
+	   else echo Library $$lib not found;\
+	   fi;\
+	done
+
+library_test: library
+	@@echo "=====> Testing system libraries"
+	for lib in $(LIBRARIES);\
+	do (echo Loading the $$lib library;\
+            echo "load_library{lib = $$(lib)_lib,theory=\"foo\"};"\
+              | $(BIN_DIR)/hol90 -ml $(SML_IMPL);\
+            echo "=====> The $$lib library loads.");\
+	done
+
+
+#-------------------------------------------------------------------------
+# contrib
+#-------------------------------------------------------------------------
+
+contrib: hol $(BIN_DIR)/hol90
+	@@echo "=====> Making contributed libraries"
+	@@THEORY_TYPE=$(THEORY_TYPE); export THEORY_TYPE;\
+	 for lib in $(CONTRIBS);\
+	 do if test -d $(CONTRIB_DIR)/$$lib -a $$lib != "desc";\
+	    then if test -f $(CONTRIB_DIR)/$$lib/make_$$lib;\
+	         then (echo Making the $$lib contributed library;\
+	               cd $(CONTRIB_DIR)/$$lib;\
+	               make_$$lib $(BIN_DIR)/hol90 -ml $(SML_IMPL);\
+	               echo "=====> The $$lib contributed library is made");\
+	         else echo No make file found for contributed library $$lib;\
+	         fi;\
+	    fi;\
+	 done
+
+#-------------------------------------------------------------------------
+# cleaning
+#-------------------------------------------------------------------------
+
+clean:
+	$(MAKE) clean -f Makefiles/$(SML_IMPL) \
+	        HOL90_VERSION=$(HOL90_VERSION) \
+		ARCH=$(ARCH) \
+	        HOL_DIR=$(HOL_DIR) \
+	        THEORY_TYPE=$(THEORY_TYPE)
+
+lib_clean:
+	$(MAKE) lib_clean -f Makefiles/$(SML_IMPL) \
+		HOL90_VERSION=$(HOL90_VERSION) \
+		ARCH=$(ARCH) \
+	        HOL_DIR=$(HOL_DIR) \
+	        THEORY_TYPE=$(THEORY_TYPE)
+
+contrib_clean:
+	rm -f $(CONTRIB_DIR)/desc/*.hol_lib
+	@@echo "=====> Removed old descriptions"
+
+clobber: clean
+	rm -f $(HOLSIG_DIR)/*.holsig $(THMS_DIR)/*.thms
+
+@
+
+
+1.1.2.2
+log
+@Change to have YAK  and LEX refer to system versions, not private ones of kxs!
+@
+text
+@d138 1
+a138 5
+#-------------------------------------------------------------------------
+# Test that libraries load properly.
+#-------------------------------------------------------------------------
+
+libtest: 
+d142 3
+a144 4
+	    libML=$$lib"_lib";\
+	    echo "load_library{lib = $$libML , theory=\"foo\"};"\
+	       | $(BIN_DIR)/hol90 -ml $(SML_IMPL);\
+	     echo "=====> The $$lib library loads.");\
+a146 9
+test: 
+	(@@echo "=====> Testing system libraries";\
+	libML=hol88_lib;\
+	echo "load_library{lib = $$libML , theory=\"foo\"};"\
+	     | $(BIN_DIR)/hol90 -ml $(SML_IMPL);\
+	echo "=====> The $(libML) library loads.")
+
+
+
+@
+
+
+1.1.2.3
+log
+@Fixed rule for library so that it doesn't make the assumption that
+. is in the PATH.
+@
+text
+@d122 1
+a122 1
+library: hol $(BIN_DIR)/hol90
+d130 1
+a130 1
+	              ./make_$$lib $(BIN_DIR)/hol90 -ml $(SML_IMPL);\
+d142 1
+a142 1
+libtest:
+d152 1
+a152 1
+test:
+@
+
+
+1.1.2.4
+log
+@(Re-)Added makefiles
+@
+text
+@a16 6
+#LIBRARIES=lite ho_match refute fol tab meson decision reduce arith simp\
+#	  automate ind_def_new tfl\
+#	  string option num set pred_set unwind hol88 ind_def taut utils\
+#	  retrieve group integer abs_theory unity prog_logic pair real\
+#	  wellorder window list res_quan word
+
+d18 1
+a18 1
+	  ind_def_new tfl\
+d88 1
+a88 1
+hol: pipe filter hol-script
+d122 1
+a122 1
+library: hol $(BIN_DIR)/hol90 
+d130 1
+a130 1
+	              make_$$lib $(BIN_DIR)/hol90 -ml $(SML_IMPL);\
+d138 5
+a142 1
+library_test: library
+d146 4
+a149 3
+            echo "load_library{lib = $$(lib)_lib,theory=\"foo\"};"\
+              | $(BIN_DIR)/hol90 -ml $(SML_IMPL);\
+            echo "=====> The $$lib library loads.");\
+d151 9
+@
+
+
+1.1.2.5
+log
+@Fixed the damn thing to remove assumption of . being in the PATH (again!).
+@
+text
+@d136 1
+a136 1
+	              ./make_$$lib $(BIN_DIR)/hol90 -ml $(SML_IMPL);\
+d166 1
+a166 1
+	               ./make_$$lib $(BIN_DIR)/hol90 -ml $(SML_IMPL);\
+@

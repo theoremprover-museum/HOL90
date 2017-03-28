@@ -1,0 +1,1086 @@
+head	1.7;
+access;
+symbols
+	HOL97:1.4.0.4
+	bpHOL97:1.4
+	hol90_9_alpha:1.4
+	hol90_pre8_for_multiple_compilers:1.4.0.2
+	hol90_pre8_after_donalds_separate_compilation_changes:1.3
+	hol90_8_after_merging_Konrad_Elsa:1.2;
+locks; strict;
+comment	@# @;
+
+
+1.7
+date	96.02.08.00.30.28;	author drs1004;	state Exp;
+branches;
+next	1.6;
+
+1.6
+date	96.01.04.13.44.48;	author drs1004;	state Exp;
+branches;
+next	1.5;
+
+1.5
+date	95.12.18.11.34.09;	author drs1004;	state Exp;
+branches;
+next	1.4;
+
+1.4
+date	95.11.15.13.24.09;	author rjb;	state Exp;
+branches
+	1.4.4.1;
+next	1.3;
+
+1.3
+date	95.10.31.13.56.03;	author drs1004;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	95.10.18.16.36.50;	author drs1004;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	95.10.17.17.06.37;	author drs1004;	state Exp;
+branches;
+next	;
+
+1.4.4.1
+date	97.06.11.17.23.45;	author kxs;	state Exp;
+branches;
+next	1.4.4.2;
+
+1.4.4.2
+date	97.07.11.15.05.22;	author kxs;	state dead;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.7
+log
+@New theory mechanism, by Donald Syme, and many other enhancements.
+@
+text
+@(* ===================================================================== *)
+(* FILE          : base_logic.sml                                        *)
+(* DESCRIPTION   : an accumulation of logical framework prior to any     *)
+(*                 definitions having been made.                         *)
+(*                                                                       *)
+(* AUTHOR        : Elsa L. Gunter, AT&T Bell Laboratories                *)
+(* DATE          : 26 October, 1993                                      *)
+(* ===================================================================== *)
+
+(* Copyright 1993 by AT&T Bell Laboratories *)
+
+(* Share and Enjoy *)
+
+
+(*---------------------------------------------------------------------
+ * MODIFICATIONS
+ *
+ * I have taken out the construction of the 
+ * "Base_logic" structure.  This was previously opened at the top level
+ * immediately after creation.  Its main purpose was to provide 
+ * security for the Term and Type constructors.
+ *
+ * Since we can't open Base_logic at the top level when using CM, and
+ * we want to avoid having to open the Base_logic structure 
+ * in every working environment, we just construct 
+ * the component structures one by one
+ * at the top level.  To maintain security of types and terms,
+ * PrivateType and PrivateTerm are hidden in a local definition, then
+ * restricted to their public signatures at the top level.  This
+ * also lets one see very clearly exactly which parts of the
+ * system need explicit access to the internals of the Type and Term
+ * representation.                                   DRS
+ *-------------------------------------------------------------------*)
+
+structure Help = HELP();
+
+(*-----------------------------------------------------------------------
+ * Construct Private Type and Term structures, use them where
+ * necessary, then hide them at the top level by signature restriction.
+ *---------------------------------------------------------------------*)
+
+
+local
+
+   structure PrivateType = TYPE()
+
+   structure PrivateTerm = TERM(structure Type = PrivateType)
+in
+
+   structure Type : Public_type_sig = PrivateType;
+
+   structure Term : Public_term_sig = PrivateTerm;
+
+   structure Match = MATCH(structure Term = PrivateTerm)
+
+   structure Dsyntax = DSYNTAX(structure Term = PrivateTerm
+			       structure Match = Match)
+
+       
+   structure Fixity = FIXITY(structure Term = Term);
+
+   structure Hol_pp = HOL_PP(structure Term = PrivateTerm
+			     structure Fixity = Fixity
+			     structure Globals = Globals
+			     structure Dsyntax = Dsyntax)
+
+       
+   structure Thm = THM(structure Globals = Globals
+		       structure Dsyntax = Dsyntax
+                       structure Hol_pp = Hol_pp
+                       structure Term = PrivateTerm)
+
+   structure Preterm = PRETERM(structure Term = PrivateTerm
+			       structure Fixity = Fixity
+			       structure Hol_pp = Hol_pp)
+
+   (* terms to exportable reps. *)
+(*
+   structure Thy_pp = THY_PP(structure Term = PrivateTerm
+			     structure Hol_pp = Hol_pp)
+
+   (* exportable reps to terms - potential insecurity, use only for *)
+   (* prototyping new theory mechanisms                             *)
+
+   local 
+       structure Thy_table = thyLrValsFun(structure Token = LrParser.Token
+				      structure Term = PrivateTerm)
+   in 
+       structure Thy_parse = 
+	   THY_PARSE(structure Term = PrivateTerm
+		     structure P = Join
+			 (structure ParserData = Thy_table.ParserData
+			  structure Lex =
+			      THY_LEX
+			      (structure Tokens = Thy_table.Tokens)
+			  structure LrParser = LrParser))
+   end;
+   
+
+   local 
+      structure Theory_data = THEORY_DATA(structure Globals = Globals
+                                          structure Thm = Thm
+                                          structure Hol_pp = Hol_pp)
+
+      (* Binary theory representations: *)
+      (* structure Disk_io = DISK_IO_BINARY(REGIME(Theory_data)) *)
+
+      (* Ascii theory representations *)
+      local
+
+         structure Table1 = thmsLrValsFun(
+				 structure Token = LrParser.Token
+                                 structure Thm = Thm
+                                 structure Thy_parse = Thy_parse
+                                 structure Theory_data = Theory_data)
+
+         structure Table2 = holsigLrValsFun(
+				   structure Term = PrivateTerm
+				   structure Token = LrParser.Token
+                                   structure Theory_data = Theory_data)
+      in
+         structure Disk_io = 
+             DISK_IO_ASCII(
+			structure Regime =
+			    REGIME(structure Theory_data = Theory_data)
+                        structure Thy_pp = Thy_pp
+                        structure Thms_parse = 
+                             Join(structure ParserData = Table1.ParserData
+                                  structure Lex = 
+                                      THMS_LEX(structure Tokens=Table1.Tokens)
+                                  structure LrParser = LrParser)
+                        structure Holsig_parse =
+                             Join(structure ParserData = Table2.ParserData
+                                  structure Lex = 
+                                     HOLSIG_LEX(structure Tokens=Table2.Tokens)
+                                  structure LrParser = LrParser))
+      end
+
+      structure Theory_cache : Theory_cache_sig = 
+        CACHE(
+	   structure Key =
+	       struct
+		   type object = Theory_data.theory
+		   type key = string
+		   val key_of =
+		       Theory_data.theory_id_name o Theory_data.theory_id
+	       end)
+  
+      structure Theory_graph :Theory_graph_sig = 
+          DAG(structure Node =
+		  struct
+		      type node_id = Theory_data.theory_id
+		      val node_name = Theory_data.theory_id_name
+		      val node_eq = Lib.curry Theory_data.theory_id_eq
+		  end)
+
+      structure Theory_io=THEORY_IO(structure Disk_io = Disk_io
+                              structure File = File)
+
+      structure Theory_ops = THEORY_OPS(structure Globals = Globals
+					structure Term = PrivateTerm
+					structure Theory_data = Theory_data
+					structure Fixity=Fixity
+					structure Theory_io=Theory_io
+					structure Theory_cache=Theory_cache
+					structure Theory_graph=Theory_graph)
+   in
+       structure Theory = THEORY( structure Hol_pp = Hol_pp
+				  structure Thm = Thm
+				  structure PrivateTerm = PrivateTerm
+				  structure Globals = Globals
+				  structure Theory_ops = Theory_ops)
+   end
+*)
+       structure Theory = THEORY( structure Thm = Thm
+				  structure PrivateTerm = PrivateTerm)
+
+   structure Net = NET(structure Term = PrivateTerm)
+
+
+end;
+
+(*--------------------------------------------------------------------
+ * The base parse mechanism (no fancy features)
+ *-------------------------------------------------------------------*)
+
+structure Parse_support = PARSE_SUPPORT(structure Fixity = Fixity
+					structure Term = Term
+					structure Preterm = Preterm)
+    
+local 
+    structure Table = holLrValsFun(structure Token = LrParser.Token
+				   structure Parse_support = Parse_support)
+	
+    structure Lex = HOL_LEX(structure Tokens=Table.Tokens
+			    structure Parse_support=Parse_support)
+    structure P=JoinWithArg(structure ParserData=Table.ParserData
+			    structure Lex=Lex
+			    structure LrParser = LrParser)
+in
+    structure Parse0 = PARSE0
+	(structure Parse_support = Parse_support
+	 structure Preterm = Preterm
+	 structure P = P)
+end;
+
+
+
+(*--------------------------------------------------------------------
+ * Methods of constant/type/axiom specification
+ *-------------------------------------------------------------------*)
+
+structure Extension = EXTENSION(structure Theory = Theory
+				structure Dsyntax = Dsyntax);
+
+
+(* --------------------------------------------------------------------
+ * Define some type abbreviations.  They have to be in a structure
+ * if a typical compilation manager like CM is to know about them.
+ *
+ *-------------------------------------------------------------------*)
+
+structure Abbrev =
+struct
+   local
+      open Thm
+      open Term
+   in
+      type conv = term -> thm
+      type goal = (term list * term)
+      type validation = thm list -> thm
+      type tactic_result = goal list * validation;
+      type tactic = goal -> tactic_result;
+      type thm_tactic = thm -> tactic
+      type thm_tactical = thm_tactic -> thm_tactic;
+   end;
+end;
+
+
+@
+
+
+1.6
+log
+@Fixed types, pretypes, fixities, parsing.
+@
+text
+@d16 2
+d23 1
+a23 1
+ * Since we can't open Base_logic at the top level, and
+a34 1
+structure Lexis = LEXIS();
+d42 1
+d45 1
+a45 1
+   structure PrivateType = TYPE(structure Lexis = Lexis)
+d47 1
+a47 2
+   structure PrivateTerm = TERM(structure Lexis = Lexis
+ 		                structure Type = PrivateType)
+d56 2
+a57 3
+   structure Dsyntax = DSYNTAX(structure Lexis = Lexis
+			    structure Term = PrivateTerm
+                            structure Match = Match)
+d62 4
+a65 5
+   structure Hol_pp = HOL_PP(structure Lexis = Lexis
+			  structure Term = PrivateTerm
+			  structure Fixity = Fixity
+			  structure Globals = Globals
+                          structure Dsyntax = Dsyntax)
+d68 5
+d77 22
+a98 4
+   structure Thm = THM(structure Globals = Globals
+		       structure Dsyntax = Dsyntax
+                       structure Hol_pp = Hol_pp
+                       structure Term = PrivateTerm)
+a109 13
+         structure Thy_pp = THY_PP(structure Term = PrivateTerm
+                                   structure Hol_pp = Hol_pp)
+
+         structure Thy_table = thyLrValsFun(structure Token = LrParser.Token
+                                   structure Term = PrivateTerm)
+
+         structure Thy_parse = THY_PARSE(structure Term = PrivateTerm
+                                structure P = Join
+                                 (structure ParserData = Thy_table.ParserData
+                                  structure Lex =
+				      THY_LEX
+				      (structure Tokens = Thy_table.Tokens)
+                                  structure LrParser = LrParser))
+d172 1
+a172 2
+				  structure Theory_ops = Theory_ops
+				  structure Lexis = Lexis)
+d174 3
+a182 1
+
+d184 1
+a184 1
+ * The parser
+d187 1
+a187 2
+structure Parse_support = PARSE_SUPPORT(structure Lexis = Lexis
+					structure Fixity = Fixity
+d197 3
+d201 1
+a201 1
+    structure Parse = PARSE
+d204 2
+a205 22
+	 structure P=JoinWithArg(structure ParserData=Table.ParserData
+				 structure Lex=Lex
+				 structure LrParser = LrParser))
+end
+
+(*--------------------------------------------------------------------
+ * Term_io
+ *-------------------------------------------------------------------*)
+
+structure Term_io : Term_io_sig = 
+    struct
+	structure Parse = Parse
+	structure Parse_support = Parse.Parse_support
+	structure Hol_pp = Hol_pp
+    end
+
+(*--------------------------------------------------------------------
+ * The library mechanism
+ *-------------------------------------------------------------------*)
+
+local
+   structure Lib_data = LIB_DATA ()
+a206 2
+   structure Lib_table = libLrValsFun(structure Token = LrParser.Token
+                                   structure Lib_data = Lib_data)
+a207 13
+   structure Lib_parse =
+    Join(structure ParserData = Lib_table.ParserData
+	 structure Lex = LIB_LEX(structure Tokens = Lib_table.Tokens)
+	 structure LrParser = LrParser)
+
+   structure Lib_io = LIB_IO(structure File = File
+			  structure Lib_parse = Lib_parse
+                          structure Lib_data = Lib_data)
+in
+   structure Library = LIBRARY(structure Help = Help
+			    structure Theory = Theory
+                            structure Lib_io = Lib_io)
+end;
+d210 1
+a210 1
+ * Methods of constant/type specification
+d213 2
+a214 15
+structure Exists_def = EXISTS_DEF(structure Theory = Theory
+                                  structure Dsyntax = Dsyntax);
+
+structure Const_spec = CONST_SPEC(structure Theory = Theory
+				  structure Dsyntax = Dsyntax
+				  structure Lexis = Lexis);
+
+structure Type_def = TYPE_DEF(structure Theory = Theory
+			      structure Dsyntax = Dsyntax);
+
+structure Const_def = CONST_DEF(structure Theory = Theory
+				structure Dsyntax = Dsyntax
+				structure Lexis = Lexis
+				structure Const_spec = Const_spec);
+
+@
+
+
+1.5
+log
+@Preterm and other changes, see 7.changes
+@
+text
+@a32 3
+(* structure Base_logic : Base_logic_sig =
+struct *)
+
+a33 2
+
+
+d59 3
+d64 1
+d68 1
+d70 1
+a72 20
+   structure Parse_support = PARSE_SUPPORT(structure Lexis = Lexis
+					   structure Term = PrivateTerm
+		  			   structure Preterm = Preterm
+                                           structure Dsyntax = Dsyntax)
+
+   local 
+      structure Table = holLrValsFun(structure Token = LrParser.Token
+                                     structure Parse_support = Parse_support)
+
+      structure Lex = HOL_LEX(structure Tokens=Table.Tokens
+                              structure Parse_support=Parse_support)
+   in
+      structure Parse = PARSE
+               (structure Parse_support = Parse_support
+                structure Preterm = Preterm
+                structure P=JoinWithArg(structure ParserData=Table.ParserData
+                                        structure Lex=Lex
+                                        structure LrParser = LrParser))
+   end
+
+d116 1
+a116 2
+			    REGIME(
+				   structure Theory_data = Theory_data)
+d154 1
+d161 1
+a161 1
+				  structure Term = PrivateTerm
+d169 33
+a201 1
+   structure Term_io : Term_io_sig = 
+d208 3
+a210 2
+end;
+
+d232 3
+@
+
+
+1.4
+log
+@The HOL90 sources have been changed to allow for the use of different
+Standard ML compilers (possibly simultaneously).
+
+ * Many files in "src/0" changed to make them more portable across different
+   ML compilers. Various additions have been made to the Portable structure
+   and files changed to access identifiers in the Portable structure rather
+   than from the global environment. Worthy of special note are:
+
+   - The pointer equality used in "src/0/term.sml" has been made into a
+     function in the Portable structure.
+
+   - The ML-Lex and ML-Yacc files for the various parsers have been changed
+     to access the Portable structure. Both the source files and the SML
+     produced from them have been changed but I have not verified that the
+     source files would reproduce the new SML versions if ML-Lex and ML-Yacc
+     were to be rerun on them. The changes involve some hacks that exploit the
+     way ML-Lex and ML-Yacc work. See the sources for details.
+
+R.J.Boulton, 15th November 1995.
+@
+text
+@d36 1
+a36 2
+(* structure Lib = LIB(structure Exception = Exception) *)
+
+a37 1
+(* structure Lib = Lib; *)
+a38 2
+structure File = FILE();
+
+a40 6
+structure Save_hol = SAVE_HOL();
+
+structure Lexis = LEXIS();
+
+
+
+d69 2
+a70 3
+   structure Preterm = PRETERM(structure Dsyntax = Dsyntax
+                            structure Term = PrivateTerm
+                            structure Hol_pp = Hol_pp)
+d73 1
+d107 2
+a108 3
+         structure Thy_pp = THY_PP(
+			  structure Term = PrivateTerm
+			  structure Hol_pp = Hol_pp)
+d118 1
+a118 2
+				      (
+				       structure Tokens = Thy_table.Tokens)
+d161 1
+a161 2
+          DAG(
+	      structure Node =
+d172 8
+a179 1
+                                  
+d181 3
+a183 12
+				  structure Theory_data = Theory_data
+                                  structure Theory_io=Theory_io
+                                  structure Theory_cache=Theory_cache
+                                  structure Theory_graph=Theory_graph)
+   in
+      structure Theory = THEORY(
+			  structure Hol_pp = Hol_pp
+			  structure Thm = Thm
+                          structure Term = PrivateTerm
+                          structure Globals = Globals
+                          structure Theory_ops = Theory_ops
+                          structure Lexis = Lexis)
+d186 1
+a186 2
+   structure Net = NET(
+		    structure Term = PrivateTerm)
+a197 4
+structure Add_to_sml = ADD_TO_SML (structure Lexis = Lexis
+				   structure Theory = Theory);
+
+
+a218 5
+structure Install = INSTALL (structure Globals = Globals
+			     structure Theory = Theory
+		             structure Add_to_sml = Add_to_sml
+                             structure Library = Library);
+
+a233 22
+(* --------------------------------------------------------------------
+ * Install pretty printers
+ *
+ * This can't be done using CM after all.  The problem is that it
+ * needs to be done after CM has installed symbols into the top level
+ * environment, which basically means after the end of compilation.
+ *
+ * This is OK - PP's just get installed very late in the development
+ * process I guess.
+ *-------------------------------------------------------------------*)
+
+(*
+local
+fun top_pp_thm ppstrm th =  
+   ( Portable.PrettyPrint.begin_block
+       ppstrm
+       Portable.PrettyPrint.CONSISTENT 0;
+     Thm.pp_thm ppstrm th; 
+     Portable.PrettyPrint.end_block ppstrm)
+in
+val _ = Portable.PrettyPrint.install_pp ["Thm","thm"] top_pp_thm
+end;
+a234 9
+val _ = Portable.PrettyPrint.install_pp
+         ["Type","hol_type"] 
+	 Term_io.Hol_pp.pp_self_parsing_type;
+val _ = Portable.PrettyPrint.install_pp
+         ["Term","term"] 
+	 Term_io.Hol_pp.pp_self_parsing_term;
+val _ = Portable.PrettyPrint.install_pp
+         ["Library","lib"] 
+	 Library.pp_library;
+a235 1
+*)
+d237 2
+a238 3
+ * Define some type abbreviations.  I think these might have to
+ * be done somewhere else if CM is to pick up dependencies
+ * between these symbols and modules that use them.
+a257 13
+(* --------------------------------------------------------------------
+ * I took these out so CM could do dependency analysis on the theory
+ * construction files as well.  The files to construt the theories get
+ * loaded immediately after construction the base logic support
+ *-------------------------------------------------------------------*)
+
+(* structure Min = MK_MIN(structure Globals = Globals
+		       structure Theory = Theory
+		       structure Dsyntax = Dsyntax
+		       structure Parse = Parse); *)
+
+
+(* end *)
+@
+
+
+1.4.4.1
+log
+@Removed files are parse files and portability files that have
+effectively been moved elsewhere.
+
+Modified files are up to date for ML 109.26.
+@
+text
+@d33 2
+d36 15
+d58 1
+a58 1
+   structure PrivateType = Type
+d60 2
+a61 1
+   structure PrivateTerm = TERM(structure Type = PrivateType)
+d87 14
+d112 3
+d117 3
+a119 2
+         structure Thy_pp = THY_PP(structure Term = PrivateTerm
+			           structure Hol_pp = Hol_pp)
+d124 8
+a131 7
+         structure Thy_parse = THY_PARSE
+                  (structure Term = PrivateTerm
+                   structure P = Join
+                         (structure ParserData = Thy_table.ParserData
+                          structure Lex = THY_LEX
+				      (structure Tokens = Thy_table.Tokens)
+                          structure LrParser = LrParser))
+d133 2
+a134 1
+         structure Table1 = thmsLrValsFun(structure Token = LrParser.Token
+d139 2
+a140 1
+         structure Table2 = holsigLrValsFun(structure Term = PrivateTerm
+d144 16
+a159 11
+         structure Disk_io = DISK_IO_ASCII
+            (structure Regime =REGIME(structure Theory_data = Theory_data)
+             structure Thy_pp = Thy_pp
+             structure Thms_parse = Join
+                      (structure ParserData = Table1.ParserData
+                       structure Lex = THMS_LEX(structure Tokens=Table1.Tokens)
+                       structure LrParser = LrParser)
+             structure Holsig_parse = Join
+                      (structure ParserData = Table2.ParserData
+                       structure Lex=HOLSIG_LEX(structure Tokens=Table2.Tokens)
+                       structure LrParser = LrParser))
+d163 2
+a164 1
+        CACHE(structure Key =
+d173 2
+a174 1
+          DAG(structure Node =
+d181 2
+a182 2
+      structure Theory_io = THEORY_IO(structure Disk_io = Disk_io
+                                      structure File = File)
+d185 1
+d192 7
+a198 6
+      structure Theory = THEORY(structure Hol_pp = Hol_pp
+			        structure Thm = Thm
+                                structure Term = PrivateTerm
+                                structure Globals = Globals
+                                structure Theory_ops = Theory_ops
+                                structure Lexis = Lexis)
+d201 2
+a202 1
+   structure Net = NET(structure Term = PrivateTerm)
+d204 1
+a204 1
+(*   structure Term_io : Term_io_sig = 
+d210 1
+a210 1
+*)
+d318 2
+a319 2
+ * construction files as well.  The files to construct the theories get
+ * loaded immediately after construction of the base logic support
+@
+
+
+1.4.4.2
+log
+@Massive minor changes to close HOL up so as to make it CM-friendly and
+some changes to accomodate SML'97.
+@
+text
+@@
+
+
+1.3
+log
+@First phase of hol90.8 development.  hol90 now compiles using NJSML-CM
+108.5, with separate compilation of libraries.  System dependencies
+have been isolated in the makefiles and "portable.sml".
+
+This involved a large number of enhancments to the source files,
+most of which are documented in the 7.changes file (or will be shortly).
+See also the correpsonding email corrspondence between RJB, KLS, TFM,
+JRH and DRS that happened during this development.
+@
+text
+@d41 1
+a41 1
+structure File = FILE()
+d43 1
+a43 1
+structure Help = HELP()
+d45 1
+a45 1
+structure Save_hol = SAVE_HOL()
+d47 1
+a47 1
+structure Lexis = LEXIS()
+d215 1
+a215 1
+				   structure Theory = Theory)
+d242 1
+a242 1
+                             structure Library = Library)
+d245 1
+a245 1
+                                  structure Dsyntax = Dsyntax)
+d249 1
+a249 1
+				  structure Lexis = Lexis)
+d252 1
+a252 1
+			      structure Dsyntax = Dsyntax)
+d257 1
+a257 1
+				structure Const_spec = Const_spec)
+d325 1
+a325 1
+		       structure Parse = Parse) *)
+a329 2
+
+
+@
+
+
+1.2
+log
+@Check in after merging in Konrad's changes made after
+the release of hol90.7.  This involved creating a side branch
+in which to check in Konrad's changes, then merging in that
+side branch into the main development (which contains changes
+made by Elsa Gunter).
+
+Some other small modification have been made to the source code,
+as I begun to try to make this version into a working version:
+	- hol90 will now be compiled in an environment were no
+structures can be considered opn.  This means many structures
+now need "open Lib" and other such commands at their head.
+This has not yet been completed, but has been begun.
+	- "rotl" and "rotr" have been added to Lib, something
+which I just did impulsively.   Documentation files
+have also been added in help/90.
+@
+text
+@d15 18
+d41 9
+a49 1
+structure File = FILE( (* structure Lib = Lib *) )
+d51 4
+a54 2
+structure Help = HELP((* structure Lib = Lib *)
+		      structure Globals = Globals)
+d56 3
+a58 2
+structure Save_hol = SAVE_HOL((* structure Lib = Lib *)
+			      structure Globals = Globals)
+d60 3
+a62 2
+structure Lexis = LEXIS((* structure Lib = Lib *)
+			structure Globals = Globals)
+d64 1
+a64 2
+structure Type = TYPE((* structure Lib = Lib *)
+		      structure Lexis = Lexis)
+d66 1
+a66 3
+structure Term = TERM((* structure Lib = Lib *)
+		      structure Lexis = Lexis
+		      structure Type = Type)
+d68 1
+a68 2
+structure Match = MATCH((* structure Lib = Lib *)
+			structure Term = Term)
+d70 2
+a71 3
+structure Dsyntax = DSYNTAX((* structure Lib = Lib *)
+			    structure Lexis = Lexis
+			    structure Term = Term
+d74 2
+a75 3
+structure Hol_pp = HOL_PP((* structure Lib = Lib *)
+			  structure Lexis = Lexis
+			  structure Term = Term
+d79 2
+a80 3
+structure Preterm = PRETERM((* structure Lib = Lib *)
+			    structure Dsyntax = Dsyntax
+                            structure Term = Term
+d83 12
+a94 14
+structure Parse_support = PARSE_SUPPORT((* structure Lib = Lib *)
+					structure Lexis = Lexis
+					structure Preterm = Preterm
+                                        structure Dsyntax = Dsyntax)
+
+structure Table = holLrValsFun((* structure Lib = Lib *)
+			       structure Token = LrParser.Token
+                               structure Parse_support = Parse_support)
+
+structure Lex = HOL_LEX((* structure Lib = Lib *)
+			structure Tokens=Table.Tokens
+                        structure Parse_support=Parse_support)
+
+structure Parse = PARSE
+d96 1
+d100 1
+d102 4
+a105 13
+structure Thm = THM((* structure Lib = Lib *)
+		    structure Globals = Globals
+		    structure Dsyntax = Dsyntax
+                    structure Hol_pp = Hol_pp
+                    structure Term = Term)
+
+structure Theory_data = THEORY_DATA((* structure Lib = Lib *)
+				    structure Globals = Globals
+                                    structure Thm = Thm
+                                    structure Hol_pp = Hol_pp)
+
+(* Binary theory representations: *)
+(* structure Disk_io = DISK_IO_BINARY(REGIME(Theory_data)) *)
+d107 12
+a118 4
+(* Ascii theory representations *)
+local
+structure Thy_pp = THY_PP((* structure Lib = Lib *)
+			  structure Term = Term
+d121 2
+a122 2
+structure Thy_table = thyLrValsFun(structure Token = LrParser.Token
+                                   structure Term = Term)
+d124 1
+a124 2
+val _ = Lib.say "A5";
+structure Thy_parse = THY_PARSE(structure Term = Term
+d129 1
+a129 1
+				      ((* structure Lib = Lib *)
+d133 1
+a133 1
+structure Table1 = thmsLrValsFun((* structure Lib = Lib *)
+d139 2
+a140 2
+structure Table2 = holsigLrValsFun((* structure Lib = Lib *)
+				   structure Term = Term
+d143 3
+a145 3
+in
+structure Disk_io = 
+          DISK_IO_ASCII((* structure Lib = Lib *)
+d147 1
+a147 1
+			    REGIME((* structure Lib = Lib *)
+d160 1
+a160 1
+end
+d162 2
+a163 2
+structure Theory_cache : Theory_cache_sig = 
+     CACHE((* structure Lib = Lib *)
+d172 2
+a173 2
+structure Theory_graph :Theory_graph_sig = 
+          DAG((* structure Lib = Lib *)
+d181 1
+a181 1
+structure Theory_io=THEORY_IO(structure Disk_io = Disk_io
+d184 3
+a186 3
+structure Theory_ops = THEORY_OPS(structure Globals = Globals
+                                  (* structure Lib = Lib *)
+				  structure Term = Term
+d191 2
+a192 2
+
+structure Theory = THEORY((* structure Lib = Lib *)
+d195 1
+a195 1
+                          structure Term = Term
+d199 14
+d214 1
+a214 2
+structure Add_to_sml = ADD_TO_SML ((* structure Lib = Lib *)
+				   structure Lexis = Lexis
+a216 1
+structure Lib_data = LIB_DATA ((* structure Lib = Lib *))
+d218 4
+a221 2
+structure Lib_table = libLrValsFun((* structure Lib = Lib *)
+				   structure Token = LrParser.Token
+d224 1
+a224 1
+structure Lib_parse =
+d229 1
+a229 2
+structure Lib_io = LIB_IO((* structure Lib = Lib *)
+			  structure File = File
+d232 2
+a233 3
+
+structure Library = LIBRARY((* structure Lib = Lib *)
+			    structure Help = Help
+d236 4
+a239 2
+structure Install = INSTALL ((* structure Lib = Lib *)
+			     structure Globals = Globals
+d244 1
+a244 2
+structure Exists_def = EXISTS_DEF((* structure Lib = Lib *)
+				  structure Theory = Theory
+d247 1
+a247 5
+structure Net = NET((* structure Lib = Lib *)
+		    structure Term = Term)
+
+structure Const_spec = CONST_SPEC((* structure Lib = Lib *)
+				  structure Theory = Theory
+d250 2
+a251 3
+structure Type_def = TYPE_DEF((* structure Lib = Lib *)
+				(* structure Lib = Lib *)
+			      structure Theory = Theory
+d253 2
+a254 2
+structure Const_def = CONST_DEF((* structure Lib = Lib *)
+				structure Theory = Theory
+d259 22
+a280 6
+structure Term_io : Term_io_sig = 
+    struct
+	structure Parse = Parse
+	structure Parse_support = Parse.Parse_support
+	structure Hol_pp = Hol_pp
+    end
+d282 39
+a320 9
+(* Make theories essential to the base logic *)
+val _ = if Globals.remake_theory_files
+        then 
+           let val d = ((!Globals.HOLdir)^"theories/"^
+                        (Globals.theory_file_type))
+               val _ = Lib.mkdir d handle _ => ()
+               val _ = Lib.clean_directory d
+           in () end
+	else ()
+d322 1
+a322 1
+structure Min = MK_MIN(structure Globals = Globals
+d325 1
+a325 1
+		       structure Parse = Parse)
+d327 3
+a329 4
+structure Exists = MK_EXISTS(structure Globals = Globals
+			     structure Theory = Theory
+			     structure Exists_def = Exists_def
+			     structure Parse = Parse)
+a331 1
+(* end *)
+@
+
+
+1.1
+log
+@Keeping you up to date:
+
+I'm about to do a checkin of elsa's modifications to the hol90.7
+sources to create her hol90.pre8.  To recap what I've done:
+	- I checked out hol90 (in /usr/groups/hol/drs1004/hol90)
+		cvs co hol90
+	  (Well, to be honest, I only checked out those
+	  parts of hol90 I knew I'd be changing, e.g. not the
+	  Manual, and only parts of the library.  Checking out the
+	  entire source takes a while, mainly due to the enormous number
+	  of help files.  The limiting factor is files/second, which
+         runs at around 5 when CVS is working on nfs over a network, not
+         KB/second, which you might at first think it would be).
+
+	- By doing a recursive diff between Elsa's source and the
+	hol90.7 source I found all the changes Elsa had made to
+	source files.  I copied relevant files from Elsa's source
+	into my checked out version.  The only new files were
+		- the sml_system files in src/0
+		- some make scripts in src/.
+	Changed files were in:
+		src/{0,1,2,3}
+		library/arith/src/thm_convs.sml
+		library/list/src/list_conv1.sml
+		library/num/src/num_lib.sml
+		library/prog_logic/src/halts_logic.sml
+		library/prog_logic/src/translation.sml
+		library/prog_logic/theories/src/mk_halts.sml
+		library/real/theories/src/Make
+		library/real/theories/src/equiv.sml
+		library/real/theories/src/seq.sml
+		library/reduce/src/arithconv.sml
+		library/string/src/string_conv.sml
+		library/unity/theories/src/aux_definitions.sml
+		library/word/theories/src/*
+
+	- I will now commit these changes, with this email as the log message.
+		cvs commit
+
+	- Tomorrow I will get this version compiling
+	with NJSML 108 (I will probably add
+	the files to enable the NJSML compilation manager to make
+	this easier), then check those changes in.  I think it's
+	good to get things in a working state.
+@
+text
+@d15 2
+a16 2
+structure Base_logic : Base_logic_sig =
+struct
+d258 1
+a258 1
+end
+@

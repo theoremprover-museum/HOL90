@@ -1,0 +1,52 @@
+thid = (after, 784032819, 651877)
+axioms = []
+definitions =
+[((AFTER),
+  [],
+  `((! :(process -> bool) -> bool) (\(P :process).
+   ((! :(string list -> bool) -> bool) (\(s :string list). ((==>
+   (((IN :string list -> string list set -> bool) $0) (TRACES $1)))
+   ((/\ (((= :string set -> string set -> bool) (ALPHA ((/ $1) $0)))
+   (ALPHA $1))) (((= :string list set -> string list set -> bool)
+   (TRACES ((/ $1) $0)))
+   ((GSPEC :(string list -> string list # bool) -> string list set)
+   (\(t :string list).
+   (((, :string list -> bool -> string list # bool) $0)
+   (((IN :string list -> string list set -> bool)
+   (((APPEND :string list -> string list -> string list) $1) $0))
+   (TRACES $2))))))))))))`)]
+theorems =
+[((TRACES_AFTER),
+  [],
+  `((! :(process -> bool) -> bool) (\(P :process).
+   ((! :(string list -> bool) -> bool) (\(s :string list). ((==>
+   (((IN :string list -> string list set -> bool) $0) (TRACES $1)))
+   (((= :string list set -> string list set -> bool) (TRACES ((/ $1)
+   $0)))
+   ((GSPEC :(string list -> string list # bool) -> string list set)
+   (\(t :string list).
+   (((, :string list -> bool -> string list # bool) $0)
+   (((IN :string list -> string list set -> bool)
+   (((APPEND :string list -> string list -> string list) $1) $0))
+   (TRACES $2)))))))))))`),
+ ((ALPHA_AFTER),
+  [],
+  `((! :(process -> bool) -> bool) (\(P :process).
+   ((! :(string list -> bool) -> bool) (\(s :string list). ((==>
+   (((IN :string list -> string list set -> bool) $0) (TRACES $1)))
+   (((= :string set -> string set -> bool) (ALPHA ((/ $1) $0))) (ALPHA
+   $1)))))))`),
+ ((IS_PROCESS_AFTER),
+  [],
+  `((! :(process -> bool) -> bool) (\(P :process).
+   ((! :(string list -> bool) -> bool) (\(s :string list). ((==>
+   (((IN :string list -> string list set -> bool) $0) (TRACES $1)))
+   (IS_PROCESS
+   (((, :string set -> string list set ->
+         string set # string list set) (ALPHA $1))
+   ((GSPEC :(string list -> string list # bool) -> string list set)
+   (\(t :string list).
+   (((, :string list -> bool -> string list # bool) $0)
+   (((IN :string list -> string list set -> bool)
+   (((APPEND :string list -> string list -> string list) $1) $0))
+   (TRACES $2))))))))))))`)]

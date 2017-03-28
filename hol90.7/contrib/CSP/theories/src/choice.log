@@ -1,0 +1,197 @@
+
+
+          HHH                 LL
+          HHH                  LL
+          HHH                   LL
+          HHH                    LL
+          HHH          OOOO       LL
+          HHHHHHH     OO  OO       LL
+          HHHHHHH     OO  OO       LLL
+          HHH          OOOO        LLLL
+          HHH                     LL  LL
+          HHH                    LL    LL
+          HHH                   LL      LL
+          HHH                  LL        LL90.7
+
+Created on Tue Nov 15 10:19:01 GMT 1994
+using: Standard ML of New Jersey, Version 0.93, February 15, 1993
+
+
+val it = () : unit
+val it = () : unit
+- [opening choice.sml]
+
+Declaring theory "choice".
+
+Theory "CSP_base" already consistent with disk, hence not exported.
+val it = () : unit
+val it = () : unit
+val it = [(),()] : unit list
+val TRACES_DEF = |- !P. TRACES P = SND (REP_process P) : thm
+val ALPHA_DEF = |- !P. ALPHA P = FST (REP_process P) : thm
+val IS_PROCESS =
+  |- !A TR.
+       IS_PROCESS (A,TR) =
+       TR SUBSET STAR A /\ [] IN TR /\ (!s t. APPEND s t IN TR ==> s IN TR)
+  : thm
+val TRACES_IN_STAR = |- !P. TRACES P SUBSET STAR (ALPHA P) : thm
+val APPEND_IN_TRACES = |- !P s t. APPEND s t IN TRACES P ==> s IN TRACES P
+  : thm
+val PROCESS_LEMMA6 = |- !r. IS_PROCESS r = REP_process (ABS_process r) = r
+  : thm
+val SUBSET_STAR = |- !A B. A SUBSET B ==> STAR A SUBSET STAR B : thm
+val CONS_STAR = |- !a t A. CONS a t IN STAR A = a IN A /\ t IN STAR A : thm
+val NIL_IN_STAR = |- !A. [] IN STAR A : thm
+val CONS_EQ_APPEND = |- !a l. CONS a l = APPEND [a] l : thm
+val CONS_MEMBER_LIST =
+  |- !s s' t a.
+       (APPEND s t = CONS a s') ==>
+       (s = []) \/ (?r. (s = CONS a r) /\ (s' = APPEND r t)) : thm
+val ONE_MEMBER_LIST = |- !s t a. (APPEND s t = [a]) ==> (s = []) \/ (s = [a])
+  : thm
+val TL_APPEND = |- !l. ~(l = []) ==> (!l'. TL (APPEND l l') = APPEND (TL l) l')
+  : thm
+val HD_APPEND = |- !l. ~(l = []) ==> (!l'. HD (APPEND l l') = HD l) : thm
+val NULL_EQ_NIL = |- !l. (l = []) = NULL l : thm
+val APPEND_EQ_NIL = |- !l1 l2. (APPEND l1 l2 = []) = (l1 = []) /\ (l2 = [])
+  : thm
+val NOT_LENGTH_EQ = |- !l2 l1. ~(LENGTH l1 = LENGTH l2) ==> ~(l1 = l2) : thm
+val LENGTH_LESS_EQ =
+  |- !l1 l2. LENGTH l1 <= LENGTH l2 ==> (!a. LENGTH l1 < LENGTH (CONS a l2))
+  : thm
+val APPEND_NIL = |- !l. APPEND l [] = l : thm
+val APPEND_ID = |- !l l'. (l = APPEND l l') = l' = [] : thm
+val it = [(),(),()] : unit list
+val event = (--`(ty_antiq((==`:string`==)))`--) : term
+val trace = (--`(ty_antiq((==`:string list`==)))`--) : term
+val alphabet = (--`(ty_antiq((==`:string set`==)))`--) : term
+val WELL_DEF_ALPHA =
+  |- !A P.
+       WELL_DEF_ALPHA A P =
+       (?A'. (!x. x IN A ==> (ALPHA (P x) = A')) /\ A SUBSET A') : thm
+choice.sml:44.1-49.73 Warning: binding not exhaustive
+          WELL_DEF_LEMMA1 :: WELL_DEF_LEMMA2 :: nil = ...
+val WELL_DEF_LEMMA1 =
+  |- (?A'. (!x. x IN A ==> (ALPHA (P x) = A')) /\ (!x. x IN A ==> x IN A')) ==>
+     (!x.
+       x IN A ==>
+       (ALPHA (P x) =
+        (@A'.
+          (!x. x IN A ==> (ALPHA (P x) = A')) /\ (!x. x IN A ==> x IN A'))))
+  : thm
+val WELL_DEF_LEMMA2 =
+  |- (?A'. (!x. x IN A ==> (ALPHA (P x) = A')) /\ (!x. x IN A ==> x IN A')) ==>
+     (!x.
+       x IN A ==>
+       x IN
+       (@A'. (!x. x IN A ==> (ALPHA (P x) = A')) /\ (!x. x IN A ==> x IN A')))
+  : thm
+val WELL_DEF_LEMMA3 =
+  |- (?A'. (!x. x IN A ==> (ALPHA (P x) = A')) /\ (!x. x IN A ==> x IN A')) ==>
+     (!x. x IN A ==> x IN ALPHA (P x)) : thm
+val IS_PROCESS_choice =
+  |- !A P.
+       WELL_DEF_ALPHA A P ==>
+       IS_PROCESS
+         ((@A'. (!x. x IN A ==> (ALPHA (P x) = A')) /\ A SUBSET A'),
+          {[]} UNION {CONS a t | a IN A /\ t IN TRACES (P a)}) : thm
+val choice_LEMMA1 =
+  |- !A P.
+       WELL_DEF_ALPHA A P ==>
+       (REP_process
+          (ABS_process
+            ((@A'. (!x. x IN A ==> (ALPHA (P x) = A')) /\ A SUBSET A'),
+             {[]} UNION {CONS a t | a IN A /\ t IN TRACES (P a)})) =
+        ((@A'. (!x. x IN A ==> (ALPHA (P x) = A')) /\ A SUBSET A'),
+         {[]} UNION {CONS a t | a IN A /\ t IN TRACES (P a)})) : thm
+val DEST_PROCESS =
+  |- ?f.
+       !A P.
+         WELL_DEF_ALPHA A P ==>
+         (ALPHA (f A P) =
+          (@A'. (!x. x IN A ==> (ALPHA (P x) = A')) /\ A SUBSET A')) /\
+         (TRACES (f A P) = {[]} UNION {CONS a t | a IN A /\ t IN TRACES (P a)})
+  : thm
+val choice =
+  |- !A P.
+       WELL_DEF_ALPHA A P ==>
+       (ALPHA (choice A P) =
+        (@A'. (!x. x IN A ==> (ALPHA (P x) = A')) /\ A SUBSET A')) /\
+       (TRACES (choice A P) =
+        {[]} UNION {CONS a t | a IN A /\ t IN TRACES (P a)}) : thm
+choice.sml:113.1-116.76 Warning: binding not exhaustive
+          ALPHA_choice :: TRACES_choice :: nil = ...
+val ALPHA_choice =
+  |- !P A.
+       WELL_DEF_ALPHA A P ==>
+       (ALPHA (choice A P) =
+        (@A'. (!x. x IN A ==> (ALPHA (P x) = A')) /\ A SUBSET A')) : thm
+val TRACES_choice =
+  |- !P A.
+       WELL_DEF_ALPHA A P ==>
+       (TRACES (choice A P) =
+        {[]} UNION {CONS a t | a IN A /\ t IN TRACES (P a)}) : thm
+val WELL_DEF_LEMMA3 =
+  |- c IN A ==>
+     WELL_DEF_ALPHA A P ==>
+     ((@A'. (!x. x IN A ==> (ALPHA (P x) = A')) /\ A SUBSET A') = ALPHA (P c))
+  : thm
+val it =
+  |- WELL_DEF_ALPHA A P ==> (!c. c IN A ==> (ALPHA (choice A P) = ALPHA (P c)))
+  : thm
+
+Theory "choice" exported.
+val it = () : unit
+val it = () : unit
+Theory: choice
+
+Parents:
+    process_ty
+    CSP_base
+
+Type constants:
+    
+
+Term constants:
+    WELL_DEF_ALPHA (Prefix)   :string set -> (string -> process) -> bool
+    choice (Prefix)   :string set -> (string -> process) -> process
+
+Axioms:
+    
+
+Definitions:
+    WELL_DEF_ALPHA
+    |- !A P.
+         WELL_DEF_ALPHA A P =
+         (?A'. (!x. x IN A ==> (ALPHA (P x) = A')) /\ A SUBSET A')
+    choice
+    |- !A P.
+         WELL_DEF_ALPHA A P ==>
+         (ALPHA (choice A P) =
+          (@A'. (!x. x IN A ==> (ALPHA (P x) = A')) /\ A SUBSET A')) /\
+         (TRACES (choice A P) =
+          {[]} UNION {CONS a t | a IN A /\ t IN TRACES (P a)})
+
+Theorems:
+    IS_PROCESS_choice
+    |- !A P.
+         WELL_DEF_ALPHA A P ==>
+         IS_PROCESS
+           ((@A'. (!x. x IN A ==> (ALPHA (P x) = A')) /\ A SUBSET A'),
+            {[]} UNION {CONS a t | a IN A /\ t IN TRACES (P a)})
+    ALPHA_choice
+    |- !P A.
+         WELL_DEF_ALPHA A P ==>
+         (ALPHA (choice A P) =
+          (@A'. (!x. x IN A ==> (ALPHA (P x) = A')) /\ A SUBSET A'))
+    TRACES_choice
+    |- !P A.
+         WELL_DEF_ALPHA A P ==>
+         (TRACES (choice A P) =
+          {[]} UNION {CONS a t | a IN A /\ t IN TRACES (P a)})
+    ALPHA_choice_SPEC
+    |- WELL_DEF_ALPHA A P ==>
+       (!c. c IN A ==> (ALPHA (choice A P) = ALPHA (P c)))
+
+Theory "choice" is consistent with disk.
+val it = () : unit

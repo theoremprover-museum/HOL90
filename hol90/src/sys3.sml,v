@@ -1,0 +1,89 @@
+head	1.1;
+branch	1.1.1;
+access;
+symbols
+	hol90_pre8_for_multiple_compilers:1.1.1.1.0.4
+	hol90_pre8_after_donalds_separate_compilation_changes:1.1.1.1
+	hol90_8_after_merging_Konrad_Elsa:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	95.10.16.13.29.48;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.29.48;	author rjb;	state Exp;
+branches
+	1.1.1.1.4.1;
+next	;
+
+1.1.1.1.4.1
+date	96.06.27.15.57.14;	author rjb;	state dead;
+branches;
+next	;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@use "3/sys_lib.sig";
+use "3/sys_lib.sml";
+
+
+if Globals.remake_theory_files 
+then ( load_theory "rec_type";
+       Theory.new_theory "HOL";
+       map Theory.new_parent ["one", "sum", "restr_binder"];
+      ())
+else Theory.load_theory "HOL";
+
+(* Need "" at head of theory_path in order for absolute paths used in 
+   library theories to make sense. Don't have to take it off again, unlike
+   in sys2.sml.
+*)
+val _ = (Lib.cons_path "" Globals.theory_path;
+         Library.load_library{lib = Sys_lib.hol_lib, theory = "-"});
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@
+
+
+1.1.1.1.4.1
+log
+@Theory files now build with SML/NJ 109, SML/NJ 108.5 (using CM), SML/NJ 0.93,
+and Poly/ML 3.0.
+The quotation filter has been modified so that antiquotation works correctly
+in old-style quotations.
+The quotation filter is now compiled using flex and gcc (by default).
+The arguments to the script for running hol90 have been changed.
+@
+text
+@@

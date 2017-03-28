@@ -1,0 +1,185 @@
+head	1.2;
+access;
+symbols
+	HOL97:1.1.0.4
+	bpHOL97:1.1
+	hol90_9_alpha:1.1
+	hol90_pre8_for_multiple_compilers:1.1.0.2
+	hol90_pre8_after_donalds_separate_compilation_changes:1.1;
+locks; strict;
+comment	@# @;
+
+
+1.2
+date	95.12.18.11.36.33;	author drs1004;	state dead;
+branches;
+next	1.1;
+
+1.1
+date	95.10.31.15.07.40;	author drs1004;	state Exp;
+branches
+	1.1.4.1;
+next	;
+
+1.1.4.1
+date	97.06.11.17.53.55;	author kxs;	state Exp;
+branches;
+next	1.1.4.2;
+
+1.1.4.2
+date	97.07.11.15.33.23;	author kxs;	state Exp;
+branches;
+next	1.1.4.3;
+
+1.1.4.3
+date	97.10.05.21.11.17;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.2
+log
+@Preterm and other changes, see 7.changes
+@
+text
+@(*========================================================================
+ * $Id: core.sml,v 1.1 1995/10/31 15:07:40 drs1004 Exp drs1004 $
+ *
+ * FILE: core.sml
+ * AUTHOR: Donald Syme
+ *
+ * The Core structure contains everything in levels 0 and 1 of the system.
+ *
+ * This structure may or may not be permanent.  It is used to avoid having to
+ * explicitly open lots and lots of structures in the HOL libraries,
+ * but the downside of this is that if any of the signatures in the
+ * core system change, this will make all the libraries recompile - bummer.
+ * Explicit opening is better, but it can take a long time to work out
+ * which structures need opening when given a source code file
+ * which relies on them all being open at the top level.
+ *=======================================================================*)
+
+structure Core = struct
+
+(* hol0 *)
+
+open Abbrev;
+open Exception;
+open Term_io
+open Parse
+open Hol_pp
+
+open Boolean
+open Exists
+open Min
+
+open Const_def
+open Type_def
+open Const_spec
+
+open Install
+open Add_to_sml
+open Library
+open Theory
+open Thm
+open Net
+open Dsyntax
+open Match
+open Term
+open Type
+
+open Lib
+  infix 3 ##
+open Exception
+open Globals;
+
+
+(* hol0/1 *)
+open Save_hol
+open Prim_rec
+open Induct_then
+open Type_def_support
+open Resolve
+open Taut_thms
+open Tactic
+open Thm_cont
+  infix THEN_TCL 
+  infix ORELSE_TCL
+open Rewrite
+open Tactical
+  infix THEN
+  infix THENL
+  infix ORELSE
+open Conv
+  infix THENC
+  infix ORELSEC
+open Drule
+
+
+end;@
+
+
+1.1
+log
+@First phase of hol90.8 development.  hol90 now compiles using NJSML-CM
+108.5, with separate compilation of libraries.  System dependencies
+have been isolated in the makefiles and "portable.sml".
+
+This involved a large number of enhancments to the source files,
+most of which are documented in the 7.changes file (or will be shortly).
+See also the correpsonding email corrspondence between RJB, KLS, TFM,
+JRH and DRS that happened during this development.
+@
+text
+@d2 1
+a2 1
+ * $Id$
+@
+
+
+1.1.4.1
+log
+@Changes made so that HOL builds on SMLNJ 109.26.
+@
+text
+@d2 1
+a2 1
+ * $Id: core.sml,v 1.1 1995/10/31 15:07:40 drs1004 Exp $
+d24 1
+d75 1
+a75 1
+end;
+@
+
+
+1.1.4.2
+log
+@Updates to make HOP CM-friendly. gstack.sml.0 deleted because it was just a
+security copy.
+@
+text
+@d2 1
+a2 1
+ * $Id: core.sml,v 1.1.4.1 1997/06/11 17:53:55 kxs Exp $
+d27 1
+a27 1
+open boolThry
+d48 1
+@
+
+
+1.1.4.3
+log
+@Changes so that frags are known.
+@
+text
+@d2 1
+a2 1
+ * $Id: core.sml,v 1.1.4.2 1997/07/11 15:33:23 kxs Exp $
+a71 1
+datatype frag = datatype Portable.frag;
+@

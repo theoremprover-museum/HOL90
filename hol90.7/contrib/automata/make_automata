@@ -1,0 +1,26 @@
+#
+# Build automata theory libraries
+#
+
+
+echo 'cd "theories/ascii"; use "../src/mk_koenig.sml";'          | $1 
+echo 'cd "theories/ascii"; use "../src/mk_zip.sml";'             | $1 
+echo 'cd "theories/ascii"; use "../src/mk_safe_live.sml";'       | $1 
+echo 'cd "theories/ascii"; use "../src/mk_automata.sml";'        | $1
+echo 'cd "theories/ascii"; use "../src/mk_safety_automata.sml";' | $1
+
+
+# Declare library
+
+echo 'new_library {'\
+     'name = "automata",'\
+     'doc = "Automata theory, due to Paul Loewenstein",'\
+     'path = (!Globals.HOLdir)^"contrib/automata/",'\
+     'parents = [hol_lib],'\
+     'theories = ["koenig","zip","safe_live","automata","safety_automata"],'\
+     'code = ["zip.sig", "zip.sml"],'\
+     'help = [],'\
+     'loaded = "fn () => ()"};'\
+     | $1
+
+mv automata.hol_lib ../desc

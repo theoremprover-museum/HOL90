@@ -1,0 +1,81 @@
+head	1.1;
+access;
+symbols
+	HOL97:1.1.2.1.0.2
+	bpHOL97:1.1.2.1
+	hol90_9_alpha:1.1.2.1
+	hol90_pre8_for_multiple_compilers:1.1.0.2;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	96.08.06.12.14.16;	author rjb;	state dead;
+branches
+	1.1.2.1;
+next	;
+
+1.1.2.1
+date	96.08.06.12.14.17;	author rjb;	state Exp;
+branches
+	1.1.2.1.2.1;
+next	;
+
+1.1.2.1.2.1
+date	97.07.14.14.36.37;	author kxs;	state dead;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@file jrh-ind-defs.sig was initially added on branch hol90_pre8_for_multiple_compilers.
+@
+text
+@@
+
+
+1.1.2.1
+log
+@New library ind-def.
+@
+text
+@a0 24
+
+
+signature Ind_defs_sig =
+sig
+    val new_inductive_definition
+	: {name:string, fixity:Term.fixity,patt:term*term list,
+	   rules: {hypotheses : term list,side_conditions : term list,
+		   conclusion: term} list}
+	-> thm * thm * thm
+    val RULE_INDUCT_THEN : thm -> thm_tactic -> tactic
+	
+    type monoset (* = (string * tactic) list *)
+    val prove_nonschematic_inductive_relations_exist : monoset -> term -> thm
+
+    val prove_monotonicity_hyps : monoset -> thm -> thm
+    val prove_inductive_relations_exist : monoset -> term -> thm
+    val gen_new_inductive_definition : monoset -> term -> (thm * thm * thm)
+
+    val bool_monoset : monoset
+    val MONO_TAC : monoset -> tactic
+
+    val new_simple_inductive_definition : term list -> thm * thm * thm
+
+end;
+@
+
+
+1.1.2.1.2.1
+log
+@Changed file names to reflect changes to structure names. Also internal
+changes for CM.
+@
+text
+@@

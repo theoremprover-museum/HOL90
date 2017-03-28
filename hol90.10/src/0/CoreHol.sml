@@ -1,0 +1,147 @@
+(* ===================================================================== *)
+(* FILE          : CoreHol.sml                                           *)
+(* DESCRIPTION   : An accumulation of logical framework prior to any     *)
+(*                 definitions being made.                               *)
+(*                                                                       *)
+(* AUTHOR        : Elsa L. Gunter, AT&T Bell Laboratories                *)
+(* DATE          : 26 October, 1993                                      *)
+(* ===================================================================== *)
+
+(* Copyright 1993 by AT&T Bell Laboratories *)
+
+(* Share and Enjoy *)
+
+
+structure CoreHol : CoreHolSig =
+struct
+(*-----------------------------------------------------------------------
+ * Construct Private Type and Term structures, use them where
+ * necessary, then hide them at the top level by signature restriction.
+ *---------------------------------------------------------------------*)
+
+local structure PrivateType = Type
+      structure PrivateTerm = TERM(structure Type = PrivateType)
+in
+
+   structure Type : Public_type_sig = PrivateType;
+
+   structure Term : Public_term_sig = PrivateTerm;
+
+   structure Match = MATCH(structure Term = PrivateTerm)
+
+   structure Dsyntax = DSYNTAX(structure Lexis = Lexis
+			    structure Term = PrivateTerm
+                            structure Match = Match)
+
+   structure Hol_pp = HOL_PP(structure Lexis = Lexis
+			  structure Term = PrivateTerm
+			  structure Globals = Globals
+                          structure Dsyntax = Dsyntax)
+
+   structure Preterm = PRETERM(structure Dsyntax = Dsyntax
+                            structure Term = PrivateTerm
+                            structure Hol_pp = Hol_pp)
+
+   structure Thm = THM(structure Globals = Globals
+		       structure Dsyntax = Dsyntax
+                       structure Hol_pp = Hol_pp
+                       structure Term = PrivateTerm)
+
+   local 
+      structure Theory_data = THEORY_DATA(structure Globals = Globals
+                                          structure Thm = Thm
+                                          structure Hol_pp = Hol_pp)
+
+      (* Ascii theory representations *)
+      local
+         structure Thy_pp = THY_PP(structure Term = PrivateTerm
+			           structure Hol_pp = Hol_pp)
+
+         structure Thy_table = thyLrValsFun(structure Token = LrParser.Token
+                                   structure Term = PrivateTerm)
+
+         structure Thy_parse = THY_PARSE
+                  (structure Term = PrivateTerm
+                   structure P = Join
+                         (structure ParserData = Thy_table.ParserData
+                          structure Lex = THY_LEX
+				      (structure Tokens = Thy_table.Tokens)
+                          structure LrParser = LrParser))
+
+         structure Table1 = thmsLrValsFun(structure Token = LrParser.Token
+                                 structure Thm = Thm
+                                 structure Thy_parse = Thy_parse
+                                 structure Theory_data = Theory_data)
+
+         structure Table2 = holsigLrValsFun(structure Term = PrivateTerm
+                                           structure Token = LrParser.Token
+                                           structure Theory_data = Theory_data)
+      in
+         structure Disk_io = DISK_IO_ASCII
+            (structure Regime = REGIME(structure Theory_data = Theory_data)
+             structure Thy_pp = Thy_pp
+             structure Thms_parse = Join
+                      (structure ParserData = Table1.ParserData
+                       structure Lex = THMS_LEX(structure Tokens=Table1.Tokens)
+                       structure LrParser = LrParser)
+             structure Holsig_parse = Join
+                      (structure ParserData = Table2.ParserData
+                       structure Lex=HOLSIG_LEX(structure Tokens=Table2.Tokens)
+                       structure LrParser = LrParser))
+      end
+
+      structure Theory_cache : Theory_cache_sig = 
+        CACHE(structure Key =
+	       struct
+		   type object = Theory_data.theory
+		   type key = string
+		   val key_of =
+		       Theory_data.theory_id_name o Theory_data.theory_id
+	       end)
+  
+      structure Theory_graph :Theory_graph_sig = 
+          DAG(structure Node =
+		  struct
+                      type node_id = Theory_data.theory_id
+		      val node_name = Theory_data.theory_id_name
+		      val node_eq = Lib.curry Theory_data.theory_id_eq
+		  end)
+
+      structure Theory_io = THEORY_IO(structure Disk_io = Disk_io
+                                      structure File = File)
+
+      structure Theory_ops = THEORY_OPS(structure Globals = Globals
+				  structure Term = PrivateTerm
+				  structure Theory_data = Theory_data
+                                  structure Theory_io=Theory_io
+                                  structure Theory_cache=Theory_cache
+                                  structure Theory_graph=Theory_graph)
+   in
+      structure Theory = THEORY(structure Hol_pp = Hol_pp
+			        structure Thm = Thm
+                                structure Term = PrivateTerm
+                                structure Globals = Globals
+                                structure Theory_ops = Theory_ops
+                                structure Lexis = Lexis)
+   end
+
+   structure Net = NET(structure Term = PrivateTerm)
+
+end;
+
+
+structure Exists_def = EXISTS_DEF(structure Theory = Theory
+                                  structure Dsyntax = Dsyntax);
+
+structure Const_spec = CONST_SPEC(structure Theory = Theory
+				  structure Dsyntax = Dsyntax
+				  structure Lexis = Lexis);
+
+structure Type_def = TYPE_DEF(structure Theory = Theory
+			      structure Dsyntax = Dsyntax);
+
+structure Const_def = CONST_DEF(structure Theory = Theory
+				structure Dsyntax = Dsyntax
+				structure Lexis = Lexis
+				structure Const_spec = Const_spec);
+end;

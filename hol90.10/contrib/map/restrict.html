@@ -1,0 +1,96 @@
+<TITLE>Theory: restrict</TITLE>
+<H1>Theory: restrict</H1>
+<H1>Parents</H1>
+    <UL>
+    <LI><A HREF = "boolarith2.html"><STRONG>boolarith2</STRONG></A>
+    <LI><A HREF = "traces.html"><STRONG>traces</STRONG></A>
+    <LI><A HREF = "CSP_base.html"><STRONG>CSP_base</STRONG></A>
+    </UL>
+
+
+<HR>
+<H1>Type constants</H1>
+    <UL>
+    
+    </UL>
+
+
+<HR>
+<H1>Term constants</H1>
+    <UL>
+    <LI><STRONG>RESTRICT</STRONG><EM>:'a list -> 'a set -> 'a list</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    </UL>
+
+
+<HR>
+<H1>Axioms</H1>
+<DL>
+
+</DL>
+
+
+<HR>
+<H1>Definitions</H1>
+<DL>
+<DT><STRONG>RESTRICT</STRONG>
+<DD>
+<PRE>
+|- (!A. RESTRICT [] A = []) /\
+   (!x t A.
+     RESTRICT (CONS x t) A =
+     ((x IN A) => (CONS x (RESTRICT t A)) | (RESTRICT t A)))
+</PRE>
+
+</DL>
+
+
+<HR>
+<H1>Theorems</H1>
+<DL>
+<DT><STRONG>STRICT_REST</STRONG>
+<DD>
+<PRE>
+|- !A. RESTRICT [] A = []
+</PRE>
+
+<DT><STRONG>DISTRIB_REST</STRONG>
+<DD>
+<PRE>
+|- !s t A. RESTRICT (APPEND s t) A = APPEND (RESTRICT s A) (RESTRICT t A)
+</PRE>
+
+<DT><STRONG>RESTR_EMPTY</STRONG>
+<DD>
+<PRE>
+|- !s. RESTRICT s {} = []
+</PRE>
+
+<DT><STRONG>REP_RESTR</STRONG>
+<DD>
+<PRE>
+|- !s A B. RESTRICT (RESTRICT s A) B = RESTRICT s (A INTER B)
+</PRE>
+
+<DT><STRONG>MAX_LEN_REST</STRONG>
+<DD>
+<PRE>
+|- !A s. LENGTH (RESTRICT s A) <= LENGTH s
+</PRE>
+
+<DT><STRONG>REST_LEMMA</STRONG>
+<DD>
+<PRE>
+|- !A s a. ~(LENGTH (RESTRICT s A) = LENGTH (CONS a s))
+</PRE>
+
+<DT><STRONG>REST_CONS_THM</STRONG>
+<DD>
+<PRE>
+|- !a A s. ~(RESTRICT s A = CONS a s)
+</PRE>
+
+</DL>
+
+
+<HR>

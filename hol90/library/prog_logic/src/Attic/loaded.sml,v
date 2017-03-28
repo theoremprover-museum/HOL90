@@ -1,0 +1,51 @@
+head	1.1;
+access;
+symbols
+	HOL97:1.1.0.2;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	97.07.14.17.34.31;	author kxs;	state dead;
+branches
+	1.1.2.1;
+next	;
+
+1.1.2.1
+date	97.07.14.17.34.31;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@file loaded.sml was initially added on branch HOL97.
+@
+text
+@@
+
+
+1.1.2.1
+log
+@The prog_logic library now loads under CM. The entrypoint is the
+structure prog_logicLib. The removed files are target files of hol_lex and
+hol_yak.
+@
+text
+@a0 10
+(*---------------------------------------------------------------------------
+ * This ensures that the "prog_logic" theory is present before the other 
+ * structures in this library are evaluated.
+ *---------------------------------------------------------------------------*)
+structure prog_logicTheoryLoaded =
+struct
+
+  val _ = Lib.try (CoreHol.Theory.loadLibThry "prog_logic") "prog_logic"
+
+end;
+@

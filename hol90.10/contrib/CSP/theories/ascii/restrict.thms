@@ -1,0 +1,77 @@
+thid = (restrict, 784032778, 336160)
+axioms = []
+definitions =
+[((RESTRICT),
+  [],
+  `((/\ ((! :('a set -> bool) -> bool) (\(A :'a set).
+   (((= :'a list -> 'a list -> bool)
+   (((RESTRICT :'a list -> 'a set -> 'a list) (NIL :'a list)) $0))
+   (NIL :'a list))))) ((! :('a -> bool) -> bool) (\(x :'a).
+   ((! :('a list -> bool) -> bool) (\(t :'a list).
+   ((! :('a set -> bool) -> bool) (\(A :'a set).
+   (((= :'a list -> 'a list -> bool)
+   (((RESTRICT :'a list -> 'a set -> 'a list)
+   (((CONS :'a -> 'a list -> 'a list) $2) $1)) $0))
+   ((((COND :bool -> 'a list -> 'a list -> 'a list)
+   (((IN :'a -> 'a set -> bool) $2) $0))
+   (((CONS :'a -> 'a list -> 'a list) $2)
+   (((RESTRICT :'a list -> 'a set -> 'a list) $1) $0)))
+   (((RESTRICT :'a list -> 'a set -> 'a list) $1) $0))))))))))`)]
+theorems =
+[((REST_CONS_THM),
+  [],
+  `((! :('a -> bool) -> bool) (\(a :'a).
+   ((! :('a set -> bool) -> bool) (\(A :'a set).
+   ((! :('a list -> bool) -> bool) (\(s :'a list). (~
+   (((= :'a list -> 'a list -> bool)
+   (((RESTRICT :'a list -> 'a set -> 'a list) $0) $1))
+   (((CONS :'a -> 'a list -> 'a list) $2) $0)))))))))`),
+ ((REST_LEMMA),
+  [],
+  `((! :('a set -> bool) -> bool) (\(A :'a set).
+   ((! :('a list -> bool) -> bool) (\(s :'a list).
+   ((! :('a -> bool) -> bool) (\(a :'a). (~ (((= :num -> num -> bool)
+   ((LENGTH :'a list -> num)
+   (((RESTRICT :'a list -> 'a set -> 'a list) $1) $2)))
+   ((LENGTH :'a list -> num) (((CONS :'a -> 'a list -> 'a list) $0)
+   $1))))))))))`),
+ ((MAX_LEN_REST),
+  [],
+  `((! :('a set -> bool) -> bool) (\(A :'a set).
+   ((! :('a list -> bool) -> bool) (\(s :'a list). ((<=
+   ((LENGTH :'a list -> num)
+   (((RESTRICT :'a list -> 'a set -> 'a list) $0) $1)))
+   ((LENGTH :'a list -> num) $0))))))`),
+ ((REP_RESTR),
+  [],
+  `((! :('a list -> bool) -> bool) (\(s :'a list).
+   ((! :('a set -> bool) -> bool) (\(A :'a set).
+   ((! :('a set -> bool) -> bool) (\(B :'a set).
+   (((= :'a list -> 'a list -> bool)
+   (((RESTRICT :'a list -> 'a set -> 'a list)
+   (((RESTRICT :'a list -> 'a set -> 'a list) $2) $1)) $0))
+   (((RESTRICT :'a list -> 'a set -> 'a list) $2)
+   (((INTER :'a set -> 'a set -> 'a set) $1) $0)))))))))`),
+ ((RESTR_EMPTY),
+  [],
+  `((! :('a list -> bool) -> bool) (\(s :'a list).
+   (((= :'a list -> 'a list -> bool)
+   (((RESTRICT :'a list -> 'a set -> 'a list) $0) (EMPTY :'a set)))
+   (NIL :'a list))))`),
+ ((DISTRIB_REST),
+  [],
+  `((! :('a list -> bool) -> bool) (\(s :'a list).
+   ((! :('a list -> bool) -> bool) (\(t :'a list).
+   ((! :('a set -> bool) -> bool) (\(A :'a set).
+   (((= :'a list -> 'a list -> bool)
+   (((RESTRICT :'a list -> 'a set -> 'a list)
+   (((APPEND :'a list -> 'a list -> 'a list) $2) $1)) $0))
+   (((APPEND :'a list -> 'a list -> 'a list)
+   (((RESTRICT :'a list -> 'a set -> 'a list) $2) $0))
+   (((RESTRICT :'a list -> 'a set -> 'a list) $1) $0)))))))))`),
+ ((STRICT_REST),
+  [],
+  `((! :('a set -> bool) -> bool) (\(A :'a set).
+   (((= :'a list -> 'a list -> bool)
+   (((RESTRICT :'a list -> 'a set -> 'a list) (NIL :'a list)) $0))
+   (NIL :'a list))))`)]

@@ -1,0 +1,501 @@
+head	1.1;
+access;
+symbols
+	HOL97:1.1.2.4.0.2
+	bpHOL97:1.1.2.4
+	hol90_9_alpha:1.1.2.3
+	hol90_pre8_for_multiple_compilers:1.1.0.2;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	95.11.15.13.22.18;	author rjb;	state Exp;
+branches
+	1.1.2.1;
+next	;
+
+1.1.2.1
+date	96.06.25.15.40.51;	author rjb;	state Exp;
+branches;
+next	1.1.2.2;
+
+1.1.2.2
+date	96.06.27.15.57.07;	author rjb;	state Exp;
+branches;
+next	1.1.2.3;
+
+1.1.2.3
+date	96.08.23.16.17.59;	author rjb;	state Exp;
+branches;
+next	1.1.2.4;
+
+1.1.2.4
+date	96.12.18.12.14.20;	author rjb;	state Exp;
+branches
+	1.1.2.4.2.1;
+next	;
+
+1.1.2.4.2.1
+date	97.06.11.17.28.26;	author kxs;	state Exp;
+branches;
+next	1.1.2.4.2.2;
+
+1.1.2.4.2.2
+date	97.07.11.15.55.55;	author kxs;	state Exp;
+branches;
+next	1.1.2.4.2.3;
+
+1.1.2.4.2.3
+date	98.01.16.16.04.57;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@Architecture-independent script for executing HOL90
+@
+
+
+1.1
+log
+@The HOL90 sources have been changed to allow for the use of different
+Standard ML compilers (possibly simultaneously).
+
+The main changes are:
+
+ * Introduction of makefiles for different ML compilers.
+
+   - The existing Makefile has become Makefile.njsml.108-cm and has been
+     modified to be called from the new main Makefile.
+
+   - New Makefile introduced. In addition to an entry for making the HOL90
+     executable there are entries for making an architecture-independent
+     script for running HOL and a filter for providing quotation and
+     antiquotation for those ML compilers/interpretors that do not have the
+     facility built-in. The Makefile has a variable for the name of the
+     version, e.g. "pre8", which ultimately should be propagated to the build.
+
+ * The "bin" subdirectory is the location for the new architecture-independent
+   script and for the quotation filters for various architectures. The HOL90
+   executables and heaps are now placed in subdirectories of "bin" based on
+   the name of the SML compiler. The naming scheme is:
+
+      njsml.108      Standard ML of New Jersey, Version 108
+      njsml.108-cm   SML/NJ, Version 108, using the Compilation Manager
+      njsml.93       Standard ML of New Jersey, Version 0.93
+      polyml         Poly/ML
+      mosml          Moscow ML
+
+   The compiler-specific makefiles should write executables, heaps, and logs
+   into these subdirectories. In addition, architecture-independent scripts
+   (or symbolic links to them) for the SML compiler and (where appropriate)
+   the CM version of the compiler should be placed in these directories under
+   the names "sml" and "sml-cm".
+
+ * A file called "script" has been added to the "src" subdirectory. This is
+   the architecture-independent script for executing HOL90. The Makefile
+   simply copies this to the "bin" subdirectory preceded by a few lines of
+   parameter definitions. One of these parameters is the default SML version
+   to use. So, the last version of HOL to be built using "make" or "make all"
+   will become the default.
+
+ * The Lex source for the quotation filter has been added to the "src"
+   subdirectory under the name "quote-filter.lex".
+
+ * Many files in "src/0" changed to make them more portable across different
+   ML compilers. Various additions have been made to the Portable structure
+   and files changed to access identifiers in the Portable structure rather
+   than from the global environment. Worthy of special note are:
+
+   - The pointer equality used in "src/0/term.sml" has been made into a
+     function in the Portable structure.
+
+   - The ML-Lex and ML-Yacc files for the various parsers have been changed
+     to access the Portable structure. Both the source files and the SML
+     produced from them have been changed but I have not verified that the
+     source files would reproduce the new SML versions if ML-Lex and ML-Yacc
+     were to be rerun on them. The changes involve some hacks that exploit the
+     way ML-Lex and ML-Yacc work. See the sources for details.
+
+R.J.Boulton, 15th November 1995.
+@
+text
+@# Script for executing hol90.
+# Parameters are added before these comments by the Makefile.
+#
+# usage: hol90 [-s <sml>] [-i <interface>]
+#
+# e.g. hol90 -s njsml.108-cm -i tkhol
+
+# Default parameters
+#
+interface=""
+arch=`/bin/arch`
+case $arch in
+     sun4*) machtype="sparc";;
+     *) machtype=$arch;;
+esac
+
+# Process the command-line options
+#
+while test "$#" != "0"
+do
+   arg=$1
+   shift
+   case $arg in
+   -s)
+      sml=$1
+      shift
+      ;;
+   -i)
+      interface=$1
+      shift
+      ;;
+   *)
+      echo 'usage: hol90 [-s <sml>] [-i <interface>]'
+      echo '(where <sml> = njsml.108-cm, njsml.93, polyml, mosml, etc.'
+      echo ' <interface> = tkhol, etc.)'
+      exit 1
+   esac
+done
+
+# The name of the SML implementation
+#
+case $sml in
+     njsml.108*) smlname="Standard ML of New Jersey, Version 108";;
+     njsml.93) smlname="Standard ML of New Jersey, Version 0.93";;
+     njsml*) smlname="Standard ML of New Jersey";;
+     polyml*) smlname="Poly/ML";;
+     mosml*) smlname="Moscow ML";;
+     *) smlname="\`$sml'";;
+esac
+
+# Error text
+#
+error="hol90.$version is not built for the \`$arch' architecture with $smlname"
+
+# Execute HOL90
+#
+case $sml in
+njsml.93) echo $error;;
+njsml*)
+   if [ -r $holdir/bin/$sml/.heap/hol3.$machtype ]
+   then
+      exec $holdir/bin/$sml/sml @@SMLload=$holdir/bin/$sml/.heap/hol3.$machtype
+   else
+      echo $error
+   fi;;
+polyml*) echo $error;;
+mosml*) echo $error;;
+*) echo $error;;
+esac
+@
+
+
+1.1.2.1
+log
+@The core of hol90.9.alpha now builds successfully with SML/NJ 109,
+SML/NJ 108.5 (using CM), SML/NJ 0.93, and Poly/ML 3.0.
+I have not yet tried rebuilding the theory files.
+@
+text
+@d4 1
+a4 1
+# usage: hol90 [-s <sml>] [-h <heapsize>] [-i <interface>]
+d6 1
+a6 1
+# e.g. hol90 -s njsml.1xx -i tkhol
+a9 1
+heapsize=10000
+d13 2
+a14 6
+     sun4*) case `/bin/uname -sr` in
+                 "SunOS "4*) arch="sparc-sunos";;
+                 "SunOS "5*) arch="sparc-solaris";;
+                 *) arch="sparc";;
+            esac;;
+     *) ;;
+d21 1
+a21 1
+   opt=$1
+d23 1
+a23 6
+   arg=$1
+   if test "$#" != "0"
+   then shift
+   else opt=""
+   fi
+   case $opt in
+d25 2
+a26 4
+      sml=$arg
+      ;;
+   -h)
+      heapsize=$arg
+d29 2
+a30 1
+      interface=$arg
+d33 2
+a34 3
+      echo 'usage: hol90 [-s <sml>] [-h <heapsize>] [-i <interface>]'
+      echo '(where <sml> = njsml.1xx, njsml.93, polyml, mosml, etc.'
+      echo ' <heapsize>  = size of heap in Kbytes for Poly/ML (default 10000)'
+d58 1
+a58 10
+njsml.93)
+   if [ -r $holdir/bin/$sml/hol90.$arch ]
+   then
+#      Force filter to ignore SIGINT (control-C)
+      (trap "" 2;\
+       $holdir/bin/quote-filter.$arch) | $holdir/bin/$sml/hol90.$arch
+      kill -PIPE $$   # Forces the filter process to die
+   else
+      echo $error
+   fi;;
+d60 1
+a60 12
+   if [ -r $holdir/bin/$sml/.heap/hol90.$arch ]
+   then
+#      Force filter to ignore SIGINT (control-C)
+      (trap "" 2;\
+       $holdir/bin/quote-filter.$arch) |\
+      $holdir/bin/$sml/sml @@SMLload=$holdir/bin/$sml/.heap/hol90.$arch
+      kill -PIPE $$   # Forces the filter process to die
+   else
+      echo $error
+   fi;;
+polyml*)
+   if [ -r $holdir/bin/$sml/hol90_dbase.$arch ]
+d62 1
+a62 8
+#      Force filter to ignore SIGINT (control-C)
+      (trap "" 2;\
+#      Issue a carriage return to get PolyML prompt
+       echo;\
+       $holdir/bin/quote-filter.$arch) |\
+      $holdir/bin/$sml/sml.$arch -noDisplay -h $heapsize\
+         -r $holdir/bin/$sml/hol90_dbase.$arch
+      kill -PIPE $$   # Forces the filter process to die
+d66 1
+a69 1
+exit 0
+@
+
+
+1.1.2.2
+log
+@Theory files now build with SML/NJ 109, SML/NJ 108.5 (using CM), SML/NJ 0.93,
+and Poly/ML 3.0.
+The quotation filter has been modified so that antiquotation works correctly
+in old-style quotations.
+The quotation filter is now compiled using flex and gcc (by default).
+The arguments to the script for running hol90 have been changed.
+@
+text
+@d4 1
+a4 1
+# usage: hol90 [-ml <sml>] [-h <heapsize>] [-v <variant>]
+d6 1
+a6 1
+# e.g. hol90 -ml njsml.1xx -v tkhol
+a9 1
+hol=hol90
+d11 1
+a11 1
+variant=""
+d34 1
+a34 1
+   -ml)
+d40 2
+a41 3
+   -v)
+      hol=$arg
+      variant=" ($arg)"
+d44 2
+a45 2
+      echo 'usage: hol90 [-ml <sml>] [-h <heapsize>] [-v <variant>]'
+      echo '(where <sml> = njsml.1xx, njsml.93, polyml, etc.'
+d47 1
+a47 1
+      echo ' <variant>   = tkhol, etc.)'
+d65 1
+a65 2
+error="hol90.$version$variant\
+ is not built for the \`$arch' architecture with $smlname"
+d71 1
+a71 1
+   if [ -r $holdir/bin/$sml/$hol.$arch ]
+d75 1
+a75 1
+       $holdir/bin/quote-filter.$arch) | $holdir/bin/$sml/$hol.$arch
+d81 1
+a81 1
+   if [ -r $holdir/bin/$sml/.heap/$hol.$arch ]
+d86 1
+a86 1
+      $holdir/bin/$sml/sml @@SMLload=$holdir/bin/$sml/.heap/$hol.$arch
+d92 1
+a92 1
+   if [ -r $holdir/bin/$sml/$hol\_dbase.$arch ]
+d100 1
+a100 1
+         -r $holdir/bin/$sml/$hol\_dbase.$arch
+@
+
+
+1.1.2.3
+log
+@Modified so that a non-zero exit code is returned when the main hol90 process
+terminates abnormally (i.e. with a non-zero exit code).
+@
+text
+@d78 2
+a79 5
+       $holdir/bin/quote-filter.$arch 2>/dev/null) |\
+      if $holdir/bin/$sml/$hol.$arch
+      then kill -PIPE $$   # Forces the filter process to die and returns ok
+      else kill -KILL $$   # Forces the filter process to die and returns error
+      fi
+d88 3
+a90 5
+       $holdir/bin/quote-filter.$arch 2>/dev/null) |\
+      if $holdir/bin/$sml/sml @@SMLload=$holdir/bin/$sml/.heap/$hol.$arch
+      then kill -PIPE $$   # Forces the filter process to die and returns ok
+      else kill -KILL $$   # Forces the filter process to die and returns error
+      fi
+d101 4
+a104 6
+       $holdir/bin/quote-filter.$arch 2>/dev/null) |\
+      if $holdir/bin/$sml/sml.$arch -noDisplay -h $heapsize\
+            -r $holdir/bin/$sml/$hol\_dbase.$arch
+      then kill -PIPE $$   # Forces the filter process to die and returns ok
+      else kill -KILL $$   # Forces the filter process to die and returns error
+      fi
+d111 1
+@
+
+
+1.1.2.4
+log
+@See doc/8/8.changes for a description of the changes.
+@
+text
+@d4 1
+a4 4
+# usage: hol90 [-ml <sml>] [-h <heapsize>] [-u <exec>]
+# (where <sml> = njsml.1xx, njsml.93, polyml, etc.
+#  <heapsize> = size of heap in Kbytes for Poly/ML (default 10000)
+#  <exec> = path to a user's executable/heap/database)
+d6 1
+a6 1
+# e.g. hol90 -ml njsml.1xx -u /my/hol/heap
+d12 10
+a21 2
+exec=""
+arch=`$holdir/src/architecture`
+d41 3
+a43 2
+   -u)
+      exec=$arg
+d46 1
+a46 1
+      echo 'usage: hol90 [-ml <sml>] [-h <heapsize>] [-u <exec>]'
+d48 2
+a49 2
+      echo ' <heapsize> = size of heap in Kbytes for Poly/ML (default 10000)'
+      echo " <exec> = path to a user's executable/heap/database)"
+d57 1
+a57 1
+     njsml.1xx*) smlname="Standard ML of New Jersey, Version 1xx";;
+a61 1
+     mlworks*) smlname="MLWorks";;
+d67 1
+a67 2
+if [ -z "$exec" ]
+then error="hol90.$version\
+a68 2
+else error="$exec not found or cannot be used with this configuration"
+fi
+a71 3
+success="exit 0"
+failure="kill -KILL $$"   # Forces the filter process to die and returns error
+#
+d74 1
+a74 4
+   if [ -z "$exec" ]
+   then exec=$holdir/bin/$sml/$hol.$arch
+   fi
+   if [ -x $exec ]
+d79 3
+a81 3
+      if $exec
+      then $success
+      else $failure
+d87 1
+a87 5
+   if [ -z "$exec" ]
+   then heap=$holdir/bin/$sml/.heap/$hol.$arch
+   else heap=$exec
+   fi
+   if [ -r $heap ]
+d92 3
+a94 3
+      if $holdir/bin/$sml/sml @@SMLload=$heap
+      then $success
+      else $failure
+d100 1
+a100 5
+   if [ -z "$exec" ]
+   then database=$holdir/bin/$sml/$hol\_dbase.$arch; readonly="-r"
+   else database=$exec; readonly=""
+   fi
+   if [ -r $database ]
+d107 4
+a110 3
+      if $holdir/bin/$sml/sml.$arch -noDisplay -h $heapsize $readonly $database
+      then $success
+      else $failure
+a115 1
+mlworks*) echo $error;;
+@
+
+
+1.1.2.4.2.1
+log
+@Updated for ML 109.26
+@
+text
+@d16 1
+a16 1
+arch=`$holdir/tools/architecture`
+@
+
+
+1.1.2.4.2.2
+log
+@Changed script so that now GC messages are not echoed.
+@
+text
+@d5 3
+a7 4
+#
+# (where <sml>     = njsml.1xx, njsml.93, polyml, etc.
+#       <heapsize> = size of heap in Kbytes for Poly/ML (default 10000)
+#       <exec>     = path to a user's executable/heap/database)
+d100 1
+a100 1
+      if $holdir/bin/$sml/sml @@SMLload=$heap @@SMLdebug=/dev/null
+@
+
+
+1.1.2.4.2.3
+log
+@Changed to allow architecture suffixes in SML/NJ heaps.
+@
+text
+@d94 1
+a94 2
+#   else heap=$exec
+   else heap=$exec.$arch
+@

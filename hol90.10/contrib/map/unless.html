@@ -1,0 +1,325 @@
+<TITLE>Theory: unless</TITLE>
+<H1>Theory: unless</H1>
+<H1>Parents</H1>
+    <UL>
+    <LI><A HREF = "state_logic.html"><STRONG>state_logic</STRONG></A>
+    </UL>
+
+
+<HR>
+<H1>Type constants</H1>
+    <UL>
+    
+    </UL>
+
+
+<HR>
+<H1>Term constants</H1>
+    <UL>
+    <LI><STRONG>UNLESS_STMT</STRONG><EM>:('a -> bool) -> ('a -> bool) ->
+                                         ('a -> 'a) -> 'a -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Infix 425<STRONG>}</STRONG>
+    <LI><STRONG>UNLESS</STRONG><EM>:('a -> bool) -> ('a -> bool) ->
+                                    ('a -> 'a) list -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Infix 425<STRONG>}</STRONG>
+    <LI><STRONG>STABLE</STRONG><EM>:('a -> bool) -> ('a -> 'a) list ->
+                                    bool</EM>
+        <STRONG>{</STRONG>fixity  = Infix 425<STRONG>}</STRONG>
+    <LI><STRONG>INVARIANT</STRONG><EM>:('a -> bool) ->
+                                       ('a -> bool) # ('a -> 'a) list ->
+                                       bool</EM>
+        <STRONG>{</STRONG>fixity  = Infix 425<STRONG>}</STRONG>
+    </UL>
+
+
+<HR>
+<H1>Axioms</H1>
+<DL>
+
+</DL>
+
+
+<HR>
+<H1>Definitions</H1>
+<DL>
+<DT><STRONG>UNLESS_STMT</STRONG>
+<DD>
+<PRE>
+|- !p q st.
+     (p UNLESS_STMT q) st = (\s. p s /\ ~(q s) ==> p (st s) \/ q (st s))
+</PRE>
+
+<DT><STRONG>UNLESS</STRONG>
+<DD>
+<PRE>
+|- (!p q. (p UNLESS q) [] = T) /\
+   (!p q Pr st.
+     (p UNLESS q) (CONS st Pr) =
+     (!s. (p UNLESS_STMT q) st s) /\ (p UNLESS q) Pr)
+</PRE>
+
+<DT><STRONG>STABLE</STRONG>
+<DD>
+<PRE>
+|- !p Pr. p STABLE Pr = (p UNLESS False) Pr
+</PRE>
+
+<DT><STRONG>INVARIANT</STRONG>
+<DD>
+<PRE>
+|- !p p0 Pr. p INVARIANT (p0,Pr) = (!s. p0 s ==> p s) /\ p STABLE Pr
+</PRE>
+
+</DL>
+
+
+<HR>
+<H1>Theorems</H1>
+<DL>
+<DT><STRONG>UNLESS_STMT_thm0</STRONG>
+<DD>
+<PRE>
+|- !p st s. (p UNLESS_STMT p) st s
+</PRE>
+
+<DT><STRONG>UNLESS_STMT_thm1</STRONG>
+<DD>
+<PRE>
+|- !p q r st.
+     (!s. (p UNLESS_STMT q) st s) /\ (!s. q s ==> r s) ==>
+     (!s. (p UNLESS_STMT r) st s)
+</PRE>
+
+<DT><STRONG>UNLESS_STMT_thm2</STRONG>
+<DD>
+<PRE>
+|- !p q p' q' st.
+     (!s. (p UNLESS_STMT q) st s) /\ (!s. (p' UNLESS_STMT q') st s) ==>
+     (!s. (p \/* p' UNLESS_STMT q \/* q') st s)
+</PRE>
+
+<DT><STRONG>UNLESS_STMT_thm3</STRONG>
+<DD>
+<PRE>
+|- !p q p' q' st.
+     (!s. (p UNLESS_STMT q) st s) /\ (!s. (p' UNLESS_STMT q') st s) ==>
+     (!s. (p /\* p' UNLESS_STMT (p /\* q' \/* p' /\* q) \/* q /\* q') st s)
+</PRE>
+
+<DT><STRONG>UNLESS_STMT_thm4</STRONG>
+<DD>
+<PRE>
+|- !p q p' q' st.
+     (!s. (p UNLESS_STMT q) st s) /\ (!s. (p' UNLESS_STMT q') st s) ==>
+     (!s.
+       (p \/* p' UNLESS_STMT (~* p /\* q' \/* ~* p' /\* q) \/* q /\* q') st s)
+</PRE>
+
+<DT><STRONG>UNLESS_STMT_thm5</STRONG>
+<DD>
+<PRE>
+|- !P q st.
+     (!m s. (P m UNLESS_STMT q) st s) ==>
+     (!s. ((\s. ?n. P n s) UNLESS_STMT q) st s)
+</PRE>
+
+<DT><STRONG>UNLESS_thm1</STRONG>
+<DD>
+<PRE>
+|- !p Pr. (p UNLESS p) Pr
+</PRE>
+
+<DT><STRONG>UNLESS_thm2</STRONG>
+<DD>
+<PRE>
+|- !p Pr. (p UNLESS ~* p) Pr
+</PRE>
+
+<DT><STRONG>UNLESS_thm3</STRONG>
+<DD>
+<PRE>
+|- !p q r Pr. (p UNLESS q) Pr /\ (!s. q s ==> r s) ==> (p UNLESS r) Pr
+</PRE>
+
+<DT><STRONG>UNLESS_thm4</STRONG>
+<DD>
+<PRE>
+|- !p q p' q' Pr.
+     (p UNLESS q) Pr /\ (p' UNLESS q') Pr ==>
+     (p /\* p' UNLESS (p /\* q' \/* p' /\* q) \/* q /\* q') Pr
+</PRE>
+
+<DT><STRONG>UNLESS_thm5</STRONG>
+<DD>
+<PRE>
+|- !p q p' q' Pr.
+     (p UNLESS q) Pr /\ (p' UNLESS q') Pr ==>
+     (p \/* p' UNLESS (~* p /\* q' \/* ~* p' /\* q) \/* q /\* q') Pr
+</PRE>
+
+<DT><STRONG>UNLESS_thm6</STRONG>
+<DD>
+<PRE>
+|- !p q p' q' Pr.
+     (p UNLESS q) Pr /\ (p' UNLESS q') Pr ==> (p /\* p' UNLESS q \/* q') Pr
+</PRE>
+
+<DT><STRONG>UNLESS_thm7</STRONG>
+<DD>
+<PRE>
+|- !p q p' q' Pr.
+     (p UNLESS q) Pr /\ (p' UNLESS q') Pr ==> (p \/* p' UNLESS q \/* q') Pr
+</PRE>
+
+<DT><STRONG>UNLESS_thm8</STRONG>
+<DD>
+<PRE>
+|- !p q r Pr. (p UNLESS q) Pr /\ (q UNLESS r) Pr ==> (p \/* q UNLESS r) Pr
+</PRE>
+
+<DT><STRONG>UNLESS_cor1</STRONG>
+<DD>
+<PRE>
+|- !p q Pr. (!s. p s ==> q s) ==> (p UNLESS q) Pr
+</PRE>
+
+<DT><STRONG>UNLESS_cor2</STRONG>
+<DD>
+<PRE>
+|- !p q Pr. (!s. ~* p s ==> q s) ==> (p UNLESS q) Pr
+</PRE>
+
+<DT><STRONG>UNLESS_cor3</STRONG>
+<DD>
+<PRE>
+|- !p q r Pr. (p /\* ~* q UNLESS q \/* r) Pr = (p UNLESS q \/* r) Pr
+</PRE>
+
+<DT><STRONG>UNLESS_cor4</STRONG>
+<DD>
+<PRE>
+|- !p q r Pr. (p \/* q UNLESS r) Pr ==> (p UNLESS q \/* r) Pr
+</PRE>
+
+<DT><STRONG>UNLESS_cor5</STRONG>
+<DD>
+<PRE>
+|- !p Pr. (p UNLESS True) Pr
+</PRE>
+
+<DT><STRONG>UNLESS_cor6</STRONG>
+<DD>
+<PRE>
+|- !p Pr. (True UNLESS p) Pr
+</PRE>
+
+<DT><STRONG>UNLESS_cor7</STRONG>
+<DD>
+<PRE>
+|- !p Pr. (False UNLESS p) Pr
+</PRE>
+
+<DT><STRONG>UNLESS_cor8</STRONG>
+<DD>
+<PRE>
+|- !p q p' Pr.
+     (!s. p s /\ ~(q s)) ==>
+     (!s. p' s) ==>
+     (!s. p s \/ q s) ==>
+     ((p /\* ~* q UNLESS q) Pr = (p' /\* ~* q UNLESS q) Pr)
+</PRE>
+
+<DT><STRONG>UNLESS_cor9</STRONG>
+<DD>
+<PRE>
+|- !p q p' q' r r' Pr.
+     (p \/* p' UNLESS q \/* r) Pr /\ (q \/* q' UNLESS p \/* r') Pr ==>
+     (p \/* p' \/* q \/* q' UNLESS p /\* q \/* r \/* r') Pr
+</PRE>
+
+<DT><STRONG>UNLESS_cor10</STRONG>
+<DD>
+<PRE>
+|- !p q Pr. p \/* q STABLE Pr ==> (p UNLESS q) Pr
+</PRE>
+
+<DT><STRONG>UNLESS_cor11</STRONG>
+<DD>
+<PRE>
+|- !p Pr. (!s. ~* p s) ==> p STABLE Pr
+</PRE>
+
+<DT><STRONG>UNLESS_cor12</STRONG>
+<DD>
+<PRE>
+|- !p Pr. (!s. ~* p s) ==> ~* p STABLE Pr
+</PRE>
+
+<DT><STRONG>UNLESS_cor13</STRONG>
+<DD>
+<PRE>
+|- !p q Pr.
+     (p UNLESS q) Pr /\ (q UNLESS p) Pr /\ (!s. ~* (p /\* q) s) ==>
+     p \/* q STABLE Pr
+</PRE>
+
+<DT><STRONG>UNLESS_cor14</STRONG>
+<DD>
+<PRE>
+|- !p q Pr. (p UNLESS ~* q) Pr /\ q STABLE Pr ==> (p UNLESS p /\* ~* q) Pr
+</PRE>
+
+<DT><STRONG>UNLESS_cor15</STRONG>
+<DD>
+<PRE>
+|- !P Q Pr.
+     (!i. (P i UNLESS P i /\* Q i) Pr) ==> ($!* P UNLESS $!* P /\* $?* Q) Pr
+</PRE>
+
+<DT><STRONG>UNLESS_cor16</STRONG>
+<DD>
+<PRE>
+|- !P Q Pr.
+     (!i. (P i UNLESS Q i) Pr) ==> (!i. (/<=\* P i UNLESS \<=/* Q i) Pr)
+</PRE>
+
+<DT><STRONG>UNLESS_cor17</STRONG>
+<DD>
+<PRE>
+|- !P q Pr. (!i. (P i UNLESS q) Pr) ==> (!i. (/<=\* P i UNLESS q) Pr)
+</PRE>
+
+<DT><STRONG>UNLESS_cor18</STRONG>
+<DD>
+<PRE>
+|- !P q Pr. (!m. (P m UNLESS q) Pr) ==> ($?* P UNLESS q) Pr
+</PRE>
+
+<DT><STRONG>UNLESS_cor19</STRONG>
+<DD>
+<PRE>
+|- !Pr. False STABLE Pr
+</PRE>
+
+<DT><STRONG>UNLESS_cor20</STRONG>
+<DD>
+<PRE>
+|- !p q Pr. p STABLE Pr /\ q STABLE Pr ==> p /\* q STABLE Pr
+</PRE>
+
+<DT><STRONG>UNLESS_cor21</STRONG>
+<DD>
+<PRE>
+|- !p q Pr. p STABLE Pr /\ q STABLE Pr ==> p \/* q STABLE Pr
+</PRE>
+
+<DT><STRONG>UNLESS_cor22</STRONG>
+<DD>
+<PRE>
+|- !p q r Pr. (p UNLESS q) Pr /\ r STABLE Pr ==> (p /\* r UNLESS q /\* r) Pr
+</PRE>
+
+</DL>
+
+
+<HR>

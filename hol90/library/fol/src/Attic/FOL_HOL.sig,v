@@ -1,0 +1,118 @@
+head	1.1;
+access;
+symbols
+	HOL97:1.1.2.1.0.2
+	bpHOL97:1.1.2.1
+	hol90_9_alpha:1.1.2.1
+	hol90_pre8_for_multiple_compilers:1.1.0.2;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	96.08.06.12.06.46;	author rjb;	state dead;
+branches
+	1.1.2.1;
+next	;
+
+1.1.2.1
+date	96.08.06.12.06.47;	author rjb;	state Exp;
+branches
+	1.1.2.1.2.1;
+next	;
+
+1.1.2.1.2.1
+date	97.06.11.18.23.38;	author kxs;	state Exp;
+branches;
+next	1.1.2.1.2.2;
+
+1.1.2.1.2.2
+date	97.07.11.19.42.34;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@file FOL_HOL.sig was initially added on branch hol90_pre8_for_multiple_compilers.
+@
+text
+@@
+
+
+1.1.2.1
+log
+@New library fol.
+@
+text
+@a0 29
+(* ========================================================================= 
+ * FOL <---> HOL
+ * ========================================================================= *)
+
+signature FOL_HOL_sig =
+sig
+    local open Term open FOL in
+
+    val reset_vars : unit -> unit
+    val fol_of_var : term -> int
+    val hol_of_var : int -> term
+
+    val reset_consts : unit -> unit
+    val fol_of_const : term -> int
+    val hol_of_const : int -> term
+
+    val fol_of_term : term list -> term list -> term -> fol_term
+    val fol_of_atom : term list -> term list -> term -> fol_atom
+    val fol_of_literal : term list -> term list -> term -> fol_atom
+    val fol_of_form : term list -> term list -> term -> fol_form
+    val hol_of_term : fol_term -> term
+    val hol_of_atom : fol_atom -> term
+    val hol_of_literal : fol_atom -> term
+	
+    end;
+
+end (* sig *)
+
+
+@
+
+
+1.1.2.1.2.1
+log
+@Changes to accomodate move to SML/NJ 109.26.
+@
+text
+@d7 1
+a7 1
+    (* local open Term open FOL in *)
+d17 7
+a23 7
+    val fol_of_term : term list -> term list -> term -> FOL.fol_term
+    val fol_of_atom : term list -> term list -> term -> FOL.fol_atom
+    val fol_of_literal : term list -> term list -> term -> FOL.fol_atom
+    val fol_of_form : term list -> term list -> term -> FOL.fol_form
+    val hol_of_term : FOL.fol_term -> term
+    val hol_of_atom : FOL.fol_atom -> term
+    val hol_of_literal : FOL.fol_atom -> term
+d25 1
+a25 1
+(*    end; *)
+@
+
+
+1.1.2.1.2.2
+log
+@Upgrade to CM. the file "folLib.sml" was added in order to give a single
+structure for the library.
+@
+text
+@d7 1
+a7 1
+    type term
+d25 2
+@

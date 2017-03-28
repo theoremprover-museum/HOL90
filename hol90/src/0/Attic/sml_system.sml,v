@@ -1,0 +1,464 @@
+head	1.2;
+access;
+symbols
+	hol90_8_after_merging_Konrad_Elsa:1.1;
+locks; strict;
+comment	@# @;
+
+
+1.2
+date	95.10.31.13.56.35;	author drs1004;	state dead;
+branches;
+next	1.1;
+
+1.1
+date	95.10.17.17.07.25;	author drs1004;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.2
+log
+@First phase of hol90.8 development.  hol90 now compiles using NJSML-CM
+108.5, with separate compilation of libraries.  System dependencies
+have been isolated in the makefiles and "portable.sml".
+
+This involved a large number of enhancments to the source files,
+most of which are documented in the 7.changes file (or will be shortly).
+See also the correpsonding email corrspondence between RJB, KLS, TFM,
+JRH and DRS that happened during this development.
+@
+text
+@(* ===================================================================== *)
+(* FILE          : sml_system.sml                                        *)
+(* DESCRIPTION   : Structure for SML System dependent functions.         *)
+(*                                                                       *)
+(* AUTHOR        : Elsa L. Gunter, AT&T Bell Laboratories                *)
+(* DATE          : 7 October, 1993                                       *)
+(* ===================================================================== *)
+
+(* Copyright 1993 by AT&T Bell Laboratories *)
+
+(* Share and Enjoy *)
+
+structure Sml_system : Sml_system_sig =
+struct
+
+(* Set system variables relavent to the interactive mode of hol90 *)
+
+val _ = (Compiler.Control.Print.printLength := 1000;
+         Compiler.Control.Print.printDepth := 350;
+         Compiler.Control.Print.stringDepth := 250;
+         Compiler.Control.Print.signatures := 2;
+         Compiler.Control.quotation := true);
+
+
+(*--------------------------------------------------------------------
+ *
+ *-------------------------------------------------------------------*)
+
+structure General = General
+
+(*--------------------------------------------------------------------
+ *
+ *-------------------------------------------------------------------*)
+
+structure List = List
+
+(*--------------------------------------------------------------------
+ *
+ *-------------------------------------------------------------------*)
+
+structure Vector = Vector
+
+(*--------------------------------------------------------------------
+ *
+ *-------------------------------------------------------------------*)
+
+structure Array = Array
+
+(*--------------------------------------------------------------------
+ *
+ *-------------------------------------------------------------------*)
+
+structure Ref =
+    struct
+	fun inc cell = cell := !cell + 1
+	fun dec cell = cell := !cell - 1
+    end
+
+(*--------------------------------------------------------------------
+ *
+ *-------------------------------------------------------------------*)
+
+structure Char = Char
+
+(*--------------------------------------------------------------------
+ *
+ *-------------------------------------------------------------------*)
+
+structure String =
+    struct
+	exception Ord = General.Subscript
+	open String
+	fun ordof (string,place) = Char.ord(String.sub(string,place))
+    end
+
+
+(*--------------------------------------------------------------------
+ *
+ *-------------------------------------------------------------------*)
+
+structure PrettyPrint =
+struct
+val install_pp = Compiler.PPTable.install_pp;
+
+open Compiler.PrettyPrint
+
+fun with_ppstream ppstrm = 
+   {add_string=add_string ppstrm, 
+    add_break=add_break ppstrm, 
+    begin_block=begin_block ppstrm, 
+    end_block=fn () => end_block ppstrm, 
+    add_newline=fn () => add_newline ppstrm, 
+    clear_ppstream=fn () => clear_ppstream ppstrm, 
+    flush_ppstream=fn () => flush_ppstream ppstrm}
+
+fun defaultConsumer () =
+      {consumer = Compiler.Control.Print.say,
+       linewidth = !Compiler.Control.Print.linewidth,
+       flush = Compiler.Control.Print.flush}
+
+end
+
+(*--------------------------------------------------------------------
+ *
+ *-------------------------------------------------------------------*)
+
+structure Time =
+    struct
+	open Time
+	val timestamp : unit -> time = now
+	val time_to_string : time -> String.string = toString
+	fun dest_time t =
+	    let val sec = toSeconds t
+		val usec = toMicroseconds (t - fromSeconds sec)
+	    in
+		{sec = sec, usec = usec}
+	    end
+	fun mk_time {sec,usec} = fromSeconds sec + fromMicroseconds usec
+	fun time_eq (t1:time) t2 = (t1 = t2)
+	fun time_lt (t1:time) t2 = Time.<(t1,t2)
+    end
+
+(*--------------------------------------------------------------------
+ *
+ *-------------------------------------------------------------------*)
+
+structure Timer = Timer;
+
+
+(*--------------------------------------------------------------------
+ * Misc.
+ *-------------------------------------------------------------------*)
+
+(* exception SysError = System.Unsafe.CInterface.SysError*)
+val execute = IO.execute
+
+val use = Compiler.Interact.use_file
+val use_stream = Compiler.Interact.use_stream
+
+(* val interp = Compiler.Control.interp *)
+val interp = ref false
+
+
+
+val say = Compiler.Control.Print.say
+val linewidth = Compiler.Control.Print.linewidth
+
+val getEnv = OS.Process.getEnv
+val cd = OS.FileSys.chDir
+val pwd = OS.FileSys.getDir
+fun listDir dir_name =
+    let val dirstream = OS.FileSys.openDir dir_name
+	fun read_all {dirstream, dir_listing} =
+	    let val entry = OS.FileSys.readDir dirstream
+	    in
+		if entry = "" then List.rev dir_listing
+		else read_all {dirstream = dirstream,
+			       dir_listing = entry :: dir_listing}
+	    end
+	val listing = read_all {dirstream = dirstream, dir_listing = []}
+	val _ = OS.FileSys.closeDir dirstream
+    in listing
+    end;
+fun system s = OS.Process.system s
+fun ls() = system "ls"
+val getArgs = SMLofNJ.getArgs
+
+(* suffix to distinquish hol90s for different architectures. 
+   Implode.tl.explode used to get rid of leading "."
+*)
+val arch = Compiler.architecture;
+
+val version = Compiler.version
+val sml_banner = Compiler.banner 
+
+fun file_exists_for_reading s =
+    OS.FileSys.access(s,[OS.FileSys.A_READ])
+
+fun exit() = OS.Process.exit OS.Process.success
+
+
+structure Sys_params =
+struct
+
+(* *************************************************************************
+ *
+ * This module codifies the arguments given to make_hol. The calling 
+ * convention for make_hol is:
+ * 
+ *     make_hol <sml> [-n | -b | -o] [-d <path>]
+ * 
+ * The default, calling make_hol with no parameters, tells the system to
+ * re-use the existing ascii theory files. One must be in hol90.4/src to
+ * invoke this. If you aren't there, the "-d" option must be used.
+ * 
+ *     -o  This is the same as calling the default. 
+ *            (HOL_REBUILD_THEORIES = 0 or unset)
+ * 
+ *     -n  The "-n" option tells the system to rebuild all its theories. Be
+ *         warned that a consequence of this option is that all user theories 
+ *         at the site will have to be rebuilt. (HOL_REBUILD_THEORIES = 1)
+ * 
+ *     -a  The "-a" option tells the system to build ascii theories. This 
+ *         is the default.
+ * 
+ *     -b  The "-b" option tells the system to build binary theories. This 
+ *         is not advised, and some editing of the sys01.sml file is 
+ *         necessary to get this approach to work.
+ * 
+ *     -d <path> This option to make_hol is used to establish the root
+ *         directory for hol90. If your current directory at the 
+ *         time of calling "make_hol" is not hol90.4/src, then you 
+ *         will need to supply the full directory path to the hol90.4 
+ *         directory.
+ * 
+ * The default and the "-n" and "-o" options entail that theory files will
+ * be in ascii. This is preferable, since ascii files are portable between
+ * architectures and are much smaller than binary theory files.
+ ***************************************************************************)
+
+datatype thy_opt = make_binary | make_new_ascii | use_old_ascii
+
+
+fun last_char str = substring (str, size str - 1, 1);
+
+fun normalize p = 
+   if (last_char p = "/")
+   then p 
+   else (p^"/");
+
+local
+fun head_dir wd =
+   let val hd_size = (size wd) - 1
+   in if last_char wd = "/"
+      then wd
+      else head_dir (substring (wd, 0, hd_size))
+   end
+in
+fun base() = head_dir (pwd ())
+end;
+
+exception MAKE_HOL_FAILED
+val argv = getArgs()
+fun fail () = (output(std_out, ("\nmake_hol failed: format is\
+                  \ \"make_hol <sml> [-n | -b | -o] [-d <path>]\"\n"));
+				raise MAKE_HOL_FAILED)
+
+fun mem x [] = false | mem x (y::ys) = (x = y) orelse mem x ys
+
+val theory_file_option =
+   let fun opt (env,posarg,negarg,default) =
+          case getEnv env
+            of SOME x => (x = "1")
+             | NONE => if (mem posarg argv) 
+                       then if (mem negarg argv) 
+                            then fail()
+                            else true
+                       else if (mem negarg argv) 
+                       then if (mem posarg argv) 
+                            then fail()
+                            else false
+                       else default
+        val binary_opt = opt("HOL_BINARY_THEORY_FILES","-b","-a",false)
+        val reuse_opt = opt("HOL_REUSE_THEORY_FILES","-o","-n",true)
+   in 
+       if binary_opt
+       then if reuse_opt
+            then fail()
+            else make_binary
+       else if reuse_opt 
+               andalso (file_exists_for_reading "../theories/ascii/min.thms")
+       then use_old_ascii
+       else make_new_ascii
+   end
+
+fun find_directory [] = base()
+  | find_directory (flag::[]) = (case flag of "-d" => fail() | _ => base ())
+  | find_directory (flag::(rest as next::_)) =
+    (case flag of "-d" => normalize next | _ => find_directory rest)
+
+val HOL_base_directory = ref (find_directory argv)
+
+
+(*
+Manual configuration.
+
+One can manually configure the system by 
+
+    a) Setting the values of theory_file_option and HOL_base_directory in
+       this file.
+
+    b) By commenting out the code that currently sets these values in
+       this file.
+
+    c) By not using the line
+
+           $* < sys01.sml
+
+       in the make_hol shell script. Instead one would invoke sml, then do a
+   
+           use "sys01.sml";
+
+       After that finished, the rest of the make_hol shell script should be 
+       invoked.
+
+
+Here are some hints for part a.
+
+If you want ascii theory files and you want to rebuild all the
+theories anew, you should do
+
+    val theory_file_option = make_new_ascii
+
+If you want binary versions of theory files, you should use
+
+    val theory_file_option = make_binary
+
+If you chose either of the above two options, you will have to remake
+all libraries and site theories. If you use binary format you will have
+to modify the file sys01.sml too.
+
+If you wish to reuse existing ascii theory files, thereby avoiding
+having to remake libraries and local theories, you should use
+
+    val theory_file_option = use_old_ascii
+
+You will need to use the "use_old_ascii" option on all but the first
+build when building hol90 on multiple architectures which are all to
+share the same theory files.
+
+Warning: the "use_old_ascii" option is not as secure as the other two.
+It also may not always be possible when building a new version of hol90
+for the first time at your site. SYSTEM THEORY FILES MAY CHANGE BETWEEN
+RELEASES.
+
+*)
+
+end (* structure Sys_params *)
+
+
+local
+val make_cell = ref (app use)
+in
+fun new_make_fun f = make_cell := f
+fun hol_make files = (!make_cell) files
+end
+
+val int_to_string = Makestring.int
+val real_to_string = Makestring.real
+
+val sml = List.last (getArgs ())
+val store_hol_in_HOLdir = ref true
+
+fun exportHOL str =
+    let val dir = if !store_hol_in_HOLdir
+		      then !Sys_params.HOL_base_directory ^ "src/"
+		  else pwd() ^ "/"
+	val exec_file = IO.open_out str
+	val _ = IO.output (exec_file,
+			   String.concat
+			   ["#!/bin/sh \n\n",
+			    sml, " @@SMLload=", dir, str, ".heap\n"])
+	val _ = IO.close_out exec_file;
+	val _ = system ("chmod a+x " ^ str)
+    in
+	exportML (str^".heap")
+    end
+
+
+end (* structure Sml_system *)
+
+
+
+
+
+
+
+@
+
+
+1.1
+log
+@Keeping you up to date:
+
+I'm about to do a checkin of elsa's modifications to the hol90.7
+sources to create her hol90.pre8.  To recap what I've done:
+	- I checked out hol90 (in /usr/groups/hol/drs1004/hol90)
+		cvs co hol90
+	  (Well, to be honest, I only checked out those
+	  parts of hol90 I knew I'd be changing, e.g. not the
+	  Manual, and only parts of the library.  Checking out the
+	  entire source takes a while, mainly due to the enormous number
+	  of help files.  The limiting factor is files/second, which
+         runs at around 5 when CVS is working on nfs over a network, not
+         KB/second, which you might at first think it would be).
+
+	- By doing a recursive diff between Elsa's source and the
+	hol90.7 source I found all the changes Elsa had made to
+	source files.  I copied relevant files from Elsa's source
+	into my checked out version.  The only new files were
+		- the sml_system files in src/0
+		- some make scripts in src/.
+	Changed files were in:
+		src/{0,1,2,3}
+		library/arith/src/thm_convs.sml
+		library/list/src/list_conv1.sml
+		library/num/src/num_lib.sml
+		library/prog_logic/src/halts_logic.sml
+		library/prog_logic/src/translation.sml
+		library/prog_logic/theories/src/mk_halts.sml
+		library/real/theories/src/Make
+		library/real/theories/src/equiv.sml
+		library/real/theories/src/seq.sml
+		library/reduce/src/arithconv.sml
+		library/string/src/string_conv.sml
+		library/unity/theories/src/aux_definitions.sml
+		library/word/theories/src/*
+
+	- I will now commit these changes, with this email as the log message.
+		cvs commit
+
+	- Tomorrow I will get this version compiling
+	with NJSML 108 (I will probably add
+	the files to enable the NJSML compilation manager to make
+	this easier), then check those changes in.  I think it's
+	good to get things in a working state.
+@
+text
+@@

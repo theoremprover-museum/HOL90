@@ -1,0 +1,191 @@
+head	1.3;
+access;
+symbols
+	HOL97:1.3.0.4
+	bpHOL97:1.3
+	hol90_9_alpha:1.3
+	hol90_pre8_for_multiple_compilers:1.3.0.2
+	hol90_pre8_after_donalds_separate_compilation_changes:1.3
+	hol90_8_after_merging_Konrad_Elsa:1.2
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.3
+date	95.10.31.14.01.45;	author drs1004;	state Exp;
+branches
+	1.3.4.1;
+next	1.2;
+
+1.2
+date	95.10.18.15.50.13;	author drs1004;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	95.10.16.13.31.32;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.31.32;	author rjb;	state Exp;
+branches
+	1.1.1.1.2.1;
+next	;
+
+1.1.1.1.2.1
+date	95.10.18.15.47.13;	author drs1004;	state Exp;
+branches;
+next	;
+
+1.3.4.1
+date	97.07.11.19.28.38;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.3
+log
+@First phase of hol90.8 development.  hol90 now compiles using NJSML-CM
+108.5, with separate compilation of libraries.  System dependencies
+have been isolated in the makefiles and "portable.sml".
+
+This involved a large number of enhancments to the source files,
+most of which are documented in the 7.changes file (or will be shortly).
+See also the correpsonding email corrspondence between RJB, KLS, TFM,
+JRH and DRS that happened during this development.
+@
+text
+@(*****************************************************************************)
+(* FILE          : instance.sml                                              *)
+(* DESCRIPTION   : Conversional for increasing the power of a conversion by  *)
+(*                 allowing it to work on a substitution instance of a term  *)
+(*                 that is acceptable to it.                                 *)
+(*                                                                           *)
+(* READS FILES   : <none>                                                    *)
+(* WRITES FILES  : <none>                                                    *)
+(*                                                                           *)
+(* AUTHOR        : R.J.Boulton, University of Cambridge                      *)
+(* DATE          : 30th January 1992                                         *)
+(*                                                                           *)
+(* TRANSLATOR    : R.J.Boulton, University of Cambridge                      *)
+(* DATE          : 16th February 1993                                        *)
+(*                                                                           *)
+(* LAST MODIFIED : R.J.Boulton                                               *)
+(* DATE          : 16th February 1993                                        *)
+(*****************************************************************************)
+
+structure Instance : Instance_sig =
+struct
+
+open Core; (* open up all of the HOL 0/1 Core - could be replaced by more *)
+           (* explicit opens to avoid endless recompilation of libraries  *)
+           (* during system development                                   *)
+
+open Rsyntax;
+(*---------------------------------------------------------------------------*)
+(* INSTANCE_T_CONV : (term -> term list) -> conv -> conv                     *)
+(*                                                                           *)
+(* Generalizes a conversion that is used to prove formulae true by replacing *)
+(* any syntactically unacceptable subterms with variables, attempting to     *)
+(* prove this generalised formula, and if successful re-instantiating.       *)
+(* The first argument is a function for obtaining a list of syntactically    *)
+(* unacceptable subterms of a term. This function should include in its      *)
+(* result list any variables in the term that do not appear in other         *)
+(* subterms returned. The second argument is the conversion to be            *)
+(* generalised.                                                              *)
+(*---------------------------------------------------------------------------*)
+
+fun INSTANCE_T_CONV detector conv tm =
+ let val (univs,tm') = strip_forall tm
+     val insts = Lib.mk_set (detector tm')
+     val vars = map (genvar o type_of) insts
+     val s = map (fn (v,i) => {residue = v,redex = i}) (combine (vars,insts))
+     val tm'' = list_mk_forall (vars,subst s tm')
+ in  EQT_INTRO (GENL univs (SPECL insts (EQT_ELIM (conv tm''))))
+ end;
+
+end
+@
+
+
+1.3.4.1
+log
+@Changes to accomodate CM, and also the differences between  SML'90 and SML'97.
+@
+text
+@d23 3
+a25 2
+type term = CoreHol.Term.term
+type conv = Abbrev.conv;
+a27 4
+open Drule;
+open CoreHol.Term;
+open CoreHol.Dsyntax;
+
+d45 2
+a46 3
+     val s = map (fn (v,i) => {residue = v,redex = i}) 
+                 (Lib.combine (vars,insts))
+     val tm'' = list_mk_forall (vars, subst s tm')
+@
+
+
+1.2
+log
+@	Konrad's bug fixes and further development to hol90.7 after it's release.
+	Checked n on a side branch for later merging with the main trunk
+	(Elsa's revisions), which is what I'm doing now.
+        See doc/7.changes for details.
+@
+text
+@d22 5
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d38 1
+a38 1
+     val insts = mk_set (detector tm')
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@
+
+
+1.1.1.1.2.1
+log
+@	Konrad's bug fixes and further development to hol90.7 after it's release.
+	Checked n on a side branch for later merging with the main trunk
+	(Elsa's revisions).  See doc/7.changes for details.
+@
+text
+@d38 1
+a38 1
+     val insts = Lib.mk_set (detector tm')
+@

@@ -1,0 +1,257 @@
+head	1.2;
+access;
+symbols
+	HOL97:1.2.0.4
+	bpHOL97:1.2
+	hol90_9_alpha:1.2
+	hol90_pre8_for_multiple_compilers:1.2.0.2
+	hol90_pre8_after_donalds_separate_compilation_changes:1.2
+	hol90_8_after_merging_Konrad_Elsa:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.2
+date	95.10.31.14.02.19;	author drs1004;	state Exp;
+branches
+	1.2.4.1;
+next	1.1;
+
+1.1
+date	95.10.16.13.31.38;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.31.38;	author rjb;	state Exp;
+branches;
+next	;
+
+1.2.4.1
+date	97.07.11.19.29.30;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.2
+log
+@First phase of hol90.8 development.  hol90 now compiles using NJSML-CM
+108.5, with separate compilation of libraries.  System dependencies
+have been isolated in the makefiles and "portable.sml".
+
+This involved a large number of enhancments to the source files,
+most of which are documented in the 7.changes file (or will be shortly).
+See also the correpsonding email corrspondence between RJB, KLS, TFM,
+JRH and DRS that happened during this development.
+@
+text
+@(*****************************************************************************)
+(* FILE          : theorems.sml                                              *)
+(* DESCRIPTION   : Theorems for arithmetic formulae.                         *)
+(*                                                                           *)
+(* READS FILES   : <none>                                                    *)
+(* WRITES FILES  : <none>                                                    *)
+(*                                                                           *)
+(* AUTHOR        : R.J.Boulton, University of Cambridge                      *)
+(* DATE          : 4th March 1991                                            *)
+(*                                                                           *)
+(* TRANSLATOR    : R.J.Boulton, University of Cambridge                      *)
+(* DATE          : 5th February 1993                                         *)
+(*                                                                           *)
+(* LAST MODIFIED : R.J.Boulton                                               *)
+(* DATE          : 17th February 1993                                        *)
+(*****************************************************************************)
+
+structure Arith_theorems : Arith_theorems_sig =
+struct
+
+open Core; (* open up all of the HOL 0/1 Core - could be replaced by more *)
+           (* explicit opens to avoid endless recompilation of libraries  *)
+           (* during system development                                   *)
+
+(*===========================================================================*)
+(* Theorems for normalizing arithmetic                                       *)
+(*===========================================================================*)
+
+(*---------------------------------------------------------------------------*)
+(* ONE_PLUS = |- !n. SUC n = 1 + n                                           *)
+(*---------------------------------------------------------------------------*)
+
+val ONE_PLUS = theorem "arithmetic" "SUC_ONE_ADD";
+
+(*---------------------------------------------------------------------------*)
+(* ZERO_PLUS = |- !m. 0 + m = m                                              *)
+(*---------------------------------------------------------------------------*)
+
+val ZERO_PLUS =
+ GEN_ALL (el 1 (CONJUNCTS (theorem "arithmetic" "ADD_CLAUSES")));
+
+(*---------------------------------------------------------------------------*)
+(* PLUS_ZERO = |- !m. m + 0 = m                                              *)
+(*---------------------------------------------------------------------------*)
+
+val PLUS_ZERO =
+ GEN_ALL (el 2 (CONJUNCTS (theorem "arithmetic" "ADD_CLAUSES")));
+
+(*---------------------------------------------------------------------------*)
+(* SUC_ADD1 = |- !m n. SUC (m + n) = (SUC m) + n                             *)
+(*---------------------------------------------------------------------------*)
+
+val SUC_ADD1 =
+ GENL [--`m:num`--,--`n:num`--]
+  (SYM (el 3 (CONJUNCTS (theorem "arithmetic" "ADD_CLAUSES"))));
+
+(*---------------------------------------------------------------------------*)
+(* SUC_ADD2 = |- !m n. SUC (m + n) = (SUC n) + m                             *)
+(*---------------------------------------------------------------------------*)
+
+val SUC_ADD2 = theorem "arithmetic" "SUC_ADD_SYM";
+
+(*---------------------------------------------------------------------------*)
+(* ZERO_MULT = |- !m. 0 * m = 0                                              *)
+(* MULT_ZERO = |- !m. m * 0 = 0                                              *)
+(* ONE_MULT = |- !m. 1 * m = m                                               *)
+(* MULT_ONE = |- !m. m * 1 = m                                               *)
+(* MULT_SUC = |- !m n. (SUC m) * n = (m * n) + n                             *)
+(*---------------------------------------------------------------------------*)
+
+local 
+   val thms = CONJUNCTS (SPEC_ALL (theorem "arithmetic" "MULT_CLAUSES"))
+in
+   val ZERO_MULT = GEN_ALL (el 1 thms)
+   val MULT_ZERO = GEN_ALL (el 2 thms)
+   val ONE_MULT = GEN_ALL (el 3 thms)
+   val MULT_ONE = GEN_ALL (el 4 thms)
+   val MULT_SUC = GENL [--`m:num`--,--`n:num`--] (el 5 thms)
+end;
+
+(*---------------------------------------------------------------------------*)
+(* MULT_COMM = |- !m n. (m * n) = (n * m)                                    *)
+(*---------------------------------------------------------------------------*)
+
+val MULT_COMM = theorem "arithmetic" "MULT_SYM";
+
+(*---------------------------------------------------------------------------*)
+(* SUC_ADD_LESS_EQ_F = |- !m n. ((SUC(m + n)) <= m) = F                      *)
+(*---------------------------------------------------------------------------*)
+
+val SUC_ADD_LESS_EQ_F =
+ GENL [--`m:num`--,--`n:num`--]
+  (EQF_INTRO (SPEC_ALL (theorem "arithmetic" "NOT_SUC_ADD_LESS_EQ")));
+
+(*---------------------------------------------------------------------------*)
+(* MULT_LEQ_SUC = |- !m n p. m <= n = ((SUC p) * m) <= ((SUC p) * m)         *)
+(*---------------------------------------------------------------------------*)
+
+val MULT_LEQ_SUC = theorem "arithmetic" "MULT_LESS_EQ_SUC";
+
+(*---------------------------------------------------------------------------*)
+(* ZERO_LESS_EQ_T = |- !n. (0 <= n) = T                                      *)
+(*---------------------------------------------------------------------------*)
+
+val ZERO_LESS_EQ_T =
+ GEN_ALL (EQT_INTRO (SPEC_ALL (theorem "arithmetic" "ZERO_LESS_EQ")));
+
+(*---------------------------------------------------------------------------*)
+(* SUC_LESS_EQ_ZERO_F = |- !n. ((SUC n) <= 0) = F                            *)
+(*---------------------------------------------------------------------------*)
+
+val SUC_LESS_EQ_ZERO_F =
+ GEN_ALL (EQF_INTRO (SPEC_ALL (theorem "arithmetic" "NOT_SUC_LESS_EQ_0")));
+
+(*---------------------------------------------------------------------------*)
+(* ZERO_LESS_EQ_ONE_TIMES = |- !n. 0 <= (1 * n)                              *)
+(*---------------------------------------------------------------------------*)
+
+val ZERO_LESS_EQ_ONE_TIMES =
+ GEN_ALL
+  (SUBS [SYM (el 3 (CONJUNCTS (SPECL [--`n:num`--,--`m:num`--]
+                                (theorem "arithmetic" "MULT_CLAUSES"))))]
+    (SPEC_ALL (theorem "arithmetic" "ZERO_LESS_EQ")));
+
+(*---------------------------------------------------------------------------*)
+(* LESS_EQ_PLUS = |- !m n. m <= (m + n)                                      *)
+(*---------------------------------------------------------------------------*)
+
+val LESS_EQ_PLUS = theorem "arithmetic" "LESS_EQ_ADD";
+
+(*---------------------------------------------------------------------------*)
+(* LESS_EQ_TRANSIT = |- !m n p. m <= n /\ n <= p ==> m <= p                  *)
+(*---------------------------------------------------------------------------*)
+
+val LESS_EQ_TRANSIT = theorem "arithmetic" "LESS_EQ_TRANS";
+
+(*===========================================================================*)
+(* Theorems for manipulating Boolean expressions                             *)
+(*===========================================================================*)
+
+(*---------------------------------------------------------------------------*)
+(* NOT_T_F = |- ~T = F                                                       *)
+(*---------------------------------------------------------------------------*)
+
+val NOT_T_F = el 2 (CONJUNCTS NOT_CLAUSES);
+
+(*---------------------------------------------------------------------------*)
+(* NOT_F_T = |- ~F = T                                                       *)
+(*---------------------------------------------------------------------------*)
+
+val NOT_F_T = el 3 (CONJUNCTS NOT_CLAUSES);
+
+end
+@
+
+
+1.2.4.1
+log
+@Changes to accomodate CM, and also the differences between  SML'90 and SML'97.
+@
+text
+@d21 3
+a23 13
+open Lib;
+open Drule;
+open CoreHol.Thm;
+open CoreHol.Theory;
+open Parse;
+
+(*---------------------------------------------------------------------------
+ * The following ensures that the theory of arithmetic is loaded. In the
+ * future, it might be better to explicitly have an "Arithmetic" structure
+ * and depend on that.
+ *---------------------------------------------------------------------------*)
+structure HOL = HOL;
+
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d21 4
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

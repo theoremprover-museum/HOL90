@@ -1,0 +1,133 @@
+(* ===================================================================== *)
+(* FILE          : parse.sml                                             *)
+(* DESCRIPTION   : Implements parsing of HOL terms and types.            *)
+(*                                                                       *)
+(* AUTHOR        : Konrad Slind, University of Calgary                   *)
+(* DATE          : August 26, 1991                                       *)
+(* ===================================================================== *)
+
+
+structure Parse : Parse_sig =
+struct
+structure Parse_support = Parse_support
+open CoreHol;
+
+structure PD_Tokens = HolLrValsFun(LrParser.Token);
+structure Lex = HolLex(structure Tokens = PD_Tokens.Tokens
+                       structure Parse_support = Parse_support);
+structure P = JoinWithArg(structure ParserData = PD_Tokens.ParserData
+                          structure Lex = Lex
+                          structure LrParser = LrParser);
+
+datatype frag = datatype Portable.frag;
+
+fun PARSE_ERR{func,mesg} = 
+ Exception.HOL_ERR{origin_structure = "Parse",
+              origin_function = func,
+              message = mesg}
+
+fun error (s,_,_) = raise PARSE_ERR{func="Parsing error", mesg=s}
+
+fun format [] ol ml = (ol, rev ml) 
+  | format (ANTIQUOTE  x::rst) ol ml = format rst (ol^"^") (x::ml)
+  | format (QUOTE s::rst) ol ml = format rst (ol^s) ml;
+
+
+fun parse0 tyvars s aqs =
+   let val strm = Portable.open_string s
+       val lexer = P.makeLexer(fn _ => Portable.input_line strm) (ref aqs)
+   in Lib.fst(P.parse(0,lexer,error,tyvars))
+   end;
+
+fun pstring tyvars = Lib.C (parse0 tyvars) [];
+
+fun pquote tyvars ol_frag_list =
+   let val (s,antiq_list) = format ol_frag_list "" []
+   in parse0 tyvars s antiq_list
+   end; 
+
+(*---------------------------------------------------------------------------
+ * Parsing to preterms.
+ *---------------------------------------------------------------------------*)
+fun preterm_parser tyvars frag_list =
+  (Globals.in_type_spec := NONE;
+   case (pquote tyvars frag_list)
+     of (Parse_support.PTM ptm) => ptm
+      | _ => raise PARSE_ERR{func = "preterm_parser",
+			     mesg = "Not a preterm."});
+
+fun string_to_preterm tyvars s =
+  (Globals.in_type_spec := NONE;
+   case (pstring tyvars s)
+     of (Parse_support.PTM ptm) => ptm
+      | _ => raise PARSE_ERR{func = "string_to_preterm",
+			     mesg = "Not a preterm."});
+
+(*---------------------------------------------------------------------------
+ * Parsing to terms.
+ *---------------------------------------------------------------------------*)
+fun term_parser frag_list =
+  let val _ = Globals.in_type_spec := NONE;
+      val tyvars = Type.fresh_tyvar_stream()
+  in case (pquote tyvars frag_list)
+       of (Parse_support.PTM ptm) => Preterm.typecheck tyvars ptm
+        | _ => raise PARSE_ERR{func = "term_parser",
+                               mesg = "Not a term."}       end;
+
+fun string_to_term s =
+  let val _ = Globals.in_type_spec := NONE;
+      val tyvars = Type.fresh_tyvar_stream()
+  in case (pstring tyvars s)
+     of (Parse_support.PTM ptm) => Preterm.typecheck tyvars ptm
+      | _ => raise PARSE_ERR{func = "string_to_term",
+			     mesg = "Not a term."}       end;
+
+(*---------------------------------------------------------------------------
+ * Parsing to types 
+ *---------------------------------------------------------------------------*)
+
+val dummy_tyvars = Type.fresh_tyvar_stream()
+val ty_quote = pquote dummy_tyvars
+val ty_string = pstring dummy_tyvars;
+
+fun type_parser frag_list =
+  let val _ = Globals.in_type_spec := NONE
+  in case (ty_quote frag_list)
+     of Parse_support.TY ty => ty
+      | _ => raise PARSE_ERR{func = "type_parser",
+			     mesg = "Not a type."}     end;
+
+fun string_to_type s =
+  let val _ = Globals.in_type_spec := NONE;
+  in case (ty_string s)
+     of Parse_support.TY ty => ty
+      | _ => raise PARSE_ERR{func = "string_to_type",
+			     mesg = "Not a type."}    end;
+
+fun -- frag_list _ = Lib.try term_parser frag_list;
+fun == frag_list _ = Lib.try type_parser frag_list;
+
+
+(*---------------------------------------------------------------------------
+ * Parsing of type specifications
+ *---------------------------------------------------------------------------*)
+fun colon s = ":"^s;
+
+fun type_spec_parser (QUOTE s :: rst) =
+     (Globals.in_type_spec := SOME "";
+      case (Lib.try ty_quote (QUOTE(colon s)::rst))
+        of (Parse_support.TY_SPEC sp) => sp
+         | _ => raise PARSE_ERR{func = "type_spec_parser",
+                                mesg = "Not a type specification."})
+  | type_spec_parser _ = raise PARSE_ERR{func = "type_spec_parser",
+                                         mesg = "Badly formed quotation."};
+
+
+fun string_to_type_spec s =
+  (Globals.in_type_spec := SOME "";
+   case (ty_string (colon s))
+     of (Parse_support.TY_SPEC sp) => sp
+      | _ => raise PARSE_ERR{func = "string_to_type_spec",
+			     mesg = "Not a type specification."});
+
+end; (* PARSE *)

@@ -1,0 +1,318 @@
+head	1.5;
+access;
+symbols
+	HOL97:1.4.0.4
+	bpHOL97:1.4
+	hol90_9_alpha:1.4
+	hol90_pre8_for_multiple_compilers:1.4.0.2
+	last_edition:1.4
+	hol90_pre8_after_donalds_separate_compilation_changes:1.3
+	hol90_8_after_merging_Konrad_Elsa:1.2
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.5
+date	96.02.08.00.23.51;	author drs1004;	state dead;
+branches;
+next	1.4;
+
+1.4
+date	95.11.15.13.30.49;	author rjb;	state Exp;
+branches;
+next	1.3;
+
+1.3
+date	95.10.31.15.06.21;	author drs1004;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	95.10.18.16.37.45;	author drs1004;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	95.10.16.13.30.10;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.30.10;	author rjb;	state Exp;
+branches
+	1.1.1.1.2.1;
+next	;
+
+1.1.1.1.2.1
+date	95.10.18.10.09.11;	author drs1004;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.5
+log
+@New theory mechanism, by Donald Syme
+@
+text
+@(***************************************************************************
+ * Simple implementation of directed graphs. More efficient ones are 
+ * certainly possible, but speed hasn't so far been a problem in the 
+ * application (representing the HOL theory graph).  Acyclicity is not 
+ * enforced here.
+ *************************************************************************)
+signature Node_sig =
+    sig
+	type node_id
+	val node_name : node_id -> string
+	val node_eq : node_id -> node_id -> bool
+    end;
+	
+functor DAG((* structure Lib : Lib_sig *)
+	    structure Node : Node_sig) =
+struct
+open Lib;
+type node_id = Node.node_id;
+type graph_node = { node : node_id,  parents : node_id list }
+type graph = graph_node list;
+
+fun THEORY_GRAPH_ERR{function,message} =
+    Exception.HOL_ERR{origin_structure = "Theory_graph",
+		      origin_function = function,
+		      message = message}
+
+
+val the_graph = ref([]:graph)
+
+fun add_node n ps = the_graph := {node = n, parents = ps}::(!the_graph);
+
+fun graph_assoc node_id =
+   let fun assc ({node,parents}::rst) = 
+                if (Node.node_eq node_id node)
+                then parents
+                else assc rst
+         | assc [] = raise NOT_FOUND
+   in
+   assc
+   end;
+
+fun str_graph_assoc str =
+   let fun assc ({node,parents}::rst) = 
+                if (str = Node.node_name node)
+                then parents
+                else assc rst
+         | assc [] = raise NOT_FOUND
+   in assc
+   end;
+
+fun parents str = str_graph_assoc str (!the_graph);
+
+fun node_in_graph n = (graph_assoc n (!the_graph); true)
+                      handle NOT_FOUND => false;
+fun is_ancestor s = can (str_graph_assoc s) (!the_graph);
+
+(* Generally useful. *)
+fun insert p f alist =
+   let fun ins (a::rst) L =
+              if (p a)
+              then (rev L)@@((f a)::rst)
+              else ins rst (a::L)
+         | ins [] L = raise NOT_FOUND
+   in
+   ins alist []
+   end;
+
+(* Duplicate parents are union'ed*)
+fun add_parent node_id new_parent = the_graph := 
+   insert (fn {node, ...} => Node.node_eq node node_id) 
+          (fn {node,parents} => 
+              { node = node, 
+                parents = op_union Node.node_eq [new_parent] parents })
+          (!the_graph);
+
+fun graph_copy() = !the_graph;
+fun replace_graph g = the_graph := g;
+
+fun ancestry str = 
+   let val P = str_graph_assoc str (!the_graph)
+       fun ances to_see seen = rev_itlist (fn thid => fn A =>
+          if (op_mem Node.node_eq thid A)
+          then A
+          else let val parents = graph_assoc thid (!the_graph)
+                                 handle NOT_FOUND => []
+               in ances parents (thid::A)
+               end)      to_see seen
+   in ances P []
+   end
+   handle NOT_FOUND 
+   => raise THEORY_GRAPH_ERR{function = "ancestry",
+                    message = quote str^" is not in the theory graph."};
+
+end; (* DAG *)
+@
+
+
+1.4
+log
+@The HOL90 sources have been changed to allow for the use of different
+Standard ML compilers (possibly simultaneously).
+
+ * Many files in "src/0" changed to make them more portable across different
+   ML compilers. Various additions have been made to the Portable structure
+   and files changed to access identifiers in the Portable structure rather
+   than from the global environment. Worthy of special note are:
+
+   - The pointer equality used in "src/0/term.sml" has been made into a
+     function in the Portable structure.
+
+   - The ML-Lex and ML-Yacc files for the various parsers have been changed
+     to access the Portable structure. Both the source files and the SML
+     produced from them have been changed but I have not verified that the
+     source files would reproduce the new SML versions if ML-Lex and ML-Yacc
+     were to be rerun on them. The changes involve some hacks that exploit the
+     way ML-Lex and ML-Yacc work. See the sources for details.
+
+R.J.Boulton, 15th November 1995.
+@
+text
+@@
+
+
+1.3
+log
+@First phase of hol90.8 development.  hol90 now compiles using NJSML-CM
+108.5, with separate compilation of libraries.  System dependencies
+have been isolated in the makefiles and "portable.sml".
+
+This involved a large number of enhancments to the source files,
+most of which are documented in the 7.changes file (or will be shortly).
+See also the correpsonding email corrspondence between RJB, KLS, TFM,
+JRH and DRS that happened during this development.
+@
+text
+@d12 1
+a12 1
+    end
+@
+
+
+1.2
+log
+@Check in after merging in Konrad's changes made after
+the release of hol90.7.  This involved creating a side branch
+in which to check in Konrad's changes, then merging in that
+side branch into the main development (which contains changes
+made by Elsa Gunter).
+
+Some other small modification have been made to the source code,
+as I begun to try to make this version into a working version:
+	- hol90 will now be compiled in an environment were no
+structures can be considered opn.  This means many structures
+now need "open Lib" and other such commands at their head.
+This has not yet been completed, but has been begun.
+	- "rotl" and "rotr" have been added to Lib, something
+which I just did impulsively.   Documentation files
+have also been added in help/90.
+@
+text
+@d82 1
+a82 1
+          if (op_mem node_eq thid A)
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d7 9
+a15 3
+functor DAG(type node_id
+            val node_name : node_id -> string
+            val node_eq : node_id -> node_id -> bool) =
+d17 2
+a18 1
+type node_id = node_id;
+d23 3
+a25 3
+      HOL_ERR{origin_structure = "Theory_graph",
+	      origin_function = function,
+	      message = message}
+d34 1
+a34 1
+                if (node_eq node_id node)
+d44 1
+a44 1
+                if (str = node_name node)
+d70 1
+a70 1
+   insert (fn {node, ...} => node_eq node node_id) 
+d73 1
+a73 1
+                parents = Lib.op_union node_eq [new_parent] parents })
+d81 7
+a87 10
+       fun ances to_see seen =
+          rev_itlist (fn thid => fn A =>
+                        if (Lib.op_mem node_eq thid A)
+                        then A
+                        else let val parents = graph_assoc thid (!the_graph)
+                                               handle NOT_FOUND => []
+                             in
+                             ances parents (thid::A)
+                             end)
+                     to_see seen
+d90 3
+a92 3
+   handle NOT_FOUND => raise THEORY_GRAPH_ERR
+                      {function = "ancestry",
+                       message = Lib.quote str^" is not in the theory graph."};
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@
+
+
+1.1.1.1.2.1
+log
+@	Konrad's bug fixes and further development to hol90.7 after it's release.
+	Checked n on a side branch for later merging with the main trunk
+	(Elsa's revisions).  See doc/7.changes for details.
+@
+text
+@d74 10
+a83 7
+       fun ances to_see seen = rev_itlist (fn thid => fn A =>
+          if (Lib.op_mem node_eq thid A)
+          then A
+          else let val parents = graph_assoc thid (!the_graph)
+                                 handle NOT_FOUND => []
+               in ances parents (thid::A)
+               end)      to_see seen
+d86 3
+a88 3
+   handle NOT_FOUND 
+   => raise THEORY_GRAPH_ERR{function = "ancestry",
+                    message = Lib.quote str^" is not in the theory graph."};
+@

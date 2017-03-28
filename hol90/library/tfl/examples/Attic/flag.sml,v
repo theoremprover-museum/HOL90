@@ -1,0 +1,346 @@
+head	1.1;
+access;
+symbols
+	HOL97:1.1.4.1.0.2
+	bpHOL97:1.1.4.1
+	hol90_9_alpha:1.1.4.1
+	hol90_pre8_for_multiple_compilers:1.1.0.4
+	TFL_1:1.1.0.2;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	96.08.05.13.40.43;	author rjb;	state dead;
+branches
+	1.1.2.1
+	1.1.4.1;
+next	;
+
+1.1.2.1
+date	96.08.05.13.40.44;	author rjb;	state Exp;
+branches;
+next	;
+
+1.1.4.1
+date	96.08.05.15.40.34;	author rjb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@file flag.sml was initially added on branch TFL_1.
+@
+text
+@@
+
+
+1.1.4.1
+log
+@Updated to TFL release 4.
+@
+text
+@a0 144
+(*----------------------------------------------------------------------------
+ *
+ *       The Dutch National Flag - Term Rewriting Emulation
+ *
+ *
+ *         ML version 
+ *      ---------------
+ *
+ *   datatype colour = R | W | B;
+ *
+ *   val cons = curry (op ::);
+ *   infix 3 ##;
+ *   fun (f##g) (x,y) = (f x, g y);
+ *
+ *   fun dnf []  = ([],false)
+ *     | dnf (W::R::rst) = (R::W::rst, true)
+ *     | dnf (B::R::rst) = (R::B::rst, true)
+ *     | dnf (B::W::rst) = (W::B::rst, true)
+ *     | dnf (x::rst)    = (cons x##I)(dnf rst);
+ *  
+ *  fun flag L = let val (alist,changed) = dnf L
+ *               in if changed then flag alist else alist
+ *               end;
+ *
+ *  flag [R,W,W,B,R,W,W,R,B,B];
+ *---------------------------------------------------------------------------*)
+
+new_theory"flag";
+cons_path "../" theory_path;
+new_parent "kls_list";
+
+
+
+(*---------------------------------------------------------------------------
+ * Define the type of colours, a total order on colours (for termination)
+ * and a useful combinator. The total order could alternatively be defined 
+ * by providing an interpretation of the colours in `:num`.
+ *---------------------------------------------------------------------------*)
+local open Hol_datatype
+in
+  val colour_ty_info = hol_datatype `colour = R | W | B`
+
+  val colour_ord_def = Rfunction`Empty` `(ltc(R,W) = T) /\
+                                         (ltc(R,B) = T) /\
+                                         (ltc(W,B) = T) /\
+                                         (ltc  x   = F)`;
+
+  val _ = Implicit.add_rws [#rules colour_ord_def]
+
+  val func_prod_def = 
+         define (Infix 400)  `## (f:'a->'b) (g:'c->'d) (x,y) = (f x, g y)`
+end;
+
+(*---------------------------------------------------------------------------
+ * The engine: it searches for a rewrite and, if one is possible, it 
+ * performs it and returns true (plus the changed list). If it can't find one, 
+ * it returns false (plus the unchanged list).
+ *---------------------------------------------------------------------------*)
+val Dnf_def = 
+Rfunction `\l1 l2. ?h:colour. l2 = CONS h l1`   (* prim. rec. on lists *)
+
+          `(Dnf []          = ([], F))        /\ 
+           (Dnf (CONS W (CONS R rst)) = (CONS R (CONS W rst), T)) /\ 
+           (Dnf (CONS B (CONS R rst)) = (CONS R (CONS B rst), T)) /\ 
+           (Dnf (CONS B (CONS W rst)) = (CONS W (CONS B rst), T)) /\ 
+           (Dnf (CONS x rst)   = (CONS x##I) (Dnf rst))`;
+
+(* Program optimization, in a way *)
+val Dnf_eqns = save_thm("Dnf",
+let val [dnf_nil,a,b,c,d,e,f,g,h,i] = CONJUNCTS(#rules Dnf_def)
+    val simpl = RW_RULE [dnf_nil,func_prod_def,theorem"combin" "I_THM"]
+in LIST_CONJ [dnf_nil, simpl e, simpl h, a,b,c,d,f,g,i]
+end);
+
+val Dnf_induction = save_thm("Dnf_induction",
+let val taut = Q.TAUT_CONV
+        `^(#ant(dest_imp(#Body(dest_forall((concl (#induction Dnf_def))))))) = 
+         P [] /\
+         P [B] /\
+         P [W] /\
+         (!rst. P (CONS W (CONS R rst))) /\
+         (!rst. P (CONS B (CONS R rst))) /\
+         (!rst. P (CONS B (CONS W rst))) /\
+         (!v7. P (CONS B v7) ==> P (CONS B (CONS B v7))) /\
+         (!v3. P (CONS B v3) ==> P (CONS W (CONS B v3))) /\
+         (!v3. P (CONS W v3) ==> P (CONS W (CONS W v3))) /\
+        (!rst. P rst ==> P (CONS R rst))`
+ in RW_RULE[taut] (#induction Dnf_def)
+ end);
+
+
+(*---------------------------------------------------------------------------
+ * Repeatedly rewrite until no more are possible. I haven't yet got around 
+ * to figuring out what the termination relation should be, so I just
+ * use "function", which doesn't need a relation in order to define the
+ * function.
+ *---------------------------------------------------------------------------*)
+
+val flag_def = 
+    function  `flag L = let (alist, changed) = Dnf L
+                        in changed => flag alist 
+                                   |  alist`;
+
+
+(*---------------------------------------------------------------------------
+ * Now let's define why flag terminates. We measure the total number of
+ * rewrites (flips) done. This will be the sum of the flips for each element 
+ * in the list.
+ *---------------------------------------------------------------------------*)
+
+val flips_def = define Prefix  `flips x = LENGTH o (filter (\y. ltc(y,x)))`;
+
+val total_flips_def = 
+        define Prefix  `(total_flips [] = 0) /\
+                        (total_flips (CONS h t) = flips h t + total_flips t)`;
+
+(*---------------------------------------------------------------------------
+ * Instantiate the termination relation and eliminate WF condition.
+ *---------------------------------------------------------------------------*)
+val flag_def1 = 
+  UNDISCH
+   (Rewrite.REWRITE_RULE[theorem"WF" "WF_measure"]
+     (Q.INST[`R'` |-> `measure total_flips`] (DISCH_ALL flag_def)));
+
+(* Now prove termination *)
+set_goal([],hd(hyp flag_def1));  (* ... in progress .... *) 
+
+
+(*---------------------------------------------------------------------------
+ * Correctness: All occurrences of R in "flag L" are before all 
+ * occurrences of W, which are before all occurrences of B. This is
+ * expressible in terms of append: 
+ *
+ *    !L. ?l1 l2 l3. (flag L = l1++l2++l3)  /\
+ *                   (!x. mem x l1 = (x=R)) /\
+ *                   (!x. mem x l2 = (x=W)) /\
+ *                   (!x. mem x l3 = (x=B))
+ *
+ * Witnesses for l1, l2, and l3 can be given explicitly by filtering L
+ * for the particular colour.
+ *
+ *---------------------------------------------------------------------------*)
+
+html_theory"-";
+@
+
+
+1.1.2.1
+log
+@TFL version 4 for HOL.
+@
+text
+@a0 144
+(*----------------------------------------------------------------------------
+ *
+ *       The Dutch National Flag - Term Rewriting Emulation
+ *
+ *
+ *         ML version 
+ *      ---------------
+ *
+ *   datatype colour = R | W | B;
+ *
+ *   val cons = curry (op ::);
+ *   infix 3 ##;
+ *   fun (f##g) (x,y) = (f x, g y);
+ *
+ *   fun dnf []  = ([],false)
+ *     | dnf (W::R::rst) = (R::W::rst, true)
+ *     | dnf (B::R::rst) = (R::B::rst, true)
+ *     | dnf (B::W::rst) = (W::B::rst, true)
+ *     | dnf (x::rst)    = (cons x##I)(dnf rst);
+ *  
+ *  fun flag L = let val (alist,changed) = dnf L
+ *               in if changed then flag alist else alist
+ *               end;
+ *
+ *  flag [R,W,W,B,R,W,W,R,B,B];
+ *---------------------------------------------------------------------------*)
+
+new_theory"flag";
+cons_path "../" theory_path;
+new_parent "kls_list";
+
+
+
+(*---------------------------------------------------------------------------
+ * Define the type of colours, a total order on colours (for termination)
+ * and a useful combinator. The total order could alternatively be defined 
+ * by providing an interpretation of the colours in `:num`.
+ *---------------------------------------------------------------------------*)
+local open Hol_datatype
+in
+  val colour_ty_info = hol_datatype `colour = R | W | B`
+
+  val colour_ord_def = Rfunction`Empty` `(ltc(R,W) = T) /\
+                                         (ltc(R,B) = T) /\
+                                         (ltc(W,B) = T) /\
+                                         (ltc  x   = F)`;
+
+  val _ = Implicit.add_rws [#rules colour_ord_def]
+
+  val func_prod_def = 
+         define (Infix 400)  `## (f:'a->'b) (g:'c->'d) (x,y) = (f x, g y)`
+end;
+
+(*---------------------------------------------------------------------------
+ * The engine: it searches for a rewrite and, if one is possible, it 
+ * performs it and returns true (plus the changed list). If it can't find one, 
+ * it returns false (plus the unchanged list).
+ *---------------------------------------------------------------------------*)
+val Dnf_def = 
+Rfunction `\l1 l2. ?h:colour. l2 = CONS h l1`   (* prim. rec. on lists *)
+
+          `(Dnf []          = ([], F))        /\ 
+           (Dnf (CONS W (CONS R rst)) = (CONS R (CONS W rst), T)) /\ 
+           (Dnf (CONS B (CONS R rst)) = (CONS R (CONS B rst), T)) /\ 
+           (Dnf (CONS B (CONS W rst)) = (CONS W (CONS B rst), T)) /\ 
+           (Dnf (CONS x rst)   = (CONS x##I) (Dnf rst))`;
+
+(* Program optimization, in a way *)
+val Dnf_eqns = save_thm("Dnf",
+let val [dnf_nil,a,b,c,d,e,f,g,h,i] = CONJUNCTS(#rules Dnf_def)
+    val simpl = RW_RULE [dnf_nil,func_prod_def,theorem"combin" "I_THM"]
+in LIST_CONJ [dnf_nil, simpl e, simpl h, a,b,c,d,f,g,i]
+end);
+
+val Dnf_induction = save_thm("Dnf_induction",
+let val taut = Q.TAUT_CONV
+        `^(#ant(dest_imp(#Body(dest_forall((concl (#induction Dnf_def))))))) = 
+         P [] /\
+         P [B] /\
+         P [W] /\
+         (!rst. P (CONS W (CONS R rst))) /\
+         (!rst. P (CONS B (CONS R rst))) /\
+         (!rst. P (CONS B (CONS W rst))) /\
+         (!v7. P (CONS B v7) ==> P (CONS B (CONS B v7))) /\
+         (!v3. P (CONS B v3) ==> P (CONS W (CONS B v3))) /\
+         (!v3. P (CONS W v3) ==> P (CONS W (CONS W v3))) /\
+        (!rst. P rst ==> P (CONS R rst))`
+ in RW_RULE[taut] (#induction Dnf_def)
+ end);
+
+
+(*---------------------------------------------------------------------------
+ * Repeatedly rewrite until no more are possible. I haven't yet got around 
+ * to figuring out what the termination relation should be, so I just
+ * use "function", which doesn't need a relation in order to define the
+ * function.
+ *---------------------------------------------------------------------------*)
+
+val flag_def = 
+    function  `flag L = let (alist, changed) = Dnf L
+                        in changed => flag alist 
+                                   |  alist`;
+
+
+(*---------------------------------------------------------------------------
+ * Now let's define why flag terminates. We measure the total number of
+ * rewrites (flips) done. This will be the sum of the flips for each element 
+ * in the list.
+ *---------------------------------------------------------------------------*)
+
+val flips_def = define Prefix  `flips x = LENGTH o (filter (\y. ltc(y,x)))`;
+
+val total_flips_def = 
+        define Prefix  `(total_flips [] = 0) /\
+                        (total_flips (CONS h t) = flips h t + total_flips t)`;
+
+(*---------------------------------------------------------------------------
+ * Instantiate the termination relation and eliminate WF condition.
+ *---------------------------------------------------------------------------*)
+val flag_def1 = 
+  UNDISCH
+   (Rewrite.REWRITE_RULE[theorem"WF" "WF_measure"]
+     (Q.INST[`R'` |-> `measure total_flips`] (DISCH_ALL flag_def)));
+
+(* Now prove termination *)
+set_goal([],hd(hyp flag_def1));  (* ... in progress .... *) 
+
+
+(*---------------------------------------------------------------------------
+ * Correctness: All occurrences of R in "flag L" are before all 
+ * occurrences of W, which are before all occurrences of B. This is
+ * expressible in terms of append: 
+ *
+ *    !L. ?l1 l2 l3. (flag L = l1++l2++l3)  /\
+ *                   (!x. mem x l1 = (x=R)) /\
+ *                   (!x. mem x l2 = (x=W)) /\
+ *                   (!x. mem x l3 = (x=B))
+ *
+ * Witnesses for l1, l2, and l3 can be given explicitly by filtering L
+ * for the particular colour.
+ *
+ *---------------------------------------------------------------------------*)
+
+html_theory"-";
+@

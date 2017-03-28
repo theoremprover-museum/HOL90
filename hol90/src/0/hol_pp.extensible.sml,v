@@ -1,0 +1,2345 @@
+head	1.7;
+access;
+symbols
+	HOL97:1.4.0.4
+	bpHOL97:1.4
+	hol90_9_alpha:1.4
+	hol90_pre8_for_multiple_compilers:1.4.0.2
+	hol90_pre8_after_donalds_separate_compilation_changes:1.3
+	hol90_8_after_merging_Konrad_Elsa:1.3
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.7
+date	96.02.08.00.31.07;	author drs1004;	state Exp;
+branches;
+next	1.6;
+
+1.6
+date	96.01.04.13.45.18;	author drs1004;	state Exp;
+branches;
+next	1.5;
+
+1.5
+date	95.12.18.11.34.34;	author drs1004;	state Exp;
+branches;
+next	1.4;
+
+1.4
+date	95.11.15.13.24.26;	author rjb;	state Exp;
+branches
+	1.4.4.1;
+next	1.3;
+
+1.3
+date	95.10.18.16.36.57;	author drs1004;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	95.10.17.17.06.59;	author drs1004;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	95.10.16.13.30.04;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.30.04;	author rjb;	state Exp;
+branches
+	1.1.1.1.2.1;
+next	;
+
+1.1.1.1.2.1
+date	95.10.17.18.42.49;	author drs1004;	state Exp;
+branches;
+next	;
+
+1.4.4.1
+date	97.06.11.17.24.01;	author kxs;	state Exp;
+branches;
+next	1.4.4.2;
+
+1.4.4.2
+date	97.07.11.15.05.29;	author kxs;	state Exp;
+branches;
+next	1.4.4.3;
+
+1.4.4.3
+date	98.01.16.18.12.17;	author kxs;	state Exp;
+branches;
+next	1.4.4.4;
+
+1.4.4.4
+date	98.02.23.20.54.53;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.7
+log
+@New theory mechanism, by Donald Syme, and many other enhancements.
+@
+text
+@(* ===================================================================== *)
+(* FILE          : hol_pp.sml                                            *)
+(* DESCRIPTION   : Implements prettyprinters (pratty prodders) for HOL   *)
+(*                 terms and types. Varstructs are particularly horrible.*)
+(*                                                                       *)
+(* AUTHOR        : Konrad Slind, University of Calgary                   *)
+(* DATE          : August 26, 1991                                       *)
+(* REVISED       : To accomodate ppstreams, November 12, 1992            *)
+(*                 Made extensible on March 2, 1994 by Richard Boulton.  *)
+(* ===================================================================== *)
+
+
+functor HOL_PP(structure Dsyntax : Dsyntax_sig
+               structure Term : Private_term_sig
+               structure Fixity : Fixity_sig
+               structure Globals : Globals_sig
+               sharing Term = Dsyntax.Term) : Hol_pp_sig =
+struct
+structure Term = Term;
+open Term;
+open Term.Type;
+open Lib;
+    
+
+val INCONSISTENT = PP.INCONSISTENT
+val CONSISTENT = PP.CONSISTENT
+val with_ppstream = PP.with_ppstream;
+
+val HOL_PP_ERR = Exception.ERR "Hol_pp";
+    
+val space = " "
+val comma = ","
+val dollar = "$";
+
+
+structure Extend_hol_pp =
+struct
+
+(* Support for minimizing the number of brackets *)
+datatype gravity = TOP | APPL | INFIX of int | WEAK | BOTTOM
+fun gravity_geq TOP _ = true
+  | gravity_geq _ TOP = false
+  | gravity_geq APPL _ = true
+  | gravity_geq _ APPL = false
+  | gravity_geq (INFIX n) (INFIX m) = (n >= m)
+  | gravity_geq (INFIX _) _ = true
+  | gravity_geq _ (INFIX _) = false
+  | gravity_geq WEAK _ = true
+  | gravity_geq _ WEAK = false
+  | gravity_geq _ BOTTOM = true
+
+fun add_lparen ppstrm grav1 grav2 =
+   if (gravity_geq grav1 grav2)
+   then PP.add_string ppstrm "("
+   else ()
+fun add_rparen ppstrm grav1 grav2 =
+   if (gravity_geq grav1 grav2)
+   then PP.add_string ppstrm ")"
+   else ()
+
+(* Print a list of items.
+ *
+ *     pfun = print_function
+ *     dfun = delim_function
+ *     bfun = break_function
+ ***********************************************************************)
+fun pr_list_to_ppstream ppstrm pfun dfun bfun L =
+   let fun pr [] = ()
+         | pr [i] = pfun ppstrm i
+         | pr (i::rst) = ( pfun ppstrm i; dfun ppstrm ; bfun ppstrm ; pr rst )
+   in
+   pr L
+   end;
+
+
+(*********  Type Pretty Printer *********)
+
+fun ty_prec "fun" = INFIX 0
+  | ty_prec "sum" = INFIX 1
+  | ty_prec "prod"  = INFIX 2
+  | ty_prec _ = HOL_PP_ERR("ty_prec","bogus infix");
+
+fun is_infix_tyop "fun" = true
+  | is_infix_tyop "sum" = true
+  | is_infix_tyop "prod" = true
+  | is_infix_tyop _ = false;
+
+fun infix_to_string "fun" = "->"
+  | infix_to_string "sum" = "+"
+  | infix_to_string "prod" = "#"
+  | infix_to_string _ = HOL_PP_ERR("infix_to_string","bogus infix");
+
+fun strip_infix_ty str (ty as Tyapp{Tyop,Args = [ty1,ty2]}) L =
+      if (str = Tyop)
+      then strip_infix_ty str ty2 (ty1::L)
+      else rev(ty::L)
+  | strip_infix_ty str ty L = rev (ty::L);
+
+
+(* Returns a list of strings and a type *)
+fun strip_singleton_ty (Tyapp{Tyop,Args = [ty]}) L =
+                      strip_singleton_ty ty (Tyop::L)
+  | strip_singleton_ty ty L = (ty,L)
+
+local
+
+val pr_type_ref : (PP.ppstream -> hol_type -> gravity -> int -> unit) ref =
+   ref (fn _ => fn _ => fn _ => fn _ => ())
+val pp_type_string_mapper = ref (I: string -> string);
+    
+
+fun initial_pr_type ppstrm =
+   let val {add_string,add_break,begin_block,end_block,...} = 
+              with_ppstream ppstrm
+       val add_lparen = add_lparen ppstrm
+       val add_rparen = add_rparen ppstrm
+       fun maps s = add_string ((!pp_type_string_mapper) s)
+       fun pr_ty_hook ty grav n = (!pr_type_ref) ppstrm ty grav n
+       fun pr_ty _ _ 0 = add_string "..."
+         | pr_ty(Utv x) _ _ = add_string x
+(*         | pr_ty(Stv i) _ _ = add_string("?"^int_to_string i) *)
+         | pr_ty(Tyapp{Tyop=str,Args=[]}) _ _ = maps str 
+(*         | pr_ty(Link(ref ty)) grav n = pr_ty_hook ty grav n *)
+         | pr_ty(ty as Tyapp{Tyop,Args}) grav n = 
+             ( begin_block INCONSISTENT 0;
+               if (is_infix_tyop Tyop)
+               then let val prec = ty_prec Tyop
+                    in
+                    ( add_lparen grav prec;
+                      PP.pr_list
+		          (fn ty => pr_ty_hook ty prec (n-1))
+                          (fn () => 
+                             if (!(#infix_at_front(Globals.pp_flags)))
+                             then add_break(1,0)
+                             else add_string (space^infix_to_string Tyop))
+			  (fn () => 
+                             if (!(#infix_at_front(Globals.pp_flags)))
+                             then add_string (infix_to_string Tyop^space)
+                             else add_break(1,0))
+			  (strip_infix_ty Tyop ty []);
+                      add_rparen grav prec
+                    )
+                    end
+               else if (length Args = 1)
+                    then let val (ty,L) = strip_singleton_ty ty []
+                         in
+                         ( add_lparen grav APPL;
+                           pr_ty_hook ty APPL (n-1);
+                           add_break(1,0);
+                           PP.pr_list
+                                (fn s => maps s) 
+				(fn () => ())
+				(fn () => add_break(1,0))
+				L;
+                           add_rparen grav APPL
+                         )
+                         end
+                    else ( add_lparen grav APPL;
+                           add_string "(";
+                           PP.pr_list 
+                              (fn ty => pr_ty_hook ty BOTTOM (n-1)) 
+			      (fn () => add_string ",")
+			      (fn () => add_break(0,0))
+                              Args;
+                           add_string ")";
+                           maps Tyop;
+                           add_rparen grav APPL
+                         );
+               end_block()
+             )
+   in  pr_ty
+   end;
+       
+val _ = pr_type_ref := initial_pr_type;
+
+in
+
+fun pr_type ppstrm ty grav n = (!pr_type_ref) ppstrm ty grav n;
+
+fun extend_pp_type print_fun =
+   let val old_pr_type = !pr_type_ref
+       fun new_pr_type ppstrm ty grav n =
+          let fun pr_type {depth,gravity} ty ppstrm =
+                 (!pr_type_ref) ppstrm ty gravity depth
+          in  (print_fun pr_type {depth=n,gravity=grav} ty ppstrm)
+              handle _ => (old_pr_type ppstrm ty grav n)
+          end
+   in  pr_type_ref := new_pr_type
+   end;
+
+fun reset_pp_type () = (pr_type_ref := initial_pr_type;
+			pp_type_string_mapper := I);
+
+fun set_pp_type_string_mapper f = (pp_type_string_mapper := f);
+    
+end;
+
+
+fun pp_type ppstrm ty n = pr_type ppstrm ty BOTTOM n
+       
+
+
+(**************** Term Pretty Printer ************************************)
+
+(* alphanumeric binders have a space between them and the variable:
+ * otherwise we get the following buggy prettyprint reported by Paul 
+ * Curzon (LOCAL is a binder)
+ *
+ *     LOCALx. <body>
+ **************************************************************************)
+fun pad_binder s = if (Lexis.ok_symbolic s) then s else s^space;
+
+val pp_term_string_mapper = ref (I: string -> string);
+
+(* Breaking terms down *)
+
+local
+fun strip tm n = 
+   if (Dsyntax.is_neg tm) 
+   then strip (Dsyntax.dest_neg tm) (n+1)
+   else (n,tm)
+in
+fun strip_neg tm = strip tm 0
+end;
+
+local 
+fun dest (tm as Comb{Rator = Const{Name,...}, Rand = Abs{Bvar,Body}}) s L =
+    let val Name = (! pp_term_string_mapper Name) 
+    in if (Name = s)
+	   then dest Body s (Bvar::L)
+       else (rev L,tm)
+    end
+  | dest (tm as Comb{Rator = Fv{Name,...}, Rand = Abs{Bvar,Body}}) s L =
+    let val Name = (! pp_term_string_mapper Name) 
+    in if (Name = s)
+	   then dest Body s (Bvar::L)
+       else (rev L,tm)
+    end
+  | dest tm _ L = (rev L,tm)
+in
+fun strip_binder_vars (tm as Comb{Rator=Const{Name,...},Rand=Abs{Bvar,Body}}) =
+    let val Name = (! pp_term_string_mapper Name) 
+    in if (Fixity.is_binder Name)
+	   then dest Body Name [Bvar]
+       else ([],tm)
+    end
+  | strip_binder_vars (tm as Comb{Rator=Fv{Name,...},Rand=Abs{Bvar,Body}}) =
+    let val Name = (! pp_term_string_mapper Name) 
+    in if (Fixity.is_binder Name)
+	   then dest Body Name [Bvar]
+       else ([],tm)
+    end
+  | strip_binder_vars tm = ([],tm)
+end;
+
+
+fun is_infixed_comb (Comb{Rator=Comb{Rator=Const{Name,...},...},...}) = 
+    let val Name = (! pp_term_string_mapper Name) 
+    in Fixity.is_infix Name
+    end
+  | is_infixed_comb (Comb{Rator=Comb{Rator=Fv{Name,...},...},...}) = 
+    let val Name = (! pp_term_string_mapper Name) 
+    in Fixity.is_infix Name
+    end
+  | is_infixed_comb _ = false;
+
+local 
+fun dest (tm as Comb{Rator = Comb{Rator = Const{Name,...}, Rand = t1},
+                     Rand = t2}) s L =
+    let val Name = (! pp_term_string_mapper Name) 
+    in if (Name = s)
+	   then dest t2 s (t1::L)
+       else rev (tm::L)
+    end
+  | dest (tm as Comb{Rator = Comb{Rator = Fv{Name,...}, Rand = t1},
+                     Rand = t2}) s L =
+    let val Name = (! pp_term_string_mapper Name) 
+    in if (Name = s)
+	   then dest t2 s (t1::L)
+       else rev (tm::L)
+    end
+  | dest tm _ L = rev (tm::L)
+in
+fun strip_infix (tm as Comb{Rator = Comb{Rator = Const{Name,...},Rand = t1},
+                            Rand = t2}) =
+    let val Name = (! pp_term_string_mapper Name) 
+    in if (Fixity.is_infix Name)
+	   then dest t2 Name [t1]
+       else [tm]
+    end
+  | strip_infix (tm as Comb{Rator = Comb{Rator = Fv{Name,...},Rand = t1},
+                            Rand = t2}) =
+    let val Name = (! pp_term_string_mapper Name) 
+    in if (Fixity.is_infix Name)
+	    then dest t2 Name [t1]
+	else [tm]
+    end
+  | strip_infix tm = [tm]
+end;
+
+
+fun strip_list (Comb{Rator = Comb{Rator = Const{Name = "CONS",...}, Rand = t1},
+                     Rand = t2}) L = strip_list t2 (t1::L)
+  | strip_list tm L = (tm::L);
+
+
+fun strip_set(Comb{Rator = Comb{Rator = Const{Name = "INSERT",...}, Rand = t1},
+                   Rand = t2}) L = strip_set t2 (t1::L)
+  | strip_set tm L = (tm::L);
+
+
+(* first clause corresponds to GSPEC (\v. (M,N)) ;
+ *  second to GSPEC (\(v1,...,vn).(M,N))
+ ***********************************************************************)
+exception NOT_SET_ABS;
+fun strip_set_abs(tm as Abs _) =
+    let val {Bvar,Body} = dest_abs tm
+    in case Body 
+         of (Comb{Rator=Comb{Rator=Const{Name=",",...},Rand=tm1},Rand=tm2}) =>
+              if ([Bvar] =
+		  intersect (Term.free_vars tm1) (Term.free_vars tm2))
+              then ([Bvar],tm1,tm2)
+              else raise NOT_SET_ABS
+          | _ => HOL_PP_ERR("strip_set_abs","badly formed set abstraction")
+    end
+  | strip_set_abs tm = 
+      let val {varstruct, body} = Dsyntax.dest_pabs tm
+          val L = Dsyntax.strip_pair varstruct
+          val {fst,snd} = Dsyntax.dest_pair body
+      in
+      if (set_eq L (intersect (Term.free_vars fst)
+			              (Term.free_vars snd)))
+      then (L,fst,snd)
+      else raise NOT_SET_ABS
+      end
+      handle _ => raise NOT_SET_ABS;
+
+
+
+
+(* Printing functions for variables. Bound variables need to be looked up in
+ *  the environment E to get their info (name and type).
+ ****************************************************************************)
+local
+fun lookup 0 (Fv x::_) = x
+  | lookup n (_::rst) = lookup (n-1) rst
+  | lookup _ _ = HOL_PP_ERR("pr_var", "lookup")
+in
+fun pr_var ppstrm =
+   let val add_string = PP.add_string ppstrm
+       fun maps s = add_string (! pp_term_string_mapper s)
+       fun pr_atom 0 _ _ = add_string " ... "
+	 | pr_atom n {Name,Ty} showtype = 
+             if (showtype)
+		 then (add_string "(";
+		       maps Name;
+		       add_string " :";
+		       pp_type ppstrm Ty (n-1);
+		       add_string ")")
+             else maps Name
+       fun pr_v 0 _ _ = add_string " ... "
+         | pr_v n _ (Fv v) = pr_atom n v (!Globals.show_types)
+         | pr_v n E (Bv i) = 
+              if (!Globals.show_dB)
+              then add_string ("("^int_to_string i^")")
+              else pr_atom n (lookup i E) false
+         | pr_v _ _ _ = HOL_PP_ERR("pr_var", "not a var")
+   in   pr_v
+   end
+fun pr_var_list ppstrm n = 
+   pr_list_to_ppstream ppstrm (fn ppstrm => pr_var ppstrm n [])
+                              (fn _ => ())
+                              (fn ppstrm => PP.add_break ppstrm (1,0))
+end;
+
+
+
+(* Varstructs are odious. I found that the easiest way to handle them 
+ * is to map them to (perhaps partial) s-expressions.
+ ***********************************************************************)
+datatype sexp = premature_end
+              | atom of term
+              | unc of (sexp*sexp);
+
+(* Map to <sexp,term,env> triple. Takes a term and returns the first
+ * varstruct (mapped to an sexp), the rest of the term, and the env arising
+ * from the first varstruct.
+ ****)
+fun dest_uncurry (Abs{Bvar,Body}) = (atom Bvar, Body,[Bvar])
+  | dest_uncurry (Comb{Rator = Const{Name = "UNCURRY",...},Rand}) =
+         let val (s,M,e0) = dest_uncurry Rand
+             val (t,N,e1) = dest_uncurry M
+         in
+         (unc(s,t), N, (e1@@e0))
+         end
+  | dest_uncurry M = (premature_end,M,[]);
+
+
+(* Get top level tuple from sexp *)
+fun get_backbone (unc(M,N)) = M::(get_backbone N)
+  | get_backbone x = [x];
+
+
+(* Takes an sexp and prints it. Therefore, this will print one element from
+ * a varstruct list.
+ ***************************************************************************)
+fun pr_varstruct ppstrm =
+   let val {add_string,add_break,begin_block,end_block,...} = 
+              with_ppstream ppstrm
+       val pr_var = pr_var ppstrm
+       fun pr_infix_unc L n = 
+           ( begin_block INCONSISTENT 2;
+             add_string "(";
+             PP.pr_list
+                  (pr_vstruct n)
+                  (fn () => add_string ",")
+                  (fn () => add_break(0,0))
+                  L;
+             add_string ")";
+             end_block())
+       and
+           pr_vstruct n (S as unc _) = pr_infix_unc (get_backbone S) n
+         | pr_vstruct n (atom (v as Fv _)) = pr_var n [] v
+         | pr_vstruct _ premature_end = HOL_PP_ERR("pr_vstruct",
+                                                       "premature end")
+         | pr_vstruct _ (atom _) = HOL_PP_ERR("pr_vstruct",
+                                              "badly formed varstruct")
+   in   pr_vstruct
+   end;
+
+(* Strips a term of parse form "\<varstruct_list>.M" into a triple:
+ * <funcs,term,env>. Each member f in funcs has type (unit -> unit).
+ * Each f either prints out a list of variables (using pr_var_list)
+ * or a single, complete varstruct (using pr_varstruct).
+ *************************************************************************)
+fun strip_varstruct ppstrm =
+   let
+   val pvstruct = pr_varstruct ppstrm
+   val pvlist = pr_var_list ppstrm
+   fun strip (tm as Comb{Rator = Const{Name = "UNCURRY",...},...}) =
+        let val (s,M,e0) = dest_uncurry tm
+        in if (hd(rev(get_backbone s)) =
+	       premature_end)
+           then ([],tm,[])
+           else let val (L,M',e1) = strip M
+                in ((fn n => pvstruct n s)::L, M', e1@@e0)
+                end
+        end
+     | strip (tm as Abs _) =
+        let val (V,M) = Term.de_abs tm
+            val (L,M',e) = strip M
+        in ((fn n => pvlist n V)::L, M', (e@@rev V))
+        end
+     | strip tm = ([],tm,[])
+   in 
+   strip
+   end;
+
+(****************************************************************************
+ * "bump" is used in stripping restricted quantifiers. It increments the
+ * index of any bound variables inside a restriction. This is used in the case
+ *
+ *     RQ <pred1> (\x. RQ <pred2> (\y. M))
+ *
+ * where RQ is a restricted quantifier constant. If pred1 and pred2 are the 
+ * same, then we want to print 
+ *
+ *     RQ x y ::<pred1>. M
+ *
+ * but if not then we print
+ * 
+ *     RQ x::<pred1>. RQ y::pred2. M
+ *
+ * The problem comes with testing that pred1 and pred2 are the same. We
+ * test up to alpha-convertibility, but we can't just check the dB structure,
+ * since pred2 is one binder "past" pred1. 
+ *
+ * Example.
+ *
+ *     - %`!x y. !a::($> x). !b::($> y). (x > y) ==> (a > b)`;
+ *     val it = (--`!x y. !a b ::($> x). x > y ==> a > b`--) : term
+ * 
+ * Showing the dB structure and the restricted quantifiers, this is
+ *
+ *     - %`!x y. !a::($> x). !b::($> y). (x > y) ==> (a > b)`;
+ *     val it =
+ *     `!x y. RES_FORALL ($> (1))
+ *            (\a. RES_FORALL ($> (1)) (\b. (3) > (2) ==> (1) > (0)))`
+ *
+ * Notice that the "x" in "($> x)" is one away from its binder, as is the 
+ * "y" in "($> y)". Hence, just testing with aconv will not be correct. 
+ *
+ ***************************************************************************)
+
+fun bump (Bv i) = Bv (i+1)
+  | bump (Comb{Rator,Rand}) = Comb{Rator=bump Rator, Rand=bump Rand}
+  | bump (Abs{Bvar,Body}) = Abs{Bvar=Bvar,Body=bump Body}
+  | bump x = x;
+      
+fun strip_restr_quant ppstrm {binder,restr,rest} =
+   let val pvstruct = pr_varstruct ppstrm
+       val pvar = pr_var ppstrm
+       fun strip R (tm as Comb{Rator = Const{Name = "UNCURRY",...},...}) =
+             let val (s,M,e0) = dest_uncurry tm
+             in if (hd(rev(get_backbone s)) =
+		    premature_end)
+                then ([],tm,[])
+                else let val (L,M',e1) = strip_next (bump R) M
+                     in ((fn n => pvstruct n s)::L, M', e1@@e0)
+                     end
+             end
+         | strip R (Abs{Bvar,Body}) =
+             let val (L,Body',e) = strip_next (bump R) Body
+             in ((fn n => pvar n [] Bvar)::L, Body', (e@@[Bvar]))
+             end
+         | strip _ tm = ([],tm,[])
+       and strip_next R (tm as Comb{Rator=Comb{Rator=Const{Name,...},
+                                               Rand=rstn}, Rand}) =
+             if (Name=binder andalso (aconv rstn R))
+             then strip R Rand
+             else ([],tm,[])
+         | strip_next _ tm = ([],tm,[])
+   in
+   strip restr rest
+   end;
+
+fun strip_let ppstrm =
+   let fun strip(Comb{Rator=Comb{Rator=Const{Name="LET",...},
+                                 Rand=Abs{Bvar,Body}},
+                      Rand=tm}) =
+         ([((fn n => pr_var ppstrm n [] Bvar),tm)],Body,[Bvar])
+     | strip(M as Comb
+          {Rator=Comb{Rator = Const{Name = "LET", ...},
+    		      Rand=tm1 as Comb{Rator=Const{Name="UNCURRY",...},...}},
+           Rand = N}) =
+         let val (s,tm2,e) = dest_uncurry tm1
+         in
+         if (hd(rev(get_backbone s)) =
+	     premature_end)
+         then ([],M,[])
+         else ([((fn n => pr_varstruct ppstrm n s),N)],tm2,e)
+         end
+     | strip(M as Comb{Rator = Comb{Rator = Const{Name = "LET",...}, 
+                                    Rand = tm1},
+                       Rand = tm2}) =
+         ( case (strip tm1)
+             of (L,Abs{Bvar,Body},e) => 
+                      (((fn n => pr_var ppstrm n [] Bvar),tm2)::L, 
+                       Body, Bvar::e)
+              | (L, tm as Comb{Rator = Const{Name = "UNCURRY",...},...},e0) =>
+                   let val (s,tm3,e1) = dest_uncurry tm
+                   in
+                   if (hd(rev(get_backbone s)) =
+		       premature_end)
+                   then (L,tm,e0)
+                   else (((fn n=> pr_varstruct ppstrm n s),tm2)::L,tm3,(e1@@e0))
+                   end 
+              | _ => ([],M,[])
+         )
+     | strip M = ([],M,[])
+   in strip
+   end;
+
+
+local
+
+val pp_tm_ref
+       : (PP.ppstream -> term -> gravity -> term list -> int -> unit) ref =
+   ref (fn _ => fn _ => fn _ => fn _ => fn _ => ())
+
+(* The term pretty printer *)
+fun initial_pp_tm ppstrm =
+   let val {add_string,add_break,begin_block,end_block,...} = 
+              with_ppstream ppstrm
+       fun maps s = add_string (! pp_term_string_mapper s)
+       val pr_var = pr_var ppstrm
+       val pr_var_list = pr_var_list ppstrm
+       val pr_varstruct = pr_varstruct ppstrm
+       val strip_varstruct = strip_varstruct ppstrm  
+       val add_lparen = add_lparen ppstrm
+       val add_rparen = add_rparen ppstrm
+       val pp_type = pp_type ppstrm
+       fun pr_const {Name,Ty} n =
+	   let val Name = (! pp_term_string_mapper Name)
+	   in let val ptype = !Globals.show_types
+	      in if ptype
+		     then add_string "("
+		 else ();
+		 (* special syntax for empty lists and sets *)
+		 add_string
+		 (if (Name = "NIL")
+		      then "[]" 
+		  else if ((Name="EMPTY") andalso not(is_vartype Ty)
+		       andalso (#Tyop(dest_type Ty)="set"))
+		           then "{}"
+		  else case (Fixity.fixity Name)
+		      of Fixity.Binder => dollar^Name
+		    | (Fixity.Infix _) => dollar^Name
+		    | _ => Name);
+		  if ptype
+	        (* maybe (add_break(1,0);BB;add_string":";pp_type;EB  ... *)
+		      then (add_string " :"; pp_type Ty (n-1); add_string ")")
+		  else () 
+	      end
+	  end
+       fun pr_term_hook tm grav E n = (!pp_tm_ref) ppstrm tm grav E n
+
+fun pr_comb rator rand grav E n =
+   (begin_block (if (!(#stack_infixes(Globals.pp_flags)))
+                 then CONSISTENT
+                 else INCONSISTENT) 2;
+     add_lparen grav APPL;
+     if (is_infixed_comb rator)  (* to print `(f o g) x` properly *)
+     then pr_term_hook rator APPL E (n-1)
+     else pr_term_hook rator WEAK E (n-1);
+     add_break(1,0);
+     pr_term_hook rand APPL E (n-1);
+     add_rparen grav APPL;
+     end_block ()
+   )
+
+(* "infix" case and restricted quantifier case *)
+(* if infix_at_front and we're printing A /\ B, we have the
+ * following stream: A <BR> "/\ " B
+ * otherwise: A " /\" <BR> B
+ ***********************************************************)
+
+and pr_infixes_and_res_quan Name 
+    (tm as Comb{Rator as Comb{Rator=c, Rand = t1},Rand}) grav E n =
+    let val Name = (! pp_term_string_mapper Name)
+    in if (Fixity.is_infix Name) then
+	 let val prec = Fixity.precedence Name
+	     val L = strip_infix tm
+	     val p = INFIX(prec)
+	 in add_lparen grav p;
+	     begin_block (if (!(#stack_infixes(Globals.pp_flags)))
+			      then CONSISTENT
+			  else INCONSISTENT) 0;
+	     PP.pr_list 
+	     (fn trm => pr_term_hook trm p E (n-1))
+	     (fn () => 
+	      if (!(#infix_at_front(Globals.pp_flags)))
+		  then add_break(if(Name<>comma) then 1 else 0,0)
+	      else add_string((if(Name<>comma)then space else"")^Name))
+	     (fn () => 
+	      if (!(#infix_at_front(Globals.pp_flags)))
+		  then add_string(Name^space)
+	      else add_break(if (Name<>comma) then 1 else 0,0))
+	     L;
+	     end_block();
+	     add_rparen grav p
+	 end
+     else if (!Globals.show_restrict) then
+	case (assoc2 Name (Fixity.binder_restrictions()))
+	      of NONE =>  (* not a restricted quantifier *)
+		  pr_comb Rator Rand grav E n
+	    | (SOME (binder,_)) =>
+		  (case (strip_restr_quant ppstrm 
+			 {binder=Name,restr=t1,rest=Rand})
+		       of ([],_,_) => pr_comb Rator Rand grav E n
+			 | (F,body,e) =>
+			       ( begin_block CONSISTENT 2;
+				add_lparen grav WEAK;
+				add_string (pad_binder binder);
+				begin_block INCONSISTENT 1;
+				PP.pr_list
+				(fn f => f n) 
+				(fn () => ())
+				(fn () => add_break(1,0))
+				F;
+				add_break (1,0);
+				add_string "::";
+				add_break (0,0);
+				pr_term_hook t1 APPL E (n-1);
+				end_block();
+				add_string ".";
+				add_break(1,0);
+				begin_block INCONSISTENT 2;
+				pr_term_hook body BOTTOM (e@@E) (n-1);
+				end_block();
+				add_rparen grav WEAK;
+				end_block()))
+     else pr_comb Rator Rand grav E n
+    end
+			
+
+
+and
+(****************************************************************************
+ * The pattern match for pr_term goes like this (c stands for a Const):
+ *
+ *     Fv       (* free variable *)
+ *     Bv       (* bound variable *)
+ *     Const    (* constant *)
+ *     Abs      (* lambda abstraction *)
+ *     c P Q R  (* c = COND *)
+ *     c P Q    (* c = {CONS, INSERT, LET, <infix>, <restricted binder>} *)
+ *     c P      (* c = {~, GSPEC, UNCURRY, <binder>, <binder> <vstruct>} *)
+ *     P Q      (* fall through case for Combs *)
+ *     ty_antiq (* injection of hol_type into term, so have to cater for it. *)
+ *
+ ***************************************************************************)
+    pr_term _ _ _ 0 = add_string " ... "
+  | pr_term (v as Fv _) grav E n = pr_var n E v
+  | pr_term (v as Bv _) grav E n = pr_var n E v
+  | pr_term (Const r) _ _ n = pr_const r n
+  | pr_term (tm as Abs _) grav E n =         (* simple abstractions *)
+           let val (F,body,e) = strip_varstruct tm
+           in
+             begin_block CONSISTENT 2;
+             add_lparen grav WEAK;
+             add_string "\\";
+               begin_block INCONSISTENT 1;
+               PP.pr_list
+                   (fn f => f n)
+                   (fn () => ())
+                   (fn () => add_break(1,0))
+                    F;
+               end_block();
+             add_string ".";
+             add_break(1,0);
+               begin_block INCONSISTENT 2;
+               pr_term_hook body BOTTOM (e@@E) (n-1);
+               end_block();
+             add_rparen grav WEAK;
+             end_block() 
+           end
+
+    (* conditionals, the only 3 argument built in constant recognized by 
+     * pr_term
+     **********************************************************************)
+  | pr_term (Comb{Rator = Comb{Rator = Comb{Rator = Const{Name = "COND",...},
+                                            Rand = b},
+                               Rand = larm},
+                  Rand = rarm}) grav E n =
+           ( add_lparen grav WEAK;
+             begin_block CONSISTENT 0;
+             pr_term_hook b TOP E (n-1);
+             add_break(1,0);
+             add_string "=> ";
+             pr_term_hook larm TOP E (n-1);
+             add_break(1,0);
+             add_string "| ";
+             pr_term_hook rarm TOP E (n-1);
+             end_block();
+             add_rparen grav WEAK
+           )
+
+    (* 2 argument built in constants: CONS, INSERT, LET, all infixes, and
+     * restricted quantifiers.
+     **********************************************************************)
+
+    (* lists *)
+  | pr_term (tm as Comb{Rator = f as Comb{Rator = Const{Name="CONS",...},...},
+                        Rand}) grav E n =
+           let val l = strip_list tm []
+           in
+           case (hd l) 
+             of (Const{Name = "NIL",...}) =>
+                    ( begin_block INCONSISTENT 1;
+                      add_string "[";
+                      PP.pr_list
+                          (fn trm => pr_term_hook trm BOTTOM E (n-1))
+                          (fn () => add_string ";")
+                          (fn () => add_break(1,0))
+                          (rev (tl l));
+                      add_string "]";
+                      end_block() )
+              | _ => pr_comb f Rand grav E n
+           end
+    (* enumerated set *)
+  | pr_term (tm as Comb{Rator=Comb{Rator=Const{Name="INSERT",...},...},...})
+            grav E n = 
+           let val L = strip_set tm []
+               val p = INFIX(Fixity.precedence "INSERT")
+           in
+           case (hd L) 
+             of (Const{Name = "EMPTY",...}) =>
+                    ( begin_block INCONSISTENT 1;
+                      add_string "{";
+                      PP.pr_list
+                          (fn trm => pr_term_hook trm BOTTOM E (n-1))
+                          (fn () => add_string ";")
+                          (fn () => add_break(1,0))
+                          (rev (tl L));
+                      add_string "}";
+                      end_block() )
+              | _ => ( begin_block CONSISTENT 0;
+                       add_lparen grav p;
+                       PP.pr_list
+                           (fn trm => pr_term_hook trm p E (n-1))
+                           (fn () => add_string " INSERT")
+                           (fn () => add_break(1,0))
+                           (rev L);
+                       add_rparen grav p;
+                       end_block ()
+                     )
+           end
+    (* let statements *)
+  | pr_term (tm as Comb{Rator as Comb{Rator = Const{Name = "LET",...},...},
+                        Rand})
+            grav E n =
+     (case (strip_let ppstrm tm)
+        of ([],_,[]) => pr_comb Rator Rand grav E n
+        | ([],_,_) => HOL_PP_ERR("pr_term","let clause")
+        | (L,m,e) =>
+           ( add_lparen grav WEAK;
+             begin_block CONSISTENT 0;
+             add_string "let ";
+             PP.pr_list 
+               (fn (f,arg) => 
+                  let val (F,body,e') = strip_varstruct arg
+                  in
+                    begin_block INCONSISTENT 2;
+                    f n;  (* print let-bound name *) 
+                    if (null F)  (* args *)
+                    then () 
+                    else add_string " ";
+                    PP.pr_list
+                         (fn f => f n)
+                         (fn () => ())
+                         (fn () => add_break(1,0))
+                          F;
+                    add_string " =";
+                    add_break(1,2);
+                    end_block();
+                    pr_term_hook body WEAK (e'@@E) (n-1);
+                    add_break(1,0)
+                  end)
+               (fn () => add_string "and")
+               (fn () => add_break(1,0))
+               (rev L);
+
+             add_string "in";
+             add_break(1,0);
+             pr_term_hook m BOTTOM (e@@E) (n-1);  (* pp the body *)
+             end_block();
+             add_rparen grav WEAK
+           )
+     )
+
+    (* "infix" case and restricted quantifier case.  Variables may have *)
+    (* infix status too. *)
+  | pr_term (tm as Comb{Rator=Comb{Rator=Const{Name,...}, ...},...}) grav E n =
+    pr_infixes_and_res_quan Name tm grav E n
+  | pr_term (tm as Comb{Rator=Comb{Rator=Fv{Name,...}, ...},...}) grav E n =
+    pr_infixes_and_res_quan Name tm grav E n
+
+    (* Built in constants taking one argument : negation ("~"), GSPEC, 
+     * UNCURRY, <binder>, <binder> <vstruct>
+     **********************************************************************)
+    (* negations *)
+  | pr_term (tm as Comb{Rator = Const{Name = "~", ...}, ...}) grav E d =
+           let val (n,m) = strip_neg tm
+           in
+             add_lparen grav APPL;
+             for_se 0 (n-1) (fn _ => add_string "~");
+             pr_term_hook m APPL E (d-1);
+             add_rparen grav APPL
+           end
+    (* set abstractions *)
+  | pr_term (Comb{Rator as Const{Name = "GSPEC",...}, Rand}) grav E n =
+         ( let val (e,tm1,tm2) = strip_set_abs Rand
+               val e' = e@@E
+           in
+             begin_block CONSISTENT 2;
+             add_string "{";
+             pr_term_hook tm1 BOTTOM e' (n-1);
+             add_string " |";
+             add_break (1,0);
+             pr_term_hook tm2 BOTTOM e' (n-1);
+             add_string "}";
+             end_block()
+           end
+           handle NOT_SET_ABS => pr_comb Rator Rand grav E n
+         )
+    (* lambda varstructs:  \(x,y).M  *)
+  | pr_term (tm as Comb{Rator as Const{Name = "UNCURRY",...},Rand}) grav E n =
+          (case (strip_varstruct tm)
+             of ([],_,_) => pr_comb Rator Rand grav E n
+              | (F,body,e) => 
+                 ( begin_block CONSISTENT 2;
+                   add_lparen grav WEAK;
+                   add_string "\\";
+                   begin_block INCONSISTENT 1;
+                   PP.pr_list
+                       (fn f => f (n-1))
+                       (fn () => ())
+                       (fn () => add_break(1,0))
+                        F;
+                   end_block();
+                   add_string ".";
+                   add_break(1,0);
+                   begin_block INCONSISTENT 2;
+                   pr_term_hook body BOTTOM (e@@E) (n-1);
+                   end_block();
+                   add_rparen grav WEAK;
+                   end_block()
+                 ))
+
+    (* binder applied to varstruct: e.g.,  !(x,y,z). M   *)
+  | pr_term (Comb{Rator as Const{Name = cstr,Ty},
+                  Rand as Comb{Rator = Const{Name = "UNCURRY",...},...}})
+              grav E n = 
+    let val cstr = (! pp_term_string_mapper cstr) 
+    in if (Fixity.fixity cstr <> Fixity.Binder) 
+           then pr_comb Rator Rand grav E n
+       else
+           (case (strip_varstruct Rand)
+		of ([],_,_) => pr_comb Rator Rand grav E n
+		  | (F,body,e)
+		    => ( begin_block CONSISTENT 2;
+			add_lparen grav WEAK;
+			add_string (pad_binder cstr);
+			begin_block INCONSISTENT 1;
+			PP.pr_list
+			(fn f => f (n-1))
+			(fn () => ())
+			(fn () => add_break(1,0))
+			F;
+			end_block();
+			add_string ".";
+			add_break(1,0);
+			begin_block INCONSISTENT 2;
+			pr_term_hook body BOTTOM (e@@E) (n-1);
+			end_block();
+			add_rparen grav WEAK;
+			end_block()
+			))
+    end
+
+    (* "binder" case: e.g. !x y z. M. *)
+  | pr_term (trm as Comb{Rator=c as Const{Name,...},Rand=tm as Abs _})
+            grav E n =
+    let val Name = (! pp_term_string_mapper Name) 
+    in if (Fixity.fixity Name <> Fixity.Binder) 
+           then pr_comb c tm grav E n
+       else let val (V,body) = strip_binder_vars trm
+	    in
+		begin_block INCONSISTENT 2;
+		add_lparen grav WEAK;
+		begin_block INCONSISTENT 1;
+		add_string (pad_binder Name);
+		pr_var_list (n-1) V;
+		end_block();
+		add_string ".";
+		add_break(1,0);
+		pr_term_hook body BOTTOM (rev V@@E) (n-1);
+		add_rparen grav WEAK;
+		end_block()
+	    end
+    end
+
+  (* fall through case for combs *)
+  | pr_term (Comb{Rator, Rand}) grav E n = pr_comb Rator Rand grav E n
+           
+  | pr_term (ty_antiq ty) grav E n = 
+           ( begin_block CONSISTENT 0;
+             add_string ("(ty_antiq("^(!Globals.type_pp_prefix)^"`:");
+             pp_type ty (n-1);
+             add_string ("`"^(!Globals.type_pp_suffix)^"))");
+             end_block())
+
+in  pr_term
+end;
+
+val _ = pp_tm_ref := initial_pp_tm;
+
+in
+
+fun pp_tm ppstrm tm grav E n = (!pp_tm_ref) ppstrm tm grav E n;
+
+fun extend_pp_term print_fun =
+   let val old_pp_tm = !pp_tm_ref
+       fun new_pp_tm ppstrm tm grav E n =
+          let fun pp_tm {boundvars,depth,gravity} tm ppstrm =
+                 (!pp_tm_ref) ppstrm tm gravity boundvars depth
+          in  (print_fun pp_tm {boundvars=E,depth=n,gravity=grav} tm ppstrm)
+              handle _ => (old_pp_tm ppstrm tm grav E n)
+          end
+   in  pp_tm_ref := new_pp_tm
+   end;
+
+fun reset_pp_term () = (pp_tm_ref := initial_pp_tm;
+			pp_term_string_mapper := I);
+fun set_pp_term_string_mapper f = (pp_term_string_mapper := f);
+
+end;
+
+fun pp_term ppstrm tm = 
+   if (!Globals.max_print_depth = 0)
+   then PP.add_string ppstrm " ... "
+   else pp_tm ppstrm tm BOTTOM [] (!Globals.max_print_depth);
+
+end; (* Extend_hol_pp *)
+
+structure E = Extend_hol_pp;
+val pp_type = E.pp_type
+val pp_term = E.pp_term;
+
+fun pp_self_parsing_type ppstrm ty = 
+   ( PP.begin_block ppstrm CONSISTENT 0;
+     PP.add_string ppstrm ((!Globals.type_pp_prefix)^"`:"); 
+     E.pp_type ppstrm ty  (!Globals.max_print_depth); 
+     PP.add_string ppstrm ("`"^(!Globals.type_pp_suffix)); 
+     PP.end_block ppstrm
+   ) handle e => (say "\nError in attempting to print an HOL type!\n";
+                  raise e);
+
+fun pp_self_parsing_term ppstrm tm = 
+  ( PP.begin_block ppstrm CONSISTENT 0;
+    PP.add_string ppstrm ((!Globals.term_pp_prefix)^"`"); 
+    E.pp_term ppstrm tm; 
+    PP.add_string ppstrm ("`"^(!Globals.term_pp_suffix));
+    PP.end_block ppstrm
+  ) handle e => (say "\nError in attempting to print an HOL term!\n";
+                 raise e);
+  
+fun P f x y z = f y z x;
+
+fun type_to_string ty =
+   PP.pp_to_string (!Globals.linewidth) 
+                   (P E.pp_type (!Globals.max_print_depth))
+                   ty;
+
+fun term_to_string tm = PP.pp_to_string (!Globals.linewidth) E.pp_term tm
+
+fun print_type ty = output(std_out,type_to_string ty);
+fun print_term tm = output(std_out,term_to_string tm);
+
+end; (* HOL_PP *)
+@
+
+
+1.6
+log
+@Fixed types, pretypes, fixities, parsing.
+@
+text
+@d13 1
+a13 2
+functor HOL_PP(structure Lexis : Lexis_sig
+               structure Dsyntax : Dsyntax_sig
+d109 2
+d117 1
+d122 1
+a122 1
+         | pr_ty(Tyapp{Tyop=str,Args=[]}) _ _ = add_string str 
+d151 1
+a151 1
+                                (fn s => add_string s) 
+d166 1
+a166 1
+                           add_string Tyop;
+d191 2
+a192 1
+fun reset_pp_type () = (pr_type_ref := initial_pr_type);
+d194 2
+d213 2
+d228 5
+a232 3
+        if (Name = s)
+        then dest Body s (Bvar::L)
+        else (rev L,tm)
+d234 5
+a238 3
+        if (Name = s)
+        then dest Body s (Bvar::L)
+        else (rev L,tm)
+d242 5
+a246 3
+         if (Fixity.is_binder Name)
+         then dest Body Name [Bvar]
+         else ([],tm)
+d248 5
+a252 3
+         if (Fixity.is_binder Name)
+         then dest Body Name [Bvar]
+         else ([],tm)
+d258 3
+a260 1
+           Fixity.is_infix Name
+d262 3
+a264 1
+           Fixity.is_infix Name
+d270 5
+a274 3
+        if (Name = s)
+        then dest t2 s (t1::L)
+        else rev (tm::L)
+d277 5
+a281 3
+        if (Name = s)
+        then dest t2 s (t1::L)
+        else rev (tm::L)
+d286 5
+a290 3
+         if (Fixity.is_infix Name)
+         then dest t2 Name [t1]
+         else [tm]
+d293 5
+a297 3
+         if (Fixity.is_infix Name)
+         then dest t2 Name [t1]
+         else [tm]
+d351 1
+d355 6
+a360 5
+             then ( add_string ("("^Name^" :");
+                    pp_type ppstrm Ty (n-1);
+                    add_string ")"
+                  )
+             else add_string Name
+d575 1
+d584 22
+a605 22
+          let val ptype = !Globals.show_types
+          in if ptype
+             then add_string "("
+             else ()
+             ;
+             (* special syntax for empty lists and sets *)
+             add_string
+                (if (Name = "NIL")
+                 then "[]" 
+                 else if ((Name="EMPTY") andalso not(is_vartype Ty)
+                          andalso (#Tyop(dest_type Ty)="set"))
+                      then "{}"
+                      else case (Fixity.fixity Name)
+                             of Fixity.Binder => dollar^Name
+                              | (Fixity.Infix _) => dollar^Name
+                              | _ => Name)
+             ;
+             if ptype
+             (* maybe (add_break(1,0);BB;add_string":";pp_type;EB  ... *)
+             then (add_string " :"; pp_type Ty (n-1); add_string ")")
+             else () 
+          end
+d630 2
+a631 1
+    if (Fixity.is_infix Name) then
+d684 1
+d905 2
+a906 1
+           if (Fixity.fixity cstr <> Fixity.Binder) 
+d908 1
+a908 1
+           else
+d910 21
+a930 20
+              of ([],_,_) => pr_comb Rator Rand grav E n
+               | (F,body,e)
+                 => ( begin_block CONSISTENT 2;
+                      add_lparen grav WEAK;
+                      add_string (pad_binder cstr);
+                      begin_block INCONSISTENT 1;
+                      PP.pr_list
+                          (fn f => f (n-1))
+                          (fn () => ())
+                          (fn () => add_break(1,0))
+                           F;
+                      end_block();
+                      add_string ".";
+                      add_break(1,0);
+                      begin_block INCONSISTENT 2;
+                      pr_term_hook body BOTTOM (e@@E) (n-1);
+                      end_block();
+                      add_rparen grav WEAK;
+                      end_block()
+                    ))
+d935 2
+a936 1
+           if (Fixity.fixity Name <> Fixity.Binder) 
+d938 15
+a952 14
+           else let val (V,body) = strip_binder_vars trm
+                in
+                  begin_block INCONSISTENT 2;
+                  add_lparen grav WEAK;
+                    begin_block INCONSISTENT 1;
+                     add_string (pad_binder Name);
+                     pr_var_list (n-1) V;
+                    end_block();
+                  add_string ".";
+                  add_break(1,0);
+                    pr_term_hook body BOTTOM (rev V@@E) (n-1);
+                  add_rparen grav WEAK;
+                  end_block()
+                end
+d984 3
+a986 1
+fun reset_pp_term () = (pp_tm_ref := initial_pp_tm);
+@
+
+
+1.5
+log
+@Preterm and other changes, see 7.changes
+@
+text
+@d16 1
+d23 2
+d97 2
+a98 2
+      else Lib.rev(ty::L)
+  | strip_infix_ty str ty L = Lib.rev (ty::L);
+d119 1
+a119 1
+(*         | pr_ty(Stv i) _ _ = add_string("?"^Lib.int_to_string i) *)
+d142 1
+a142 1
+               else if (Lib.length Args = 1)
+d223 6
+a228 2
+        else (Lib.rev L,tm)
+  | dest tm _ L = (Lib.rev L,tm)
+d231 5
+a235 1
+         if (Term.is_binder Name)
+d243 3
+a245 1
+           Term.is_infix Name
+d253 7
+a259 2
+        else Lib.rev (tm::L)
+  | dest tm _ L = Lib.rev (tm::L)
+d263 6
+a268 1
+         if (Term.is_infix Name)
+d294 1
+a294 1
+		  Lib.intersect (Term.free_vars tm1) (Term.free_vars tm2))
+d304 1
+a304 1
+      if (Lib.set_eq L (Lib.intersect (Term.free_vars fst)
+d336 1
+a336 1
+              then add_string ("("^Lib.int_to_string i^")")
+d413 1
+a413 1
+        in if (Lib.hd(Lib.rev(get_backbone s)) =
+d423 1
+a423 1
+        in ((fn n => pvlist n V)::L, M', (e@@Lib.rev V))
+d476 1
+a476 1
+             in if (Lib.hd(Lib.rev(get_backbone s)) =
+d509 1
+a509 1
+         if (Lib.hd(Lib.rev(get_backbone s)) =
+d524 1
+a524 1
+                   if (Lib.hd(Lib.rev(get_backbone s)) =
+d566 3
+a568 3
+                      else case (Term.fixity_of_term Name)
+                             of Term.Binder => dollar^Name
+                              | (Term.Infix _) => dollar^Name
+d591 65
+d726 1
+a726 1
+           case (Lib.hd l) 
+d734 1
+a734 1
+                          (Lib.rev (Lib.tl l));
+d743 1
+a743 1
+               val p = INFIX(Term.prec_of_term "INSERT")
+d745 1
+a745 1
+           case (Lib.hd L) 
+d753 1
+a753 1
+                          (Lib.rev (Lib.tl L));
+d762 1
+a762 1
+                           (Lib.rev L);
+d784 1
+a784 1
+                    if (Lib.null F)  (* args *)
+d800 1
+a800 1
+               (Lib.rev L);
+d810 6
+a815 62
+    (* "infix" case and restricted quantifier case *)
+  | pr_term (tm as Comb{Rator as Comb{Rator = c as Const{Name,...}, Rand = t1},
+                        Rand}) grav E n =
+          (case (Term.fixity_of_term Name)
+           of (Term.Infix prec) 
+           => let val L = strip_infix tm
+                  val p = INFIX(prec)
+              in add_lparen grav p;
+                 begin_block (if (!(#stack_infixes(Globals.pp_flags)))
+                              then CONSISTENT
+                              else INCONSISTENT) 0;
+                 (* if infix_at_front and we're printing A /\ B, we have the
+                  * following stream: A <BR> "/\ " B
+                  * otherwise: A " /\" <BR> B
+                  ***********************************************************)
+                 PP.pr_list 
+                   (fn trm => pr_term_hook trm p E (n-1))
+                   (fn () => 
+                      if (!(#infix_at_front(Globals.pp_flags)))
+                      then add_break(if(Name<>comma) then 1 else 0,0)
+                      else add_string((if(Name<>comma)then space else"")^Name))
+                   (fn () => 
+                      if (!(#infix_at_front(Globals.pp_flags)))
+                      then add_string(Name^space)
+                      else add_break(if (Name<>comma) then 1 else 0,0))
+                   L;
+                 end_block();
+                 add_rparen grav p
+              end
+          | _ (* decide if name is that of a restricted binder *)
+          => if not(!Globals.show_restrict)
+             then pr_comb Rator Rand grav E n
+             else
+             (case (Lib.assoc2 Name (Dsyntax.binder_restrictions()))
+              of NONE   (* not a restricted quantifier *)
+              => pr_comb Rator Rand grav E n
+              | (SOME (binder,_)) 
+                => (case (strip_restr_quant ppstrm 
+                                            {binder=Name,restr=t1,rest=Rand})
+                    of ([],_,_) => pr_comb Rator Rand grav E n
+                     | (F,body,e)
+                       => ( begin_block CONSISTENT 2;
+                            add_lparen grav WEAK;
+                            add_string (pad_binder binder);
+                            begin_block INCONSISTENT 1;
+                              PP.pr_list
+                                  (fn f => f n) 
+                                  (fn () => ())
+                                  (fn () => add_break(1,0))
+                                   F;
+                              add_break (1,0);
+                              add_string "::";
+                              add_break (0,0);
+                              pr_term_hook t1 APPL E (n-1);
+                            end_block();
+                            add_string ".";
+                            add_break(1,0);
+                            begin_block INCONSISTENT 2;
+                            pr_term_hook body BOTTOM (e@@E) (n-1);
+                            end_block();
+                            add_rparen grav WEAK;
+                            end_block()))))
+d825 1
+a825 1
+             Lib.for_se 0 (n-1) (fn _ => add_string "~");
+d873 1
+a873 1
+           if (Term.fixity_of_term cstr <> Term.Binder) 
+d901 1
+a901 1
+           if (Term.fixity_of_term Name <> Term.Binder) 
+d913 1
+a913 1
+                    pr_term_hook body BOTTOM (Lib.rev V@@E) (n-1);
+d969 1
+a969 1
+   ) handle e => (Lib.say "\nError in attempting to print an HOL type!\n";
+d978 1
+a978 1
+  ) handle e => (Lib.say "\nError in attempting to print an HOL term!\n";
+@
+
+
+1.4
+log
+@The HOL90 sources have been changed to allow for the use of different
+Standard ML compilers (possibly simultaneously).
+
+ * Many files in "src/0" changed to make them more portable across different
+   ML compilers. Various additions have been made to the Portable structure
+   and files changed to access identifiers in the Portable structure rather
+   than from the global environment. Worthy of special note are:
+
+   - The pointer equality used in "src/0/term.sml" has been made into a
+     function in the Portable structure.
+
+   - The ML-Lex and ML-Yacc files for the various parsers have been changed
+     to access the Portable structure. Both the source files and the SML
+     produced from them have been changed but I have not verified that the
+     source files would reproduce the new SML versions if ML-Lex and ML-Yacc
+     were to be rerun on them. The changes involve some hacks that exploit the
+     way ML-Lex and ML-Yacc work. See the sources for details.
+
+R.J.Boulton, 15th November 1995.
+@
+text
+@d13 1
+a13 2
+functor HOL_PP((* structure Lib : Lib_sig *)
+	       structure Lexis : Lexis_sig
+d15 1
+a15 1
+               structure Term : Term_sig
+d27 2
+a28 4
+fun HOL_PP_ERR{function,message} =
+    Exception.HOL_ERR{origin_structure = "Hol_pp",
+		      origin_function = function,
+		      message = message}
+d79 1
+a79 1
+  | ty_prec _ = raise HOL_PP_ERR{function = "ty_prec",message = "bogus infix"};
+d89 1
+a89 2
+  | infix_to_string _ = raise HOL_PP_ERR{function = "infix_to_string",
+					 message = "bogus infix"};
+d94 2
+a95 2
+      else Portable.List.rev(ty::L)
+  | strip_infix_ty str ty L = Portable.List.rev (ty::L);
+d116 3
+a118 3
+         | pr_ty(Stv i) _ _ = add_string("?"^Lib.int_to_string i)
+         | pr_ty(Tyc str) _ _ = add_string str 
+         | pr_ty(Link(ref ty)) grav n = pr_ty_hook ty grav n
+d139 1
+a139 1
+               else if (Portable.List.length Args = 1)
+d220 2
+a221 2
+        else (Portable.List.rev L,tm)
+  | dest tm _ L = (Portable.List.rev L,tm)
+d240 2
+a241 2
+        else Portable.List.rev (tm::L)
+  | dest tm _ L = Portable.List.rev (tm::L)
+d274 1
+a274 2
+          | _ => raise HOL_PP_ERR{function="strip_set_abs",
+                                  message = "badly formed set abstraction"}
+d297 1
+a297 1
+  | lookup _ _ = raise HOL_PP_ERR{function = "pr_var", message = "lookup"}
+d315 1
+a315 2
+         | pr_v _ _ _ = raise HOL_PP_ERR{function = "pr_var", 
+                                         message = "not a var"}
+d372 4
+a375 4
+         | pr_vstruct _ premature_end = raise HOL_PP_ERR{function="pr_vstruct",
+                                                       message="premature end"}
+         | pr_vstruct _ (atom _) = raise HOL_PP_ERR{function = "pr_vstruct",
+                                              message="badly formed varstruct"}
+d390 1
+a390 1
+        in if (Portable.List.hd(Portable.List.rev(get_backbone s)) =
+d398 1
+a398 1
+        let val (V,M) = Dsyntax.de_abs tm
+d400 1
+a400 1
+        in ((fn n => pvlist n V)::L, M', (e@@Portable.List.rev V))
+d453 1
+a453 1
+             in if (Portable.List.hd(Portable.List.rev(get_backbone s)) =
+d486 1
+a486 1
+         if (Portable.List.hd(Portable.List.rev(get_backbone s)) =
+d501 1
+a501 1
+                   if (Portable.List.hd(Portable.List.rev(get_backbone s)) =
+d638 1
+a638 1
+           case (Portable.List.hd l) 
+d646 1
+a646 1
+                          (Portable.List.rev (Portable.List.tl l));
+d657 1
+a657 1
+           case (Portable.List.hd L) 
+d665 1
+a665 1
+                          (Portable.List.rev (Portable.List.tl L));
+d674 1
+a674 1
+                           (Portable.List.rev L);
+d685 1
+a685 1
+        | ([],_,_) => raise HOL_PP_ERR{function="pr_term",message="let clause"}
+d696 1
+a696 1
+                    if (Portable.List.null F)  (* args *)
+d712 1
+a712 1
+               (Portable.List.rev L);
+d881 1
+a881 1
+                    pr_term_hook body BOTTOM (Portable.List.rev V@@E) (n-1);
+@
+
+
+1.4.4.1
+log
+@Removed files are parse files and portability files that have
+effectively been moved elsewhere.
+
+Modified files are up to date for ML 109.26.
+@
+text
+@d13 2
+a14 1
+functor HOL_PP(structure Lexis : Lexis_sig
+d28 4
+a31 4
+fun HOL_PP_ERR{function,message} = 
+  Exception.HOL_ERR{origin_structure = "Hol_pp",
+                    origin_function = function,
+                    message = message};
+d62 1
+a62 2
+(*---------------------------------------------------------------------------
+ * Print a list of items.
+d67 1
+a67 1
+ *---------------------------------------------------------------------------*)
+d69 6
+a74 4
+ let fun pr [] = ()
+       | pr [i] = pfun ppstrm i
+       | pr (i::rst) = ( pfun ppstrm i; dfun ppstrm ; bfun ppstrm ; pr rst )
+ in pr L end;
+d77 1
+a77 5
+(*---------------------------------------------------------------------------
+ *  
+ *                         Type Pretty Printer 
+ *
+ *---------------------------------------------------------------------------*)
+d96 4
+a99 2
+      if (str = Tyop) then strip_infix_ty str ty2 (ty1::L) else rev(ty::L)
+  | strip_infix_ty str ty L = rev (ty::L);
+d143 1
+a143 1
+               else if (length Args = 1)
+d201 1
+a201 2
+(*---------------------------------------------------------------------------
+ * alphanumeric binders have a space between them and the variable:
+d206 1
+a206 1
+ *---------------------------------------------------------------------------*)
+d222 4
+a225 2
+        if (Name = s) then dest Body s (Bvar::L) else (rev L,tm)
+  | dest tm _ L = (rev L,tm)
+d228 3
+a230 1
+         if (Term.is_binder Name) then dest Body Name [Bvar] else ([],tm)
+a234 4
+fun strip_list (Comb{Rator = Comb{Rator = Const{Name = "CONS",...}, Rand = t1},
+                     Rand = t2}) L = strip_list t2 (t1::L)
+  | strip_list tm L = (tm::L);
+
+d239 20
+a259 7
+fun strip_infix(tm as Comb{Rator=Comb{Rator=Const{Name,...},Rand=t1},Rand=t2})=
+     let fun dest (tm as Comb{Rator=Comb{Rator=Const{Name=s,...},Rand = t1},
+                              Rand = t2}) L =
+                 if (Name = s) then dest t2 (t1::L) else rev (tm::L)
+           | dest tm L = rev (tm::L)
+     in if (Term.is_infix Name) then dest t2 [t1] else [tm] end
+  | strip_infix tm = [tm];
+d261 3
+d266 1
+a266 2
+(*---------------------------------------------------------------------------
+ * First clause corresponds to GSPEC (\v. (M,N)) ;
+d268 1
+a268 1
+ *---------------------------------------------------------------------------*)
+d274 2
+a275 1
+              if ([Bvar] = intersect (Term.free_vars tm1) (Term.free_vars tm2))
+d286 2
+a287 1
+      if (set_eq L (intersect (Term.free_vars fst) (Term.free_vars snd)))
+d296 1
+a296 2
+(*---------------------------------------------------------------------------
+ * Printing functions for variables. Bound variables need to be looked up in
+d298 1
+a298 1
+ *---------------------------------------------------------------------------*)
+d332 1
+a332 2
+(*---------------------------------------------------------------------------
+ * Varstructs are odious. I found that the easiest way to handle them 
+d334 1
+a334 1
+ *---------------------------------------------------------------------------*)
+d339 1
+a339 2
+(*---------------------------------------------------------------------------
+ * Map to <sexp,term,env> triple. Takes a term and returns the first
+d342 1
+a342 1
+ *---------------------------------------------------------------------------*)
+d358 1
+a358 2
+(*---------------------------------------------------------------------------
+ * Takes an sexp and prints it. Therefore, this will print one element from
+d360 1
+a360 1
+ *---------------------------------------------------------------------------*)
+d385 1
+a385 2
+(*---------------------------------------------------------------------------
+ * Strips a term of parse form "\<varstruct_list>.M" into a triple:
+d389 1
+a389 1
+ *---------------------------------------------------------------------------*)
+d396 2
+a397 1
+        in if (hd(rev(get_backbone s)) = premature_end)
+d406 1
+a406 1
+        in ((fn n => pvlist n V)::L, M', (e@@rev V))
+d413 1
+a413 1
+(*---------------------------------------------------------------------------
+d447 1
+a447 1
+ *---------------------------------------------------------------------------*)
+d459 2
+a460 1
+             in if (hd(rev(get_backbone s)) = premature_end)
+d491 6
+a496 2
+          in if (hd(rev(get_backbone s)) = premature_end) then ([],M,[])
+             else ([((fn n => pr_varstruct ppstrm n s),N)],tm2,e) end
+d498 2
+a499 1
+                                    Rand = tm1}, Rand = tm2}) =
+d506 4
+a509 2
+                   in if (hd(rev(get_backbone s)) = premature_end) 
+                     then (L,tm,e0)
+a518 7
+
+(*---------------------------------------------------------------------------
+ *
+ *             The term pretty printer
+ *
+ *---------------------------------------------------------------------------*)
+
+d525 1
+d527 1
+a527 1
+   let val {add_string,add_break,begin_block,end_block,add_newline,...} = 
+d563 2
+a564 1
+                 then CONSISTENT else INCONSISTENT) 2;
+d572 2
+a573 25
+     end_block ())
+and
+pr_infix s p L grav E n =
+   let val prec = INFIX p
+   in add_lparen grav prec;
+      begin_block (if (!(#stack_infixes(Globals.pp_flags))) then CONSISTENT
+                   else INCONSISTENT) 0;
+      (*-----------------------------------------------------------
+       * if infix_at_front and we're printing A /\ B, we have the
+       * following stream: A <BR> "/\ " B
+       * otherwise: A " /\" <BR> B
+       *----------------------------------------------------------*)
+      PP.pr_list
+        (fn trm => pr_term_hook trm prec E (n-1))
+        (fn () => if (!(#infix_at_front(Globals.pp_flags)))
+                  then add_break(if(s<>comma) then 1 else 0,0)
+                  else add_string((if(s<>comma)then space else"")^s))
+        (fn () => if (!(#infix_at_front(Globals.pp_flags)))
+                  then add_string(s^space)
+                  else add_break(if (s<>comma) then 1 else 0,0))
+
+        L;
+      end_block();
+      add_rparen grav prec
+   end
+d575 1
+a575 1
+(*---------------------------------------------------------------------------
+d588 1
+a588 1
+ *---------------------------------------------------------------------------*)
+d615 1
+a615 2
+    (*-----------------------------------------------------------------------
+     * conditionals, the only 3 argument built in constant recognized by 
+d617 2
+a618 2
+     *-----------------------------------------------------------------------*)
+  | pr_term (Comb{Rator=Comb{Rator=Comb{Rator=Const{Name = "COND",...},
+d635 1
+a635 2
+    (*-----------------------------------------------------------------------
+     * 2 argument built in constants: CONS, INSERT, LET, all infixes, and
+d637 1
+a637 1
+     *-----------------------------------------------------------------------*)
+d657 1
+a657 3
+    (*----------------------------------------------------------------------
+     * enumerated set
+     *-----------------------------------------------------------------------*)
+d660 24
+a683 12
+           let val L = strip_infix tm
+               val (front,last) = Lib.front_last L
+               val p = Term.prec_of_term "INSERT"
+           in case last
+              of (Const{Name = "EMPTY",...}) =>
+                  ( begin_block INCONSISTENT 1;
+                    add_string "{";
+                    PP.pr_list (fn trm => pr_term_hook trm BOTTOM E (n-1))
+                               (fn () => add_string ";")
+                               (fn () => add_break(1,0))   front;
+                    add_string "}"; end_block())
+              | _ => pr_infix "INSERT" p L grav E n
+d685 1
+a685 3
+    (*-----------------------------------------------------------------------
+     * let statements 
+     *-----------------------------------------------------------------------*)
+d690 39
+a728 70
+      of ([],_,[]) => pr_comb Rator Rand grav E n
+       | ([],_,_) => raise HOL_PP_ERR{function="pr_term",message="let clause"}
+       | (L,m,e) =>
+         let fun pr_and_binds (s,(f,arg)) =  (* s = "let" or "and" *)
+              let val (F,body,e') = strip_varstruct arg
+              in begin_block INCONSISTENT 2;
+                   add_string s; add_break(1,0);
+                   f n;  (* print let-bound name *) 
+                   if (null F)  (* args *) then () else add_string " ";
+                   PP.pr_list (fn f => f n) (fn () => ())
+                              (fn () => add_break(1,0))   F;
+                   add_string " ="; add_break(1,2);
+                 pr_term_hook body WEAK (e'@@E) (n-1);
+                 end_block()
+              end
+              (* Ad hoc, ad hoc, ad hoc *)
+              fun rev1 ([],A) = A
+                | rev1 ([p],A) = ("let",p)::A
+                | rev1 (p::rst,A) = rev1(rst,("and",p)::A)
+         in
+           add_lparen grav WEAK;
+           begin_block CONSISTENT 0;
+           if !Globals.in_at_end then begin_block CONSISTENT 0 else ();
+           begin_block CONSISTENT 0; PP.pr_list pr_and_binds 
+                                     (fn () => ()) 
+                                     (fn () => add_break(1,0))
+                                     (rev1(L,[]));  end_block();
+           add_break(1,0);
+           add_string "in"; 
+           if !Globals.in_at_end then end_block() else ();
+           add_break(1,0);
+           pr_term_hook m BOTTOM (e@@E) (n-1);  (* pp the body *)
+           end_block();
+           add_rparen grav WEAK
+         end)
+(*
+     (case (strip_let ppstrm tm)
+      of ([],_,[]) => pr_comb Rator Rand grav E n
+       | ([],_,_) => raise HOL_PP_ERR{function="pr_term",message="let clause"}
+       | (L,m,e) =>
+         (add_lparen grav WEAK;
+          begin_block CONSISTENT 0;
+          add_string "let ";
+          PP.pr_list 
+           (fn (f,arg) => 
+              let val (F,body,e') = strip_varstruct arg
+              in begin_block INCONSISTENT 2;
+                   f n;  (* print let-bound name *) 
+                   if (null F)  (* args *) then () else add_string " ";
+                   PP.pr_list (fn f => f n) (fn () => ())
+                              (fn () => add_break(1,0))   F;
+                   add_string " ="; add_break(1,2);
+                 end_block();
+                 pr_term_hook body WEAK (e'@@E) (n-1);
+                 add_break(1,0)
+              end)
+           (fn () => add_string "and")
+           (fn () => add_break(1,0))
+           (rev L);
+
+           add_string "in";
+           add_break(1,0);
+           pr_term_hook m BOTTOM (e@@E) (n-1);  (* pp the body *)
+           end_block();
+           add_rparen grav WEAK))
+*)
+
+    (*-----------------------------------------------------------------------
+     * "infix" case and restricted quantifier case
+     *-----------------------------------------------------------------------*)
+d731 23
+a753 24
+      (case (Term.fixity_of_term Name)
+       of (Term.Infix p) => pr_infix Name p (strip_infix tm) grav E n
+       | _ (* decide if name is that of a restricted binder *) =>
+       if not(!Globals.show_restrict)
+       then pr_comb Rator Rand grav E n
+       else
+       (case (Lib.assoc2 Name (Dsyntax.binder_restrictions()))
+        of NONE   (* not a restricted quantifier *)
+             => pr_comb Rator Rand grav E n
+         | (SOME (binder,_)) => 
+           (case (strip_restr_quant ppstrm {binder=Name,restr=t1,rest=Rand})
+            of ([],_,_) => pr_comb Rator Rand grav E n
+             | (F,body,e) => 
+               ( begin_block CONSISTENT 2;
+                 add_lparen grav WEAK;
+                 add_string (pad_binder binder);
+                 begin_block INCONSISTENT 1;
+                 PP.pr_list (fn f => f n) 
+                            (fn () => ())
+                            (fn () => add_break(1,0))
+                            F;
+                 add_break (1,0);
+                 add_string "::"; add_break (0,0);
+                 pr_term_hook t1 APPL E (n-1);
+d755 35
+a789 6
+                 add_string "."; add_break(1,0);
+                 begin_block INCONSISTENT 2;
+                 pr_term_hook body BOTTOM (e@@E) (n-1);
+                 end_block();
+                 add_rparen grav WEAK;
+                 end_block()))))
+d791 1
+a791 2
+    (*-----------------------------------------------------------------------
+     * Built in constants taking one argument : negation ("~"), GSPEC, 
+d793 1
+a793 1
+     *-----------------------------------------------------------------------*)
+d796 8
+a803 10
+      let val (n,m) = strip_neg tm
+      in add_lparen grav APPL;
+         Lib.for_se 0 (n-1) (fn _ => add_string "~");
+         pr_term_hook m APPL E (d-1);
+         add_rparen grav APPL
+      end
+
+    (*-----------------------------------------------------------------------
+     * set abstractions
+     *-----------------------------------------------------------------------*)
+d805 15
+a819 15
+      ( let val (e,tm1,tm2) = strip_set_abs Rand
+            val e' = e@@E
+        in
+          begin_block CONSISTENT 2;
+          add_string "{";
+          pr_term_hook tm1 BOTTOM e' (n-1);
+          add_string " |"; add_break (1,0);
+          pr_term_hook tm2 BOTTOM e' (n-1);
+          add_string "}";
+          end_block()
+        end handle NOT_SET_ABS => pr_comb Rator Rand grav E n )
+
+    (*-----------------------------------------------------------------------
+     * lambda varstructs:  \(x,y).M 
+     *-----------------------------------------------------------------------*)
+d821 23
+a843 22
+     (case (strip_varstruct tm)
+      of ([],_,_) => pr_comb Rator Rand grav E n
+       | (F,body,e) => 
+         ( begin_block CONSISTENT 2;
+           add_lparen grav WEAK;
+           add_string "\\";
+           begin_block INCONSISTENT 1;
+           PP.pr_list (fn f => f (n-1))
+                      (fn () => ())
+                      (fn () => add_break(1,0))
+                       F;
+           end_block();
+           add_string "."; add_break(1,0);
+           begin_block INCONSISTENT 2;
+           pr_term_hook body BOTTOM (e@@E) (n-1);
+           end_block();
+           add_rparen grav WEAK;
+          end_block()))
+
+    (*----------------------------------------------------------------------
+     *  binder applied to varstruct: e.g.,  !(x,y,z). M  
+     *----------------------------------------------------------------------*)
+d847 26
+a872 24
+      if (Term.fixity_of_term cstr <> Term.Binder) 
+      then pr_comb Rator Rand grav E n
+      else (case (strip_varstruct Rand)
+            of ([],_,_) => pr_comb Rator Rand grav E n
+             | (F,body,e) => 
+               (begin_block CONSISTENT 2;
+                add_lparen grav WEAK;
+                add_string (pad_binder cstr);
+                begin_block INCONSISTENT 1;
+                PP.pr_list (fn f => f (n-1))
+                           (fn () => ())
+                           (fn () => add_break(1,0))
+                            F;
+                end_block();
+                add_string "."; add_break(1,0);
+                begin_block INCONSISTENT 2;
+                pr_term_hook body BOTTOM (e@@E) (n-1);
+                end_block();
+                add_rparen grav WEAK;
+                end_block()))
+
+    (*-----------------------------------------------------------------------
+     * "binder" case: e.g. !x y z. M. 
+     *-----------------------------------------------------------------------*)
+d875 16
+a890 14
+      if (Term.fixity_of_term Name <> Term.Binder) 
+      then pr_comb c tm grav E n
+      else let val (V,body) = strip_binder_vars trm
+           in begin_block INCONSISTENT 2;
+              add_lparen grav WEAK;
+              begin_block INCONSISTENT 1;
+              add_string (pad_binder Name);
+              pr_var_list (n-1) V;
+              end_block();
+              add_string "."; add_break(1,0);
+              pr_term_hook body BOTTOM (rev V@@E) (n-1);
+              add_rparen grav WEAK;
+              end_block()
+           end
+d892 1
+a892 3
+  (*------------------------------------------------------------------------
+   * fall through case for combs
+   *-------------------------------------------------------------------------*)
+d896 5
+a900 5
+     (begin_block CONSISTENT 0;
+      add_string ("(ty_antiq("^(!Globals.type_pp_prefix)^"`:");
+      pp_type ty (n-1);
+      add_string ("`"^(!Globals.type_pp_suffix)^"))");
+      end_block())
+d964 2
+a965 2
+fun print_type ty = Portable.output(Portable.std_out,type_to_string ty);
+fun print_term tm = Portable.output(Portable.std_out,term_to_string tm);
+@
+
+
+1.4.4.2
+log
+@Massive minor changes to close HOL up so as to make it CM-friendly and
+some changes to accomodate SML'97.
+@
+text
+@a21 1
+open Lib;
+@
+
+
+1.4.4.3
+log
+@Fixed the fact that the pretty printer would attempt to print out an
+infinite number of left parens when dealing with
+
+    ``INSERT x y``
+
+where INSERT was a constant declared
+
+    new_constant{Name="INSERT", Ty=Type`:num -> num list -> num list`}
+
+The problem is that the prettyprinter was expecting the INSERT from set theory
+(which has the same shape to its type) (which hadn't been loaded yet)
+(and so things went downhill from there).
+@
+text
+@a107 7
+
+fun is_pred_ty (Tyapp{Tyop="fun",Args = [_, Tyc"bool"]}) = true
+  | is_pred_ty _ = false;
+
+fun is_set_ty (Tyapp{Tyop="set",...}) = true
+  | is_set_ty _ = false;
+
+d651 1
+a651 1
+  | pr_term (tm as Comb{Rator = f as Comb{Rator = Const{Name="CONS",Ty},...},
+d653 4
+a656 7
+     (case Ty of 
+      Tyapp{Tyop="fun", Args=[_,Tyapp{Tyop="fun",
+                        Args=[Tyapp{Tyop="list",...},_]}]}
+      => let val l = strip_list tm []
+         in
+          case (Portable_List.hd l) 
+             of Const{Name="NIL",...} =>
+d659 1
+a659 1
+                      Portable_PrettyPrint.pr_list
+d663 1
+a663 1
+                          (Portable_List.rev (Portable_List.tl l));
+d667 1
+a667 2
+         end
+      | _ => pr_comb f Rand grav E n)
+d671 5
+a675 7
+  | pr_term(tm as Comb{Rator=Comb{Rator=Const{Name="INSERT",
+       Ty=Tyapp{Tyop="fun",Args=[_,Tyapp{Tyop="fun",Args=[hty,_]}]}},...},...})
+        grav E n = 
+       if (is_pred_ty hty orelse is_set_ty hty)
+       then let val L = strip_infix tm
+                val (front,last) = Lib.front_last L
+                val p = Term.prec_of_term "INSERT"
+d677 1
+a677 1
+              of Const{Name="EMPTY",...} =>
+d680 1
+a680 2
+                    Portable_PrettyPrint.pr_list 
+                         (fn trm => pr_term_hook trm BOTTOM E (n-1))
+a685 1
+       else pr_comb (rator tm) (rand tm) grav E n
+@
+
+
+1.4.4.4
+log
+@Addition of inference tracking for Wai Wong. Also, changed hol_pp.extensible
+so that it would compile! (It had obsolete paths to pr_list.)
+@
+text
+@d665 1
+a665 1
+          case (Portable.List.hd l) 
+d669 1
+a669 1
+                      PP.pr_list
+d673 1
+a673 1
+                          (Portable.List.rev (Portable.List.tl l));
+d693 1
+a693 1
+                    PP.pr_list 
+@
+
+
+1.3
+log
+@Check in after merging in Konrad's changes made after
+the release of hol90.7.  This involved creating a side branch
+in which to check in Konrad's changes, then merging in that
+side branch into the main development (which contains changes
+made by Elsa Gunter).
+
+Some other small modification have been made to the source code,
+as I begun to try to make this version into a working version:
+	- hol90 will now be compiled in an environment were no
+structures can be considered opn.  This means many structures
+now need "open Lib" and other such commands at their head.
+This has not yet been completed, but has been begun.
+	- "rotl" and "rotr" have been added to Lib, something
+which I just did impulsively.   Documentation files
+have also been added in help/90.
+@
+text
+@d98 2
+a99 2
+      else rev(ty::L)
+  | strip_infix_ty str ty L = rev (ty::L);
+d143 1
+a143 1
+               else if (length Args = 1)
+d224 2
+a225 2
+        else (rev L,tm)
+  | dest tm _ L = (rev L,tm)
+d244 2
+a245 2
+        else rev (tm::L)
+  | dest tm _ L = rev (tm::L)
+d274 2
+a275 1
+              if ([Bvar] = Lib.intersect (Term.free_vars tm1) (Term.free_vars tm2))
+d396 2
+a397 1
+        in if (hd(rev(get_backbone s)) = premature_end)
+d406 1
+a406 1
+        in ((fn n => pvlist n V)::L, M', (e@@rev V))
+d459 2
+a460 1
+             in if (hd(rev(get_backbone s)) = premature_end)
+d492 2
+a493 1
+         if (hd(rev(get_backbone s)) = premature_end)
+d507 2
+a508 1
+                   if (hd(rev(get_backbone s)) = premature_end)
+d644 1
+a644 1
+           case (hd l) 
+d652 1
+a652 1
+                          (rev (tl l));
+d663 1
+a663 1
+           case (hd L) 
+d671 1
+a671 1
+                          (rev (tl L));
+d680 1
+a680 1
+                           (rev L);
+d702 1
+a702 1
+                    if (null F)  (* args *)
+d718 1
+a718 1
+               (rev L);
+d887 1
+a887 1
+                    pr_term_hook body BOTTOM (rev V@@E) (n-1);
+@
+
+
+1.2
+log
+@Keeping you up to date:
+
+I'm about to do a checkin of elsa's modifications to the hol90.7
+sources to create her hol90.pre8.  To recap what I've done:
+	- I checked out hol90 (in /usr/groups/hol/drs1004/hol90)
+		cvs co hol90
+	  (Well, to be honest, I only checked out those
+	  parts of hol90 I knew I'd be changing, e.g. not the
+	  Manual, and only parts of the library.  Checking out the
+	  entire source takes a while, mainly due to the enormous number
+	  of help files.  The limiting factor is files/second, which
+         runs at around 5 when CVS is working on nfs over a network, not
+         KB/second, which you might at first think it would be).
+
+	- By doing a recursive diff between Elsa's source and the
+	hol90.7 source I found all the changes Elsa had made to
+	source files.  I copied relevant files from Elsa's source
+	into my checked out version.  The only new files were
+		- the sml_system files in src/0
+		- some make scripts in src/.
+	Changed files were in:
+		src/{0,1,2,3}
+		library/arith/src/thm_convs.sml
+		library/list/src/list_conv1.sml
+		library/num/src/num_lib.sml
+		library/prog_logic/src/halts_logic.sml
+		library/prog_logic/src/translation.sml
+		library/prog_logic/theories/src/mk_halts.sml
+		library/real/theories/src/Make
+		library/real/theories/src/equiv.sml
+		library/real/theories/src/seq.sml
+		library/reduce/src/arithconv.sml
+		library/string/src/string_conv.sml
+		library/unity/theories/src/aux_definitions.sml
+		library/word/theories/src/*
+
+	- I will now commit these changes, with this email as the log message.
+		cvs commit
+
+	- Tomorrow I will get this version compiling
+	with NJSML 108 (I will probably add
+	the files to enable the NJSML compilation manager to make
+	this easier), then check those changes in.  I think it's
+	good to get things in a working state.
+@
+text
+@d591 1
+a591 1
+           ( begin_block CONSISTENT 2;
+d607 1
+a607 1
+             end_block() )
+d882 1
+a882 1
+                    pr_term_hook body BOTTOM ((rev V)@@E) (n-1);
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d13 2
+a14 1
+functor HOL_PP(structure Lexis : Lexis_sig
+d28 4
+a31 3
+fun HOL_PP_ERR{function,message} = HOL_ERR{origin_structure = "Hol_pp",
+					   origin_function = function,
+					   message = message}
+d274 1
+a274 1
+              if ([Bvar] = intersect (Term.free_vars tm1) (Term.free_vars tm2))
+d285 2
+a286 1
+      if (set_eq L (intersect (Term.free_vars fst) (Term.free_vars snd)))
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@
+
+
+1.1.1.1.2.1
+log
+@Konrad's bug fixes up to start of serious
+hol90.8 devel;opment.  Checked into branch revision for
+later merging with trunk (elsa's work).  See
+doc/7.chages for a full description of what's been done.
+@
+text
+@d588 1
+a588 1
+             begin_block CONSISTENT 2;
+d604 1
+a604 1
+             end_block() 
+d879 1
+a879 1
+                    pr_term_hook body BOTTOM (rev V@@E) (n-1);
+@

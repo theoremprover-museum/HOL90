@@ -1,0 +1,70 @@
+head	1.1;
+access;
+symbols
+	HOL97:1.1.0.2;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	97.07.14.17.50.43;	author kxs;	state dead;
+branches
+	1.1.2.1;
+next	;
+
+1.1.2.1
+date	97.07.14.17.50.44;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@file setLib.sml was initially added on branch HOL97.
+@
+text
+@@
+
+
+1.1.2.1
+log
+@The "set" library now loads under CM. The unified entrypoint for the library
+is the structure setLib.
+@
+text
+@a0 30
+signature setLib_sig =
+sig
+ type tactic
+ type conv
+
+  val SET_SPEC_CONV : conv
+  val SET_INDUCT_TAC : tactic
+  val FINITE_CONV : conv
+  val IN_CONV :conv -> conv
+  val DELETE_CONV :conv -> conv
+  val UNION_CONV :conv -> conv
+  val INSERT_CONV :conv -> conv
+  val IMAGE_CONV :conv -> conv ->conv
+
+end;
+
+structure setLib : setLib_sig =
+struct
+
+ type tactic = Abbrev.tactic
+ type conv = Abbrev.conv
+
+  open setTheoryLoaded;
+  open Gspec
+  open Set_ind
+  open Fset_conv
+    
+  val _ = Lib.cons_path (!Globals.HOLdir^"library/set/help/entries/") 
+                         Globals.help_path;
+end;
+@

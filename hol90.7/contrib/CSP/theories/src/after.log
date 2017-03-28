@@ -1,0 +1,106 @@
+
+
+          HHH                 LL
+          HHH                  LL
+          HHH                   LL
+          HHH                    LL
+          HHH          OOOO       LL
+          HHHHHHH     OO  OO       LL
+          HHHHHHH     OO  OO       LLL
+          HHH          OOOO        LLLL
+          HHH                     LL  LL
+          HHH                    LL    LL
+          HHH                   LL      LL
+          HHH                  LL        LL90.7
+
+Created on Tue Nov 15 10:19:01 GMT 1994
+using: Standard ML of New Jersey, Version 0.93, February 15, 1993
+
+
+val it = () : unit
+val it = () : unit
+- [opening after.sml]
+
+Declaring theory "after".
+
+Theory "CSP_base" already consistent with disk, hence not exported.
+val it = () : unit
+val it = () : unit
+val it = [(),(),()] : unit list
+val TRACES_DEF = |- !P. TRACES P = SND (REP_process P) : thm
+val ALPHA_DEF = |- !P. ALPHA P = FST (REP_process P) : thm
+val IS_PROCESS =
+  |- !A TR.
+       IS_PROCESS (A,TR) =
+       TR SUBSET STAR A /\ [] IN TR /\ (!s t. APPEND s t IN TR ==> s IN TR)
+  : thm
+val TRACES_IN_STAR = |- !P. TRACES P SUBSET STAR (ALPHA P) : thm
+val APPEND_IN_TRACES = |- !P s t. APPEND s t IN TRACES P ==> s IN TRACES P
+  : thm
+val PROCESS_LEMMA6 = |- !r. IS_PROCESS r = REP_process (ABS_process r) = r
+  : thm
+val APPEND_STAR = |- !s t A. APPEND s t IN STAR A = s IN STAR A /\ t IN STAR A
+  : thm
+val CONS_STAR = |- !a t A. CONS a t IN STAR A = a IN A /\ t IN STAR A : thm
+val NIL_IN_STAR = |- !A. [] IN STAR A : thm
+val APPEND_NIL = |- !l. APPEND l [] = l : thm
+val it = [(),(),()] : unit list
+val IS_PROCESS_AFTER =
+  |- !P s. s IN TRACES P ==> IS_PROCESS (ALPHA P,{t | APPEND s t IN TRACES P})
+  : thm
+val AFTER_LEMMA1 =
+  |- !P s.
+       s IN TRACES P ==>
+       (REP_process (ABS_process (ALPHA P,{t | APPEND s t IN TRACES P})) =
+        (ALPHA P,{t | APPEND s t IN TRACES P})) : thm
+val DEST_PROCESS =
+  |- ?f.
+       !P s.
+         s IN TRACES P ==>
+         (ALPHA (f P s) = ALPHA P) /\
+         (TRACES (f P s) = {t | APPEND s t IN TRACES P}) : thm
+val AFTER =
+  |- !P s.
+       s IN TRACES P ==>
+       (ALPHA (P / s) = ALPHA P) /\
+       (TRACES (P / s) = {t | APPEND s t IN TRACES P}) : thm
+val it =
+  [|- !P s. s IN TRACES P ==> (ALPHA (P / s) = ALPHA P),
+   |- !P s. s IN TRACES P ==> (TRACES (P / s) = {t | APPEND s t IN TRACES P})]
+  : thm list
+
+Theory "after" exported.
+val it = () : unit
+val it = () : unit
+Theory: after
+
+Parents:
+    process_ty
+    CSP_base
+
+Type constants:
+    
+
+Term constants:
+    / (Infix 450)   :process -> string list -> process
+
+Axioms:
+    
+
+Definitions:
+    AFTER
+    |- !P s.
+         s IN TRACES P ==>
+         (ALPHA (P / s) = ALPHA P) /\
+         (TRACES (P / s) = {t | APPEND s t IN TRACES P})
+
+Theorems:
+    IS_PROCESS_AFTER
+    |- !P s.
+         s IN TRACES P ==> IS_PROCESS (ALPHA P,{t | APPEND s t IN TRACES P})
+    ALPHA_AFTER |- !P s. s IN TRACES P ==> (ALPHA (P / s) = ALPHA P)
+    TRACES_AFTER
+    |- !P s. s IN TRACES P ==> (TRACES (P / s) = {t | APPEND s t IN TRACES P})
+
+Theory "after" is consistent with disk.
+val it = () : unit

@@ -1,0 +1,185 @@
+head	1.2;
+access;
+symbols
+	HOL97:1.2.0.4
+	bpHOL97:1.2
+	hol90_9_alpha:1.2
+	hol90_pre8_for_multiple_compilers:1.2.0.2
+	hol90_pre8_after_donalds_separate_compilation_changes:1.2
+	hol90_8_after_merging_Konrad_Elsa:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.2
+date	95.10.31.14.02.22;	author drs1004;	state Exp;
+branches
+	1.2.4.1;
+next	1.1;
+
+1.1
+date	95.10.16.13.31.38;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.31.38;	author rjb;	state Exp;
+branches;
+next	;
+
+1.2.4.1
+date	97.07.11.19.29.31;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.2
+log
+@First phase of hol90.8 development.  hol90 now compiles using NJSML-CM
+108.5, with separate compilation of libraries.  System dependencies
+have been isolated in the makefiles and "portable.sml".
+
+This involved a large number of enhancments to the source files,
+most of which are documented in the 7.changes file (or will be shortly).
+See also the correpsonding email corrspondence between RJB, KLS, TFM,
+JRH and DRS that happened during this development.
+@
+text
+@signature Arith_thm_convs_sig =
+sig
+   type conv sharing type conv = Abbrev.conv
+
+   val CONJ_ASSOC_NORM_CONV : conv
+   val DISJ_ASSOC_NORM_CONV : conv
+   val EQ_EXPAND_CONV : conv
+   val IMP_EXPAND_CONV : conv
+   val IMP_F_EQ_F_CONV : conv
+   val IMP_IMP_CONJ_IMP_CONV : conv
+   val LEFT_DIST_NORM_CONV : conv
+   val NOT_CONJ_NORM_CONV : conv
+   val NOT_DISJ_NORM_CONV : conv
+   val NOT_NOT_NORM_CONV : conv
+   val OR_F_CONV : conv
+   val RIGHT_DIST_NORM_CONV : conv
+   val ADD_ASSOC_CONV : conv
+   val ADD_SYM_CONV : conv
+   val GATHER_BOTH_CONV : conv
+   val GATHER_LEFT_CONV : conv
+   val GATHER_NEITHER_CONV : conv
+   val GATHER_RIGHT_CONV : conv
+   val GEQ_NORM_CONV : conv
+   val GREAT_NORM_CONV : conv
+   val LEFT_ADD_DISTRIB_CONV : conv
+   val LESS_NORM_CONV : conv
+   val MULT_ASSOC_CONV : conv
+   val MULT_COMM_CONV : conv
+   val NOT_GEQ_NORM_CONV : conv
+   val NOT_GREAT_NORM_CONV : conv
+   val NOT_LEQ_NORM_CONV : conv
+   val NOT_LESS_NORM_CONV : conv
+   val NOT_NUM_EQ_NORM_CONV : conv
+   val NUM_EQ_NORM_CONV : conv
+   val PLUS_ZERO_CONV : conv
+   val SYM_ADD_ASSOC_CONV : conv
+   val SYM_ONE_MULT_CONV : conv
+   val ZERO_MULT_CONV : conv
+   val ZERO_MULT_PLUS_CONV : conv
+   val ZERO_PLUS_CONV : conv
+   val LEQ_PLUS_CONV : conv
+   val FORALL_SIMP_CONV : conv
+   val NUM_COND_RATOR_CONV : conv
+   val NUM_COND_RAND_CONV : conv
+   val SUB_NORM_CONV : conv
+   val COND_RATOR_CONV : conv
+   val COND_RAND_CONV : conv
+   val COND_EXPAND_CONV : conv
+end
+@
+
+
+1.2.4.1
+log
+@Changes to accomodate CM, and also the differences between  SML'90 and SML'97.
+@
+text
+@d3 1
+d5 44
+a48 44
+   val CONJ_ASSOC_NORM_CONV : Abbrev.conv
+   val DISJ_ASSOC_NORM_CONV : Abbrev.conv
+   val EQ_EXPAND_CONV : Abbrev.conv
+   val IMP_EXPAND_CONV : Abbrev.conv
+   val IMP_F_EQ_F_CONV : Abbrev.conv
+   val IMP_IMP_CONJ_IMP_CONV : Abbrev.conv
+   val LEFT_DIST_NORM_CONV : Abbrev.conv
+   val NOT_CONJ_NORM_CONV : Abbrev.conv
+   val NOT_DISJ_NORM_CONV : Abbrev.conv
+   val NOT_NOT_NORM_CONV : Abbrev.conv
+   val OR_F_CONV : Abbrev.conv
+   val RIGHT_DIST_NORM_CONV : Abbrev.conv
+   val ADD_ASSOC_CONV : Abbrev.conv
+   val ADD_SYM_CONV : Abbrev.conv
+   val GATHER_BOTH_CONV : Abbrev.conv
+   val GATHER_LEFT_CONV : Abbrev.conv
+   val GATHER_NEITHER_CONV : Abbrev.conv
+   val GATHER_RIGHT_CONV : Abbrev.conv
+   val GEQ_NORM_CONV : Abbrev.conv
+   val GREAT_NORM_CONV : Abbrev.conv
+   val LEFT_ADD_DISTRIB_CONV : Abbrev.conv
+   val LESS_NORM_CONV : Abbrev.conv
+   val MULT_ASSOC_CONV : Abbrev.conv
+   val MULT_COMM_CONV : Abbrev.conv
+   val NOT_GEQ_NORM_CONV : Abbrev.conv
+   val NOT_GREAT_NORM_CONV : Abbrev.conv
+   val NOT_LEQ_NORM_CONV : Abbrev.conv
+   val NOT_LESS_NORM_CONV : Abbrev.conv
+   val NOT_NUM_EQ_NORM_CONV : Abbrev.conv
+   val NUM_EQ_NORM_CONV : Abbrev.conv
+   val PLUS_ZERO_CONV : Abbrev.conv
+   val SYM_ADD_ASSOC_CONV : Abbrev.conv
+   val SYM_ONE_MULT_CONV : Abbrev.conv
+   val ZERO_MULT_CONV : Abbrev.conv
+   val ZERO_MULT_PLUS_CONV : Abbrev.conv
+   val ZERO_PLUS_CONV : Abbrev.conv
+   val LEQ_PLUS_CONV : Abbrev.conv
+   val FORALL_SIMP_CONV : Abbrev.conv
+   val NUM_COND_RATOR_CONV : Abbrev.conv
+   val NUM_COND_RAND_CONV : Abbrev.conv
+   val SUB_NORM_CONV : Abbrev.conv
+   val COND_RATOR_CONV : Abbrev.conv
+   val COND_RAND_CONV : Abbrev.conv
+   val COND_EXPAND_CONV : Abbrev.conv
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d3 2
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

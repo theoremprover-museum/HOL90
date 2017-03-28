@@ -1,0 +1,488 @@
+
+(* ========================================================================= *)
+(* This file contains examples to illustrate the HOL tools to support        *)
+(* programming logics provided in the library prog_logic.                    *)
+(* The principles underlying these tools are described in the paper:         *)
+(*                                                                           *)
+(*    "Mechanizing Programming Logics in Higher Order Logic",                *)
+(*    by M.J.C. Gordon, in "Current Trends in Hardware Verification and      *)
+(*    Automated Theorem Proving" edited by P.A. Subrahmanyam and             *)
+(*    Graham Birtwistle, Springer-Verlag, 1989.                              *)
+(*                                                                           *)
+(* It is hoped that if the ML phrases in this file are evaluated in the      *)
+(* order given, the results will illustrate the contents of the library.     *)
+(*                                                                           *)
+(* ========================================================================= *)
+
+(* ------------------------------------------------------------------------- *)
+(* The naming convention used below is that ML variables th1, th2, etc       *)
+(* are pure logic theorems, hth1, hth2, etc name theorems of Hoare Logic and *)
+(* tth1, tth2, etc name theorems in the Hoare Logic of total correctness     *)
+(* (however, theorems of Hoare Logic (for both partial and total correctness *)
+(* are really only specially printed theorems of pure logic).                *)
+(* ------------------------------------------------------------------------- *)
+
+(* ------------------------------------------------------------------------- *)
+(* Examples to illustrate the special parsing and printing. This is          *)
+(* currently done in Lisp, but it is hoped eventually to provide ML-level    *)
+(* facilities to support user programmable syntax. Work on this will be      *)
+(* part of an Esprit Basic Research Action joint with Philips and IMEC.      *)
+(* ------------------------------------------------------------------------- *)
+
+(* ------------------------------------------------------------------------- *)
+(* First load the library:                                                   *)
+(* ------------------------------------------------------------------------- *)
+load_library{lib = prog_logic_lib, theory = "MAX"};  (* MAX we need later on *)
+
+(* ------------------------------------------------------------------------- *)
+(* Examples to illustrate forward proof using Hoare Logic (hoare_logic.ml).  *)
+(* ------------------------------------------------------------------------- *)
+
+open PC;
+
+val SUB_ADD          = theorem "arithmetic" "SUB_ADD";
+val ADD_ASSOC        = theorem "arithmetic" "ADD_ASSOC";
+val ADD_SYM          = theorem "arithmetic" "ADD_SYM";
+val MULT_CLAUSES     = theorem "arithmetic" "MULT_CLAUSES";
+val ADD_CLAUSES      = theorem "arithmetic" "ADD_CLAUSES";
+val LEFT_ADD_DISTRIB = theorem "arithmetic" "LEFT_ADD_DISTRIB";
+
+
+(* ------------------------------------------------------------------------- *)
+(* The Assignment Axiom                                                      *)
+(* ------------------------------------------------------------------------- *)
+
+val RxYy = (--`(\s:string->num. (s"R" = x) /\ (s"Y" = y))`--);
+val RxXy = (--`(\s:string->num. (s"R" = x) /\ (s"X" = y))`--);
+val YxXy = (--`(\s:string->num. (s"Y" = x) /\ (s"X" = y))`--);
+
+val RX   = (--`MK_ASSIGN("R",(\s.s"X"))`--);
+val RY   = (--`MK_ASSIGN("R",(\s.s"Y"))`--);
+val XY   = (--`MK_ASSIGN("X",(\s.s"Y"))`--);
+val YR   = (--`MK_ASSIGN("Y",(\s.s"R"))`--);
+
+val hth1 = ASSIGN_AX RxYy RX;
+val hth2 = ASSIGN_AX RxXy XY;
+
+(* ------------------------------------------------------------------------- *)
+(* The Sequencing Rule                                                       *)
+(* ------------------------------------------------------------------------- *)
+
+val hth1 = ASSIGN_AX RxYy RX;
+val hth2 = ASSIGN_AX RxXy XY;
+val hth3 = ASSIGN_AX YxXy YR;
+
+val SEQ_THM = theorem "hoare_thms" "SEQ_THM";
+
+val hth4 = SEQ_RULE (hth1,hth2);
+val hth5 = SEQ_RULE (hth4,hth3);
+
+val hth6 = SEQL_RULE[hth1,hth2,hth3];
+
+(* ------------------------------------------------------------------------- *)
+(* Precondition Strengthening                                                *)
+(* ------------------------------------------------------------------------- *)
+
+val th1  = DISCH_ALL(CONTR (--`((X:num = x) /\ (Y:num = y))`--) 
+                           (ASSUME (--`F`--)));
+
+val hth7 = PRE_STRENGTH_RULE(th1,hth5); 
+
+(* ------------------------------------------------------------------------- *)
+(* Postcondition Weakening                                                   *)
+(* ------------------------------------------------------------------------- *)
+
+val th2  = prove((--`((Y:num = x) /\ (X:num = y)) ==> T`--), REWRITE_TAC[]);
+
+val hth8 = POST_WEAK_RULE(hth5,th2);
+
+(* ------------------------------------------------------------------------- *)
+(* One-armed Conditional Rule                                                *)
+(* ------------------------------------------------------------------------- *)
+
+ if not(draft_mode()) then new_theory "MAX" else ();
+ 
+ val GREATER      = definition "arithmetic" "GREATER";
+ val LESS_OR_EQ   = definition "arithmetic" "LESS_OR_EQ";
+ val LESS_ANTISYM = theorem    "arithmetic" "LESS_ANTISYM";
+ val NOT_LESS     = theorem    "arithmetic" "NOT_LESS";
+
+ val MAX = new_definition ("MAX", (--`MAX(m,n) = ((m>n) => m | n)`--));
+
+ val MAX_LEMMA1 = save_thm("MAX_LEMMA1",
+     prove
+     ((--`((X = x) /\ (Y = y)) /\ (Y > X) ==> (Y = MAX(x,y))`--),
+	 REWRITE_TAC[MAX,GREATER]
+	 THEN REPEAT STRIP_TAC
+	 THEN ASSUM_LIST(fn thl => ONCE_REWRITE_TAC(mapfilter SYM thl))
+	 THEN ASM_CASES_TAC (--`Y < X`--)
+	 THEN ASM_REWRITE_TAC[]
+	 THEN IMP_RES_TAC LESS_ANTISYM));
+     
+ val MAX_LEMMA2 =save_thm("MAX_LEMMA2",
+     prove
+     ((--`((X = x) /\ (Y = y)) /\ ~(Y > X) ==> (X = MAX(x,y))`--),
+      REWRITE_TAC[MAX,GREATER,NOT_LESS,LESS_OR_EQ]
+       THEN REPEAT STRIP_TAC
+       THEN ASSUM_LIST(fn thl => ONCE_REWRITE_TAC(mapfilter SYM thl))
+       THEN ASM_CASES_TAC (--`Y < X`--)
+       THEN ASM_REWRITE_TAC[]
+       THEN RES_TAC));
+
+close_theory();
+    
+val hth9 = ASSIGN_AX (--`(\s:string->num. s"X" = MAX(x,y))`--) XY;
+
+val hth10 = PRE_STRENGTH_RULE(MAX_LEMMA1,hth9);
+
+val hth11 = IF1_RULE(hth10,MAX_LEMMA2);
+
+(* ------------------------------------------------------------------------- *)
+(* Two-armed Conditional Rule                                                *)
+(* ------------------------------------------------------------------------- *)
+
+val hth12 = ASSIGN_AX (--`(\s:string->num. s"R" = MAX(x,y))`--) RY;
+
+val hth13 = PRE_STRENGTH_RULE(MAX_LEMMA1,hth12);
+
+val hth14 = ASSIGN_AX (--`(\s:string->num. s"R" = MAX(x,y))`--) RX;
+
+val hth15 = PRE_STRENGTH_RULE(MAX_LEMMA2,hth14);
+
+val hth16 = IF2_RULE(hth13,hth15);
+
+(* ------------------------------------------------------------------------- *)
+(* The WHILE-Rule                                                            *)
+(* ------------------------------------------------------------------------- *)
+
+val PQQ1 = (--`(\s:string->num. s"X" = s"R" + (s"Y" * s"Q"))`--);
+val PRRY = (--`(\s:string->num. s"X" = s"R" + (s"Y" * (s"Q" + 1)))`--);
+val PRX  = (--`(\s:string->num. s"X" = s"R" + (s"Y" * 0))`--);
+val PQ0  = (--`(\s:string->num. s"X" = s"R" + (s"Y" * s"Q"))`--);
+
+val RX  = (--`MK_ASSIGN("R",(\s.s"X"))`--);
+val Q0  = (--`MK_ASSIGN("Q",(\s. 0))`--);
+val QQ1 = (--`MK_ASSIGN("Q",(\s.s"Q" + 1))`--);
+val RRY = (--`MK_ASSIGN("R",(\s.s"R" - s"Y"))`--);
+
+val hth17 = ASSIGN_AX PQQ1 QQ1;
+
+val hth18 = ASSIGN_AX PRRY RRY;
+
+val hth19 = SEQ_RULE(hth18,hth17);
+
+val th2 =
+ prove
+  ((--`(X = R + (Y * Q)) /\ (Y <= R) ==> (X = (R - Y) + (Y * (Q + 1)))`--),
+   REPEAT STRIP_TAC
+    THEN REWRITE_TAC[LEFT_ADD_DISTRIB,MULT_CLAUSES]
+    THEN ONCE_REWRITE_TAC[SPEC (--`Y * Q`--) ADD_SYM]
+    THEN ONCE_REWRITE_TAC[ADD_ASSOC]
+    THEN IMP_RES_TAC SUB_ADD
+    THEN ASM_REWRITE_TAC[]);
+
+val hth20 = PRE_STRENGTH_RULE(th2,hth19);
+
+val hth21 = WHILE_RULE hth20;
+
+val WHILE_THM = theorem "hoare_thms" "WHILE_THM";
+
+val hth22 = SEQL_RULE [ASSIGN_AX PRX RX, ASSIGN_AX PQ0 Q0, hth21];
+
+val th3 =
+ prove
+  ((--`~(Y <= R) = (R < Y)`--),
+   ONCE_REWRITE_TAC[SYM(SPEC (--`R < Y`--) (hd(CONJUNCTS NOT_CLAUSES)))]
+    THEN PURE_REWRITE_TAC[NOT_LESS]
+    THEN REFL_TAC);
+
+val hth23 = REWRITE_RULE[th3,MULT_CLAUSES,ADD_CLAUSES]hth22;
+
+val hth24 =
+ SEQL_RULE
+  [ASSIGN_AX PRX RX,
+   ASSIGN_AX PQ0 Q0,
+   WHILE_RULE
+    (PRE_STRENGTH_RULE
+      (th2,SEQL_RULE
+        [ASSIGN_AX PRRY RRY,
+         ASSIGN_AX PQQ1 QQ1]))];
+
+(* ------------------------------------------------------------------------- *)
+(* Examples to illustrate the generation of verification conditions          *)
+(* using tactics in hoare_logic.sml.                                         *)
+(* ------------------------------------------------------------------------- *)
+
+val PRE = (--`(\s:string->num. T)`--);
+val ASS = (--`MK_ASSERT(\s:string->num. (s"R" = s"X") /\ (s"Q" = 0))`--);
+val INV = (--`MK_INVARIANT(\s:string->num. s"X" = (s"R" + (s"Y" * s"Q")))`--);
+val TST = (--`(\s:string->num. s"Y" <= s"R")`--);
+
+val WHY = (--`MK_WHILE(^TST,MK_SEQ(^INV,MK_SEQ(^RRY,^QQ1)))`--);
+
+val PST = (--`(\s:string->num. ((s"R" < s"Y") /\ 
+                                 (s"X" = (s"R" + (s"Y" * s"Q")))))`--);
+
+
+val goal = g and apply = expandf;            (* NOTE: we have to use expandf *)
+
+goal `MK_SPEC(^PRE,MK_SEQ(^RX,MK_SEQ(^Q0,MK_SEQ(^ASS,^WHY))),^PST)`;
+
+(*    
+        {T}
+          R := X;
+          Q := 0;
+          assert{(R = X) /\ (Q = 0)};
+          while Y <= R do
+              invariant{X = (R + (Y * Q))};
+              R := R - Y; 
+              Q := Q + 1
+          done
+        {(R < Y) /\ (X = (R + (Y * Q)))}
+*)
+
+apply(SEQ_TAC);
+apply(SEQ_TAC);
+apply(ASSIGN_TAC);
+apply(REWRITE_TAC[]);
+
+apply(WHILE_TAC);
+
+apply(STRIP_TAC);
+apply(ASM_REWRITE_TAC[ADD_CLAUSES,MULT_CLAUSES]);
+
+apply(SEQ_TAC);
+apply(ASSIGN_TAC);
+apply(ACCEPT_TAC th2);
+
+apply(REWRITE_TAC[SYM(SPEC_ALL NOT_LESS)]);
+apply(DISCH_TAC);
+apply(ASM_REWRITE_TAC[]);
+
+
+goal `MK_SPEC(^PRE,MK_SEQ(^RX,MK_SEQ(^Q0,MK_SEQ(^ASS,^WHY))),^PST)`;
+
+apply(VC_TAC);
+
+apply(REWRITE_TAC[]);
+
+apply(STRIP_TAC);
+apply(ASM_REWRITE_TAC[ADD_CLAUSES,MULT_CLAUSES]);
+
+apply(ACCEPT_TAC th2);
+
+apply(REWRITE_TAC[SYM(SPEC_ALL NOT_LESS)]);
+apply(DISCH_TAC);
+apply(ASM_REWRITE_TAC[]);
+ 
+prove
+ ((--`MK_SPEC(^PRE,MK_SEQ(^RX,MK_SEQ(^Q0,MK_SEQ(^ASS,^WHY))),^PST)`--),
+   VC_TAC
+    THENL
+     [REWRITE_TAC[],
+      STRIP_TAC
+       THEN ASM_REWRITE_TAC[ADD_CLAUSES,MULT_CLAUSES],
+      ACCEPT_TAC th2,
+      REWRITE_TAC[SYM(SPEC_ALL NOT_LESS)]
+       THEN DISCH_TAC
+       THEN ASM_REWRITE_TAC[]
+     ]);
+
+
+(* ------------------------------------------------------------------------- *)
+(* The Hoare Logic of total correctness in HOL (halts_logic.ml)              *)
+(* ------------------------------------------------------------------------- *)
+
+open TC; (* NB Rebinds the rules and tactics for PC *)
+
+val NOT_LESS_0    = theorem "prim_rec" "NOT_LESS_0";
+val LESS_0        = theorem "prim_rec" "LESS_0";
+val LESS_REFL     = theorem "prim_rec" "LESS_REFL";
+
+val OR_LESS       = theorem "arithmetic" "OR_LESS";
+val LESS_EQ_TRANS = theorem "arithmetic" "LESS_EQ_TRANS";
+val NOT_LESS      = theorem "arithmetic" "NOT_LESS";
+val LESS_MONO_EQ  = theorem "arithmetic" "LESS_MONO_EQ";
+val LESS_TRANS    = theorem "arithmetic" "LESS_TRANS";
+
+val SUB           = definition "arithmetic" "SUB";
+val LESS_OR_EQ    = definition "arithmetic" "LESS_OR_EQ";
+
+val SUB_ADD          = theorem "arithmetic" "SUB_ADD";
+val ADD_ASSOC        = theorem "arithmetic" "ADD_ASSOC";
+val ADD_SYM          = theorem "arithmetic" "ADD_SYM";
+val MULT_CLAUSES     = theorem "arithmetic" "MULT_CLAUSES";
+val ADD_CLAUSES      = theorem "arithmetic" "ADD_CLAUSES";
+val LEFT_ADD_DISTRIB = theorem "arithmetic" "LEFT_ADD_DISTRIB";
+
+val T_SPEC = definition "halts_thms" "T_SPEC";
+
+val HALTS = definition "halts" "HALTS";
+
+
+val TPRX  = (--`(\s:string->num. (0 < s"Y" /\ 
+                                  (s"X" = s"R" + (s"Y" * 0))))`--);
+
+val TPQ0  = (--`(\s:string->num. (0 < s"Y" /\ 
+                                  (s"X" = s"R" + (s"Y" * s"Q"))))`--); 
+
+val TPRRY = (--`(\s:string->num. (0 < s"Y" /\ 
+                                  (s"X" = s"R" + (s"Y" * (s"Q" + 1)))) /\ 
+                                 (s"R" < r))`--);
+
+val TPQQ1 = (--`(\s:string->num. (0 < s"Y" /\ 
+                                  (s"X" = s"R" + (s"Y" * s"Q"))) /\ 
+                                 (s"R" < r))`--);
+
+val tth1 = ASSIGN_AX TPQQ1 QQ1;
+
+val tth2 = ASSIGN_AX TPRRY RRY;
+
+val tth3 = SEQ_RULE(tth2,tth1);
+
+val th4 =
+ prove
+  ((--`!m. 0 < m ==> !n. 0 < n ==> (n - m) < n`--),
+   INDUCT_TAC
+    THEN REWRITE_TAC[LESS_REFL,LESS_0]
+    THEN INDUCT_TAC
+    THEN REWRITE_TAC[LESS_REFL,LESS_0,SUB,LESS_MONO_EQ]
+    THEN ASM_CASES_TAC (--`n < SUC m`--)
+    THEN ASM_REWRITE_TAC[LESS_0,LESS_MONO_EQ]
+    THEN ASM_CASES_TAC (--`0 < n`--)
+    THEN RES_TAC
+    THEN POP_ASSUM_LIST
+          (fn [th1,th2,th3,th4] =>
+             STRIP_ASSUME_TAC(REWRITE_RULE[NOT_LESS](CONJ th1 th2)))
+    THEN IMP_RES_TAC LESS_EQ_TRANS
+    THEN IMP_RES_TAC OR_LESS
+    THEN IMP_RES_TAC NOT_LESS_0);
+
+val th5 =
+ prove
+  ((--`!m n p. m < n /\ n <= p ==> m < p`--),
+   REWRITE_TAC[LESS_OR_EQ]
+    THEN REPEAT STRIP_TAC
+    THEN IMP_RES_TAC LESS_TRANS
+    THEN ASSUM_LIST(fn thl => REWRITE_TAC[SYM (el 3 thl)])
+    THEN ASM_REWRITE_TAC[]);
+
+val th6 =
+ prove
+  ((--`((0 < Y /\ (X = R + (Y * Q))) /\ (Y <= R) /\ (R = r))
+     ==> ((0 < Y /\ (X = (R - Y) + (Y * (Q + 1)))) /\ (R - Y) < r)`--),
+    REPEAT STRIP_TAC
+    THENL 
+      [ASM_REWRITE_TAC[],
+       REWRITE_TAC[LEFT_ADD_DISTRIB,MULT_CLAUSES]
+         THEN ONCE_REWRITE_TAC[SPEC (--`Y * Q`--) ADD_SYM]
+         THEN ONCE_REWRITE_TAC[ADD_ASSOC]
+         THEN IMP_RES_TAC SUB_ADD
+         THEN ASM_REWRITE_TAC[],
+       IMP_RES_TAC th5
+         THEN IMP_RES_TAC th4
+         THEN ASSUM_LIST(fn thl => REWRITE_TAC[SYM(el 6 thl)])
+         THEN ASM_REWRITE_TAC[]]);
+
+
+val tth4 = PRE_STRENGTH_RULE(th6,tth3);
+
+val tth5 = WHILE_RULE tth4;
+
+val tth6 =
+     SEQL_RULE
+        [ASSIGN_AX TPRX RX,
+         ASSIGN_AX TPQ0 Q0,
+         tth5];
+
+val th7 =
+ prove
+  ((--`~(Y <= R) = (R < Y)`--),
+   ONCE_REWRITE_TAC[SYM(SPEC (--`R < Y`--) (hd(CONJUNCTS NOT_CLAUSES)))]
+    THEN PURE_REWRITE_TAC[NOT_LESS]
+    THEN REFL_TAC);
+
+val tth7 = REWRITE_RULE [th7,MULT_CLAUSES,ADD_CLAUSES] tth6;
+
+val tth6 =
+    SEQL_RULE
+      [ASSIGN_AX TPRX RX,
+       ASSIGN_AX TPQ0 Q0,
+       WHILE_RULE
+         (PRE_STRENGTH_RULE
+           (th6,SEQL_RULE
+                  [ASSIGN_AX TPRRY RRY,
+                   ASSIGN_AX TPQQ1 QQ1]))];
+
+val tth7 = REWRITE_RULE [MULT_CLAUSES,ADD_CLAUSES] tth6;
+
+(* ------------------------------------------------------------------------- *)
+(* Verification conditions for total correctness                             *)
+(* ------------------------------------------------------------------------- *)
+
+val TPRE = (--`(\s:string->num. 0 < s"Y")`--);
+val TASS = (--`MK_ASSERT(\s:string->num. 
+                         (0 < s"Y") /\ (s"R" = s"X") /\ (s"Q" = 0))`--);
+val INV = (--`MK_INVARIANT(\s:string->num. 
+                            (0 < s"Y") /\ (s"X" = (s"R" + (s"Y" * s"Q"))))`--);
+val VAR = (--`MK_VARIANT(\s:string->num. s"R")`--);
+val TTST = (--`(\s:string->num. s"Y" <= s"R")`--);
+
+val TWHY = (--`MK_WHILE(^TTST,MK_SEQ(^INV,MK_SEQ(^VAR,MK_SEQ(^RRY,^QQ1))))`--);
+
+val TPST = (--`(\s:string->num. ((s"R" < s"Y") /\ 
+                                 (s"X" = (s"R" + (s"Y" * s"Q")))))`--);
+
+val goal = g and apply = expandf;
+goal `T_SPEC(^TPRE,MK_SEQ(^RX,MK_SEQ(^Q0,MK_SEQ(^TASS,^TWHY))),^TPST)`;
+
+(*
+        [0 < Y]
+          R := X;
+          Q := 0;
+          assert{(0 < Y) /\ (R = X) /\ (Q = 0)};
+          while Y <= R do 
+              invariant{(0 < Y) /\ (X = R + (Y * Q))}; 
+              variant{R};
+              R := R - Y;
+              Q := Q + 1
+          done
+        [(X = R + (Y * Q)) /\ R < Y]
+*)
+
+apply(VC_TAC);
+
+apply(REWRITE_TAC[]);
+
+apply(STRIP_TAC THEN ASM_REWRITE_TAC[ADD_CLAUSES,MULT_CLAUSES]);
+
+apply(ACCEPT_TAC th6);
+
+apply(REWRITE_TAC[SYM(SPEC_ALL NOT_LESS)]);
+apply(DISCH_TAC);
+apply(ASM_REWRITE_TAC[]);
+
+val DIV_CORRECT =
+ prove
+  ((--`T_SPEC(^TPRE,MK_SEQ(^RX,MK_SEQ(^Q0,MK_SEQ(^TASS,^TWHY))),^TPST)`--),
+   VC_TAC
+    THENL
+     [REWRITE_TAC[],
+      STRIP_TAC
+       THEN ASM_REWRITE_TAC[ADD_CLAUSES,MULT_CLAUSES],
+      ACCEPT_TAC th6,
+      REWRITE_TAC[SYM(SPEC_ALL NOT_LESS)]
+       THEN DISCH_TAC
+       THEN ASM_REWRITE_TAC[]]);
+
+(* ------------------------------------------------------------------------- *)
+(* To see how weakest preconditions and dynamic logic can be represented in  *)
+(* HOL, browse the files mk_dijkstra.ml and mk_dynamic_logic.ml, respectivel *)
+(* ------------------------------------------------------------------------- *)
+
+
+
+
+
+
+

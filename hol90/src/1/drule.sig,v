@@ -1,0 +1,394 @@
+head	1.4;
+access;
+symbols
+	HOL97:1.2.0.4
+	bpHOL97:1.2
+	hol90_9_alpha:1.2
+	hol90_pre8_for_multiple_compilers:1.2.0.2
+	hol90_pre8_after_donalds_separate_compilation_changes:1.2
+	hol90_8_after_merging_Konrad_Elsa:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.4
+date	96.02.08.00.35.21;	author drs1004;	state Exp;
+branches;
+next	1.3;
+
+1.3
+date	96.01.04.13.48.28;	author drs1004;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	95.10.31.15.05.07;	author drs1004;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	95.10.16.13.30.16;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.30.16;	author rjb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.4
+log
+@New theory mechanism, code reorganisation and other enhancements by Don Syme.
+@
+text
+@(* ===================================================================== *)
+(* FILE          : drule.sig                                             *)
+(* DESCRIPTION   : Signature for many derived rules of inference.        *)
+(*                 Translated from hol88.                                *)
+(*                                                                       *)
+(* AUTHORS       : (c) Mike Gordon and                                   *)
+(*                     Tom Melham, University of Cambridge, for hol88    *)
+(* TRANSLATOR    : Konrad Slind, University of Calgary                   *)
+(* DATE          : September 11, 1991                                    *)
+(* ===================================================================== *)
+
+
+signature Drule_sig =
+sig
+    include Drule3_sig
+    val MK_COMB : thm * thm -> thm
+    val MK_ABS : thm -> thm
+    val ALPHA_CONV : term -> term -> thm
+    val ALPHA : term -> term -> thm
+    val GEN_ALPHA_CONV : term -> term -> thm
+    val IMP_CONJ : thm -> thm -> thm
+    val EXISTS_IMP : term -> thm -> thm
+
+    val INST_TY_TERM :(term Lib.subst * Type.typ Lib.subst) -> thm -> thm
+    val GSPEC : thm -> thm
+    val PART_MATCH : (term -> term) -> thm -> Abbrev.conv
+    val REWR_CONV : thm -> Abbrev.conv
+    val MATCH_MP : thm -> thm -> thm
+end;
+@
+
+
+1.3
+log
+@Added simplifier components, added drule files, added MK_ABS_CONV, better error messages
+@
+text
+@d13 1
+a13 1
+signature Drule1_sig =
+d15 8
+a22 42
+structure Thm : Thm_sig
+type thm sharing type thm = Thm.thm
+type term sharing type term = Thm.Term.term
+val ADD_ASSUM : term -> thm -> thm
+val UNDISCH : thm -> thm
+val SYM : thm -> thm
+val TRANS : thm -> thm -> thm
+val IMP_TRANS : thm -> thm -> thm
+val AP_TERM : term -> thm -> thm
+val AP_THM : thm -> term -> thm
+val EQ_MP : thm -> thm -> thm
+val EQ_IMP_RULE : thm -> thm * thm
+val TRUTH : thm
+val EQT_ELIM : thm -> thm
+val SPEC : term -> thm -> thm
+val SPECL : term list -> thm -> thm
+val EQT_INTRO : thm -> thm
+val GEN : term -> thm -> thm
+val GENL : term list -> thm -> thm
+val ETA_CONV : term -> thm
+val EXT : thm -> thm
+val SELECT_INTRO : thm -> thm
+val SELECT_ELIM : thm -> term * thm -> thm
+val EXISTS : term * term -> thm -> thm
+val disch : (term * (term list)) -> term list
+val CHOOSE : term * thm -> thm -> thm
+val SELECT_RULE : thm -> thm
+val IMP_ANTISYM_RULE : thm -> thm -> thm
+val SPEC_VAR : thm -> term * thm
+val MK_EXISTS : thm -> thm
+val LIST_MK_EXISTS : term list -> thm -> thm
+val FORALL_EQ : term -> thm -> thm
+val EXISTS_EQ : term -> thm -> thm
+val SELECT_EQ : term -> thm -> thm
+val SUBS : thm list -> thm -> thm
+val SUBS_OCCS : (int list * thm) list -> thm -> thm
+val SUBST_CONV : {var:term, thm:thm} list -> 
+                 term -> term -> thm
+val RIGHT_BETA : thm -> thm
+val LIST_BETA_CONV : term -> thm
+val RIGHT_LIST_BETA : thm -> thm
+end;
+d24 5
+a28 89
+signature Drule2_sig =
+sig
+include Drule1_sig
+val AND_INTRO_THM : thm
+val CONJ : thm -> thm -> thm
+val AND1_THM : thm
+val CONJUNCT1 : thm -> thm
+val AND2_THM : thm
+val CONJUNCT2 : thm -> thm
+val CONJ_SYM : thm
+val CONJ_ASSOC : thm
+val CONJUNCTS_CONV : term * term -> thm
+val CONJ_SET_CONV : term list -> term list -> thm
+val FRONT_CONJ_CONV : term list -> term -> thm
+val CONJ_DISCH : term -> thm -> thm
+val CONJ_DISCHL : term list -> thm -> thm
+val OR_INTRO_THM1 : thm
+val DISJ1 : thm -> term -> thm
+val OR_INTRO_THM2 : thm
+val DISJ2 : term -> thm -> thm
+val OR_ELIM_THM : thm
+val DISJ_CASES : thm -> thm -> thm -> thm
+val FALSITY : thm
+val IMP_F : thm
+val NOT_INTRO : thm -> thm
+val NEG_DISCH : term -> thm -> thm
+val F_IMP : thm
+val NOT_ELIM : thm -> thm
+val NOT_EQ_SYM : thm -> thm
+val AND_CLAUSES : thm
+val OR_CLAUSES : thm
+val IMP_CLAUSES : thm
+val CONTR : term -> thm -> thm
+val EQF_INTRO : thm -> thm
+val EQF_ELIM : thm -> thm
+val EXCLUDED_MIDDLE : thm
+val CCONTR : term -> thm -> thm
+val INST : term Lib.subst -> thm -> thm
+val NOT_F : thm
+val NOT_AND : thm
+end;
+signature Drule3_sig =
+sig
+include Drule2_sig
+val ISPEC : term -> thm -> thm
+val ISPECL : term list -> thm -> thm
+val SELECT_REFL : thm
+val SELECT_UNIQUE : thm
+val GEN_ALL : thm -> thm
+val DISCH_ALL : thm -> thm
+val UNDISCH_ALL : thm -> thm
+val SPEC_ALL : thm -> thm
+val PROVE_HYP : thm -> thm -> thm
+val CONJ_PAIR : thm -> thm * thm
+val LIST_CONJ : thm list -> thm
+val CONJ_LIST : int -> thm -> thm list
+val CONJUNCTS : thm -> thm list
+val BODY_CONJUNCTS : thm -> thm list
+val IMP_CANON : thm -> thm list
+val LIST_MP : thm list -> thm -> thm
+val CONTRAPOS : thm -> thm
+val DISJ_IMP : thm -> thm
+val IMP_ELIM : thm -> thm
+val NOT_CLAUSES : thm
+val DISJ_CASES_UNION : thm -> thm -> thm -> thm
+end;
+signature Drule_sig =
+sig
+include Drule3_sig
+val EQ_REFL : thm
+val REFL_CLAUSE : thm
+val EQ_SYM : thm
+val EQ_SYM_EQ : thm
+val EQ_EXT : thm
+val EQ_TRANS : thm
+val BOOL_EQ_DISTINCT : thm
+val EQ_CLAUSES : thm
+val MK_COMB : thm * thm -> thm
+val MK_ABS : thm -> thm
+val ALPHA_CONV : term -> term -> thm
+val ALPHA : term -> term -> thm
+val GEN_ALPHA_CONV : term -> term -> thm
+val COND_CLAUSES : thm
+val COND_ID : thm
+val IMP_CONJ : thm -> thm -> thm
+val EXISTS_IMP : term -> thm -> thm
+val FORALL_SIMP : thm
+val EXISTS_SIMP : thm
+val ABS_SIMP : thm
+@
+
+
+1.2
+log
+@First phase of hol90.8 development.  hol90 now compiles using NJSML-CM
+108.5, with separate compilation of libraries.  System dependencies
+have been isolated in the makefiles and "portable.sml".
+
+This involved a large number of enhancments to the source files,
+most of which are documented in the 7.changes file (or will be shortly).
+See also the correpsonding email corrspondence between RJB, KLS, TFM,
+JRH and DRS that happened during this development.
+@
+text
+@d16 40
+a55 38
+val ADD_ASSUM : Thm.Term.term -> Thm.thm -> Thm.thm
+val UNDISCH : Thm.thm -> Thm.thm
+val SYM : Thm.thm -> Thm.thm
+val TRANS : Thm.thm -> Thm.thm -> Thm.thm
+val IMP_TRANS : Thm.thm -> Thm.thm -> Thm.thm
+val AP_TERM : Thm.Term.term -> Thm.thm -> Thm.thm
+val AP_THM : Thm.thm -> Thm.Term.term -> Thm.thm
+val EQ_MP : Thm.thm -> Thm.thm -> Thm.thm
+val EQ_IMP_RULE : Thm.thm -> Thm.thm * Thm.thm
+val TRUTH : Thm.thm
+val EQT_ELIM : Thm.thm -> Thm.thm
+val SPEC : Thm.Term.term -> Thm.thm -> Thm.thm
+val SPECL : Thm.Term.term list -> Thm.thm -> Thm.thm
+val EQT_INTRO : Thm.thm -> Thm.thm
+val GEN : Thm.Term.term -> Thm.thm -> Thm.thm
+val GENL : Thm.Term.term list -> Thm.thm -> Thm.thm
+val ETA_CONV : Thm.Term.term -> Thm.thm
+val EXT : Thm.thm -> Thm.thm
+val SELECT_INTRO : Thm.thm -> Thm.thm
+val SELECT_ELIM : Thm.thm -> Thm.Term.term * Thm.thm -> Thm.thm
+val EXISTS : Thm.Term.term * Thm.Term.term -> Thm.thm -> Thm.thm
+val disch : (Thm.Term.term * (Thm.Term.term list)) -> Thm.Term.term list
+val CHOOSE : Thm.Term.term * Thm.thm -> Thm.thm -> Thm.thm
+val SELECT_RULE : Thm.thm -> Thm.thm
+val IMP_ANTISYM_RULE : Thm.thm -> Thm.thm -> Thm.thm
+val SPEC_VAR : Thm.thm -> Thm.Term.term * Thm.thm
+val MK_EXISTS : Thm.thm -> Thm.thm
+val LIST_MK_EXISTS : Thm.Term.term list -> Thm.thm -> Thm.thm
+val FORALL_EQ : Thm.Term.term -> Thm.thm -> Thm.thm
+val EXISTS_EQ : Thm.Term.term -> Thm.thm -> Thm.thm
+val SELECT_EQ : Thm.Term.term -> Thm.thm -> Thm.thm
+val SUBS : Thm.thm list -> Thm.thm -> Thm.thm
+val SUBS_OCCS : (int list * Thm.thm) list -> Thm.thm -> Thm.thm
+val SUBST_CONV : {var:Thm.Term.term, thm:Thm.thm} list -> 
+                 Thm.Term.term -> Thm.Term.term -> Thm.thm
+val RIGHT_BETA : Thm.thm -> Thm.thm
+val LIST_BETA_CONV : Thm.Term.term -> Thm.thm
+val RIGHT_LIST_BETA : Thm.thm -> Thm.thm
+d61 37
+a97 37
+val AND_INTRO_THM : Thm.thm
+val CONJ : Thm.thm -> Thm.thm -> Thm.thm
+val AND1_THM : Thm.thm
+val CONJUNCT1 : Thm.thm -> Thm.thm
+val AND2_THM : Thm.thm
+val CONJUNCT2 : Thm.thm -> Thm.thm
+val CONJ_SYM : Thm.thm
+val CONJ_ASSOC : Thm.thm
+val CONJUNCTS_CONV : Thm.Term.term * Thm.Term.term -> Thm.thm
+val CONJ_SET_CONV : Thm.Term.term list -> Thm.Term.term list -> Thm.thm
+val FRONT_CONJ_CONV : Thm.Term.term list -> Thm.Term.term -> Thm.thm
+val CONJ_DISCH : Thm.Term.term -> Thm.thm -> Thm.thm
+val CONJ_DISCHL : Thm.Term.term list -> Thm.thm -> Thm.thm
+val OR_INTRO_THM1 : Thm.thm
+val DISJ1 : Thm.thm -> Thm.Term.term -> Thm.thm
+val OR_INTRO_THM2 : Thm.thm
+val DISJ2 : Thm.Term.term -> Thm.thm -> Thm.thm
+val OR_ELIM_THM : Thm.thm
+val DISJ_CASES : Thm.thm -> Thm.thm -> Thm.thm -> Thm.thm
+val FALSITY : Thm.thm
+val IMP_F : Thm.thm
+val NOT_INTRO : Thm.thm -> Thm.thm
+val NEG_DISCH : Thm.Term.term -> Thm.thm -> Thm.thm
+val F_IMP : Thm.thm
+val NOT_ELIM : Thm.thm -> Thm.thm
+val NOT_EQ_SYM : Thm.thm -> Thm.thm
+val AND_CLAUSES : Thm.thm
+val OR_CLAUSES : Thm.thm
+val IMP_CLAUSES : Thm.thm
+val CONTR : Thm.Term.term -> Thm.thm -> Thm.thm
+val EQF_INTRO : Thm.thm -> Thm.thm
+val EQF_ELIM : Thm.thm -> Thm.thm
+val EXCLUDED_MIDDLE : Thm.thm
+val CCONTR : Thm.Term.term -> Thm.thm -> Thm.thm
+val INST : Thm.Term.term Lib.subst -> Thm.thm -> Thm.thm
+val NOT_F : Thm.thm
+val NOT_AND : Thm.thm
+d102 21
+a122 21
+val ISPEC : Thm.Term.term -> Thm.thm -> Thm.thm
+val ISPECL : Thm.Term.term list -> Thm.thm -> Thm.thm
+val SELECT_REFL : Thm.thm
+val SELECT_UNIQUE : Thm.thm
+val GEN_ALL : Thm.thm -> Thm.thm
+val DISCH_ALL : Thm.thm -> Thm.thm
+val UNDISCH_ALL : Thm.thm -> Thm.thm
+val SPEC_ALL : Thm.thm -> Thm.thm
+val PROVE_HYP : Thm.thm -> Thm.thm -> Thm.thm
+val CONJ_PAIR : Thm.thm -> Thm.thm * Thm.thm
+val LIST_CONJ : Thm.thm list -> Thm.thm
+val CONJ_LIST : int -> Thm.thm -> Thm.thm list
+val CONJUNCTS : Thm.thm -> Thm.thm list
+val BODY_CONJUNCTS : Thm.thm -> Thm.thm list
+val IMP_CANON : Thm.thm -> Thm.thm list
+val LIST_MP : Thm.thm list -> Thm.thm -> Thm.thm
+val CONTRAPOS : Thm.thm -> Thm.thm
+val DISJ_IMP : Thm.thm -> Thm.thm
+val IMP_ELIM : Thm.thm -> Thm.thm
+val NOT_CLAUSES : Thm.thm
+val DISJ_CASES_UNION : Thm.thm -> Thm.thm -> Thm.thm -> Thm.thm
+d127 20
+a146 20
+val EQ_REFL : Thm.thm
+val REFL_CLAUSE : Thm.thm
+val EQ_SYM : Thm.thm
+val EQ_SYM_EQ : Thm.thm
+val EQ_EXT : Thm.thm
+val EQ_TRANS : Thm.thm
+val BOOL_EQ_DISTINCT : Thm.thm
+val EQ_CLAUSES : Thm.thm
+val MK_COMB : Thm.thm * Thm.thm -> Thm.thm
+val MK_ABS : Thm.thm -> Thm.thm
+val ALPHA_CONV : Thm.Term.term -> Thm.Term.term -> Thm.thm
+val ALPHA : Thm.Term.term -> Thm.Term.term -> Thm.thm
+val GEN_ALPHA_CONV : Thm.Term.term -> Thm.Term.term -> Thm.thm
+val COND_CLAUSES : Thm.thm
+val COND_ID : Thm.thm
+val IMP_CONJ : Thm.thm -> Thm.thm -> Thm.thm
+val EXISTS_IMP : Thm.Term.term -> Thm.thm -> Thm.thm
+val FORALL_SIMP : Thm.thm
+val EXISTS_SIMP : Thm.thm
+val ABS_SIMP : Thm.thm
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d93 1
+a93 1
+val INST : Thm.Term.term subst -> Thm.thm -> Thm.thm
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

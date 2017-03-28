@@ -1,0 +1,115 @@
+head	1.1;
+branch	1.1.1;
+access;
+symbols
+	HOL97:1.1.1.1.0.6
+	bpHOL97:1.1.1.1
+	hol90_9_alpha:1.1.1.1
+	hol90_pre8_for_multiple_compilers:1.1.1.1.0.4
+	hol90_pre8_after_donalds_separate_compilation_changes:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	95.10.16.13.32.04;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.32.04;	author rjb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@\DOC PALPHA
+
+\TYPE {PALPHA : (term -> term -> thm)}
+
+\KEYWORDS
+rule, alpha.
+
+\LIBRARY pair
+
+\SYNOPSIS
+Proves equality of paired alpha-equivalent terms.
+
+\DESCRIBE
+When applied to a pair of terms {t1} and {t1'} which are
+alpha-equivalent, {ALPHA} returns the theorem {|- t1 = t1'}.
+{
+
+   -------------  PALPHA "t1" "t1'"
+    |- t1 = t1'
+}
+The difference between {PALPHA} and {ALPHA} is that 
+{PALPHA} is prepared to consider pair structures of different
+structure to be alpha-equivalent.
+In its most trivial case this means that {PALPHA} can consider
+a variable and a pair to alpha-equivalent.
+
+\FAILURE
+Fails unless the terms provided are alpha-equivalent.
+
+\EXAMPLE
+{
+#PALPHA "\(x:*,y:*). (x,y)" "\xy:*#*.xy";;
+|- (\(x,y). (x,y)) = (\xy. xy)
+}
+\COMMENTS
+The system shows the type of {PALPHA} as {term -> conv}.
+
+Alpha-converting a paired abstraction to a nonpaired abstraction 
+can introduce instances of the terms {"FST"} and {"SND"}.
+A paired abstraction and a nonpaired abstraction will be considered
+equivalent by {PALPHA} if the nonpaired abstraction contains all
+those instances of {"FST"} and {"SND"} present in the paired
+abstraction, plus the minimum additional instances of {"FST"} and {"SND"}.
+For example:
+{
+   #PALPHA
+      "\(x:*,y:**). (f x y (x,y)):***"
+      "\xy:*#**. (f (FST xy) (SND xy) xy):***";;
+   |- (\(x,y). f x y(x,y)) = (\xy. f(FST xy)(SND xy)xy)
+
+   #PALPHA
+      "\(x:*,y:**). (f x y (x,y)):***"
+      "\xy:*#**. (f (FST xy) (SND xy) (FST xy, SND xy)):***";;
+   evaluation failed     PALPHA
+}
+
+\SEEALSO
+ALPHA, aconv, PALPHA_CONV, GEN_PALPHA_CONV.
+
+\ENDDOC
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

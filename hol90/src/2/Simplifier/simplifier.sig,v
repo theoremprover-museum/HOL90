@@ -1,0 +1,211 @@
+head	1.2;
+access;
+symbols;
+locks; strict;
+comment	@# @;
+
+
+1.2
+date	96.02.08.00.45.27;	author drs1004;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	96.01.04.14.06.31;	author drs1004;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.2
+log
+@New theory mechanism, code reorganisation and other enhancements by Don Syme.
+@
+text
+@(* ===================================================================== 
+ * FILE          : $Id: simplifier.sig,v 1.1 1996/01/04 14:06:31 drs1004 Exp $
+ * DESCRIPTION   : A programmable, contextual, conditional simplifier for hol90
+ *                                                                       
+ * AUTHOR        : Donald Syme
+ *                 Based loosely on original HOL rewriting by 
+ *                 Larry Paulson et al,
+ *                 and loosely on the Isabelle simplifier.
+ * ===================================================================== *)
+
+(* =====================================================================
+ * The Simplifier
+ *
+ * Simplification is traversal/reduction under equality.  This
+ * is mainly about rewriting and applying conversions.
+ * =====================================================================*)
+
+
+signature Simplifier_sig =
+sig
+
+   (* ---------------------------------------------------------------------
+    * type simpset
+    *
+    * A Simpset contains:
+    *    - a collection of rewrite rules
+    *    - a collection of equational conversions
+    *    - a traversal strategy for applying them
+    * 
+    * The traversal strategy may include other actions, especially
+    * decision procedures, which can work cooperatively with 
+    * rewriting during simplification.
+    *
+    * REWRITE RULES
+    *
+    * Simpsets are foremost a collection of rewrite theorems stored
+    * efficiently in a termnet.  These are made into conversions
+    * by using COND_REWR_CONV.
+    *
+    * CONVERSIONS IN SIMPSETS
+    *
+    * Simpsets can contain arbitrary user conversions, as well as
+    * rewrites and contextual-rewrites.  These conversions should
+    * be thought of as infinite families of rewrites.
+    * Conversions are keyed by term patterns (implemented 
+    * using termnets).  Thus a conversion
+    * won't even be called if the target term doesn't match 
+    * (in the termnet sense of matching) its key.  This acts
+    * as an important optimization/filter.  If a conversions can't be
+    * efficiently keyed, you should think about making it a decision
+    * procedure (which has lower priority).
+    *
+    * ---------------------------------------------------------------------*)
+    
+
+  type convdata 
+  val mk_convdata : {name:string, 
+                     key: (Term.term list * Term.term) option, 
+                     trace: int, 
+                     conv: (Term.term -> Thm.thm) -> Abbrev.conv} -> convdata;
+
+   (* ---------------------------------------------------------------------
+    * Basic operations on simpsets
+    *
+    * ---------------------------------------------------------------------*)
+    
+  type simpset
+
+  val empty_ss: simpset
+  val merge_ss: simpset list -> simpset
+  val addrewrs: Thm.thm list -> simpset -> simpset
+  val addconvs: convdata list -> simpset -> simpset
+  val adddprocs: Traverse.reducer list -> simpset -> simpset
+  val setmkrewr: (Thm.thm -> Thm.thm list) -> simpset -> simpset
+  val dest_ss: simpset -> {
+                convdata:convdata list, 
+                mkrewrs:Thm.thm -> Thm.thm list, 
+                rewrs:Thm.thm list, 
+                travrules:Travrules.travrules}
+  (* easy to use infix version of addrewrs *)
+  val ++ : simpset * Thm.thm list -> simpset;
+  val addac: (Thm.thm * Thm.thm) -> simpset -> simpset
+      
+
+   (* ---------------------------------------------------------------------
+    * Simpset actions which modify the underlying traversal behaviour.
+    * ---------------------------------------------------------------------*)
+    
+  val addcongs: Thm.thm list -> simpset -> simpset
+  val set_travrules: Travrules.travrules -> simpset -> simpset
+
+   (* ---------------------------------------------------------------------
+    * SIMP_CONV : simpset -> conv
+    * 
+    * SIMP_CONV makes a simplification conversion from the given simpset.  The 
+    * conversion uses a top-depth strategy for rewriting.  It sets both
+    * the solver and the depther to be SIMP_CONV itself.  SIMP_QCONV is
+    * a version of this which raises UNCHANGED if no change occurs.
+    * The action of SIMP_QCONV is as follows:
+    *           ....
+    *
+    * FAILURE CONDITIONS
+    *
+    * SIMP_CONV never fails, though it may diverge.  Beware of
+    * divergence when trying to solve conditions to conditional rewrites.
+    * ---------------------------------------------------------------------*)
+   
+   val SIMP_CONV : simpset -> Thm.thm list -> Abbrev.conv
+   val SIMP_QCONV : simpset -> Thm.thm list -> Abbrev.conv
+   
+   (* ---------------------------------------------------------------------
+    * SIMP_TAC : simpset -> tactic
+    * ASM_SIMP_TAC : simpset -> tactic
+    * FULL_SIMP_TAC : simpset -> tactic
+    * 
+    * SIMP_TAC makes a simplification tactic from the given simpset.  The 
+    * tactic uses a top-depth strategy for rewriting, and will be recursively
+    * reapplied when a simplification step makes a change to a term.
+    * This is done in the same way as similar to TOP_DEPTH_CONV.
+    *
+    * ASM_SIMP_TAC draws extra rewrites (conditional and unconditional)
+    * from the assumption list.  These are also added to the context that will be
+    * passed to conversions.
+    *
+    * FULL_SIMP_TAC simplifies the assumptions one by one, before
+    * simplifying the goal.  The assumptions are simplified in the order
+    * that they are found in the assumption list, and the simplification
+    * of each assumption is used when simplifying the next assumption.
+    *
+    * FAILURE CONDITIONS
+    *
+    * These tactics never fail, though they may diverge.
+    * ---------------------------------------------------------------------*)
+   
+   val SIMP_TAC : simpset -> Thm.thm list -> Abbrev.tactic
+   val ASM_SIMP_TAC : simpset -> Thm.thm list -> Abbrev.tactic
+   val FULL_SIMP_TAC : simpset -> Thm.thm list -> Abbrev.tactic
+   
+   (* ---------------------------------------------------------------------
+    * SIMP_RULE : simpset -> tactic
+    * ASM_SIMP_RULE : simpset -> tactic
+    * 
+    * Make a simplification tactic from the given simpset.  The 
+    * tactic uses a top-depth strategy for rewriting.
+    *
+    * FAILURE CONDITIONS
+    *
+    * These tactics never fail, though they may diverge.
+    * ---------------------------------------------------------------------*)
+
+   val SIMP_RULE : simpset -> Thm.thm list -> Thm.thm -> Thm.thm
+   val ASM_SIMP_RULE : simpset -> Thm.thm list -> Thm.thm -> Thm.thm
+
+   (* ---------------------------------------------------------------------
+    * Simpset pretty printing
+    * ---------------------------------------------------------------------*)
+
+   val pp_simpset : Portable.PrettyPrint.ppstream -> simpset -> unit
+end;
+@
+
+
+1.1
+log
+@Added simplifier components, added drule files, added MK_ABS_CONV, better error messages
+@
+text
+@d2 1
+a2 1
+ * FILE          : $Id$
+d108 2
+a109 2
+   val SIMP_CONV : simpset -> Abbrev.conv
+   val SIMP_QCONV : simpset -> Abbrev.conv
+d135 3
+a137 3
+   val SIMP_TAC : simpset -> Abbrev.tactic
+   val ASM_SIMP_TAC : simpset -> Abbrev.tactic
+   val FULL_SIMP_TAC : simpset -> Abbrev.tactic
+d151 2
+a152 2
+   val SIMP_RULE : simpset -> Thm.thm -> Thm.thm
+   val ASM_SIMP_RULE : simpset -> Thm.thm -> Thm.thm
+@

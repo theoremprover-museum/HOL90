@@ -1,0 +1,276 @@
+head	1.4;
+access;
+symbols
+	HOL97:1.4.0.4
+	bpHOL97:1.4
+	hol90_9_alpha:1.4
+	hol90_pre8_for_multiple_compilers:1.4.0.2
+	hol90_pre8_after_donalds_separate_compilation_changes:1.3
+	hol90_8_after_merging_Konrad_Elsa:1.2
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.4
+date	95.11.15.13.29.47;	author rjb;	state Exp;
+branches
+	1.4.4.1;
+next	1.3;
+
+1.3
+date	95.10.31.15.04.30;	author drs1004;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	95.10.18.16.37.29;	author drs1004;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	95.10.16.13.30.05;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.30.05;	author rjb;	state Exp;
+branches;
+next	;
+
+1.4.4.1
+date	97.06.11.17.25.48;	author kxs;	state dead;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.4
+log
+@The HOL90 sources have been changed to allow for the use of different
+Standard ML compilers (possibly simultaneously).
+
+ * Many files in "src/0" changed to make them more portable across different
+   ML compilers. Various additions have been made to the Portable structure
+   and files changed to access identifiers in the Portable structure rather
+   than from the global environment. Worthy of special note are:
+
+   - The pointer equality used in "src/0/term.sml" has been made into a
+     function in the Portable structure.
+
+   - The ML-Lex and ML-Yacc files for the various parsers have been changed
+     to access the Portable structure. Both the source files and the SML
+     produced from them have been changed but I have not verified that the
+     source files would reproduce the new SML versions if ML-Lex and ML-Yacc
+     were to be rerun on them. The changes involve some hacks that exploit the
+     way ML-Lex and ML-Yacc work. See the sources for details.
+
+R.J.Boulton, 15th November 1995.
+@
+text
+@fun LIB_PARSE_ERR(s1,s2) =
+    Exception.HOL_ERR{origin_structure = "Library_parse",
+                      origin_function = s1, message = s2};
+
+(* The next "end" closes the Header structure in the compiled file so that
+   the declarations below are available in the rest of the compiled code.
+   The Empty structure then matches with the "end" that should have closed
+   the Header structure.
+*)
+end
+
+open Portable;
+open General;
+
+structure Empty =
+struct
+%%
+%term lbrace | rbrace
+    | lbracket | rbracket
+    | lparen | rparen
+    | eq
+    | comma
+    | lib_id
+    | doc
+    | path
+    | parents
+    | theories
+    | code
+    | help
+    | loaded
+    | id of string
+    | num of string
+    | string_constant of string
+    | EOLEX
+    | EOF 
+
+
+%nonterm START of Lib_data.lib_data
+       | LIB of Lib_data.lib_data
+       | LIB_ID of Lib_data.lib_id
+       | ID of string
+       | ID_LIST of string list
+       | LIB_ID_LIST of Lib_data.lib_id list 
+
+%start START
+%eop EOF EOLEX
+%pos int
+%header (functor libLrValsFun (structure Lib : Lib_sig
+                               structure Token : TOKEN
+                               structure Lib_data : Lib_data_sig))
+
+%name lib
+%noshift EOF
+%pure
+%%
+
+START : LIB (LIB)
+
+LIB : lib_id eq LIB_ID 
+      doc eq string_constant
+      path eq id
+      parents eq lbracket LIB_ID_LIST rbracket 
+      theories eq lbracket ID_LIST rbracket 
+      code eq lbracket ID_LIST rbracket
+      help eq lbracket ID_LIST rbracket
+      loaded eq string_constant
+      (Lib_data.mk_lib_data{lib_id = LIB_ID,
+                            doc = string_constant1,
+                            path = id,
+                            parents = LIB_ID_LIST,
+                            theories = ID_LIST1,
+                            code = ID_LIST2,
+                            help = ID_LIST3,
+                            loaded = string_constant2})
+
+LIB_ID : lparen id comma num comma num rparen
+         (Lib_data.mk_lib_id{name = id, 
+                             timestamp = Portable.Time.mk_time
+                                          {sec = Lib.string_to_int num1,
+                                           usec = Lib.string_to_int num2}})
+ID : id (id)
+     |
+     lib_id ("lib_id")
+     |
+     doc ("doc")
+     |
+     path ("path")
+     |
+     parents ("parents")
+     |
+     theories ("theories")
+     |
+     code ("code")
+     |
+     help ("help")
+     |
+     loaded ("loaded")
+
+
+ID_LIST : ([])
+          |
+          ID ([ID])
+          |
+          ID comma ID_LIST(ID::ID_LIST)
+
+LIB_ID_LIST : ([])
+          |
+          LIB_ID ([LIB_ID])
+          |
+          LIB_ID comma LIB_ID_LIST(LIB_ID::LIB_ID_LIST)
+
+@
+
+
+1.4.4.1
+log
+@Removed files are parse files and portability files that have
+effectively been moved elsewhere.
+
+Modified files are up to date for ML 109.26.
+@
+text
+@@
+
+
+1.3
+log
+@First phase of hol90.8 development.  hol90 now compiles using NJSML-CM
+108.5, with separate compilation of libraries.  System dependencies
+have been isolated in the makefiles and "portable.sml".
+
+This involved a large number of enhancments to the source files,
+most of which are documented in the 7.changes file (or will be shortly).
+See also the correpsonding email corrspondence between RJB, KLS, TFM,
+JRH and DRS that happened during this development.
+@
+text
+@d5 12
+@
+
+
+1.2
+log
+@Check in after merging in Konrad's changes made after
+the release of hol90.7.  This involved creating a side branch
+in which to check in Konrad's changes, then merging in that
+side branch into the main development (which contains changes
+made by Elsa Gunter).
+
+Some other small modification have been made to the source code,
+as I begun to try to make this version into a working version:
+	- hol90 will now be compiled in an environment were no
+structures can be considered opn.  This means many structures
+now need "open Lib" and other such commands at their head.
+This has not yet been completed, but has been begun.
+	- "rotl" and "rotr" have been added to Lib, something
+which I just did impulsively.   Documentation files
+have also been added in help/90.
+@
+text
+@d66 1
+a66 1
+                             timestamp = Sml_system.Time.mk_time
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d1 3
+a3 2
+fun LIB_PARSE_ERR(s1,s2) = HOL_ERR{origin_structure = "Library_parse",
+                                   origin_function = s1, message = s2};
+d36 2
+a37 1
+%header (functor libLrValsFun (structure Token : TOKEN
+d66 3
+a68 3
+                             timestamp = System.Timer.TIME
+                                          {sec = string_to_int num1,
+                                           usec = string_to_int num2}})
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

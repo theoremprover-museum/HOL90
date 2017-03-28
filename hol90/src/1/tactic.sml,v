@@ -1,0 +1,1693 @@
+head	1.5;
+access;
+symbols
+	HOL97:1.2.0.4
+	bpHOL97:1.2
+	hol90_9_alpha:1.2
+	hol90_pre8_for_multiple_compilers:1.2.0.2
+	hol90_pre8_after_donalds_separate_compilation_changes:1.2
+	hol90_8_after_merging_Konrad_Elsa:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.5
+date	96.02.08.00.36.19;	author drs1004;	state Exp;
+branches;
+next	1.4;
+
+1.4
+date	96.01.04.13.48.57;	author drs1004;	state Exp;
+branches;
+next	1.3;
+
+1.3
+date	95.12.18.11.36.37;	author drs1004;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	95.10.31.15.05.28;	author drs1004;	state Exp;
+branches
+	1.2.4.1;
+next	1.1;
+
+1.1
+date	95.10.16.13.30.18;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.30.18;	author rjb;	state Exp;
+branches
+	1.1.1.1.2.1;
+next	;
+
+1.1.1.1.2.1
+date	95.10.18.10.09.27;	author drs1004;	state Exp;
+branches;
+next	;
+
+1.2.4.1
+date	97.06.11.17.50.31;	author kxs;	state Exp;
+branches;
+next	1.2.4.2;
+
+1.2.4.2
+date	97.07.11.15.16.15;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.5
+log
+@New theory mechanism, code reorganisation and other enhancements by Don Syme.
+@
+text
+@(* ===================================================================== *)
+(* FILE          : tactic.sml                                            *)
+(* DESCRIPTION   : Tactics are from LCF. They are a fundamental proof    *)
+(*                 method due to Robin Milner. Translated from hol88.    *)
+(*                                                                       *)
+(* AUTHORS       : (c) University of Edinburgh and                       *)
+(*                     University of Cambridge, for hol88                *)
+(* TRANSLATOR    : Konrad Slind, University of Calgary                   *)
+(* DATE          : September 11, 1991                                    *)
+(* ===================================================================== *)
+
+
+structure Tactic : Tactic_sig =
+struct
+open Lib Rterms Abbrev;
+open Thm Drule Thm_cont Tactical;
+  infix THEN;
+  infix THENL;
+  infix ORELSE;
+
+
+val ERR = Exception.ERR "Tactic";
+val WRAP_ERR = Exception.WRAP_ERR "Tactic";
+    
+
+(*-------------------------------------------------------------------------
+ Accepts a theorem that satisfies the goal
+
+	A
+    =========	ACCEPT_TAC "|-A"
+	-
+ -------------------------------------------------------------------------*)
+fun ACCEPT_TAC th (asl,w) =
+   if (aconv (concl th) w)
+   then ([], fn [] => th)
+   else ERR("ACCEPT_TAC",
+	    "The theorem given to ACCEPT_TAC is not alpha-equivalent to the goal");
+
+
+(* ---------------------------------------------------------------------*)
+(* DISCARD_TAC: checks that a theorem is useless, then ignores it.	*)
+(* Revised: 90.06.15 TFM.						*)
+(* ---------------------------------------------------------------------*)
+
+fun DISCARD_TAC th (asl,w) =
+   if (exists (aconv (concl th)) (truth::asl))
+   then ALL_TAC (asl,w)
+   else ERR("DISCARD_TAC",
+	    "The term passed to DISCARD_TAC is not alpha equivalent to an assumption.")
+
+
+(****************************************************************************
+ * Contradiction rule
+ *
+ *	 A
+ *    ===========  CONTR_TAC "|- FALSITY"
+ *       -
+ ****************************************************************************)
+
+fun CONTR_TAC cth (asl,w) = 
+   let val th = CONTR w cth
+   in
+       ([], fn [] => th)
+   end
+handle e => WRAP_ERR("CONTR_TAC",e);
+    
+
+(***************************************************************************
+ * Classical contradiction rule
+ *
+ *	 A
+ *    ===========  CCONTR_TAC 
+ *       -
+ ****************************************************************************)
+
+fun CCONTR_TAC (asl, w) =
+    ([(mk_neg w::asl, falsity)], fn [th] => CCONTR w th)
+
+(****************************************************************************
+ * Put a theorem onto the assumption list.
+ *    Note:  since an assumption B denotes a theorem B|-B, 
+ *           you cannot instantiate types or variables in assumptions.
+ * 
+ *         A
+ *    ===========  |- B
+ *      [B] A
+ *****************************************************************************)
+
+fun ASSUME_TAC bth (asl,w) =
+    ([(((concl bth)::asl),w)], (fn [th] => PROVE_HYP bth th));
+
+
+(****************************************************************************
+ * "Freeze" a theorem to prevent instantiation 
+ * 
+ *         A
+ *    ===========	ttac "B|-B"
+ *        ...
+ *****************************************************************************)
+
+fun FREEZE_THEN ttac bth g = 
+   let val (gl,prf) = ttac (ASSUME (concl bth)) g 
+   in (gl, (PROVE_HYP bth o prf))
+   end;
+
+
+(****************************************************************************
+ * Conjunction introduction
+ * 
+ *         A /\ B
+ *     ===============
+ *       A        B
+ ****************************************************************************)
+
+fun CONJ_TAC (asl,w) =
+    let val {conj1,conj2} = dest_conj w 
+    in ([(asl,conj1), (asl,conj2)], fn [th1,th2] => CONJ th1 th2)
+    end
+handle _ => ERR("CONJ_TAC","the goal is not a conjunction");
+
+
+
+
+(****************************************************************************
+ * Disjunction introduction
+ *
+ *	A \/ B
+ *  ==============
+ *        A
+ *
+ ****************************************************************************)
+fun DISJ1_TAC(asl,w) = 
+    let val {disj1,disj2} = dest_disj w 
+    in ([(asl,disj1)], fn [th] => DISJ1 th disj2)
+    end
+handle _ => ERR("DISJ1_TAC","the goal is not a disjunction");
+
+
+
+(**************************************************************************
+ *	A \/ B
+ *    ==============
+ *	  B
+ *
+ ***************************************************************************)
+fun DISJ2_TAC(asl,w) =
+    let val {disj1,disj2} = dest_disj w
+    in ([(asl,disj2)], fn [thb] => DISJ2 disj1 thb)
+    end
+handle _ => ERR("DISJ2_TAC","the goal is not a disjunction");
+
+
+
+(**************************************************************************
+ * Implication elimination
+ *
+ *	            A
+ *     |- B  ================ 
+ *                B ==> A   
+ *
+ ***************************************************************************)
+fun MP_TAC thb (asl,wa) =
+    ([(asl, mk_imp{ant=concl thb, conseq=wa})], fn [thimp] => MP thimp thb);
+
+
+fun EQ_TAC (asl,t) =
+   let val {lhs,rhs} = dest_eq t 
+      handle _ => ERR("EQ_TAC","the goal is not an if and only if expression (i.e. an equality between boolean valued terms)")
+   in if (type_of lhs = bool_ty) then
+       ([(asl, mk_imp{ant = lhs, conseq = rhs}),
+	 (asl, mk_imp{ant = rhs, conseq = lhs})],
+	fn [th1,th2] => IMP_ANTISYM_RULE th1 th2)
+      else ERR("EQ_TAC","the goal is not an if and only if expression (i.e. an equality between boolean valuead terms)")
+   end
+
+(****************************************************************************
+ * Universal quantifier
+ *
+ *	!x.A(x)
+ *   ==============
+ *        A(x')
+ *
+ * Explicit version for tactic programming;  proof fails if x' is free in hyps
+ *
+ * fun X_GEN_TAC x' :tactic (asl,w) =			                     
+ *   (let val x,body = dest_forall w in			                     
+ *    [ (asl, subst[x',x]body) ], (\[th]. GEN x' th) 	                     
+ *   ) ? failwith X_GEN_TAC;;				                     
+ *                                                                           
+ * T. Melham. X_GEN_TAC rewritten 88.09.17				     
+ *									     
+ * 1)  X_GEN_TAC x'    now fails if x' is not a variable.		     
+ *									     
+ * 2) rewritten so that the proof yields the same quantified var as the      
+ *    goal.								     
+ *									     
+ *  fun X_GEN_TAC x' :tactic =						     
+ *   if not(is_var x') then failwith X_GEN_TAC else			     
+ *   \(asl,w).((let val x,body = dest_forall w in			     
+ *               [(asl,subst[x',x]body)],				     
+ *                (\[th]. GEN x (INST [(x,x')] th)))			     
+ *              ? failwith X_GEN_TAC);;				             
+ * Bugfix for HOL88.1.05, MJCG, 4 April 1989				     
+ * Instantiation before GEN replaced by alpha-conversion after it to 	     
+ * prevent spurious failures due to bound variable problems when 	     
+ * quantified variable is free in assumptions.				     
+ * Optimization for the x=x' case added.                                     
+ *
+ *****************************************************************************)
+fun X_GEN_TAC x1 (asl,w) =
+    if (not(is_var x1))
+	then ERR("X_GEN_TAC","the argument to X_GEN_TAC should be a variable.")
+    else let val {Bvar,Body} = dest_forall w 
+	 in
+	     if (Bvar=x1)
+		 then ([(asl,Body)], fn [th] => GEN x1 th)
+	     else ([(asl,subst [{redex = Bvar, residue = x1}] Body)],
+		   fn [th] => let val th' = GEN x1 th
+			      in
+				  EQ_MP(GEN_ALPHA_CONV Bvar (concl th')) 
+				  th'
+			      end)
+	 end
+     handle e => WRAP_ERR("X_GEN_TAC",e);
+
+
+(* chooses a variant for the user;  for interactive proof		*)
+fun GEN_TAC (asl,w) =
+   let val {Bvar,...} = dest_forall w 
+       handle _ => ERR("GEN_TAC","the goal is not universally quantified")
+   in X_GEN_TAC (variant (free_varsl (w::asl)) Bvar) (asl,w)
+   end;
+
+
+(****************************************************************************
+ * Specialization
+ * 	A(t)
+ *     ============  t,x
+ *       !x.A(x)
+ *
+ * Example of use:  generalizing a goal before attempting an inductive proof
+ * as with Boyer and Moore.
+ *****************************************************************************)
+
+fun SPEC_TAC (t,x) (asl,w) =
+    ([(asl, mk_forall{Bvar = x, 
+		      Body = subst[{redex = t,residue = x}] w})],
+     fn [th] => SPEC t th)
+    handle _ => ERR("SPEC_TAC","");
+	
+
+(* **************************************************************************
+ * Existential introduction
+ *
+ *	?x.A(x)
+ *    ==============   t
+ *	 A(t)
+ *****************************************************************************)
+
+fun EXISTS_TAC t :tactic = fn (asl,w) =>
+   (let val {Bvar,Body} = dest_exists w 
+    in
+    ([(asl, subst [{redex = Bvar, residue = t}] Body)],
+     fn [th] => EXISTS (w,t) th)
+    end)
+    handle e => WRAP_ERR("EXISTS_TAC",e);
+
+
+(* *************************************************************************** 
+ * Substitution
+ *
+ * These substitute in the goal;  thus they DO NOT invert the rules SUBS and
+ * SUBS_OCCS, despite superficial similarities.  In fact, SUBS and SUBS_OCCS
+ * are not invertible;  only SUBST is.
+ *****************************************************************************)
+fun GSUBST_TAC substfn ths (asl,w) =
+      let val (theta1,theta2,theta3) =
+          itlist (fn th => fn (theta1,theta2,theta3) =>
+                    let val {lhs,rhs} = Dsyntax.dest_eq(Thm.concl th)
+                        val v = Term.genvar (Term.type_of lhs)
+                    in ({redex = lhs, residue = v}::theta1,
+                        {redex = v, residue = rhs}::theta2,
+                        {var = v, thm = Drule.SYM th}::theta3)
+                    end)  ths ([],[],[])
+       val base = substfn theta1 w
+   in ([(asl, subst theta2 base)], fn [th] => SUBST theta3 base th)
+   end
+   handle _ => ERR("GSUBST_TAC","");
+
+(**************************************************************************
+ *	A(ti)
+ *    ==============   |- ti == ui
+ *	A(ui)
+ **************************************************************************)
+
+fun SUBST_TAC ths = GSUBST_TAC subst ths 
+                    handle _ => ERR("SUBST_TAC", "");
+
+fun SUBST_OCCS_TAC nlths = 
+   let val (nll, ths) = unzip nlths 
+   in  
+   GSUBST_TAC (subst_occs nll) ths
+   end
+   handle _ => ERR("SUBST_OCCS_TAC","");
+
+
+(**************************************************************************
+ *       A(t)
+ *   ===============   |- t==u
+ *       A(u)
+ *
+ * Works nicely with tacticals.
+ *
+ **************************************************************************)
+
+fun SUBST1_TAC rthm = SUBST_TAC [rthm];
+
+
+(* Map an inference rule over the assumptions, replacing them. *)
+fun cons a L = a::L
+
+fun RULE_ASSUM_TAC rule :tactic =
+   POP_ASSUM_LIST
+   (fn asl => MAP_EVERY ASSUME_TAC (rev_itlist (cons o rule) asl []));
+
+(* Substitute throughout the goal and its assumptions. *)
+
+fun SUBST_ALL_TAC rth = SUBST1_TAC rth THEN
+                        RULE_ASSUM_TAC (SUBS [rth]);
+
+fun CHECK_ASSUME_TAC gth =
+    FIRST [CONTR_TAC gth,  ACCEPT_TAC gth, DISCARD_TAC gth, ASSUME_TAC gth];
+
+
+val STRIP_ASSUME_TAC = (REPEAT_TCL STRIP_THM_THEN) 
+                       CHECK_ASSUME_TAC;
+
+(****************************************************************************
+ * given a theorem:
+ * 
+ * |- (?y1. (x=t1(y1)) /\ B1(x,y1))  \/ ... \/  (?yn. (x=tn(yn)) /\ Bn(x,yn))
+ * 
+ * where each y is a vector of zero or more variables
+ * and each Bi is a conjunction (Ci1 /\ ... /\ Cin)
+ * 
+ * 		        A(x)
+ *     ===============================================
+ *     [Ci1(tm,y1')] A(t1)  . . .  [Cin(tm,yn')] A(tn)
+ * 
+ * such definitions specify a structure as having n different possible
+ * constructions (the ti) from subcomponents (the yi) that satisfy various 
+ * constraints (the Cij).
+ *****************************************************************************)
+
+val STRUCT_CASES_TAC = 
+ REPEAT_TCL STRIP_THM_THEN
+ (fn th =>  (SUBST1_TAC th) ORELSE (ASSUME_TAC th));
+
+
+(*Cases on  |- p=T  \/  p=F *)
+fun BOOL_CASES_TAC p = STRUCT_CASES_TAC (SPEC p Boolean.BOOL_CASES_AX);
+
+(* Strip one outer !, /\, ==> from the goal. *)
+fun STRIP_GOAL_THEN ttac =  FIRST [GEN_TAC, CONJ_TAC,
+                                            DISCH_THEN ttac];
+
+(* Like GEN_TAC but fails if the term equals the quantified variable. *)
+fun FILTER_GEN_TAC tm : tactic = fn (asl,w) =>
+    if (is_forall w andalso not (tm = (#Bvar(dest_forall w))))
+    then GEN_TAC (asl,w)
+    else  ERR("FILTER_GEN_TAC", "");
+
+
+(* Like DISCH_THEN but fails if the antecedent mentions the  *)
+
+fun FILTER_DISCH_THEN (ttac:thm_tactic) tm : tactic  = fn (asl,w) =>
+  if (Dsyntax.is_imp w andalso not(Term.free_in tm (#ant(Dsyntax.dest_imp w))))
+    then DISCH_THEN ttac (asl,w)
+    else ERR("FILTER_DISCH_THEN","");
+
+(* Like STRIP_THEN but preserves any part of the goal mentioning the  *)
+
+fun FILTER_STRIP_THEN ttac tm =
+    FIRST [ FILTER_GEN_TAC tm,	FILTER_DISCH_THEN ttac tm, CONJ_TAC];
+
+fun DISCH_TAC g = DISCH_THEN ASSUME_TAC g 
+             handle _ => ERR("DISCH_TAC","");
+val DISJ_CASES_TAC = DISJ_CASES_THEN ASSUME_TAC;
+val CHOOSE_TAC = CHOOSE_THEN ASSUME_TAC;
+fun X_CHOOSE_TAC x = X_CHOOSE_THEN  x  ASSUME_TAC;
+fun STRIP_TAC g = STRIP_GOAL_THEN STRIP_ASSUME_TAC g handle _ => 
+                  ERR("STRIP_TAC", "");
+val FILTER_DISCH_TAC = FILTER_DISCH_THEN STRIP_ASSUME_TAC;
+val FILTER_STRIP_TAC = FILTER_STRIP_THEN STRIP_ASSUME_TAC;
+
+(* Cases on  |- t \/ ~t *)
+fun ASM_CASES_TAC t = DISJ_CASES_TAC(SPEC t EXCLUDED_MIDDLE);
+
+
+(* --------------------------------------------------------------------- *)
+(* A tactic inverting REFL (from tfm).	 				*)
+(*									*)
+(*     A = A								*)
+(* ==============							*)
+(*									*)
+(* Revised to work if lhs is alpha-equivalent to rhs      [TFM 91.02.02]*)
+(* Also revised to retain assumptions.					*)
+(* --------------------------------------------------------------------- *)
+
+fun REFL_TAC(asl,g) =
+   let val {lhs,rhs} = dest_eq g handle _ 
+           => ERR("REFL_TAC","the goal is not an equation")
+       val asms = itlist ADD_ASSUM asl 
+   in if (lhs=rhs) 
+      then ([], K (asms (REFL lhs)))
+      else if (aconv lhs rhs) 
+           then ([], K (asms (ALPHA lhs rhs)))
+           else ERR("REFL_TAC", "the lhs and rhs of the goal are not alpha-equivalent")
+   end;
+
+(****************************************************************************
+ * UNDISCH_TAC - moves one of the assumptions as LHS of an implication
+ *   to the goal (fails if named assumption not in assumptions)
+ *
+ * UNDISCH_TAC: term -> tactic
+ *               tm
+ *
+ *         [ t1;t2;...;tm;tn;...tz ]  t
+ *   ======================================
+ *        [ t1;t2;...;tn;...tz ]  tm ==> t
+ *****************************************************************************)
+
+fun UNDISCH_TAC wf :tactic = fn (asl,w) =>
+ if (mem wf asl) 
+ then ([(set_diff asl [wf], mk_imp {ant = wf,conseq = w})], 
+       UNDISCH o hd)
+ else ERR("UNDISCH_TAC","");
+
+(* ---------------------------------------------------------------------*)
+(* AP_TERM_TAC: Strips a function application off the lhs and rhs of an	*)
+(* equation.  If the function is not one-to-one, does not preserve 	*)
+(* equivalence of the goal and subgoal.					*)
+(*									*)
+(*   f x = f y								*)
+(* =============							*)
+(*     x = y								*)
+(*									*)
+(* Added: TFM 88.03.31							*)
+(* Revised: TFM 91.02.02						*)
+(* --------------------------------------------------------------------- *)
+
+fun AP_TERM_TAC(asl,gl) =
+ let fun ERR' s = ERR("AP_TERM_TAC", s)
+     val {lhs,rhs} = dest_eq gl handle _ => ERR' "the goal is not an equation"
+     val {Rator=g,Rand=x} = dest_comb lhs handle _ => ERR' "the lhs of the goal not a function application"
+     val {Rator=f,Rand=y} = dest_comb rhs handle _ => ERR' "the rhs of the goal is not a function application"
+ in if (not(f = g))
+    then ERR' "the functions on lhs and rhs of the goal differ"
+    else ([(asl, mk_eq{lhs = x, rhs = y})], (AP_TERM f o hd))
+ end;
+
+
+(* --------------------------------------------------------------------- *)
+(* AP_THM_TAC: inverts the AP_THM inference rule.			*)
+(*									*)
+(*   f x = g x								*)
+(* =============							*)
+(*     f = g								*)
+(*									*)
+(* Added: TFM 91.02.02							*)
+(* --------------------------------------------------------------------- *)
+
+fun AP_THM_TAC (asl,gl) =
+ let fun ERR' s = ERR("AP_THM_TAC", s)
+     val {lhs,rhs} = dest_eq gl handle _ => ERR'"not an equation"
+     val {Rator=g,Rand=x} = dest_comb lhs handle _ => ERR' "the lhs of the goal not a function application"
+     val {Rator=f,Rand=y} = dest_comb rhs handle _ => ERR' "the rhs of the goal not a function application"
+ in if not(x = y)
+    then ERR' "the arguments on the lhs and rhs of the goal differ"
+    else ([(asl, mk_eq{lhs = g, rhs = f})], (C AP_THM x o hd))
+ end;
+
+
+
+(* ---------------------------------------------------------------------*)
+(* Accept a theorem that, properly instantiated, satisfies the goal     *)
+(* ---------------------------------------------------------------------*)
+
+fun MATCH_ACCEPT_TAC thm =
+    let val fmatch = PART_MATCH I thm 
+        fun atac (asl,w) = ([], K (fmatch w))
+    in
+    REPEAT GEN_TAC THEN atac
+    end
+    handle _ => ERR("MATCH_ACCEPT_TAC","");
+
+
+(* ---------------------------------------------------------------------
+ * MATCH_MP_TAC: Takes a theorem of the form 				
+ *									
+ *       |- !x1..xn. A ==> !y1 ... ym. B 				
+ * 									
+ * and matches B to the goal, reducing it to the subgoal consisting of 	
+ * some existentially-quantified instance of A:				
+ *									
+ *      !v1...vi. B							
+ * ======================= MATCH_MP_TAC |- !x1...1n. A ==> !y1...ym. B  
+ *      ?z1...zp. A							
+ * 									
+ * where {z1,...,zn} is the subset of {x1,...,xn} whose elements do not 
+ * appear free in B.							
+ *									
+ * Added: TFM 88.03.31							
+ * Revised: TFM 91.04.20						
+ *									
+ * Old version:								
+ *									
+ * let MATCH_MP_TAC thm:tactic (gl,g) =					
+ *     let imp = ((PART_MATCH (snd o dest_imp) thm) g) ? 		
+ * 	       failwith `MATCH_MP_TAC` in				
+ *     ([gl,(fst(dest_imp(concl imp)))], \thl. MP imp (hd thl));	
+ * ---------------------------------------------------------------------*)
+
+local
+fun efn v (tm,th) =
+   let val ntm = mk_exists{Bvar = v,Body = tm} 
+   in 
+   (ntm,CHOOSE (v, ASSUME ntm) th)
+   end
+in
+fun MATCH_MP_TAC thm  =
+   let val (gvs,imp) = strip_forall (concl thm) 
+       val {ant,conseq} = dest_imp imp 
+	   handle _ => ERR("MATCH_MP_TAC", "Not an implication")
+       val (cvs,con) = strip_forall conseq
+       val th1 = SPECL cvs (UNDISCH (SPECL gvs thm))
+       val (vs,evs) = partition (C free_in con) gvs 
+       val th2 = uncurry DISCH (itlist efn evs (ant,th1))
+   in
+   fn (A,g) => let val (vs,gl) = strip_forall g
+                   val ins = match_term con gl 
+		       handle _ => ERR("MATCH_MP_TAC","No match")
+                   val ith = INST_TY_TERM ins th2 
+                   val ant = #ant(dest_imp(concl ith)) 
+                   val gth = GENL vs (UNDISCH ith) 
+		       handle _ => ERR("MATCH_MP_TAC","Generalized var(s).")
+               in
+               ([(A,ant)], fn thl => MP (DISCH ant gth) (hd thl))
+               end
+   end
+end;
+
+
+
+end; (* Tactic *)
+
+@
+
+
+1.4
+log
+@Added simplifier components, added drule files, added MK_ABS_CONV, better error messages
+@
+text
+@d15 2
+a16 2
+open Term_io.Parse;
+open Tactical;
+a19 6
+open Lib;
+open Term;
+open Thm;
+open Dsyntax;
+open Drule;
+open Thm_cont;
+a20 1
+open Abbrev;
+a21 2
+
+
+d37 1
+a37 1
+	    "The theorem given to ACCEPT_TAC is alpha-equivalent to the goal");
+a358 38
+(* -------------------------------------------------------------------- *)
+(* COND_CASES_TAC: tactic for doing a case split on the condition p	*)
+(*                 in a conditional (p => u | v).			*)
+(*									*)
+(* Find a conditional "p => u | v" that is free in the goal and whose 	*)
+(* condition p is not a constant. Perform a case split on the condition.*)
+(*                                                                      *)
+(*									*)
+(*	t[p=>u|v]							*)
+(*    =================	 COND_CASES_TAC					*)
+(*       {p}  t[u]							*)
+(*       {~p}  t[v]							*)
+(*									*)
+(* 						[Revised: TFM 90.05.11] *)
+(* -------------------------------------------------------------------- *)
+
+local
+fun is_good_cond tm = not(is_const(#cond(dest_cond tm))) 
+                      handle _ => false
+val alpha =  ==`:'a`==
+in
+fun COND_CASES_TAC (asl,w) =
+   let val cond = find_term
+                   (fn tm => is_good_cond tm andalso free_in tm w)  w
+           handle _ => ERR("COND_CASES_TAC","")
+       val {cond,larm,rarm} = dest_cond cond
+       val inst = INST_TYPE[alpha |-> type_of larm] COND_CLAUSES
+       val (ct,cf) = CONJ_PAIR (SPEC rarm (SPEC larm inst))
+   in
+   DISJ_CASES_THEN2
+     (fn th =>  SUBST1_TAC (EQT_INTRO th) THEN 
+                SUBST1_TAC ct THEN ASSUME_TAC th)
+     (fn th => SUBST1_TAC (EQF_INTRO th) THEN 
+               SUBST1_TAC cf THEN ASSUME_TAC th)
+     (SPEC cond EXCLUDED_MIDDLE)
+     (asl,w)
+   end
+end;
+d483 72
+d556 1
+@
+
+
+1.3
+log
+@Preterm and other changes, see 7.changes
+@
+text
+@a14 1
+(* open Base_logic - no longer needed DRS *);
+d366 1
+a366 1
+                     (fn th =>  (SUBST1_TAC th) ORELSE (ASSUME_TAC th));
+@
+
+
+1.2
+log
+@First phase of hol90.8 development.  hol90 now compiles using NJSML-CM
+108.5, with separate compilation of libraries.  System dependencies
+have been isolated in the makefiles and "portable.sml".
+
+This involved a large number of enhancments to the source files,
+most of which are documented in the 7.changes file (or will be shortly).
+See also the correpsonding email corrspondence between RJB, KLS, TFM,
+JRH and DRS that happened during this development.
+@
+text
+@d18 3
+a24 1
+open Exception;
+d28 1
+a28 4
+type tactic = Abbrev.tactic;
+type thm_tactic = Abbrev.thm_tactic;
+type thm_tactical = Abbrev.thm_tactical;
+type goal = Abbrev.goal;
+a29 3
+  infix THEN;
+  infix THENL;
+  infix ORELSE;
+a30 4
+fun TACTIC_ERR{function,message} =
+    HOL_ERR{origin_structure = "Tactic",
+		      origin_function = function,
+		      message = message}
+d32 3
+d43 1
+a43 1
+val ACCEPT_TAC :thm_tactic = fn th => fn (asl,w) =>
+d46 2
+a47 1
+   else raise TACTIC_ERR{function = "ACCEPT_TAC",message = ""};
+d54 1
+a54 3
+local
+val truth = --`T`--
+in
+d56 1
+a56 1
+   if (Portable.List.exists (aconv (concl th)) (truth::asl))
+d58 2
+a59 2
+   else raise TACTIC_ERR{function = "DISCARD_TAC",message = ""}
+end;
+d69 2
+a70 1
+val CONTR_TAC :thm_tactic = fn cth => fn (asl,w) => 
+d73 1
+a73 1
+   ([], fn [] => th)
+d75 2
+a76 2
+   handle _ => raise TACTIC_ERR{function = "CONTR_TAC",message = ""};
+
+d85 3
+a87 4
+local val F = --`F`--
+in fun CCONTR_TAC (asl, w) =
+      ([(mk_neg w::asl, F)], fn [th] => CCONTR w th)
+end;
+d98 3
+a100 3
+val ASSUME_TAC :thm_tactic = fn bth => fn (asl,w) =>
+   ([(((concl bth)::asl),w)],
+    (fn [th] => PROVE_HYP bth th));
+d110 2
+a111 1
+val FREEZE_THEN :thm_tactical = fn (ttac:thm_tactic) => fn bth => fn g => 
+d113 1
+a113 2
+   in
+   (gl, (PROVE_HYP bth o prf))
+d124 6
+a129 6
+val CONJ_TAC:tactic = fn (asl,w) =>
+   let val {conj1,conj2} = dest_conj w 
+   in
+   ([(asl,conj1), (asl,conj2)], fn [th1,th2] => CONJ th1 th2)
+   end
+   handle _ => raise TACTIC_ERR{function = "CONJ_TAC",message = ""};
+d143 4
+a146 4
+   let val {disj1,disj2} = dest_disj w 
+   in ([(asl,disj1)], fn [th] => DISJ1 th disj2)
+   end
+   handle _ => raise TACTIC_ERR{function = "DISJ1_TAC",message = ""};
+d157 4
+a160 4
+   let val {disj1,disj2} = dest_disj w
+   in ([(asl,disj2)], fn [thb] => DISJ2 disj1 thb)
+   end
+   handle _ => raise TACTIC_ERR{function = "DISJ2_TAC",message = ""};
+d173 1
+a173 2
+   ([(asl, mk_imp{ant=concl thb, conseq=wa})],
+    fn [thimp] => MP thimp thb);
+d176 8
+a183 6
+val EQ_TAC:tactic = fn (asl,t) =>
+   let val {lhs,rhs} = dest_eq t
+   in
+   ([(asl, mk_imp{ant = lhs, conseq = rhs}),
+     (asl, mk_imp{ant = rhs, conseq = lhs})],
+    fn [th1,th2] => IMP_ANTISYM_RULE th1 th2)
+a184 1
+   handle _ => raise TACTIC_ERR{function = "EQ_TAC",message = ""};
+d220 15
+a234 15
+fun X_GEN_TAC x1 : tactic = fn (asl,w) =>
+   if (not(is_var x1))
+   then raise TACTIC_ERR{function = "X_GEN_TAC",message = "need a var."}
+   else let val {Bvar,Body} = dest_forall w 
+        in
+        if (Bvar=x1)
+        then ([(asl,Body)], fn [th] => GEN x1 th)
+        else ([(asl,subst [{redex = Bvar, residue = x1}] Body)],
+             fn [th] => let val th' = GEN x1 th
+                        in
+                        EQ_MP(GEN_ALPHA_CONV Bvar (concl th')) 
+                                                         th'
+                        end)
+        end
+    handle _ => raise TACTIC_ERR{function = "X_GEN_TAC",message = ""};
+d238 3
+a240 3
+val GEN_TAC:tactic = fn (asl,w) =>
+   let val {Bvar,...} = dest_forall w handle _ 
+            => raise TACTIC_ERR{function = "GEN_TAC",message = "not a forall"}
+d254 2
+a255 1
+fun SPEC_TAC (t,x) :tactic = fn (asl,w) =>
+d257 1
+a257 1
+                              Body = subst[{redex = t,residue = x}] w})],
+d259 2
+a260 2
+    handle _ => raise TACTIC_ERR{function = "SPEC_TAC",message = ""};
+
+d276 1
+a276 1
+    handle _ => raise TACTIC_ERR{function = "EXISTS_TAC",message = ""};
+d298 1
+a298 1
+   handle _ => raise TACTIC_ERR{function = "GSUBST_TAC",message = ""};
+d307 1
+a307 2
+                    handle _ => raise TACTIC_ERR{function = "SUBST_TAC",
+						 message = ""};
+d314 1
+a314 1
+   handle _ => raise TACTIC_ERR{function = "SUBST_OCCS_TAC",message = ""};
+d341 1
+a341 1
+val CHECK_ASSUME_TAC :thm_tactic = fn gth =>
+d390 1
+a390 1
+val COND_CASES_TAC :tactic = fn (asl,w) =>
+d393 1
+a393 1
+           handle _ => raise TACTIC_ERR{function = "COND_CASES_TAC",message=""}
+d419 1
+a419 1
+    else  raise TACTIC_ERR{function = "FILTER_GEN_TAC", message = ""};
+d427 1
+a427 1
+    else raise TACTIC_ERR{function = "FILTER_DISCH_THEN",message = ""};
+d435 1
+a435 1
+             handle _ => raise TACTIC_ERR{function = "DISCH_TAC",message = ""};
+d440 1
+a440 1
+                  raise TACTIC_ERR{function = "STRIP_TAC", message = ""};
+d460 1
+a460 1
+           => raise TACTIC_ERR{function="REFL_TAC",message="not an equation"}
+d466 1
+a466 2
+           else raise TACTIC_ERR{function = "REFL_TAC",
+                                 message = "lhs and rhs not alpha-equivalent"}
+d485 1
+a485 1
+ else raise TACTIC_ERR{function = "UNDISCH_TAC",message = ""};
+d501 4
+a504 4
+ let fun ERR s = raise TACTIC_ERR{function="AP_TERM_TAC", message = s}
+     val {lhs,rhs} = dest_eq gl handle _ => ERR "not an equation"
+     val {Rator=g,Rand=x} = dest_comb lhs handle _ => ERR"lhs not a comb"
+     val {Rator=f,Rand=y} = dest_comb rhs handle _ => ERR"rhs not a comb"
+d506 1
+a506 1
+    then ERR"functions on lhs and rhs differ"
+d522 4
+a525 4
+ let fun ERR s = raise TACTIC_ERR{function="AP_THM_TAC", message = s}
+     val {lhs,rhs} = dest_eq gl handle _ => ERR"not an equation"
+     val {Rator=g,Rand=x} = dest_comb lhs handle _ => ERR"lhs not a comb"
+     val {Rator=f,Rand=y} = dest_comb rhs handle _ => ERR"rhs not a comb"
+d527 1
+a527 1
+    then ERR"arguments on lhs and rhs differ"
+@
+
+
+1.2.4.1
+log
+@Various updates have been made in order to build on top of SML/NJ 109.26.
+@
+text
+@d16 1
+a16 1
+open Parse;
+@
+
+
+1.2.4.2
+log
+@Minor changes to make HOL CM-friendly.
+@
+text
+@d15 1
+a18 1
+open CoreHol;
+a33 1
+  infix |->;
+d415 1
+a415 1
+fun BOOL_CASES_TAC p = STRUCT_CASES_TAC (SPEC p boolThry.BOOL_CASES_AX);
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d15 1
+a15 1
+open Base_logic;
+d18 13
+d35 4
+a38 3
+fun TACTIC_ERR{function,message} = HOL_ERR{origin_structure = "Tactic",
+					   origin_function = function,
+					   message = message}
+d41 2
+a42 1
+(* Accepts a theorem that satisfies the goal
+d47 1
+a47 1
+*)
+d49 1
+a49 1
+   if (Term.aconv (Thm.concl th) w)
+d54 1
+a54 1
+(* --------------------------------------------------------------------- *)
+d57 1
+a57 1
+(* --------------------------------------------------------------------- *)
+d62 2
+a63 2
+   if (exists (Term.aconv (Thm.concl th)) (truth::asl))
+   then Tactical.ALL_TAC (asl,w)
+d68 2
+a69 1
+(* Contradiction rule
+d74 1
+a74 1
+ ******)
+d76 1
+a76 1
+   let val th = Drule.CONTR w cth
+d83 2
+a84 1
+(* Classical contradiction rule
+d89 4
+a92 6
+ ******)
+local 
+val F = --`F`--
+in
+fun CCONTR_TAC (asl, w) =
+  ([(Dsyntax.mk_neg w::asl, F)], fn [th] => Drule.CCONTR w th)
+d95 2
+a96 1
+(* Put a theorem onto the assumption list.
+d103 1
+a103 1
+ *******)
+d105 2
+a106 2
+   ([(((Thm.concl bth)::asl),w)],
+    (fn [th] => Drule.PROVE_HYP bth th));
+d109 2
+a110 1
+(*"Freeze" a theorem to prevent instantiation 
+d115 1
+a115 1
+ *******)
+d117 1
+a117 1
+   let val (gl,prf) = ttac (Thm.ASSUME (Thm.concl bth)) g 
+d119 1
+a119 1
+   (gl, (Drule.PROVE_HYP bth o prf))
+d123 2
+a124 1
+(* Conjunction introduction
+d129 1
+a129 1
+ ********)
+d131 1
+a131 1
+   let val {conj1,conj2} = Dsyntax.dest_conj w 
+d133 1
+a133 1
+   ([(asl,conj1), (asl,conj2)], fn [th1,th2] => Drule.CONJ th1 th2)
+d140 12
+a151 12
+(* Disjunction introduction
+
+	A \/ B
+    ==============
+	  A
+*)
+val DISJ1_TAC:tactic = fn (asl,w) =>
+   (let val {disj1,disj2} = Dsyntax.dest_disj w 
+    in
+    ([(asl,disj1)], fn [tha] => Drule.DISJ1 tha disj2)
+    end
+   )
+d156 9
+a164 8
+(*	A \/ B
+    ==============
+	  B
+*)
+val DISJ2_TAC:tactic = fn (asl,w) =>
+   let val {disj1,disj2} = Dsyntax.dest_disj w
+   in
+   ([(asl,disj2)], fn [thb] => Drule.DISJ2 disj1 thb)
+d170 11
+a180 1
+(*Implication elimination
+a181 7
+	         A
+    |- B  ================ 
+               B ==> A   
+*)
+val MP_TAC :thm_tactic = fn thb => fn (asl,wa) =>
+   ([(asl, Dsyntax.mk_imp{ant = Thm.concl thb, conseq = wa})],
+    fn [thimp] => Thm.MP thimp thb);
+a182 1
+
+d184 1
+a184 1
+   let val {lhs,rhs} = Dsyntax.dest_eq t
+d186 3
+a188 3
+   ([(asl, Dsyntax.mk_imp{ant = lhs, conseq = rhs}),
+     (asl, Dsyntax.mk_imp{ant = rhs, conseq = lhs})],
+    fn [th1,th2] => Drule.IMP_ANTISYM_RULE th1 th2)
+d192 34
+a225 33
+(* Universal quantifier							*)
+
+(*	!x.A(x)
+    ==============
+	 A(x')
+
+ explicit version for tactic programming;  proof fails if x' is free in hyps
+
+*)
+
+(* fun X_GEN_TAC x' :tactic (asl,w) =			*)
+(*   (let val x,body = dest_forall w in			*)
+(*    [ (asl, subst[x',x]body) ], (\[th]. GEN x' th) 	*)
+(*   ) ? failwith X_GEN_TAC;;				*)
+
+(* T. Melham. X_GEN_TAC rewritten 88.09.17				*)
+(*									*)
+(* 1)  X_GEN_TAC x'    now fails if x' is not a variable.		*)
+(*									*)
+(* 2) rewritten so that the proof yields the same quantified var as the *)
+(*    goal.								*)
+(*									*)
+(*  fun X_GEN_TAC x' :tactic =						*)
+(*   if not(is_var x') then failwith X_GEN_TAC else			*)
+(*   \(asl,w).((let val x,body = dest_forall w in			*)
+(*               [(asl,subst[x',x]body)],				*)
+(*                (\[th]. GEN x (INST [(x,x')] th)))			*)
+(*              ? failwith X_GEN_TAC);;				        *)
+(* Bugfix for HOL88.1.05, MJCG, 4 April 1989				*)
+(* Instantiation before GEN replaced by alpha-conversion after it to 	*)
+(* prevent spurious failures due to bound variable problems when 	*)
+(* quantified variable is free in assumptions.				*)
+(* Optimization for the x=x' case added.                                *)
+d227 1
+a227 1
+   if (not(Term.is_var x1))
+d229 1
+a229 1
+   else let val {Bvar,Body} = Dsyntax.dest_forall w 
+d232 3
+a234 3
+        then ([(asl,Body)], fn [th] => Drule.GEN x1 th)
+        else ([(asl,Term.subst [{redex = Bvar, residue = x1}] Body)],
+             fn [th] => let val th' = Drule.GEN x1 th
+d236 1
+a236 1
+                        Drule.EQ_MP(Drule.GEN_ALPHA_CONV Bvar (Thm.concl th')) 
+d245 4
+a248 5
+    let val {Bvar,...} = Dsyntax.dest_forall w
+                         handle _ => raise TACTIC_ERR{function = "GEN_TAC",
+                                                      message = "not a forall"}
+    in X_GEN_TAC (Term.variant (Term.free_varsl (w::asl)) Bvar) (asl,w)
+    end;
+d251 9
+a259 8
+(* Specialization
+	A(t)
+    ============  t,x
+       !x.A(x)
+
+example of use:  generalizing a goal before attempting an inductive proof
+as with Boyer and Moore.
+*)
+d261 3
+a263 3
+    ([(asl, Dsyntax.mk_forall{Bvar = x, 
+                              Body = Term.subst[{redex = t,residue = x}] w})],
+     fn [th] => Drule.SPEC t th)
+d267 7
+a273 1
+(* Existential introduction
+a274 4
+	?x.A(x)
+    ==============   t
+	 A(t)
+*)
+d276 1
+a276 1
+   (let val {Bvar,Body} = Dsyntax.dest_exists w 
+d278 2
+a279 2
+    ([(asl, Term.subst [{redex = Bvar, residue = t}] Body)],
+     fn [th] => Drule.EXISTS (w,t) th)
+d284 8
+a291 7
+(* Substitution
+   These substitute in the goal;  thus they DO NOT invert the rules SUBS and
+   SUBS_OCCS, despite superficial similarities.  In fact, SUBS and SUBS_OCCS
+   are not invertible;  only SUBST is.
+*)
+fun GSUBST_TAC substfn ths :tactic = 
+   fn (asl,w) =>
+d293 4
+a296 5
+             itlist (fn th => fn (theta1,theta2,theta3) =>
+                       let val {lhs,rhs} = Dsyntax.dest_eq(Thm.concl th)
+                           val v = Term.genvar (Term.type_of lhs)
+                       in
+                       ({redex = lhs, residue = v}::theta1,
+d299 11
+a309 12
+                       end)
+                    ths ([],[],[])
+          val base = substfn theta1 w
+      in
+      ([(asl, Term.subst theta2 base)], fn [th] => Thm.SUBST theta3 base th)
+      end
+      handle _ => raise TACTIC_ERR{function = "GSUBST_TAC",message = ""};
+
+(*	A(ti)
+    ==============   |- ti == ui
+	A(ui)
+*)
+d311 1
+a311 1
+fun SUBST_TAC ths = GSUBST_TAC Term.subst ths 
+d318 1
+a318 1
+   GSUBST_TAC (Dsyntax.subst_occs nll) ths
+d323 8
+a330 5
+(*	 A(t)
+    ===============   |- t==u
+	 A(u)
+
+works nicely with tacticals 
+a331 2
+*)
+
+d339 2
+a340 2
+   Tactical.POP_ASSUM_LIST
+   (fn asl => Tactical.MAP_EVERY ASSUME_TAC (rev_itlist (cons o rule) asl []));
+d342 1
+a342 1
+(*Substitute throughout the goal and its assumptions*)
+d345 1
+a345 1
+                        RULE_ASSUM_TAC (Drule.SUBS [rth]);
+d351 1
+a351 1
+val STRIP_ASSUME_TAC = (Thm_cont.REPEAT_TCL Thm_cont.STRIP_THM_THEN) 
+d354 1
+a354 1
+(*
+d369 1
+a369 1
+ *************************)
+d372 2
+a373 2
+ Thm_cont.REPEAT_TCL Thm_cont.STRIP_THM_THEN
+                     (fn th => Tactical. ORELSE(SUBST1_TAC th, ASSUME_TAC th));
+d392 1
+a392 1
+fun is_good_cond tm = not(Term.is_const(#cond(Dsyntax.dest_cond tm))) 
+a394 1
+fun alpha_subst ty = [{redex = alpha, residue = ty}]
+d397 6
+a402 10
+   let val cond = Dsyntax.find_term (fn tm => is_good_cond tm
+                                              andalso 
+                                              Term.free_in tm w) 
+                                    w
+                  handle _ => raise TACTIC_ERR{function = "COND_CASES_TAC",
+					       message = ""}
+       val {cond,larm,rarm} = Dsyntax.dest_cond cond
+       val inst = Thm.INST_TYPE (alpha_subst (Term.type_of larm)) 
+                                Drule.COND_CLAUSES
+       val (ct,cf) = Drule.CONJ_PAIR (Drule.SPEC rarm (Drule.SPEC larm inst))
+d404 2
+a405 2
+   Thm_cont.DISJ_CASES_THEN2
+     (fn th =>  SUBST1_TAC (Drule.EQT_INTRO th) THEN 
+d407 1
+a407 1
+     (fn th => SUBST1_TAC (Drule.EQF_INTRO th) THEN 
+d409 1
+a409 1
+     (Drule.SPEC cond Drule.EXCLUDED_MIDDLE)
+d415 1
+a415 1
+fun BOOL_CASES_TAC p = STRUCT_CASES_TAC (Drule.SPEC p Bool.BOOL_CASES_AX);
+d417 3
+a419 4
+(*Strip one outer !, /\, ==> from the goal*)
+fun STRIP_GOAL_THEN ttac =  Tactical.FIRST [GEN_TAC,
+                                            CONJ_TAC,
+                                            Thm_cont.DISCH_THEN ttac];
+d421 1
+a421 1
+(* Like GEN_TAC but fails if the term equals the quantified variable *)
+d423 1
+a423 1
+    if (Dsyntax.is_forall w andalso not (tm = (#Bvar(Dsyntax.dest_forall w))))
+d425 2
+a426 1
+    else  raise TACTIC_ERR{function = "FILTER_GEN_TAC",message = ""};
+d428 1
+a429 1
+(*Like DISCH_THEN but fails if the antecedent mentions the term*)
+d431 2
+a432 4
+    if (Dsyntax.is_imp w
+        andalso 
+        not(mem tm (Term.free_vars (#ant(Dsyntax.dest_imp w)))))
+    then Thm_cont.DISCH_THEN ttac (asl,w)
+d435 1
+a435 1
+(*Like STRIP_THEN but preserves any part of the goal that mentions the term*)
+d440 7
+a446 9
+fun DISCH_TAC g = Thm_cont.DISCH_THEN ASSUME_TAC g 
+                  handle _ => raise TACTIC_ERR{function = "DISCH_TAC",
+					       message = ""};
+val DISJ_CASES_TAC = Thm_cont.DISJ_CASES_THEN ASSUME_TAC;
+val CHOOSE_TAC = Thm_cont.CHOOSE_THEN ASSUME_TAC;
+fun X_CHOOSE_TAC x = Thm_cont.X_CHOOSE_THEN  x  ASSUME_TAC;
+fun STRIP_TAC g = STRIP_GOAL_THEN STRIP_ASSUME_TAC g 
+                  handle _ => raise TACTIC_ERR{function = "DISCH_TAC",
+					       message = ""};
+d451 1
+a451 2
+
+fun ASM_CASES_TAC t = DISJ_CASES_TAC(Drule.SPEC t Drule.EXCLUDED_MIDDLE);
+d464 10
+a473 12
+val REFL_TAC:tactic = fn (asl,g) =>
+   let val {lhs,rhs} = Dsyntax.dest_eq g 
+                       handle _ => raise TACTIC_ERR{function = "REFL_TAC",
+                                                   message = "not an equation"}
+       val asms = itlist Drule.ADD_ASSUM asl 
+   in 
+   if (lhs = rhs) 
+   then ([], K (asms (Thm.REFL lhs)))
+   else if (Term.aconv lhs rhs) 
+        then ([], K (asms (Drule.ALPHA lhs rhs)))
+        else raise TACTIC_ERR{function = "REFL_TAC",
+			      message = "lhs and rhs not alpha-equivalent"}
+d476 11
+a486 11
+(* UNDISCH_TAC -
+   moves one of the assumptions as LHS of an implication
+   to the goal (fails if named assumption not in assumptions)
+
+UNDISCH_TAC: term -> tactic
+              tm
+
+         [ t1;t2;...;tm;tn;...tz ]  t
+   ======================================
+        [ t1;t2;...;tn;...tz ]  tm ==> t
+*)
+d490 2
+a491 2
+ then ([(set_diff asl [wf], Dsyntax.mk_imp {ant = wf,conseq = w})], 
+       Drule.UNDISCH o hd)
+d507 9
+a515 15
+val AP_TERM_TAC:tactic = fn (asl,gl) =>
+   let val {lhs,rhs} = Dsyntax.dest_eq gl 
+                       handle _ => raise TACTIC_ERR{function = "AP_TERM_TAC",
+                                                   message = "not an equation"}
+       val {Rator = g, Rand = x} = Term.dest_comb lhs 
+                        handle _ => raise TACTIC_ERR {function = "AP_TERM_TAC",
+                                            message = "lhs not an application"}
+       val {Rator = f, Rand = y} = Term.dest_comb rhs
+                         handle _ => raise TACTIC_ERR{function = "AP_TERM_TAC",
+                                            message = "rhs not an application"}
+   in if (not(f = g))
+      then raise TACTIC_ERR{function = "AP_TERM_TAC",
+                            message = "functions on lhs and rhs differ"} 
+      else ([(asl, Dsyntax.mk_eq{lhs = x, rhs = y})], (Drule.AP_TERM f o hd))
+   end;
+d528 9
+a536 16
+val AP_THM_TAC:tactic = fn (asl,gl) =>
+   let val {lhs,rhs} = Dsyntax.dest_eq gl 
+                       handle _ => raise TACTIC_ERR{function = "AP_THM_TAC",
+                                                   message = "not an equation"}
+       val {Rator = g, Rand = x} = Term.dest_comb lhs
+                         handle _ => raise TACTIC_ERR {function = "AP_THM_TAC",
+                                            message = "lhs not an application"}
+       val {Rator = f, Rand = y} = Term.dest_comb rhs
+                         handle _ => raise TACTIC_ERR {function = "AP_THM_TAC",
+                                            message = "rhs not an application"}
+   in if not(x = y)
+      then raise TACTIC_ERR{function = "AP_THM_TAC",
+                            message = "arguments on lhs and rhs differ"} 
+      else ([(asl, Dsyntax.mk_eq{lhs = g, rhs = f})], (C Drule.AP_THM x o hd))
+   end;
+
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@
+
+
+1.1.1.1.2.1
+log
+@	Konrad's bug fixes and further development to hol90.7 after it's release.
+	Checked n on a side branch for later merging with the main trunk
+	(Elsa's revisions).  See doc/7.changes for details.
+@
+text
+@d22 3
+a24 4
+fun TACTIC_ERR{function,message} = 
+       HOL_ERR{origin_structure = "Tactic",
+               origin_function = function,
+               message = message}
+d27 1
+a27 2
+(*-------------------------------------------------------------------------
+ Accepts a theorem that satisfies the goal
+d32 1
+a32 1
+ -------------------------------------------------------------------------*)
+d39 1
+a39 1
+(* ---------------------------------------------------------------------*)
+d42 1
+a42 1
+(* ---------------------------------------------------------------------*)
+d53 1
+a53 2
+(****************************************************************************
+ * Contradiction rule
+d58 1
+a58 1
+ ****************************************************************************)
+d67 1
+a67 2
+(***************************************************************************
+ * Classical contradiction rule
+d72 6
+a77 4
+ ****************************************************************************)
+local val F = --`F`--
+in fun CCONTR_TAC (asl, w) =
+      ([(Dsyntax.mk_neg w::asl, F)], fn [th] => Drule.CCONTR w th)
+d80 1
+a80 2
+(****************************************************************************
+ * Put a theorem onto the assumption list.
+d87 1
+a87 1
+ *****************************************************************************)
+d93 1
+a93 2
+(****************************************************************************
+ * "Freeze" a theorem to prevent instantiation 
+d98 1
+a98 1
+ *****************************************************************************)
+d106 1
+a106 2
+(****************************************************************************
+ * Conjunction introduction
+d111 1
+a111 1
+ ****************************************************************************)
+d122 12
+a133 12
+(****************************************************************************
+ * Disjunction introduction
+ *
+ *	A \/ B
+ *  ==============
+ *        A
+ *
+ ****************************************************************************)
+fun DISJ1_TAC(asl,w) = 
+   let val {disj1,disj2} = Dsyntax.dest_disj w 
+   in ([(asl,disj1)], fn [th] => Drule.DISJ1 th disj2)
+   end
+d138 5
+a142 7
+(**************************************************************************
+ *	A \/ B
+ *    ==============
+ *	  B
+ *
+ ***************************************************************************)
+fun DISJ2_TAC(asl,w) =
+d144 2
+a145 1
+   in ([(asl,disj2)], fn [thb] => Drule.DISJ2 disj1 thb)
+d151 8
+a158 10
+(**************************************************************************
+ * Implication elimination
+ *
+ *	            A
+ *     |- B  ================ 
+ *                B ==> A   
+ *
+ ***************************************************************************)
+fun MP_TAC thb (asl,wa) =
+   ([(asl, Dsyntax.mk_imp{ant=Thm.concl thb, conseq=wa})],
+d171 33
+a203 34
+(****************************************************************************
+ * Universal quantifier
+ *
+ *	!x.A(x)
+ *   ==============
+ *        A(x')
+ *
+ * Explicit version for tactic programming;  proof fails if x' is free in hyps
+ *
+ * fun X_GEN_TAC x' :tactic (asl,w) =			                     
+ *   (let val x,body = dest_forall w in			                     
+ *    [ (asl, subst[x',x]body) ], (\[th]. GEN x' th) 	                     
+ *   ) ? failwith X_GEN_TAC;;				                     
+ *                                                                           
+ * T. Melham. X_GEN_TAC rewritten 88.09.17				     
+ *									     
+ * 1)  X_GEN_TAC x'    now fails if x' is not a variable.		     
+ *									     
+ * 2) rewritten so that the proof yields the same quantified var as the      
+ *    goal.								     
+ *									     
+ *  fun X_GEN_TAC x' :tactic =						     
+ *   if not(is_var x') then failwith X_GEN_TAC else			     
+ *   \(asl,w).((let val x,body = dest_forall w in			     
+ *               [(asl,subst[x',x]body)],				     
+ *                (\[th]. GEN x (INST [(x,x')] th)))			     
+ *              ? failwith X_GEN_TAC);;				             
+ * Bugfix for HOL88.1.05, MJCG, 4 April 1989				     
+ * Instantiation before GEN replaced by alpha-conversion after it to 	     
+ * prevent spurious failures due to bound variable problems when 	     
+ * quantified variable is free in assumptions.				     
+ * Optimization for the x=x' case added.                                     
+ *
+ *****************************************************************************)
+d223 5
+a227 4
+   let val {Bvar,...} = Dsyntax.dest_forall w handle _ 
+            => raise TACTIC_ERR{function = "GEN_TAC",message = "not a forall"}
+   in X_GEN_TAC (Term.variant (Term.free_varsl (w::asl)) Bvar) (asl,w)
+   end;
+d230 8
+a237 9
+(****************************************************************************
+ * Specialization
+ * 	A(t)
+ *     ============  t,x
+ *       !x.A(x)
+ *
+ * Example of use:  generalizing a goal before attempting an inductive proof
+ * as with Boyer and Moore.
+ *****************************************************************************)
+d245 1
+a245 7
+(* **************************************************************************
+ * Existential introduction
+ *
+ *	?x.A(x)
+ *    ==============   t
+ *	 A(t)
+ *****************************************************************************)
+d247 4
+d260 13
+a272 13
+(* *************************************************************************** 
+ * Substitution
+ *
+ * These substitute in the goal;  thus they DO NOT invert the rules SUBS and
+ * SUBS_OCCS, despite superficial similarities.  In fact, SUBS and SUBS_OCCS
+ * are not invertible;  only SUBST is.
+ *****************************************************************************)
+fun GSUBST_TAC substfn ths (asl,w) =
+   let val (theta1,theta2,theta3) =
+          itlist (fn th => fn (theta1,theta2,theta3) =>
+                    let val {lhs,rhs} = Dsyntax.dest_eq(Thm.concl th)
+                        val v = Term.genvar (Term.type_of lhs)
+                    in ({redex = lhs, residue = v}::theta1,
+d275 12
+a286 11
+                    end)  ths ([],[],[])
+       val base = substfn theta1 w
+   in ([(asl, Term.subst theta2 base)], fn [th] => Thm.SUBST theta3 base th)
+   end
+   handle _ => raise TACTIC_ERR{function = "GSUBST_TAC",message = ""};
+
+(**************************************************************************
+ *	A(ti)
+ *    ==============   |- ti == ui
+ *	A(ui)
+ **************************************************************************)
+d300 7
+a306 8
+(**************************************************************************
+ *       A(t)
+ *   ===============   |- t==u
+ *       A(u)
+ *
+ * Works nicely with tacticals.
+ *
+ **************************************************************************)
+d318 1
+a318 1
+(* Substitute throughout the goal and its assumptions. *)
+d330 1
+a330 1
+(****************************************************************************
+d345 1
+a345 1
+ *****************************************************************************)
+d371 1
+d374 6
+a379 3
+   let val cond = Dsyntax.find_term
+                   (fn tm => is_good_cond tm andalso Term.free_in tm w)  w
+           handle _ => raise TACTIC_ERR{function = "COND_CASES_TAC",message=""}
+d381 2
+a382 1
+       val inst = Thm.INST_TYPE[alpha |-> Term.type_of larm] Drule.COND_CLAUSES
+d398 3
+a400 2
+(* Strip one outer !, /\, ==> from the goal. *)
+fun STRIP_GOAL_THEN ttac =  Tactical.FIRST [GEN_TAC, CONJ_TAC,
+d403 1
+a403 1
+(* Like GEN_TAC but fails if the term equals the quantified variable. *)
+d407 1
+a407 2
+    else  raise TACTIC_ERR{function = "FILTER_GEN_TAC", message = ""};
+
+a408 1
+(* Like DISCH_THEN but fails if the antecedent mentions the term. *)
+d410 1
+d412 5
+a416 3
+  if (Dsyntax.is_imp w andalso not(Term.free_in tm (#ant(Dsyntax.dest_imp w))))
+  then Thm_cont.DISCH_THEN ttac (asl,w)
+  else raise TACTIC_ERR{function = "FILTER_DISCH_THEN",message = ""};
+d418 1
+a418 1
+(* Like STRIP_THEN but preserves any part of the goal mentioning the term. *)
+d424 2
+a425 1
+             handle _ => raise TACTIC_ERR{function = "DISCH_TAC",message = ""};
+d429 3
+a431 2
+fun STRIP_TAC g = STRIP_GOAL_THEN STRIP_ASSUME_TAC g handle _ => 
+                  raise TACTIC_ERR{function = "STRIP_TAC", message = ""};
+d436 1
+d450 4
+a453 3
+fun REFL_TAC(asl,g) =
+   let val {lhs,rhs} = Dsyntax.dest_eq g handle _ 
+           => raise TACTIC_ERR{function="REFL_TAC",message="not an equation"}
+d455 7
+a461 6
+   in if (lhs=rhs) 
+      then ([], K (asms (Thm.REFL lhs)))
+      else if (Term.aconv lhs rhs) 
+           then ([], K (asms (Drule.ALPHA lhs rhs)))
+           else raise TACTIC_ERR{function = "REFL_TAC",
+                                 message = "lhs and rhs not alpha-equivalent"}
+d464 11
+a474 11
+(****************************************************************************
+ * UNDISCH_TAC - moves one of the assumptions as LHS of an implication
+ *   to the goal (fails if named assumption not in assumptions)
+ *
+ * UNDISCH_TAC: term -> tactic
+ *               tm
+ *
+ *         [ t1;t2;...;tm;tn;...tz ]  t
+ *   ======================================
+ *        [ t1;t2;...;tn;...tz ]  tm ==> t
+ *****************************************************************************)
+d495 15
+a509 9
+fun AP_TERM_TAC(asl,gl) =
+ let fun ERR s = raise TACTIC_ERR{function="AP_TERM_TAC", message = s}
+     val {lhs,rhs} = Dsyntax.dest_eq gl handle _ => ERR "not an equation"
+     val {Rator=g,Rand=x} = Term.dest_comb lhs handle _ => ERR"lhs not a comb"
+     val {Rator=f,Rand=y} = Term.dest_comb rhs handle _ => ERR"rhs not a comb"
+ in if (not(f = g))
+    then ERR"functions on lhs and rhs differ"
+    else ([(asl, Dsyntax.mk_eq{lhs = x, rhs = y})], (Drule.AP_TERM f o hd))
+ end;
+d522 16
+a537 9
+fun AP_THM_TAC (asl,gl) =
+ let fun ERR s = raise TACTIC_ERR{function="AP_THM_TAC", message = s}
+     val {lhs,rhs} = Dsyntax.dest_eq gl handle _ => ERR"not an equation"
+     val {Rator=g,Rand=x} = Term.dest_comb lhs handle _ => ERR"lhs not a comb"
+     val {Rator=f,Rand=y} = Term.dest_comb rhs handle _ => ERR"rhs not a comb"
+ in if not(x = y)
+    then ERR"arguments on lhs and rhs differ"
+    else ([(asl, Dsyntax.mk_eq{lhs = g, rhs = f})], (C Drule.AP_THM x o hd))
+ end;
+@

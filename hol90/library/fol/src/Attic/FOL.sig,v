@@ -1,0 +1,150 @@
+head	1.1;
+access;
+symbols
+	HOL97:1.1.2.2.0.2
+	bpHOL97:1.1.2.2
+	hol90_9_alpha:1.1.2.2
+	hol90_pre8_for_multiple_compilers:1.1.0.2;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	96.08.06.12.06.40;	author rjb;	state dead;
+branches
+	1.1.2.1;
+next	;
+
+1.1.2.1
+date	96.08.06.12.06.41;	author rjb;	state Exp;
+branches;
+next	1.1.2.2;
+
+1.1.2.2
+date	96.08.23.09.17.50;	author rjb;	state Exp;
+branches
+	1.1.2.2.2.1;
+next	;
+
+1.1.2.2.2.1
+date	97.07.11.19.42.29;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@file FOL.sig was initially added on branch hol90_pre8_for_multiple_compilers.
+@
+text
+@@
+
+
+1.1.2.1
+log
+@New library fol.
+@
+text
+@a0 39
+(* ========================================================================= 
+ * FOL <---> HOL
+ * ========================================================================= *)
+
+signature FOL_sig =
+sig
+    val offinc : int  (* offset for constants *)
+
+    datatype fol_term = 
+	Var of int
+      | Fnapp of int * fol_term list;;
+
+    type fol_atom;
+    datatype fol_form = 
+	Atom of (int * fol_term list)
+      | Conj of fol_form * fol_form
+      | Disj of fol_form * fol_form
+      | Forall of int * fol_form;;
+
+    val fol_free_in : int -> fol_term -> bool
+    val fol_frees : fol_term -> int list
+    val fol_subst : (fol_term * int) list -> fol_term -> fol_term
+    val fol_substl : (fol_term * int) list -> fol_term list -> fol_term list
+    val fol_inst : (fol_term * int) list -> fol_atom -> fol_atom
+
+    val augment_insts : fol_term * int -> (fol_term * int) list -> (fol_term * int) list
+    val fol_unify : fol_term -> fol_term -> (fol_term * int) list -> (fol_term * int) list
+    val form_inst : (fol_term * int) list -> fol_form -> fol_form
+
+    val fol_eq : (fol_term * int) list -> fol_term -> fol_term -> bool
+    val fol_atom_eq : (fol_term * int) list -> fol_atom -> fol_atom -> bool
+
+    val augment_insts_bump : int -> fol_term * int -> (fol_term * int) list -> (fol_term * int) list
+    val fol_inst_bump : int -> (fol_term * int) list -> fol_atom -> fol_atom
+    val fol_unify_bump : int -> fol_term -> fol_term -> (fol_term * int) list -> (fol_term * int) list
+
+end (* sig *)
+
+
+@
+
+
+1.1.2.2
+log
+@Removal of spurious semicolons.
+@
+text
+@d11 1
+a11 1
+      | Fnapp of int * fol_term list
+d13 1
+a13 1
+    type fol_atom
+d18 1
+a18 1
+      | Forall of int * fol_form
+@
+
+
+1.1.2.2.2.1
+log
+@Upgrade to CM. the file "folLib.sml" was added in order to give a single
+structure for the library.
+@
+text
+@d7 1
+a7 1
+ val offinc : int  (* offset for constants *)
+d9 27
+a35 27
+ datatype fol_term = Var of int
+                   | Fnapp of int * fol_term list
+
+ type fol_atom
+ datatype fol_form = Atom of (int * fol_term list)
+                   | Conj of fol_form * fol_form
+                   | Disj of fol_form * fol_form
+                   | Forall of int * fol_form
+
+ val fol_free_in : int -> fol_term -> bool
+ val fol_frees : fol_term -> int list
+ val fol_subst : (fol_term * int) list -> fol_term -> fol_term
+ val fol_substl : (fol_term * int) list -> fol_term list -> fol_term list
+ val fol_inst : (fol_term * int) list -> fol_atom -> fol_atom
+
+ val augment_insts :fol_term*int -> (fol_term*int) list -> (fol_term*int) list
+ val fol_unify :fol_term->fol_term->(fol_term*int) list -> (fol_term*int) list
+ val form_inst : (fol_term * int) list -> fol_form -> fol_form
+
+ val fol_eq : (fol_term * int) list -> fol_term -> fol_term -> bool
+ val fol_atom_eq : (fol_term * int) list -> fol_atom -> fol_atom -> bool
+
+ val augment_insts_bump 
+   : int -> fol_term * int -> (fol_term * int) list -> (fol_term * int) list
+ val fol_inst_bump : int -> (fol_term * int) list -> fol_atom -> fol_atom
+ val fol_unify_bump 
+   : int -> fol_term -> fol_term -> (fol_term*int) list -> (fol_term*int) list
+@

@@ -1,0 +1,679 @@
+head	1.6;
+access;
+symbols
+	HOL97:1.4.2.1.0.2
+	bpHOL97:1.4.2.1
+	hol90_9_alpha:1.4.2.1
+	hol90_pre8_for_multiple_compilers:1.4.0.2
+	hol90_pre8_after_donalds_separate_compilation_changes:1.4
+	hol90_8_after_merging_Konrad_Elsa:1.3
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.6
+date	96.01.04.13.45.24;	author drs1004;	state Exp;
+branches;
+next	1.5;
+
+1.5
+date	95.12.18.11.34.44;	author drs1004;	state Exp;
+branches;
+next	1.4;
+
+1.4
+date	95.10.31.13.56.18;	author drs1004;	state Exp;
+branches
+	1.4.2.1;
+next	1.3;
+
+1.3
+date	95.10.18.16.37.00;	author drs1004;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	95.10.17.17.07.08;	author drs1004;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	95.10.16.13.29.54;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.29.54;	author rjb;	state Exp;
+branches;
+next	;
+
+1.4.2.1
+date	96.08.23.14.27.14;	author rjb;	state Exp;
+branches
+	1.4.2.1.2.1;
+next	;
+
+1.4.2.1.2.1
+date	97.06.11.17.24.13;	author kxs;	state Exp;
+branches;
+next	1.4.2.1.2.2;
+
+1.4.2.1.2.2
+date	97.06.24.14.48.59;	author kxs;	state Exp;
+branches;
+next	1.4.2.1.2.3;
+
+1.4.2.1.2.3
+date	97.07.16.19.42.10;	author kxs;	state Exp;
+branches;
+next	1.4.2.1.2.4;
+
+1.4.2.1.2.4
+date	97.07.17.12.38.06;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.6
+log
+@Fixed types, pretypes, fixities, parsing.
+@
+text
+@(* ===================================================================== *)
+(* FILE          : lib.sig                                               *)
+(* DESCRIPTION   : Signature for library of useful SML functions.        *)
+(*                                                                       *)
+(* AUTHOR        : (c) Konrad Slind, University of Calgary               *)
+(* DATE          : August 26, 1991                                       *)
+(* ===================================================================== *)
+
+
+(*---------------------------------------------------------------------
+ * In general, the Lib structure is an extension of the Portable structure to
+ * to include lots of useful things whose implementations are pretty
+ * uncontroversial.
+ *
+ * Typically, whenever a group of functions is extended, the Lib structure will
+ * also include the Portable functions for that datatype.
+ *--------------------------------------------------------------------*)
+
+
+signature Lib_sig =
+sig
+type 'a subst = {redex : 'a, residue : 'a} list;  
+
+
+
+(*---------------------------------------------------------------------
+ * options
+ *--------------------------------------------------------------------*)
+
+  datatype 'a option = NONE | SOME of 'a (* same as Portable *)
+
+  val the : 'a option -> 'a
+  val is_some : 'a option -> bool
+  val is_none : 'a option -> bool
+  val option_cases : ('a -> 'b) * 'b -> 'a option -> 'b
+  val option_app : ('a -> 'b) -> 'a option -> 'b option
+
+(*---------------------------------------------------------------------
+ * Curry/Uncurry/Combinators/Reverse Application
+ *--------------------------------------------------------------------*)
+
+  val curry : ('a * 'b -> 'c) -> 'a -> 'b -> 'c
+  val uncurry : ('a -> 'b -> 'c) -> 'a * 'b -> 'c
+  val A : ('a -> 'b) -> 'a -> 'b
+  val B : ('a -> 'b) -> ('c -> 'a) -> 'c -> 'b
+  val C : ('a -> 'b -> 'c) -> 'b -> 'a -> 'c
+  val I : 'a -> 'a
+  val K : 'a -> 'b -> 'a
+  val S : ('a -> 'b -> 'c) -> ('a -> 'b) -> 'a -> 'c
+  val funpow : int -> ('a -> 'a) -> 'a -> 'a
+  val |> : 'a * ('a -> 'b) -> 'b
+  val thenf : ('a -> 'b) * ('b -> 'c) -> 'a -> 'c
+  val orelsef : ('a -> 'b) * ('a -> 'b) -> 'a -> 'b
+
+
+
+(*---------------------------------------------------------------------
+ * Curried versions of some functions
+ *
+ * concat removed in favour if concat that now appears in NJSML/SML
+ * initial basis.         DRS 16/11/95
+ *
+ * curried "equal" also removed, because I think it could result
+ * in grossly inefficient equality comparisons.  I'll put it
+ * back in if it's used in lots of places where equality types aren't
+ * known.                 DRS 16/11/95
+ *--------------------------------------------------------------------*)
+
+  val append : 'a list -> 'a list -> 'a list
+(*  val concat : string -> string -> string *)
+(*  val equal : ''a -> ''a -> bool *)
+
+(*---------------------------------------------------------------------
+ * Pair operations
+ *--------------------------------------------------------------------*)
+
+  val ## : ('a -> 'b) * ('c -> 'd) -> 'a * 'c -> 'b * 'd
+  val fst : 'a * 'b -> 'a
+  val snd : 'a * 'b -> 'b
+
+  val can : ('a -> 'b) -> 'a -> bool
+  val assert : ('a -> bool) -> 'a -> 'a
+
+  val for : int -> int -> (int -> 'a) -> 'a list
+  val for_se : int -> int -> (int -> 'a) -> unit
+
+
+(*---------------------------------------------------------------------
+ * A (semi-)complete set of list functions
+ *
+ *--------------------------------------------------------------------*)
+
+  (* from the basis *)
+  val null : 'a list -> bool
+  val hd : 'a list -> 'a
+  val tl : 'a list -> 'a list
+  val last : 'a list -> 'a
+  val nth : 'a list * int -> 'a
+  val take : 'a list * int -> 'a list
+  val drop : 'a list * int -> 'a list
+  val length : 'a list -> int
+  val rev : 'a list -> 'a list
+  val @@ : 'a list * 'a list -> 'a list
+  val concat : 'a list list -> 'a list
+  val revAppend : 'a list * 'a list -> 'a list
+  val app : ('a -> unit) -> 'a list -> unit
+  val map : ('a -> 'b) -> 'a list -> 'b list
+  val mapPartial : ('a -> 'b option) -> 'a list -> 'b list
+  val find : ('a -> bool) -> 'a list -> 'a option
+  val filter : ('a -> bool) -> 'a list -> 'a list
+  val partition : ('a -> bool) -> 'a list -> 'a list * 'a list
+  val foldr : ('a * 'b -> 'b) -> 'b -> 'a list -> 'b
+  val foldl : ('a * 'b -> 'b) -> 'b -> 'a list -> 'b
+  val exists : ('a -> bool) -> 'a list -> bool
+  val all : ('a -> bool) -> 'a list -> bool
+  val tabulate : int * (int -> 'a) -> 'a list
+
+  (* extras *)
+  val tryfind : ('a -> 'b) -> 'a list -> 'b
+  val map2 : ('a -> 'b -> 'c) -> 'a list -> 'b list -> 'c list
+  val all2 : ('a -> 'b -> bool) -> 'a list -> 'b list -> bool
+  val first : ('a -> bool) -> 'a list -> 'a
+  val split_after : int -> 'a list -> 'a list * 'a list
+  val combine : 'a list * 'b list -> ('a * 'b) list
+  val split : ('a * 'b) list -> 'a list * 'b list
+  val mapfilter : ('a -> 'b) -> 'a list -> 'b list
+  val flatten : 'a list list -> 'a list
+  val rotl : 'a list -> 'a list
+  val rotr : 'a list -> 'a list
+  val front_n_back : 'a list -> ('a list * 'a)
+  val sort : ('a -> 'a -> bool) -> 'a list -> 'a list
+  val int_sort : int list -> int list
+  val replicate : ('a * int) -> 'a list
+  val upto : (int * int) -> int list
+
+(*---------------------------------------------------------------------
+ * Non standard yet functionally equivalent
+ * versions of "standard-basis" list functions.  Not recommend
+ * for use in new code.  The new ML basis contains
+ * the slightly different versions of these, i.e. foldl, foldr etc.
+ * It may be wise to try to use the emerging standard versions
+ * of these in most ML code.    DRS 16/11/95
+ *
+ * Note: In general I would recommend using paired rather than curried 
+ * versions of functions (i.e. the ones above) 
+ * where the currying is not "essential".  This seems to be the trend
+ * in the SML world.          DRS 16/11/95
+ *--------------------------------------------------------------------*)
+
+  val gather : ('a -> bool) -> 'a list -> 'a list
+  val zip : 'a list -> 'b list -> ('a * 'b) list
+  val unzip : ('a * 'b) list -> 'a list * 'b list
+  val el : int -> 'a list -> 'a
+  val itlist : ('a -> 'b -> 'b) -> 'a list -> 'b -> 'b
+  val itlist2 :('a -> 'b -> 'c -> 'c) -> 'a list -> 'b list -> 'c -> 'c
+  val rev_itlist : ('a -> 'b -> 'b) -> 'a list -> 'b -> 'b
+  val rev_itlist2 :('a -> 'b -> 'c -> 'c) -> 'a list -> 'b list -> 'c -> 'c
+  val end_itlist : ('a -> 'a -> 'a) -> 'a list -> 'a
+
+(*---------------------------------------------------------------------
+ * Assoc lists && substitutions
+ *
+ * Nb. |-> and |--> are useful syntactic sugar, as in
+ *   [x |--> 2, z |--> 3]
+ *--------------------------------------------------------------------*)
+
+  exception NOT_FOUND
+  val assoc : ''a -> (''a * 'b) list -> 'b
+  val assoc1 : ''a -> (''a * 'b) list -> (''a * 'b) option
+  val assoc2 : ''a -> ('b * ''a) list -> ('b * ''a) option
+  val subst_assoc : ('a -> bool) -> 'a subst -> 'a option
+  val |-> : ('a * 'a) -> {redex:'a, residue:'a}
+  val add_assoc : ''a * 'b -> (''a * 'b) list -> (''a * 'b) list
+  val remove_assoc : ''a -> (''a * 'b) list -> (''a * 'b) list
+  val |--> : ('a * 'b) -> ('a * 'b)
+
+(*---------------------------------------------------------------------
+ * Sets where equality is "=" (repr. by lists)
+ *
+ *--------------------------------------------------------------------*)
+
+  val mem : ''a -> ''a list -> bool
+  val mk_set : ''a list -> ''a list
+  val union : ''a list -> ''a list -> ''a list
+  val U : ''a list list -> ''a list
+  val set_diff : ''a list -> ''a list -> ''a list
+  val subtract : ''a list -> ''a list -> ''a list
+  val intersect : ''a list -> ''a list -> ''a list
+  val null_intersection : ''a list -> ''a list -> bool
+  val set_eq : ''a list -> ''a list -> bool
+  val insert : ''a -> ''a list -> ''a list
+
+(*---------------------------------------------------------------------
+ * Lists/Sets where equality is supplied
+ *
+ *--------------------------------------------------------------------*)
+
+  val op_insert : ('a -> 'a -> bool) -> 'a -> 'a list -> 'a list
+  val op_mem : ('a -> 'b -> bool) -> 'a -> 'b list -> bool
+  val op_union : ('a -> 'a -> bool) -> 'a list -> 'a list -> 'a list
+  val op_set_diff : ('a -> 'a -> bool) -> 'a list -> 'a list -> 'a list
+  val op_U : ('a -> 'a -> bool) -> 'a list list -> 'a list
+  val op_intersect: ('a -> 'a -> bool) -> 'a list -> 'a list -> 'a list
+
+
+(*---------------------------------------------------------------------
+ * Simple Types <-> Strings
+ *--------------------------------------------------------------------*)
+
+  val int_to_string : int -> string
+  val string_to_int : string -> int
+  val real_to_string : real -> string
+
+(*---------------------------------------------------------------------
+ * Strings
+ *--------------------------------------------------------------------*)
+
+  val fresh_name : string -> unit -> string
+  val quote : string -> string
+  val words2 : Portable.Char.char -> string -> string list
+
+  val find_path : string list -> string -> string
+  val cons_path : string -> string list ref -> unit
+  val append_path : string -> string list ref -> unit
+  val string_variant : string list -> string -> string
+
+
+(*-------------------------------------------------------------------
+ * Partial Orders
+ *-------------------------------------------------------------------*)
+
+  datatype ordering = LESS | EQUAL | GREATER  (* same as Portable *)
+
+  val ord_to_lt : ('a * 'a -> ordering) -> ('a * 'a -> bool)
+  val lt_to_ord : ('a * 'a -> bool) -> ('a * 'a -> ordering)
+  val list_ord : ('a * 'a -> ordering) -> ('a list * 'a list) -> ordering
+  val int_ord : int * int -> ordering
+  val string_ord : string * string -> ordering
+
+(*---------------------------------------------------------------------
+ * delta's implemented by UNCHANGED exception
+ *--------------------------------------------------------------------*)
+
+  exception UNCHANGED
+  val fun_to_qfun : (''a -> ''a) -> (''a -> ''a)
+  val qfun_to_fun : ('a -> 'a) -> ('a -> 'a)
+  val app2_qfun : (('a -> 'a) * ('b -> 'b)) -> ('a * 'b) -> ('a * 'b)
+  val appl_qfun : ('a -> 'a) -> 'a list -> 'a list
+
+(*---------------------------------------------------------------------
+ * I/O
+ *--------------------------------------------------------------------*)
+
+  val say : string -> unit 
+  val file_exists_for_reading : string -> bool 
+
+   val inc : int ref -> unit 
+   val dec : int ref -> unit 
+
+(*---------------------------------------------------------------------
+ * Removed because they are not part of a functional programming
+ * library but are part of Portable.
+ *--------------------------------------------------------------------*)
+
+(*  val clean_directory : string -> unit *)
+
+(*  type time *)
+(*  val timestamp : unit -> time *)
+(*  val time_eq : time -> time -> bool *)
+(*  val time_lt : time -> time -> bool *)
+
+(*  val exit : unit -> 'a *)
+(*  val compile : string -> unit *)
+(*  val interpret : string -> unit *)
+(*  val use_string : string -> unit *)
+(*  val eval_string : string -> unit *)
+
+(*  val cd : string -> unit *)
+(*  val pwd : unit -> string *)
+(*  val ls : unit -> int *)
+end
+@
+
+
+1.5
+log
+@Preterm and other changes, see 7.changes
+@
+text
+@d52 2
+d55 1
+@
+
+
+1.4
+log
+@First phase of hol90.8 development.  hol90 now compiles using NJSML-CM
+108.5, with separate compilation of libraries.  System dependencies
+have been isolated in the makefiles and "portable.sml".
+
+This involved a large number of enhancments to the source files,
+most of which are documented in the 7.changes file (or will be shortly).
+See also the correpsonding email corrspondence between RJB, KLS, TFM,
+JRH and DRS that happened during this development.
+@
+text
+@d10 8
+d19 1
+d23 19
+a43 4
+  val append : 'a list -> 'a list -> 'a list
+  val concat : string -> string -> string
+  val equal : ''a -> ''a -> bool
+  val ## : ('a -> 'b) * ('c -> 'd) -> 'a * 'c -> 'b * 'd
+d50 25
+d77 1
+d80 31
+d112 4
+a116 1
+  val el : int -> 'a list -> 'a
+a117 1
+  val all : ('a -> bool) -> 'a list -> bool
+a120 9
+  val partition : ('a -> bool) -> 'a list -> 'a list * 'a list
+  val gather : ('a -> bool) -> 'a list -> 'a list
+  val filter : ('a -> bool) -> 'a list -> 'a list
+  val itlist : ('a -> 'b -> 'b) -> 'a list -> 'b -> 'b
+  val itlist2 :('a -> 'b -> 'c -> 'c) -> 'a list -> 'b list -> 'c -> 'c
+  val rev_itlist : ('a -> 'b -> 'b) -> 'a list -> 'b -> 'b
+  val rev_itlist2 :('a -> 'b -> 'c -> 'c) -> 'a list -> 'b list -> 'c -> 'c
+  val end_itlist : ('a -> 'a -> 'a) -> 'a list -> 'a
+  val zip : 'a list -> 'b list -> ('a * 'b) list
+a121 1
+  val unzip : ('a * 'b) list -> 'a list * 'b list
+a126 1
+  val list_of_array : 'a Portable.Array.array -> 'a list
+d128 35
+a162 1
+  val funpow : int -> ('a -> 'a) -> 'a -> 'a
+a164 1
+  exception NO_CHANGE
+d169 10
+a178 1
+  val |-> :('a * 'a) -> {redex:'a, residue:'a}
+d188 8
+d198 1
+d201 6
+a206 2
+  val for : int -> int -> (int -> 'a) -> 'a list
+  val for_se : int -> int -> (int -> 'a) -> unit
+d210 9
+a218 5
+  val sort : ('a -> 'a -> bool) -> 'a list -> 'a list
+  val int_sort : int list -> int list
+  val mkdir : string -> unit
+  val clean_directory : string -> unit
+  val file_exists_for_reading : string -> bool
+d222 56
+a277 18
+  type time
+  val timestamp : unit -> time
+  val time_eq : time -> time -> bool
+  val time_lt : time -> time -> bool
+  val exit : unit -> 'a
+  val compile : string -> unit
+  val interpret : string -> unit
+  val fresh_name : string -> unit -> string
+  val use_string : string -> unit
+  val say : string -> unit
+  val quote : string -> string
+  val eval_string : string -> unit
+  val cd : string -> unit
+  val pwd : unit -> string
+  val ls : unit -> int
+  val words2 : Portable.Char.char -> string -> string list
+  val inc : int ref -> unit
+  val dec : int ref -> unit
+@
+
+
+1.4.2.1
+log
+@Added function for batch processing.
+@
+text
+@a95 1
+  val use_and_exit : (exn -> 'a) -> string -> unit
+@
+
+
+1.4.2.1.2.1
+log
+@Removed files are parse files and portability files that have
+effectively been moved elsewhere.
+
+Modified files are up to date for ML 109.26.
+@
+text
+@d10 1
+d13 1
+a25 1
+  val W : ('a -> 'a -> 'b) -> 'a -> 'b
+a28 1
+  val try : ('a -> 'b) -> 'a -> 'b
+d30 1
+a35 1
+  val exists : ('a -> bool) -> 'a list -> bool
+d52 6
+a62 1
+  type 'a subst
+a65 1
+  val insert : ''a -> ''a list -> ''a list
+a79 1
+  val list_of_array : 'a array -> 'a list
+d82 1
+d85 1
+d95 2
+d99 1
+a99 5
+  type ('a,'b) istream
+  val mk_istream : ('a -> 'a) -> 'a -> ('a -> 'b) -> ('a,'b) istream
+  val next : ('a,'b) istream -> ('a,'b) istream
+  val state : ('a,'b) istream -> 'b
+  val reset : ('a,'b) istream -> ('a,'b) istream
+d103 7
+a109 7
+  val words2 : string -> string -> string list
+  val front_last : 'a list -> 'a list * 'a
+  val last : 'a list -> 'a 
+  val funpow : int -> ('a -> 'a) -> 'a -> 'a
+  val ordof : string * int -> int
+  val mesg : bool -> string -> unit
+  val with_flag: bool ref -> bool -> ('a -> 'b) -> 'a -> unit
+@
+
+
+1.4.2.1.2.2
+log
+@Added a function "time : ('a -> 'b) -> 'a -> 'b" that, as a side-effect,
+prints out the time that it takes to execute the function on the argument.
+@
+text
+@a89 1
+  val time : ('a -> 'b) -> 'a -> 'b
+@
+
+
+1.4.2.1.2.3
+log
+@The type of "with_flag" is now most general.
+@
+text
+@d107 1
+a107 1
+  val with_flag: :'a ref -> 'a -> ('b -> 'c) -> 'b -> unit
+@
+
+
+1.4.2.1.2.4
+log
+@Now changed so as to remove double occurrence of ":" in type for "with_flag".
+@
+text
+@d107 1
+a107 1
+  val with_flag :'a ref -> 'a -> ('b -> 'c) -> 'b -> unit
+@
+
+
+1.3
+log
+@Check in after merging in Konrad's changes made after
+the release of hol90.7.  This involved creating a side branch
+in which to check in Konrad's changes, then merging in that
+side branch into the main development (which contains changes
+made by Elsa Gunter).
+
+Some other small modification have been made to the source code,
+as I begun to try to make this version into a working version:
+	- hol90 will now be compiled in an environment were no
+structures can be considered opn.  This means many structures
+now need "open Lib" and other such commands at their head.
+This has not yet been completed, but has been begun.
+	- "rotl" and "rotr" have been added to Lib, something
+which I just did impulsively.   Documentation files
+have also been added in help/90.
+@
+text
+@d54 1
+a54 1
+  val list_of_array : 'a Sml_system.Array.array -> 'a list
+d106 1
+a106 1
+  val words2 : Sml_system.Char.char -> string -> string list
+@
+
+
+1.2
+log
+@Keeping you up to date:
+
+I'm about to do a checkin of elsa's modifications to the hol90.7
+sources to create her hol90.pre8.  To recap what I've done:
+	- I checked out hol90 (in /usr/groups/hol/drs1004/hol90)
+		cvs co hol90
+	  (Well, to be honest, I only checked out those
+	  parts of hol90 I knew I'd be changing, e.g. not the
+	  Manual, and only parts of the library.  Checking out the
+	  entire source takes a while, mainly due to the enormous number
+	  of help files.  The limiting factor is files/second, which
+         runs at around 5 when CVS is working on nfs over a network, not
+         KB/second, which you might at first think it would be).
+
+	- By doing a recursive diff between Elsa's source and the
+	hol90.7 source I found all the changes Elsa had made to
+	source files.  I copied relevant files from Elsa's source
+	into my checked out version.  The only new files were
+		- the sml_system files in src/0
+		- some make scripts in src/.
+	Changed files were in:
+		src/{0,1,2,3}
+		library/arith/src/thm_convs.sml
+		library/list/src/list_conv1.sml
+		library/num/src/num_lib.sml
+		library/prog_logic/src/halts_logic.sml
+		library/prog_logic/src/translation.sml
+		library/prog_logic/theories/src/mk_halts.sml
+		library/real/theories/src/Make
+		library/real/theories/src/equiv.sml
+		library/real/theories/src/seq.sml
+		library/reduce/src/arithconv.sml
+		library/string/src/string_conv.sml
+		library/unity/theories/src/aux_definitions.sml
+		library/word/theories/src/*
+
+	- I will now commit these changes, with this email as the log message.
+		cvs commit
+
+	- Tomorrow I will get this version compiling
+	with NJSML 108 (I will probably add
+	the files to enable the NJSML compilation manager to make
+	this easier), then check those changes in.  I think it's
+	good to get things in a working state.
+@
+text
+@d52 6
+a79 1
+  val list_of_array : 'a Sml_system.Array.array -> 'a list
+a106 2
+  val front_n_back : 'a list -> ('a list * 'a)
+  val funpow : int -> ('a -> 'a) -> 'a -> 'a
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d10 1
+d13 1
+d30 1
+a56 1
+  type 'a subst
+d74 1
+a74 1
+  val list_of_array : 'a array -> 'a list
+d77 1
+d80 1
+d101 1
+a101 1
+  val words2 : string -> string -> string list
+d104 2
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

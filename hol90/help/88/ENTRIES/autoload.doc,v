@@ -1,0 +1,111 @@
+head	1.1;
+branch	1.1.1;
+access;
+symbols
+	HOL97:1.1.1.1.0.6
+	bpHOL97:1.1.1.1
+	hol90_9_alpha:1.1.1.1
+	hol90_pre8_for_multiple_compilers:1.1.1.1.0.4
+	hol90_pre8_after_donalds_separate_compilation_changes:1.1.1.1
+	hol90_8_after_merging_Konrad_Elsa:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	95.10.16.13.34.30;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.34.30;	author rjb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@\DOC autoload
+
+\TYPE {autoload : ((string # string # string list) -> void)}
+
+\SYNOPSIS
+Sets up a general autoloading action.
+
+\DESCRIBE
+After a call {autoload(`name`,`f`,[`arg1`;...;`argn`])}, a subsequent
+occurrence of {name} in an ML phrase will cause the ML expression
+{f [`arg1`;...;`argn`]} to be evaluated before any of the toplevel phrase
+containing {name} is evaluated. Notice that {f} is interpreted as a single
+identifier denoting a function, whereas the various arguments are string
+literals.
+
+\FAILURE
+Never fails (obviously failure may occur when the action is actually performed;
+the ML phrase could be nonsense).
+
+\EXAMPLE
+The following is a simple example:
+{
+   #let action = tty_write o hd;;
+   action = - : (string list -> void)
+
+   #autoload(`key1`,`action`,[`Hello John!`]);;
+   () : void
+
+   #let key1 = 1;;
+   Hello John!() : void
+
+   key1 = 1 : int
+}
+\COMMENTS
+There is no obligation to use the argument list; an alternative to achieve the
+same as the above is:
+{
+   #let action (l:(string)list) = tty_write `Hello John!`;;
+   action = - : (string list -> void)
+
+   #autoload(`key2`,`action`,[]);;
+   () : void
+
+   #let key2 = 1;;
+   Hello John!() : void
+
+   key2 = 1 : int
+}
+\noindent If a normal autoloading action is all that is required, the function
+{autoload_theory} provides a simpler way.
+
+\SEEALSO
+autoload_theory, let_after, let_before, undo_autoload.
+
+\ENDDOC
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

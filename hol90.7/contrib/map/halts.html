@@ -1,0 +1,197 @@
+<TITLE>Theory: halts</TITLE>
+<H1>Theory: halts</H1>
+<H1>Parents</H1>
+    <UL>
+    <LI><A HREF = "semantics.html"><STRONG>semantics</STRONG></A>
+    </UL>
+
+
+<HR>
+<H1>Type constants</H1>
+    <UL>
+    
+    </UL>
+
+
+<HR>
+<H1>Term constants</H1>
+    <UL>
+    <LI><STRONG>HALTS</STRONG><EM>:((string -> num) -> bool) ->
+                                   ((string -> num) # (string -> num) ->
+                                   bool) -> bool</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    <LI><STRONG>DEC_SEQ</STRONG><EM>:num -> (string -> num) ->
+                                     ((string -> num) # (string -> num) ->
+                                     bool) -> ((string -> num) -> bool) ->
+                                     string -> num</EM>
+        <STRONG>{</STRONG>fixity  = Prefix<STRONG>}</STRONG>
+    </UL>
+
+
+<HR>
+<H1>Axioms</H1>
+<DL>
+
+</DL>
+
+
+<HR>
+<H1>Definitions</H1>
+<DL>
+<DT><STRONG>HALTS</STRONG>
+<DD>
+<PRE>
+|- !p c. HALTS p c = (!s. p s ==> (?s'. c (s,s')))
+</PRE>
+
+<DT><STRONG>DEC_SEQ</STRONG>
+<DD>
+<PRE>
+|- (!s c b. DEC_SEQ 0 s c b = s) /\
+   (!n s c b.
+     DEC_SEQ (SUC n) s c b =
+     ((~(b (DEC_SEQ n s c b)))
+      => (DEC_SEQ n s c b)
+      | (@z. c (DEC_SEQ n s c b,z))))
+</PRE>
+
+</DL>
+
+
+<HR>
+<H1>Theorems</H1>
+<DL>
+<DT><STRONG>SKIP_HALTS</STRONG>
+<DD>
+<PRE>
+|- !p. HALTS p MK_SKIP
+</PRE>
+
+<DT><STRONG>ASSIGN_HALTS</STRONG>
+<DD>
+<PRE>
+|- !p x f. HALTS p (MK_ASSIGN (x,f))
+</PRE>
+
+<DT><STRONG>SEQ_HALTS</STRONG>
+<DD>
+<PRE>
+|- !p c c' q.
+     HALTS p c /\ MK_SPEC (p,c,q) /\ HALTS q c' ==> HALTS p (MK_SEQ (c,c'))
+</PRE>
+
+<DT><STRONG>IF1_HALTS</STRONG>
+<DD>
+<PRE>
+|- !p c b. HALTS (\s. p s /\ b s) c ==> HALTS p (MK_IF1 (b,c))
+</PRE>
+
+<DT><STRONG>IF2_HALTS</STRONG>
+<DD>
+<PRE>
+|- !p c1 c2 b.
+     HALTS (\s. p s /\ b s) c1 /\ HALTS (\s. p s /\ ~(b s)) c2 ==>
+     HALTS p (MK_IF2 (b,c1,c2))
+</PRE>
+
+<DT><STRONG>PRE_STRENGTH_HALTS</STRONG>
+<DD>
+<PRE>
+|- !p p' c. (!s. p' s ==> p s) /\ HALTS p c ==> HALTS p' c
+</PRE>
+
+<DT><STRONG>SPEC_LEMMA1</STRONG>
+<DD>
+<PRE>
+|- (?x.
+     !n. MK_SPEC ((\s. p s /\ b s /\ (s x = n)),c,(\s. p s /\ s x < n))) ==>
+   MK_SPEC ((\s. p s /\ b s),c,p)
+</PRE>
+
+<DT><STRONG>SEQ_LEMMA1</STRONG>
+<DD>
+<PRE>
+|- (!n. b (DEC_SEQ n s c b)) /\
+   MK_SPEC ((\s. p s /\ b s),c,p) /\
+   HALTS (\s. p s /\ b s) c /\
+   p s ==>
+   (!m. p (DEC_SEQ m s c b) /\ c (DEC_SEQ m s c b,DEC_SEQ (SUC m) s c b))
+</PRE>
+
+<DT><STRONG>SEQ_LEMMA2</STRONG>
+<DD>
+<PRE>
+|- (!n. b (DEC_SEQ n s c b)) /\
+   (?x. !n. MK_SPEC ((\s. p s /\ b s /\ (s x = n)),c,(\s. p s /\ s x < n))) /\
+   HALTS (\s. p s /\ b s) c /\
+   p s ==>
+   (?x. !m. DEC_SEQ m s c b x > DEC_SEQ (SUC m) s c b x)
+</PRE>
+
+<DT><STRONG>WF_LEMMA</STRONG>
+<DD>
+<PRE>
+|- (!n. f n > f (SUC n)) ==> (!n m. f m > n)
+</PRE>
+
+<DT><STRONG>WF_THM</STRONG>
+<DD>
+<PRE>
+|- ~(?f. !n. f n > f (SUC n))
+</PRE>
+
+<DT><STRONG>SEQ_LEMMA3</STRONG>
+<DD>
+<PRE>
+|- (?x. !n. MK_SPEC ((\s. p s /\ b s /\ (s x = n)),c,(\s. p s /\ s x < n))) /\
+   HALTS (\s. p s /\ b s) c /\
+   p s ==>
+   ~(!n. b (DEC_SEQ n s c b))
+</PRE>
+
+<DT><STRONG>SEQ_LEMMA4</STRONG>
+<DD>
+<PRE>
+|- (?x. !n. MK_SPEC ((\s. p s /\ b s /\ (s x = n)),c,(\s. p s /\ s x < n))) /\
+   HALTS (\s. p s /\ b s) c /\
+   p s ==>
+   (?n. ~(b (DEC_SEQ n s c b)))
+</PRE>
+
+<DT><STRONG>SEQ_LEMMA5</STRONG>
+<DD>
+<PRE>
+|- (?x. !n. MK_SPEC ((\s. p s /\ b s /\ (s x = n)),c,(\s. p s /\ s x < n))) /\
+   HALTS (\s. p s /\ b s) c /\
+   p s ==>
+   (?n. ~(b (DEC_SEQ n s c b)) /\ (!m. m < n ==> b (DEC_SEQ m s c b)))
+</PRE>
+
+<DT><STRONG>SEQ_LEMMA6</STRONG>
+<DD>
+<PRE>
+|- !n. DEC_SEQ n (DEC_SEQ (SUC 0) s c b) c b = DEC_SEQ (SUC n) s c b
+</PRE>
+
+<DT><STRONG>SEQ_LEMMA7</STRONG>
+<DD>
+<PRE>
+|- MK_SPEC ((\s. p s /\ b s),c,p) /\ HALTS (\s. p s /\ b s) c ==>
+   (!n s.
+     p s /\ ~(b (DEC_SEQ n s c b)) /\ (!m. m < n ==> b (DEC_SEQ m s c b)) ==>
+     MK_FINITE_WHILE (SUC n) (b,c) (s,DEC_SEQ n s c b))
+</PRE>
+
+<DT><STRONG>WHILE_HALTS</STRONG>
+<DD>
+<PRE>
+|- !b c x.
+     (!n. MK_SPEC ((\s. p s /\ b s /\ (s x = n)),c,(\s. p s /\ s x < n))) /\
+     HALTS (\s. p s /\ b s) c ==>
+     HALTS p (MK_WHILE (b,c))
+</PRE>
+
+</DL>
+
+
+<HR>

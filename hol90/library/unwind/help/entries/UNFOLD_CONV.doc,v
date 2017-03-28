@@ -1,0 +1,90 @@
+head	1.1;
+branch	1.1.1;
+access;
+symbols
+	HOL97:1.1.1.1.0.6
+	bpHOL97:1.1.1.1
+	hol90_9_alpha:1.1.1.1
+	hol90_pre8_for_multiple_compilers:1.1.1.1.0.4
+	hol90_pre8_after_donalds_separate_compilation_changes:1.1.1.1
+	hol90_7_cleaned_up_original_branchtag:1.1.1.1.0.2
+	hol90_7_cleaned_up_original:1.1.1.1
+	hol90_7_cleaned_up_original:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	95.10.16.13.30.33;	author rjb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	95.10.16.13.30.33;	author rjb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@\DOC UNFOLD_CONV
+
+\TYPE {UNFOLD_CONV : (thm list -> conv)}
+
+\SYNOPSIS
+Expands sub-components of a hardware description using their definitions.
+
+\LIBRARY unwind
+
+\DESCRIBE
+{UNFOLD_CONV thl "t1 /\ ... /\ tn"} returns a theorem of the form:
+{
+   B |- t1 /\ ... /\ tn = t1' /\ ... /\ tn'
+}
+\noindent where each {ti'} is the result of rewriting {ti} with the theorems in
+{thl}. The set of assumptions {B} is the union of the instantiated assumptions
+of the theorems used for rewriting. If none of the rewrites are applicable to
+a {ti}, it is unchanged.
+
+\FAILURE
+Never fails.
+
+\EXAMPLE
+{
+#UNFOLD_CONV [ASSUME "!in out. INV (in,out) = !(t:num). out t = ~(in t)"]
+# "INV (l1,l2) /\ INV (l2,l3) /\ (!(t:num). l1 t = l2 (t-1) \/ l3 (t-1))";;
+. |- INV(l1,l2) /\ INV(l2,l3) /\ (!t. l1 t = l2(t - 1) \/ l3(t - 1)) =
+     (!t. l2 t = ~l1 t) /\
+     (!t. l3 t = ~l2 t) /\
+     (!t. l1 t = l2(t - 1) \/ l3(t - 1))
+}
+\SEEALSO
+UNFOLD_RIGHT_RULE.
+
+\ENDDOC
+@
+
+
+1.1.1.1
+log
+@Sources of hol90.7 as released, cleaned up by R.J.Boulton and D.R.Syme.
+
+Summary of changes:
+
+ * "contrib" directory not included
+ * Machine-generatable files deleted, e.g. .dvi, .ps, .thms, .holsig, .hol_lib
+ * Some directory restructuring in "library", in particular help files for
+   ML functions have been put in a help/entries subdirectory in cases where
+   they were originally in the help directory itself.
+@
+text
+@@

@@ -1,0 +1,260 @@
+head	1.1;
+access;
+symbols
+	HOL97:1.1.0.2;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	97.06.11.17.37.47;	author kxs;	state dead;
+branches
+	1.1.2.1;
+next	;
+
+1.1.2.1
+date	97.06.11.17.37.48;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@file portable.109.26.sml was initially added on branch HOL97.
+@
+text
+@@
+
+
+1.1.2.1
+log
+@I have gathered all the portability files into one place: src/portableML
+@
+text
+@a0 221
+(* ===================================================================== *)
+(* FILE          : portable.njsml.1xx.sml                                *)
+(* DESCRIPTION   : Structure for SML System dependent functions.         *)
+(*                                                                       *)
+(* AUTHOR        : Elsa L. Gunter, AT&T Bell Laboratories                *)
+(* DATE          : 7 October, 1993                                       *)
+(* ===================================================================== *)
+
+(* Copyright 1993 by AT&T Bell Laboratories *)
+
+(* Share and Enjoy *)
+
+structure Portable = 
+struct
+
+(* Set system variables relevant to the interactive mode of hol90 *)
+
+val _ = Compiler.Control.quotation := true;
+
+val _ = (Compiler.Control.Print.printLength := 1000;
+         Compiler.Control.Print.printDepth := 350;
+         Compiler.Control.Print.stringDepth := 250;
+         Compiler.Control.Print.signatures := 2);
+
+structure General = General
+
+structure Int =
+    struct
+        open Int
+        exception Div = General.Div
+        exception Mod = General.Div
+    end
+
+structure List = List
+
+structure Vector = Vector
+
+structure Array = Array
+
+(* Should check range of integers *)
+structure ByteArray =
+    struct
+        type bytearray = int Array.array (* or Word8Array.array *)
+        exception Range
+        open Array
+        (* The next definition isn't quite right *)
+        fun extract (a,i,nopt) =
+            let val l = Array.length a
+                val n =
+                    case nopt of Option.SOME n => n | Option.NONE => l - i
+                fun bytes j =
+                    if (j >= i + n) then []
+                    else Array.sub (a,j) :: bytes (j + 1)
+            in String.implode (map Char.chr (bytes i))
+            end
+    end;
+
+structure Ref =
+    struct
+	fun inc cell = cell := !cell + 1
+	fun dec cell = cell := !cell - 1
+    end
+
+structure Char = Char
+
+structure String =
+    struct
+	exception Ord = General.Subscript
+	open String
+	fun ordof (string,place) = Char.ord(String.sub(string,place))
+	val charof = str o chr
+    end
+
+val string_to_int = Int.fromString;
+val real_to_string = Real.toString
+val implode = String.concat;
+val explode = map String.str o String.explode;
+
+
+structure PrettyPrint =
+struct
+fun install_pp path s = Compiler.PPTable.install_pp path;
+
+open Compiler.PrettyPrint
+
+fun with_ppstream ppstrm = 
+   {add_string=add_string ppstrm, 
+    add_break=add_break ppstrm, 
+    begin_block=begin_block ppstrm, 
+    end_block=fn () => end_block ppstrm, 
+    add_newline=fn () => add_newline ppstrm, 
+    clear_ppstream=fn () => clear_ppstream ppstrm, 
+    flush_ppstream=fn () => flush_ppstream ppstrm}
+
+fun defaultConsumer () =
+      {consumer = Compiler.Control.Print.say,
+       linewidth = !Compiler.Control.Print.linewidth,
+       flush = Compiler.Control.Print.flush}
+
+fun pp_to_string linewidth ppfn ob = 
+    let val l = ref ([]:string list)
+        fun attach s = l := (s::(!l))
+     in with_pp {consumer = attach, linewidth=linewidth, flush = fn()=>()}
+                (fn ppstrm =>  ppfn ppstrm ob);
+        String.concat(List.rev(!l))
+    end
+end
+
+structure Time =
+    struct
+	open Time
+	val timestamp : unit -> time = now
+	val time_to_string : time -> String.string = toString
+	fun dest_time t =
+	    let val sec = toSeconds t
+		val usec = toMicroseconds (t - fromSeconds sec)
+	    in
+		{sec = sec, usec = usec}
+	    end
+	fun mk_time {sec,usec} = fromSeconds sec + fromMicroseconds usec
+	fun time_eq (t1:time) t2 = (t1 = t2)
+	fun time_lt (t1:time) t2 = Time.<(t1,t2)
+    end
+
+structure Timer = Timer;
+
+
+val say = Compiler.Control.Print.say
+val linewidth = Compiler.Control.Print.linewidth
+
+val getEnv = OS.Process.getEnv
+val cd = OS.FileSys.chDir
+val pwd = OS.FileSys.getDir
+
+fun listDir dir_name =
+    let val dirstream = OS.FileSys.openDir dir_name
+	fun read_all {dirstream, dir_listing} =
+	    let val entry = OS.FileSys.readDir dirstream
+	    in
+		if entry = "" then List.rev dir_listing
+		else read_all {dirstream = dirstream,
+			       dir_listing = entry :: dir_listing}
+	    end
+	val listing = read_all {dirstream = dirstream, dir_listing = []}
+	val _ = OS.FileSys.closeDir dirstream
+    in listing
+    end;
+
+fun system s = OS.Process.system s
+fun ls() = system "ls"
+val getArgs = SMLofNJ.getArgs
+val argv = getArgs;
+
+fun file_exists_for_reading s =
+    OS.FileSys.access(s,[OS.FileSys.A_READ])
+
+fun exit() = OS.Process.exit OS.Process.success
+
+(*--------------------------------------------------------------------
+ * Some parameters.
+ *-------------------------------------------------------------------*)
+
+val version = Compiler.version
+val sml_banner = Compiler.banner 
+(* Built-in that doesn't distinguish SunOs from Solaris
+val arch = Compiler.architecture;
+*)
+val arch =
+   case getEnv "ARCH"
+   of Option.SOME s => s
+    | Option.NONE => Compiler.architecture;
+
+(*--------------------------------------------------------------------
+ * Misc. - interactions which manipulate the ML environment
+ *-------------------------------------------------------------------*)
+
+val execute = Unix.streamsOf o Unix.execute
+
+fun reap proc = (Unix.reap proc; ()) handle OS.SysErr _ => ();
+
+val unfiltered_use_stream = Compiler.Interact.useStream;
+
+fun use_and_exit print_err filename =
+   (use filename; exit ())
+   handle e => (print_err e; OS.Process.exit OS.Process.failure);
+
+(* Things behave badly in 109 when Compiler.Control.interp is set to true.
+val interp = Compiler.Control.interp;
+val interp = ref false;
+*)
+val interp = Compiler.Control.interp;
+
+fun load files = (map use files; ());
+
+(*--------------------------------------------------------------------
+ * Exporting the executable.
+ *-------------------------------------------------------------------*)
+
+fun exportML str = (SMLofNJ.exportML str; ());
+
+exception Io of string;
+
+type instream = TextIO.instream 
+type outstream = TextIO.outstream 
+val std_out = TextIO.stdOut
+val stdin  = TextIO.stdIn
+fun open_in file = TextIO.openIn file handle OS.SysErr (s,_) => raise Io s;
+fun open_out file = TextIO.openOut file handle OS.SysErr (s,_) => raise Io s;
+val output = TextIO.output
+fun outputc strm s = output(strm,s)
+val close_in = TextIO.closeIn
+val close_out = TextIO.closeOut
+val flush_out = TextIO.flushOut
+val input_line = TextIO.inputLine
+val open_string = TextIO.openString
+val end_of_stream = TextIO.endOfStream;
+
+
+fun pointer_eq(x,y) = ((System.Unsafe.cast x:int) = (System.Unsafe.cast y:int))
+
+end (* structure Portable *)
+@

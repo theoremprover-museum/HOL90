@@ -1,0 +1,123 @@
+head	1.1;
+access;
+symbols
+	HOL97:1.1.0.2;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	97.07.17.15.42.41;	author mn200;	state dead;
+branches
+	1.1.2.1;
+next	;
+
+1.1.2.1
+date	97.07.17.15.42.42;	author mn200;	state Exp;
+branches;
+next	1.1.2.2;
+
+1.1.2.2
+date	97.10.05.21.04.49;	author kxs;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@file SysParams.sml.template was initially added on branch HOL97.
+@
+text
+@@
+
+
+1.1.2.1
+log
+@SysParams now automatically generated from SysParams.sml.template and
+the BUILD file which knows the values of __arch__ and __HOLdir__.
+@
+text
+@a0 63
+(*---------------------------------------------------------------------------
+ * This structure contains facts that HOL needs to know about its environment.
+ *---------------------------------------------------------------------------*)
+
+structure SysParams =
+struct
+
+(*---------------------------------------------------------------------------
+ * HOL_base_directory is only used in the preliminary stages of building
+ * the system. Use Globals.HOLdir for general use.
+ *---------------------------------------------------------------------------*)
+val HOL_base_directory  = "__HOLdir__";
+
+val arch                = "__arch__";
+
+datatype MLversion = Ninety | NinetySeven;
+val MLdialect = Ninety;
+
+datatype thy_opt = make_binary | make_new_ascii | use_old_ascii;
+
+val theory_file_option  = make_new_ascii
+val theory_file_type    = "ascii";
+val remake_theory_files = true;
+val version_number      = "10"
+
+(*---------------------------------------------------------------------------
+
+          Stuff that comes from outside (in 9.alpha)
+
+  datatype thy_opt = make_binary
+                 | make_new_ascii
+                 | use_old_ascii;
+
+val theory_file_option =
+   case getEnv "THEORY_TYPE"
+   of SOME s => s
+    | NONE => raise Fail "HOL_DIR variable not bound"
+
+val HOL_base_directory =
+   case getEnv "HOL_DIR"
+   of SOME s => ref s
+    | NONE => raise Fail "HOL_DIR variable not bound"
+
+val theory_file_type =
+    (case (!theory_file_option)
+       of make_binary => Portable.arch
+	| _ => "ascii")
+
+
+val remake_theory_files =
+    (case (!theory_file_option)
+       of use_old_ascii => false
+	| _ => true)
+
+
+val version_number =
+   case (Portable.getEnv "HOL90_VERSION")
+   of NONE => "?"
+    | SOME s => s;
+
+ *---------------------------------------------------------------------------*)
+
+end;
+@
+
+
+1.1.2.2
+log
+@INSTALL.txt tells how to build the system.
+@
+text
+@a7 2
+datatype MLversion = Ninety | NinetySeven;
+
+d13 1
+d15 3
+a17 1
+val MLdialect = NinetySeven;
+@
